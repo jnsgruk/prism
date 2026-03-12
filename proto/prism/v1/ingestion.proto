@@ -5,7 +5,7 @@ package prism.v1;
 import "google/protobuf/timestamp.proto";
 
 service IngestionService {
-  rpc GetStatus(GetIngestionStatusRequest) returns (GetIngestionStatusResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
   rpc TriggerRun(TriggerRunRequest) returns (TriggerRunResponse);
   rpc TriggerBackfill(TriggerBackfillRequest) returns (TriggerBackfillResponse);
@@ -40,9 +40,9 @@ message IngestionRun {
   int32 rate_limit_waits_seconds = 8;
 }
 
-message GetIngestionStatusRequest {}
+message GetStatusRequest {}
 
-message GetIngestionStatusResponse {
+message GetStatusResponse {
   repeated SourceStatus sources = 1;
 }
 

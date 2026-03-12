@@ -233,6 +233,17 @@
                     "cargo-test"
                   ];
                 };
+                buf-lint = {
+                  enable = true;
+                  files = "\\.proto$";
+                  entry = "buf lint";
+                  pass_filenames = false;
+                  stages = [ "pre-commit" ];
+                  before = [
+                    "clippy"
+                    "cargo-test"
+                  ];
+                };
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";

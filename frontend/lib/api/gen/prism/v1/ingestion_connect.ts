@@ -6,8 +6,8 @@
 import { MethodKind } from "@bufbuild/protobuf";
 
 import {
-  GetIngestionStatusRequest,
-  GetIngestionStatusResponse,
+  GetStatusRequest,
+  GetStatusResponse,
   ListRunsRequest,
   ListRunsResponse,
   TriggerBackfillRequest,
@@ -27,8 +27,8 @@ export const IngestionService = {
      */
     getStatus: {
       name: "GetStatus",
-      I: GetIngestionStatusRequest,
-      O: GetIngestionStatusResponse,
+      I: GetStatusRequest,
+      O: GetStatusResponse,
       kind: MethodKind.Unary,
     },
     /**
