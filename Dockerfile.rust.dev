@@ -1,0 +1,19 @@
+# Dev Dockerfile for Tilt binary sync.
+# Produces an Ubuntu-based image that Tilt can hot-swap binaries into.
+
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash prism
+USER prism
+
+COPY --chown=prism:prism target/debug/ps-server /usr/local/bin/ps-server
+COPY --chown=prism:prism target/debug/ps-ingestion /usr/local/bin/ps-ingestion
+COPY --chown=prism:prism target/debug/ps-migrate /usr/local/bin/ps-migrate
+
+# Default to ps-server; override via Tilt entrypoint
+ENTRYPOINT ["ps-server"]

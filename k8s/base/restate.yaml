@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: restate
+spec:
+  selector:
+    app: restate
+  ports:
+    - name: ingress
+      port: 8080
+      targetPort: 8080
+    - name: admin
+      port: 9070
+      targetPort: 9070
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: restate
+spec:
+  serviceName: restate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restate
+  template:
+    metadata:
+      labels:
+        app: restate
+    spec:
+      containers:
+        - name: restate
+          image: docker.io/restatedev/restate:1.3
+          ports:
+            - containerPort: 8080
+            - containerPort: 9070
+          volumeMounts:
+            - name: restate-data
+              mountPath: /target
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: restate-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
