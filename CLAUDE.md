@@ -70,9 +70,9 @@ crates/
 
 ### Frontend
 
-Next.js App Router + React + shadcn/ui (Base UI primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. nanostores for client state. React Query for server state. Tremor for charts.
+Next.js App Router + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts.
 
-**shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/utils` for the `cn` helper.
+**shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/utils` for the `cn` helper.
 
 ## Key Conventions
 
@@ -123,9 +123,9 @@ Key macros: `define_api_test!`, `define_source_test!`, `define_metric_test!`
 
 ### Frontend — Lightweight, Custom Logic Only
 
-Vitest + React Testing Library + happy-dom. API mocking via `createRouterTransport` (Connect, in-memory, type-safe). Fresh `QueryClient` per test with `retry: false`. `cleanStores()` in `afterEach` for nanostores.
+Vitest + React Testing Library + happy-dom. API mocking via `createRouterTransport` (Connect, in-memory, type-safe). Fresh `QueryClient` per test with `retry: false`.
 
-Test custom hooks, nanostore logic, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, Next.js routing, or CSS.
+Test custom hooks, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, Next.js routing, or CSS.
 
 ## Gotchas
 

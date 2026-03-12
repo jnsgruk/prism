@@ -125,7 +125,7 @@ All workloads run on Kubernetes (Docker Desktop K8s for dev, production K8s TBD)
 ## Crate / Package Structure (Rust side)
 
 ```
-performance-studio/
+prism/
 ├── crates/
 │   ├── ps-core/          # Domain types, traits, shared logic
 │   │   └── src/

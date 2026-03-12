@@ -404,7 +404,7 @@ Set up the Rust workspace, proto definitions, database migrations, and CI pipeli
    - Token hashing: SHA-256 of raw token for DB storage (raw token never persisted)
    - `AuthContext` struct (user_id, role) attached to requests by the interceptor
 
-   **`AuthService` in `ps-server`** (proto: `proto/performance_studio/v1/auth.proto`):
+   **`AuthService` in `ps-server`** (proto: `proto/prism/v1/auth.proto`):
    - `GetSetupStatus` — returns whether any admin user exists (public, no auth required)
    - `CompleteSetup` — creates initial admin user + session; only callable when no users exist (public)
    - `PreviewBackup` — streams a `.ps-backup` file upload, returns manifest summary (table counts, watermarks, schema version); only callable when no users exist (public)
@@ -413,7 +413,7 @@ Set up the Rust workspace, proto definitions, database migrations, and CI pipeli
    - `Logout` — deletes session row (authenticated)
    - `GetCurrentUser` — returns current user info (authenticated)
 
-   **`AdminService` in `ps-server`** (proto: `proto/performance_studio/v1/admin.proto`):
+   **`AdminService` in `ps-server`** (proto: `proto/prism/v1/admin.proto`):
    - `CreateBackup` — assembles and streams a `.ps-backup` file (gzipped tar: manifest JSON + JSONL per table). Includes: `config.*`, `org.*` (Phase 1 tables), `activity.contributions`, `activity.ingestion_watermarks`, `activity.etag_cache`, `metrics.*`, `auth.users`. Excludes: `auth.sessions`, `activity.ingestion_runs`. Encrypted secrets exported as raw bytes (assumes same `PS_SECRET_KEY`).
 
    **Backup module** (`ps-core/src/backup.rs`):
@@ -804,7 +804,7 @@ The `reasoning` schema and `metrics.individual_profiles` / `metrics.snapshot_sou
 
 Proto files live in `proto/` and are managed by `buf`. Phase 1 needs six services.
 
-### `proto/performance_studio/v1/auth.proto`
+### `proto/prism/v1/auth.proto`
 
 ```protobuf
 service AuthService {
@@ -820,7 +820,7 @@ service AuthService {
 
 **Key messages:** `GetSetupStatusResponse` (setup_complete bool), `CompleteSetupRequest` (username, display_name, password), `PreviewBackupRequest` (chunk bytes — streamed upload), `PreviewBackupResponse` (schema_version, exported_at, table_counts map, source_names, watermarks map), `RestoreBackupRequest` (chunk bytes — streamed upload), `RestoreBackupResponse` (session_token, expires_at, tables_restored map), `LoginRequest` (username, password), `LoginResponse` (session_token, expires_at), `GetCurrentUserResponse` (user_id, username, display_name, role). See [07-authentication.md](./07-authentication.md) for full message definitions.
 
-### `proto/performance_studio/v1/admin.proto`
+### `proto/prism/v1/admin.proto`
 
 ```protobuf
 service AdminService {
@@ -840,7 +840,7 @@ service AdminService {
 
 **Key messages:** `CreateBackupRequest` (empty), `CreateBackupResponse` (chunk bytes — streamed download), `CreateApiTokenRequest` (name/label for the token), `CreateApiTokenResponse` (token string — shown once, never retrievable again), `ListApiTokensResponse` (list of token metadata: id, name, created_at, last_used_at — never the token value), `RevokeApiTokenRequest` (token_id).
 
-### `proto/performance_studio/v1/org.proto`
+### `proto/prism/v1/org.proto`
 
 ```protobuf
 service OrgService {
@@ -853,7 +853,7 @@ service OrgService {
 
 **Key messages:** `Team` (id, name, org_name, parent_team_id, lead, github_team_slug, member_count), `Person` (id, name, email, level, identities), `PlatformIdentity` (platform, username), `TeamMembership` (person, start_date, end_date).
 
-### `proto/performance_studio/v1/config.proto`
+### `proto/prism/v1/config.proto`
 
 ```protobuf
 service ConfigService {
@@ -869,7 +869,7 @@ service ConfigService {
 
 **Key messages:** `SourceConfig` (id, source_type, name, enabled, settings as google.protobuf.Struct, secret_status as map<string, bool> indicating which secrets are set without exposing values, schedule_cron, created_at, updated_at), `CreateSourceRequest` (source_type, name, settings, schedule_cron), `UpdateSourceRequest` (id, enabled, settings, schedule_cron — uses field masks for partial updates), `SetSecretRequest` (source_id, secret_key e.g. "github_token", secret_value — plaintext, encrypted server-side before storage), `SetSecretResponse` (success), `TestConnectionResponse` (success, error_message, details e.g. org name, rate limit info).
 
-### `proto/performance_studio/v1/ingestion.proto`
+### `proto/prism/v1/ingestion.proto`
 
 ```protobuf
 service IngestionService {
@@ -882,7 +882,7 @@ service IngestionService {
 
 **Key messages:** `SourceStatus` (name, source_type, state enum, last_run, next_run, items_collected, rate_limit_info), `IngestionRun` (id, source_name, started_at, completed_at, status, items_collected, error_message, rate_limit_waits_seconds).
 
-### `proto/performance_studio/v1/metrics.proto`
+### `proto/prism/v1/metrics.proto`
 
 ```protobuf
 service MetricsService {
