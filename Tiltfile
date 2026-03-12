@@ -76,11 +76,22 @@ docker_build(
 )
 
 # ---------------------------------------------------------------------------
+# Frontend — Next.js standalone build
+# ---------------------------------------------------------------------------
+docker_build(
+    "prism/ps-frontend",
+    "frontend",
+    dockerfile="frontend/Dockerfile",
+    target="ps-frontend-dev",
+)
+
+# ---------------------------------------------------------------------------
 # Resource configuration
 # ---------------------------------------------------------------------------
 k8s_resource("ps-migrate", resource_deps=["postgres"], labels=["prism"])
 k8s_resource("ps-server", resource_deps=["ps-migrate"], port_forwards=["8080:8080"],labels=["prism"],)
 k8s_resource("ps-ingestion", resource_deps=["ps-migrate"], port_forwards=["9080:9080"],labels=["prism"],)
+k8s_resource("ps-frontend", resource_deps=["ps-server"], port_forwards=["3000:3000"], labels=["prism"])
 
 k8s_resource(workload="envoy-gateway", labels=["gateway"])
 k8s_resource(workload="eg-gateway-helm-certgen", labels=["gateway"])

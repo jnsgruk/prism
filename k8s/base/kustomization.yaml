@@ -8,4 +8,5 @@ resources:
   - ps-migrate.yaml
   - ps-server.yaml
   - ps-ingestion.yaml
+  - ps-frontend.yaml
   - gateway.yaml

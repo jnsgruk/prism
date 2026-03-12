@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ps-frontend
+spec:
+  selector:
+    app: ps-frontend
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ps-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ps-frontend
+  template:
+    metadata:
+      labels:
+        app: ps-frontend
+    spec:
+      containers:
+        - name: ps-frontend
+          image: prism/ps-frontend
+          ports:
+            - containerPort: 3000
+          env:
+            - name: API_URL
+              value: "http://ps-server:8080"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 256Mi
