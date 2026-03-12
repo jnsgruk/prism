@@ -255,6 +255,17 @@
                     "cargo-test"
                   ];
                 };
+                frontend-typecheck = {
+                  enable = true;
+                  files = "\\.(ts|tsx)$";
+                  entry = "bash -c 'cd frontend && tsgo --build tsconfig.build.json'";
+                  pass_filenames = false;
+                  stages = [ "pre-commit" ];
+                  before = [
+                    "clippy"
+                    "cargo-test"
+                  ];
+                };
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";

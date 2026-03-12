@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --build tsconfig.build.json",
     "lint": "oxlint .",
     "test": "vitest run"
   },
