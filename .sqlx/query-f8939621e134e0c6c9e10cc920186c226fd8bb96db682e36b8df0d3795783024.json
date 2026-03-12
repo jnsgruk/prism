@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE config.source_configs SET settings = $1, updated_at = now() WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Jsonb", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "f8939621e134e0c6c9e10cc920186c226fd8bb96db682e36b8df0d3795783024"
+}

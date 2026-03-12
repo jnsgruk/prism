@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)\n                        VALUES ($1, $2, $3, $4)\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid", "Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "d36a284b757f1aae1b217895ed2708787dba0baf06430d401acb8df95b277b7f"
+}

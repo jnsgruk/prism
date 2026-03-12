@@ -1,7 +1,12 @@
+use ps_core::crypto::load_secret_key;
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
+use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
+use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
+use ps_server::services::config::ConfigServiceImpl;
+use ps_server::services::org::OrgServiceImpl;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
 use tracing::info;
@@ -19,6 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url =
         std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL environment variable not set")?;
 
+    let secret_key = load_secret_key()?;
+
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".into());
     let addr = format!("0.0.0.0:{port}").parse()?;
 
@@ -30,6 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let auth_service = AuthServiceImpl::new(pool.clone());
     let admin_service = AdminServiceImpl::new(pool.clone());
+    let org_service = OrgServiceImpl::new(pool.clone());
+    let config_service = ConfigServiceImpl::new(pool.clone(), secret_key);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
@@ -44,6 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(health_service)
         .add_service(AuthServiceServer::new(auth_service))
         .add_service(AdminServiceServer::new(admin_service))
+        .add_service(OrgServiceServer::new(org_service))
+        .add_service(ConfigServiceServer::new(config_service))
         .serve(addr)
         .await?;
 

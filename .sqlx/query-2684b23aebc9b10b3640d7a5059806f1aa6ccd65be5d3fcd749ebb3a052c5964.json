@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        UPDATE org.platform_identities\n                        SET person_id = $1\n                        WHERE platform = $2 AND platform_username = $3\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "2684b23aebc9b10b3640d7a5059806f1aa6ccd65be5d3fcd749ebb3a052c5964"
+}

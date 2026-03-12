@@ -2,9 +2,13 @@ use std::net::SocketAddr;
 
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
+use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
+use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_server::interceptor;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
+use ps_server::services::config::ConfigServiceImpl;
+use ps_server::services::org::OrgServiceImpl;
 use sqlx::PgPool;
 use tonic::transport::{Channel, Server};
 
@@ -13,6 +17,11 @@ pub struct TestServer {
     pub addr: SocketAddr,
     pub channel: Channel,
     pub pool: PgPool,
+}
+
+/// A fixed test secret key (32 bytes, only used in tests).
+fn test_secret_key() -> [u8; 32] {
+    *b"test-secret-key-32-bytes-long!!!"
 }
 
 impl TestServer {
@@ -25,6 +34,8 @@ impl TestServer {
 
         let auth_service = AuthServiceImpl::new(pool.clone());
         let admin_service = AdminServiceImpl::new(pool.clone());
+        let org_service = OrgServiceImpl::new(pool.clone());
+        let config_service = ConfigServiceImpl::new(pool.clone(), test_secret_key());
 
         let auth_pool = pool.clone();
 
@@ -35,7 +46,9 @@ impl TestServer {
         let server = Server::builder()
             .layer(auth_layer)
             .add_service(AuthServiceServer::new(auth_service))
-            .add_service(AdminServiceServer::new(admin_service));
+            .add_service(AdminServiceServer::new(admin_service))
+            .add_service(OrgServiceServer::new(org_service))
+            .add_service(ConfigServiceServer::new(config_service));
 
         let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
 
