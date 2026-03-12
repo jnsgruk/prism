@@ -1,7 +1,9 @@
 pub mod interceptor;
 mod services;
 
+use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
+use services::admin::AdminServiceImpl;
 use services::auth::AuthServiceImpl;
 use tonic::transport::Server;
 use tracing::info;
@@ -29,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let auth_service = AuthServiceImpl::new(pool.clone());
+    let admin_service = AdminServiceImpl::new(pool.clone());
 
     info!(%addr, "starting gRPC server");
 
@@ -36,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .accept_http1(true)
         .layer(tonic_web::GrpcWebLayer::new())
         .add_service(AuthServiceServer::new(auth_service))
+        .add_service(AdminServiceServer::new(admin_service))
         .serve(addr)
         .await?;
 

@@ -51,6 +51,8 @@ indexing_slicing = "warn"
 [workspace.dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+async-stream = "0.3"
 
 # Error handling
 thiserror = "2"

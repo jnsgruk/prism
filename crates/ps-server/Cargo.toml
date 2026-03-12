@@ -12,12 +12,15 @@ ps-core = { path = "../ps-core" }
 ps-proto = { path = "../ps-proto" }
 ps-metrics = { path = "../ps-metrics" }
 tokio.workspace = true
+tokio-stream.workspace = true
+async-stream.workspace = true
 tonic.workspace = true
 tonic-web.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 sqlx.workspace = true
 prost-types.workspace = true
+serde_json.workspace = true
 uuid.workspace = true
 time.workspace = true
 tower = { version = "0.5", features = ["util"] }

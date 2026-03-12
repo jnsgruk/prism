@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug, created_at FROM org.teams",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "org_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "lead_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "github_team_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [false, false, false, true, true, true, false]
+  },
+  "hash": "ea7f1f0a11d39998e5cfaee95fcc73a2f5c04e1d265703e39c450d368f2696a6"
+}
