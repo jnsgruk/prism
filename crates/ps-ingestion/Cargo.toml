@@ -1,0 +1,19 @@
+[package]
+name = "ps-ingestion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ps-core = { path = "../ps-core" }
+ps-proto = { path = "../ps-proto" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+reqwest.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true

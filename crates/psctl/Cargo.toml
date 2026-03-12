@@ -1,0 +1,16 @@
+[package]
+name = "psctl"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ps-proto = { path = "../ps-proto" }
+tokio.workspace = true
+clap.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

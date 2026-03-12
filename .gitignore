@@ -1,0 +1,30 @@
+# Rust
+target/
+
+# Nix / direnv
+.direnv/
+result
+
+# Database
+*.db
+*.db-journal
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example

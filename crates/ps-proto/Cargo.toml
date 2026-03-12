@@ -1,0 +1,17 @@
+[package]
+name = "ps-proto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Generated code — disable pedantic lints
+[lints.clippy]
+pedantic = "allow"
+
+[dependencies]
+prost.workspace = true
+prost-types.workspace = true
+tonic.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
