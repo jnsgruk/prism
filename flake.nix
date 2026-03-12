@@ -235,7 +235,6 @@
                   pass_filenames = false;
                   stages = [ "pre-commit" ];
                 };
-                shellcheck.enable = true;
               };
             };
           };
