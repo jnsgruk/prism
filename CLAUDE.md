@@ -27,11 +27,11 @@ bun test                                  # Run frontend tests via vitest (run f
 
 1. Run `prek run -av`
 2. Consider if the test coverage needs updating
-3. Provide a **draft commit message** using Conventional Commits format
+3. Update the **Implementation Progress** checklist in `README.md` if the task completes (or partially completes) a workstream
+4. Provide a **draft commit message** using Conventional Commits format
 
 **Commit rules:**
 
-- Never add "Co-Authored-By" trailers
 - Use `--no-gpg-sign` when committing autonomously
 - Always commit in logical chunks along the way. Don't wait to be prompted.
 
