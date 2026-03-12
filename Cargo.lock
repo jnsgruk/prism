@@ -1643,15 +1643,21 @@ dependencies = [
 name = "ps-server"
 version = "0.1.0"
 dependencies = [
+ "http",
+ "http-body",
+ "prost-types",
  "ps-core",
  "ps-metrics",
  "ps-proto",
  "sqlx",
+ "time",
  "tokio",
  "tonic",
  "tonic-web",
+ "tower",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
