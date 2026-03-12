@@ -15,4 +15,19 @@ pub enum Error {
 
     #[error("encryption error: {0}")]
     Encryption(String),
+
+    #[error("conflict: {0}")]
+    Conflict(String),
+
+    #[error("backup error: {0}")]
+    Backup(String),
+
+    #[error("{0}")]
+    Internal(String),
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(err: sqlx::Error) -> Self {
+        Self::Database(err.to_string())
+    }
 }

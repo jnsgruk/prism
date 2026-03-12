@@ -4,6 +4,7 @@ target/
 # Nix / direnv
 .direnv/
 result
+.pre-commit-config.yaml
 
 # Database
 *.db
