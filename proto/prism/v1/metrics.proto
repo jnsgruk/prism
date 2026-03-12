@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package prism.v1;
+
+service MetricsService {
+  rpc GetTeamMetrics(GetTeamMetricsRequest) returns (GetTeamMetricsResponse);
+  rpc CompareTeams(CompareTeamsRequest) returns (CompareTeamsResponse);
+  rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
+}
+
+enum PeriodType {
+  PERIOD_TYPE_UNSPECIFIED = 0;
+  PERIOD_TYPE_WEEK = 1;
+  PERIOD_TYPE_MONTH = 2;
+  PERIOD_TYPE_QUARTER = 3;
+}
+
+message Period {
+  PeriodType type = 1;
+  string start = 2;
+  string end = 3;
+}
+
+message TeamMetrics {
+  string team_id = 1;
+  string team_name = 2;
+  Period period = 3;
+  int32 throughput = 4;
+  float avg_review_turnaround_hours = 5;
+  int32 member_count = 6;
+  map<string, string> raw_metrics = 7;
+}
+
+message GetTeamMetricsRequest {
+  string team_id = 1;
+  Period period = 2;
+}
+
+message GetTeamMetricsResponse {
+  TeamMetrics metrics = 1;
+}
+
+message CompareTeamsRequest {
+  repeated string team_ids = 1;
+  Period period = 2;
+}
+
+message CompareTeamsResponse {
+  repeated TeamMetrics metrics = 1;
+}
+
+message ListPeriodsRequest {}
+
+message ListPeriodsResponse {
+  repeated Period periods = 1;
+}

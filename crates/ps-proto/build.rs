@@ -1,4 +1,17 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Proto compilation will be configured when .proto files are added in W2.
+    let protos = &[
+        "../../proto/prism/v1/auth.proto",
+        "../../proto/prism/v1/admin.proto",
+        "../../proto/prism/v1/org.proto",
+        "../../proto/prism/v1/config.proto",
+        "../../proto/prism/v1/ingestion.proto",
+        "../../proto/prism/v1/metrics.proto",
+    ];
+
+    tonic_build::configure()
+        .build_server(true)
+        .build_client(true)
+        .compile_protos(protos, &["../../proto"])?;
+
     Ok(())
 }

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package prism.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service AdminService {
+  rpc CreateBackup(CreateBackupRequest) returns (stream CreateBackupResponse);
+  rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
+  rpc ListApiTokens(ListApiTokensRequest) returns (ListApiTokensResponse);
+  rpc RevokeApiToken(RevokeApiTokenRequest) returns (RevokeApiTokenResponse);
+}
+
+message CreateBackupRequest {}
+
+message CreateBackupResponse {
+  bytes chunk = 1;
+}
+
+message CreateApiTokenRequest {
+  string name = 1;
+}
+
+message CreateApiTokenResponse {
+  string token_id = 1;
+  string token = 2;
+  string name = 3;
+}
+
+message ListApiTokensRequest {}
+
+message ListApiTokensResponse {
+  repeated ApiTokenInfo tokens = 1;
+}
+
+message ApiTokenInfo {
+  string token_id = 1;
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp last_used_at = 4;
+}
+
+message RevokeApiTokenRequest {
+  string token_id = 1;
+}
+
+message RevokeApiTokenResponse {}

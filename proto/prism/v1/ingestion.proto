@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package prism.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service IngestionService {
+  rpc GetStatus(GetIngestionStatusRequest) returns (GetIngestionStatusResponse);
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+  rpc TriggerRun(TriggerRunRequest) returns (TriggerRunResponse);
+  rpc TriggerBackfill(TriggerBackfillRequest) returns (TriggerBackfillResponse);
+}
+
+enum SourceState {
+  SOURCE_STATE_UNSPECIFIED = 0;
+  SOURCE_STATE_IDLE = 1;
+  SOURCE_STATE_COLLECTING = 2;
+  SOURCE_STATE_WAITING = 3;
+  SOURCE_STATE_ERROR = 4;
+}
+
+message SourceStatus {
+  string name = 1;
+  string source_type = 2;
+  SourceState state = 3;
+  optional google.protobuf.Timestamp last_run = 4;
+  optional google.protobuf.Timestamp next_run = 5;
+  int32 items_collected = 6;
+  map<string, string> rate_limit_info = 7;
+}
+
+message IngestionRun {
+  string id = 1;
+  string source_name = 2;
+  google.protobuf.Timestamp started_at = 3;
+  optional google.protobuf.Timestamp completed_at = 4;
+  string status = 5;
+  int32 items_collected = 6;
+  optional string error_message = 7;
+  int32 rate_limit_waits_seconds = 8;
+}
+
+message GetIngestionStatusRequest {}
+
+message GetIngestionStatusResponse {
+  repeated SourceStatus sources = 1;
+}
+
+message ListRunsRequest {
+  optional string source_name = 1;
+}
+
+message ListRunsResponse {
+  repeated IngestionRun runs = 1;
+}
+
+message TriggerRunRequest {
+  string source_name = 1;
+}
+
+message TriggerRunResponse {}
+
+message TriggerBackfillRequest {
+  string source_name = 1;
+  string since_date = 2;
+}
+
+message TriggerBackfillResponse {}

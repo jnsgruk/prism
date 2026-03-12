@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package prism.v1;
+
+service OrgService {
+  rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
+  rpc GetTeam(GetTeamRequest) returns (GetTeamResponse);
+  rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse);
+  rpc ImportDirectory(ImportDirectoryRequest) returns (ImportDirectoryResponse);
+}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string org_name = 3;
+  optional string parent_team_id = 4;
+  optional string lead_id = 5;
+  optional string github_team_slug = 6;
+  int32 member_count = 7;
+}
+
+message Person {
+  string id = 1;
+  string name = 2;
+  optional string email = 3;
+  optional string level = 4;
+  repeated PlatformIdentity identities = 5;
+}
+
+message PlatformIdentity {
+  string platform = 1;
+  string username = 2;
+}
+
+message ListTeamsRequest {
+  optional string parent_team_id = 1;
+}
+
+message ListTeamsResponse {
+  repeated Team teams = 1;
+}
+
+message GetTeamRequest {
+  string team_id = 1;
+}
+
+message GetTeamResponse {
+  Team team = 1;
+  repeated Person members = 2;
+}
+
+message ListPeopleRequest {}
+
+message ListPeopleResponse {
+  repeated Person people = 1;
+}
+
+message ImportDirectoryRequest {
+  bytes file_content = 1;
+}
+
+message ImportDirectoryResponse {
+  int32 people_imported = 1;
+  int32 teams_created = 2;
+  int32 identities_mapped = 3;
+  repeated string warnings = 4;
+}

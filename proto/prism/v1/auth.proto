@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package prism.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc GetSetupStatus(GetSetupStatusRequest) returns (GetSetupStatusResponse);
+  rpc CompleteSetup(CompleteSetupRequest) returns (CompleteSetupResponse);
+  rpc PreviewBackup(stream PreviewBackupRequest) returns (PreviewBackupResponse);
+  rpc RestoreBackup(stream RestoreBackupRequest) returns (RestoreBackupResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+}
+
+message GetSetupStatusRequest {}
+
+message GetSetupStatusResponse {
+  bool setup_complete = 1;
+}
+
+message CompleteSetupRequest {
+  string username = 1;
+  string display_name = 2;
+  string password = 3;
+}
+
+message CompleteSetupResponse {
+  string session_token = 1;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string session_token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+message GetCurrentUserRequest {}
+
+message GetCurrentUserResponse {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  string role = 4;
+}
+
+message PreviewBackupRequest {
+  bytes chunk = 1;
+}
+
+message PreviewBackupResponse {
+  int32 schema_version = 1;
+  google.protobuf.Timestamp exported_at = 2;
+  map<string, int32> table_counts = 3;
+  repeated string source_names = 4;
+  map<string, string> watermarks = 5;
+}
+
+message RestoreBackupRequest {
+  bytes chunk = 1;
+}
+
+message RestoreBackupResponse {
+  string session_token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  map<string, int32> tables_restored = 3;
+}

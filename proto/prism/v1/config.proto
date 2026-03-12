@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package prism.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+service ConfigService {
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc CreateSource(CreateSourceRequest) returns (CreateSourceResponse);
+  rpc UpdateSource(UpdateSourceRequest) returns (UpdateSourceResponse);
+  rpc DeleteSource(DeleteSourceRequest) returns (DeleteSourceResponse);
+  rpc SetSecret(SetSecretRequest) returns (SetSecretResponse);
+  rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse);
+}
+
+message SourceConfig {
+  string id = 1;
+  string source_type = 2;
+  string name = 3;
+  bool enabled = 4;
+  google.protobuf.Struct settings = 5;
+  map<string, bool> secret_status = 6;
+  optional string schedule_cron = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message ListSourcesRequest {}
+
+message ListSourcesResponse {
+  repeated SourceConfig sources = 1;
+}
+
+message GetSourceRequest {
+  string source_id = 1;
+}
+
+message GetSourceResponse {
+  SourceConfig source = 1;
+}
+
+message CreateSourceRequest {
+  string source_type = 1;
+  string name = 2;
+  google.protobuf.Struct settings = 3;
+  optional string schedule_cron = 4;
+}
+
+message CreateSourceResponse {
+  SourceConfig source = 1;
+}
+
+message UpdateSourceRequest {
+  string source_id = 1;
+  optional bool enabled = 2;
+  optional google.protobuf.Struct settings = 3;
+  optional string schedule_cron = 4;
+}
+
+message UpdateSourceResponse {
+  SourceConfig source = 1;
+}
+
+message DeleteSourceRequest {
+  string source_id = 1;
+}
+
+message DeleteSourceResponse {}
+
+message SetSecretRequest {
+  string source_id = 1;
+  string secret_key = 2;
+  string secret_value = 3;
+}
+
+message SetSecretResponse {}
+
+message TestConnectionRequest {
+  string source_id = 1;
+}
+
+message TestConnectionResponse {
+  bool success = 1;
+  string error_message = 2;
+  map<string, string> details = 3;
+}
