@@ -1,9 +1,34 @@
-target/
-frontend/node_modules/
-frontend/.next/
+# Environment & secrets
+.env*
+!.env.example
+
+# Version control
 .git/
-*.md
-.sqlx/
 .github/
-k8s/
+.gitignore
+.dockerignore
+
+# IDE & editor
+.idea
+.vscode
+.DS_Store
+
+# Build artifacts
+target/
 result
+**/dist
+**/node_modules
+
+# Frontend (not needed for Rust builds)
+frontend/.next/
+frontend/node_modules/
+
+# Infrastructure & deployment
+k8s/
+
+# Data & backups
+backups/
+*.dump
+*.sql
+*.tar.gz
+*.zip
