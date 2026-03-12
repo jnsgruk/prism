@@ -6,14 +6,14 @@
 |--------|-----------|
 | Next.js (App Router) | Server components for data-heavy pages, client components for interactive dashboards |
 | React | Component model, ecosystem |
-| ShadCN/ui + Radix UI | ShadCN for composable owned components; `@radix-ui` primitives for accessible, unstyled building blocks (dialogs, popovers, dropdowns, etc.) |
+| shadcn/ui + Base UI | shadcn/ui for composable owned components; `@base-ui/react` primitives for accessible, unstyled building blocks (dialogs, popovers, dropdowns, etc.) |
 | nanostores | Lightweight atomic state management — simple, framework-agnostic, no boilerplate |
 | React Query (TanStack) | Server state management — caching, refetching, optimistic updates for API data |
 | TypeScript (strict) | Non-negotiable — full strict mode; type-checked with typescript-go (Go-based `tsc` rewrite) |
 | Bun | Runtime, package manager, and test runner — fast, unified tooling, native TS execution |
 | oxlint + oxfmt | Fast Rust-based linting and formatting from the oxc project; replaces ESLint + Prettier |
 | Zod | Runtime schema validation at system boundaries — forms, URL params, env config, sessionStorage reads. Complements proto-generated compile-time types with runtime safety |
-| Tailwind CSS | ShadCN is built on it; utility-first keeps styles co-located |
+| Tailwind CSS v4 | shadcn/ui is built on it; utility-first keeps styles co-located |
 
 ## Authentication
 
@@ -140,7 +140,7 @@ app/
     └── page.tsx            # Configuration
 
 components/
-├── ui/                     # ShadCN components (Button, Card, etc.)
+├── ui/                     # shadcn/ui components (Button, Card, Dialog, etc.)
 ├── charts/                 # Chart components (likely recharts or similar)
 ├── metrics/                # Metric display components
 │   ├── MetricCard.tsx
@@ -208,7 +208,7 @@ export function useTeamMetrics(teamId: string, period: Period) {
 
 ## Charting
 
-**Tremor** — built on Recharts with a ShadCN-like philosophy, purpose-built for metrics dashboards. Use this as the primary charting library. It provides bar charts, line charts, area charts, and KPI cards that align well with the ShadCN aesthetic out of the box.
+**Tremor** — built on Recharts with a shadcn/ui-like philosophy, purpose-built for metrics dashboards. Use this as the primary charting library. It provides bar charts, line charts, area charts, and KPI cards that align well with the shadcn/ui aesthetic out of the box.
 
 ## Tooling Configuration
 
