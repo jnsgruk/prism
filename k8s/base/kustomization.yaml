@@ -1,0 +1,11 @@
+namespace: prism
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - restate.yaml
+  - ps-migrate.yaml
+  - ps-server.yaml
+  - ps-ingestion.yaml
+  - gateway.yaml

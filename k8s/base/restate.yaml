@@ -36,13 +36,13 @@ spec:
             - containerPort: 9070
           volumeMounts:
             - name: restate-data
-              mountPath: /target
+              mountPath: /restate-data
           resources:
             requests:
-              memory: 256Mi
+              memory: 512Mi
               cpu: 100m
             limits:
-              memory: 512Mi
+              memory: 1Gi
   volumeClaimTemplates:
     - metadata:
         name: restate-data

@@ -29,3 +29,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# K8s
+k8s/gateway/charts/

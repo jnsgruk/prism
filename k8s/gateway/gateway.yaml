@@ -10,37 +10,3 @@ metadata:
   name: prism
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: prism-gateway
-spec:
-  gatewayClassName: prism
-  listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: api-route
-spec:
-  parentRefs:
-    - name: prism-gateway
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /prism.v1
-      backendRefs:
-        - name: ps-server
-          port: 8080
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: frontend
-          port: 3000
