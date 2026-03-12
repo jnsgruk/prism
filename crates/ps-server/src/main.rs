@@ -3,6 +3,7 @@ use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use tonic::transport::Server;
+use tonic_health::ServingStatus;
 use tracing::info;
 
 #[tokio::main]
@@ -30,11 +31,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_service = AuthServiceImpl::new(pool.clone());
     let admin_service = AdminServiceImpl::new(pool.clone());
 
+    let (health_reporter, health_service) = tonic_health::server::health_reporter();
+    health_reporter
+        .set_service_status("", ServingStatus::Serving)
+        .await;
+
     info!(%addr, "starting gRPC server");
 
     Server::builder()
         .accept_http1(true)
         .layer(tonic_web::GrpcWebLayer::new())
+        .add_service(health_service)
         .add_service(AuthServiceServer::new(auth_service))
         .add_service(AdminServiceServer::new(admin_service))
         .serve(addr)

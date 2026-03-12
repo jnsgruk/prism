@@ -11,6 +11,8 @@ workspace = true
 ps-core = { path = "../ps-core" }
 ps-proto = { path = "../ps-proto" }
 tokio.workspace = true
+tonic.workspace = true
+tonic-health.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 reqwest.workspace = true
