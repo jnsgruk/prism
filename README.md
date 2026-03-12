@@ -60,9 +60,9 @@ Core platform with GitHub as the single source, basic metrics, and team views.
   Nix flake, devshell, treefmt, prek, clippy config, CLAUDE.md, direnv
 - [x] **W1 — Restate vs Temporal Spike**
   Resolved: Restate confirmed (scored 3.9 vs Temporal 3.1)
-- [ ] **W2 — Backend Scaffolding**
+- [x] **W2 — Backend Scaffolding**
   Rust workspace, crate structure, proto definitions, database migrations, CI
-- [ ] **W3 — Frontend Scaffolding**
+- [x] **W3 — Frontend Scaffolding**
   Next.js project, Connect client generation, layout, component library setup
 - [ ] **W4 — Org Context, Directory Import & Source Configuration**
   People, teams, platform identities, and data source configuration — via API and UI
