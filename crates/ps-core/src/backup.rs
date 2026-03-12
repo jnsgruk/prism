@@ -121,6 +121,7 @@ pub fn read_table_rows<T: for<'de> Deserialize<'de>>(data: &[u8]) -> Result<Vec<
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::items_after_statements)]
 mod tests {
     use super::*;
 

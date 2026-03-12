@@ -60,6 +60,7 @@ pub fn load_secret_key() -> Result<[u8; 32], Error> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

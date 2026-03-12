@@ -228,6 +228,7 @@
                     clippy = rust;
                   };
                   settings.extraArgs = "--allow-dirty --fix";
+                  settings.denyWarnings = true;
                   fail_fast = true;
                   before = [
                     "cargo-test"
