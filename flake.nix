@@ -172,6 +172,10 @@
               # Dev tools
               cargo-watch
               tilt
+              kubectl
+              kubectx
+              kubernetes-helm
+              kustomize
             ])
             ++ config.pre-commit.settings.enabledPackages;
           };
