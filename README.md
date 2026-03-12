@@ -64,7 +64,7 @@ Core platform with GitHub as the single source, basic metrics, and team views.
   Rust workspace, crate structure, proto definitions, database migrations, CI
 - [x] **W3 — Frontend Scaffolding**
   Next.js project, Connect client generation, layout, component library setup
-- [ ] **W4 — Org Context, Directory Import & Source Configuration**
+- [x] **W4 — Org Context, Directory Import & Source Configuration**
   People, teams, platform identities, and data source configuration — via API and UI
 - [ ] **W5 — GitHub Ingestion**
   Source adapter, Restate workflow, watermark tracking, identity resolution
