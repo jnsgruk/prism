@@ -9,7 +9,7 @@ import { useCurrentUser, useSetupStatus } from "@ps/hooks/use-auth";
 
 const PUBLIC_ROUTES = ["/login", "/setup"];
 
-const LoadingSkeleton = () => (
+const LoadingSkeleton = (): React.ReactElement => (
   <div className="flex min-h-screen">
     <div className="w-64 border-r bg-sidebar p-4">
       <Skeleton className="mb-6 h-6 w-24" />
@@ -26,7 +26,7 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-export const AppShell = ({ children }: { children: React.ReactNode }) => {
+export const AppShell = ({ children }: { children: React.ReactNode }): React.ReactElement | null => {
   const pathname = usePathname();
   const router = useRouter();
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));

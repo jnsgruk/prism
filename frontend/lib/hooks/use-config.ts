@@ -1,7 +1,16 @@
 import type { JsonObject } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type {
+  CreateSourceResponse,
+  DeleteSourceResponse,
+  SetSecretResponse,
+  SourceConfig,
+  TestConnectionResponse,
+  UpdateSourceResponse,
+} from "@ps/api/gen/prism/v1/config_pb";
 import { ConfigService } from "@ps/api/gen/prism/v1/config_pb";
 import { transport } from "@ps/api/transport";
 
@@ -9,26 +18,30 @@ const configClient = createClient(ConfigService, transport);
 
 export const configKeys = {
   all: ["config"] as const,
-  sources: () => [...configKeys.all, "sources"] as const,
-  source: (sourceId: string) => [...configKeys.all, "source", sourceId] as const,
+  sources: (): readonly ["config", "sources"] => [...configKeys.all, "sources"] as const,
+  source: (sourceId: string): readonly ["config", "source", string] => [...configKeys.all, "source", sourceId] as const,
 };
 
-export const useListSources = () =>
+export const useListSources = (): UseQueryResult<SourceConfig[], Error> =>
   useQuery({
     queryKey: configKeys.sources(),
     queryFn: () => configClient.listSources({}),
-    select: (data) => data.sources,
+    select: (data): SourceConfig[] => data.sources,
   });
 
-export const useGetSource = (sourceId: string) =>
+export const useGetSource = (sourceId: string): UseQueryResult<SourceConfig | undefined, Error> =>
   useQuery({
     queryKey: configKeys.source(sourceId),
     queryFn: () => configClient.getSource({ sourceId }),
-    select: (data) => data.source,
+    select: (data): SourceConfig | undefined => data.source,
     enabled: !!sourceId,
   });
 
-export const useCreateSource = () => {
+export const useCreateSource = (): UseMutationResult<
+  CreateSourceResponse,
+  Error,
+  { sourceType: string; name: string; settings?: JsonObject; scheduleCron?: string }
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -40,7 +53,11 @@ export const useCreateSource = () => {
   });
 };
 
-export const useUpdateSource = () => {
+export const useUpdateSource = (): UseMutationResult<
+  UpdateSourceResponse,
+  Error,
+  { sourceId: string; enabled?: boolean; settings?: JsonObject; scheduleCron?: string }
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -53,7 +70,7 @@ export const useUpdateSource = () => {
   });
 };
 
-export const useDeleteSource = () => {
+export const useDeleteSource = (): UseMutationResult<DeleteSourceResponse, Error, string> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -64,7 +81,11 @@ export const useDeleteSource = () => {
   });
 };
 
-export const useSetSecret = () => {
+export const useSetSecret = (): UseMutationResult<
+  SetSecretResponse,
+  Error,
+  { sourceId: string; secretKey: string; secretValue: string }
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -76,7 +97,7 @@ export const useSetSecret = () => {
   });
 };
 
-export const useTestConnection = () =>
+export const useTestConnection = (): UseMutationResult<TestConnectionResponse, Error, string> =>
   useMutation({
     mutationFn: (sourceId: string) => configClient.testConnection({ sourceId }),
   });

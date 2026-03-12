@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "@ps/utils";
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({ className, type, ...props }: React.ComponentProps<"input">): React.ReactElement {
   return (
     <InputPrimitive
       type={type}

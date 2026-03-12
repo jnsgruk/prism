@@ -244,6 +244,17 @@
                     "cargo-test"
                   ];
                 };
+                frontend-lint = {
+                  enable = true;
+                  files = "\\.(ts|tsx|js|jsx)$";
+                  entry = "bash -c 'cd frontend && bun run lint'";
+                  pass_filenames = false;
+                  stages = [ "pre-commit" ];
+                  before = [
+                    "clippy"
+                    "cargo-test"
+                  ];
+                };
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";

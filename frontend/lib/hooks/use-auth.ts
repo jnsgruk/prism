@@ -1,6 +1,13 @@
 import { createClient } from "@connectrpc/connect";
+import type { UseQueryResult, UseMutationResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type {
+  CompleteSetupResponse,
+  GetCurrentUserResponse,
+  LoginResponse,
+  LogoutResponse,
+} from "@ps/api/gen/prism/v1/auth_pb";
 import { AuthService } from "@ps/api/gen/prism/v1/auth_pb";
 import { transport } from "@ps/api/transport";
 import { clearSessionToken, setSessionToken } from "@ps/session";
@@ -9,25 +16,29 @@ const authClient = createClient(AuthService, transport);
 
 export const authKeys = {
   all: ["auth"] as const,
-  setupStatus: () => [...authKeys.all, "setupStatus"] as const,
-  currentUser: () => [...authKeys.all, "currentUser"] as const,
+  setupStatus: (): readonly ["auth", "setupStatus"] => [...authKeys.all, "setupStatus"] as const,
+  currentUser: (): readonly ["auth", "currentUser"] => [...authKeys.all, "currentUser"] as const,
 };
 
-export const useSetupStatus = () =>
+export const useSetupStatus = (): UseQueryResult<boolean, Error> =>
   useQuery({
     queryKey: authKeys.setupStatus(),
     queryFn: () => authClient.getSetupStatus({}),
-    select: (data) => data.setupComplete,
+    select: (data): boolean => data.setupComplete,
   });
 
-export const useCurrentUser = () =>
+export const useCurrentUser = (): UseQueryResult<GetCurrentUserResponse, Error> =>
   useQuery({
     queryKey: authKeys.currentUser(),
     queryFn: () => authClient.getCurrentUser({}),
     retry: false,
   });
 
-export const useCompleteSetup = () => {
+export const useCompleteSetup = (): UseMutationResult<
+  CompleteSetupResponse,
+  Error,
+  { username: string; displayName: string; password: string }
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -39,7 +50,7 @@ export const useCompleteSetup = () => {
   });
 };
 
-export const useLogin = () => {
+export const useLogin = (): UseMutationResult<LoginResponse, Error, { username: string; password: string }> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -51,7 +62,7 @@ export const useLogin = () => {
   });
 };
 
-export const useLogout = () => {
+export const useLogout = (): UseMutationResult<LogoutResponse, Error, void> => {
   const queryClient = useQueryClient();
 
   return useMutation({

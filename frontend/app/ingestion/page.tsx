@@ -3,7 +3,7 @@
 import { PageHeader } from "@/components/page-header";
 import { Activity } from "lucide-react";
 
-const IngestionPage = () => {
+const IngestionPage = (): React.ReactElement => {
   return (
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />

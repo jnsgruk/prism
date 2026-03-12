@@ -49,13 +49,13 @@ const SECRET_KEYS_BY_TYPE: Record<string, string[]> = {
   mailing_list: [],
 };
 
-const CreateSourceDialog = () => {
+const CreateSourceDialog = (): React.ReactElement => {
   const createSource = useCreateSource();
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState("github");
   const [open, setOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     createSource.mutate(
       { sourceType, name },
@@ -137,13 +137,13 @@ const SetSecretDialog = ({
   source: SourceConfig;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) => {
+}): React.ReactElement => {
   const setSecret = useSetSecret();
   const secretKeys = SECRET_KEYS_BY_TYPE[source.sourceType] ?? ["api_token"];
   const [selectedKey, setSelectedKey] = useState(secretKeys[0] ?? "api_token");
   const [secretValue, setSecretValue] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setSecret.mutate(
       { sourceId: source.id, secretKey: selectedKey, secretValue },
@@ -216,7 +216,7 @@ const SetSecretDialog = ({
   );
 };
 
-const SourceRow = ({ source }: { source: SourceConfig }) => {
+const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {
   const updateSource = useUpdateSource();
   const deleteSource = useDeleteSource();
   const testConnection = useTestConnection();
@@ -226,11 +226,11 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
   const sourceLabel = SOURCE_TYPES.find((t) => t.value === source.sourceType)?.label ?? source.sourceType;
 
-  const handleToggleEnabled = () => {
+  const handleToggleEnabled = (): void => {
     updateSource.mutate({ sourceId: source.id, enabled: !source.enabled });
   };
 
-  const handleDelete = () => {
+  const handleDelete = (): void => {
     if (confirm(`Delete source "${source.name}"?`)) {
       deleteSource.mutate(source.id);
     }
@@ -337,7 +337,7 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
   );
 };
 
-const SourcesTab = () => {
+const SourcesTab = (): React.ReactElement => {
   const { data: sources, isLoading, error } = useListSources();
 
   return (
@@ -370,7 +370,7 @@ const SourcesTab = () => {
   );
 };
 
-const ApiTokensTab = () => (
+const ApiTokensTab = (): React.ReactElement => (
   <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
     <Key className="mb-3 size-10 text-muted-foreground" />
     <p className="mb-1 font-medium">API Tokens</p>
@@ -378,7 +378,7 @@ const ApiTokensTab = () => (
   </div>
 );
 
-const AdminPage = () => {
+const AdminPage = (): React.ReactElement => {
   return (
     <>
       <PageHeader title="Admin" description="Manage sources and platform settings" actions={<CreateSourceDialog />} />

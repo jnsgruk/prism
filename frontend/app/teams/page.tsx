@@ -19,7 +19,7 @@ import { useState } from "react";
 import { useListTeams, useGetTeam, useImportDirectory } from "@ps/hooks";
 import { cn } from "@ps/utils/cn";
 
-const TeamDetailPanel = ({ teamId, onClose }: { teamId: string; onClose: () => void }) => {
+const TeamDetailPanel = ({ teamId, onClose }: { teamId: string; onClose: () => void }): React.ReactElement => {
   const { data, isLoading, error } = useGetTeam(teamId);
 
   if (isLoading) {
@@ -83,24 +83,24 @@ const TeamDetailPanel = ({ teamId, onClose }: { teamId: string; onClose: () => v
   );
 };
 
-const ImportDirectoryDialog = () => {
+const ImportDirectoryDialog = (): React.ReactElement => {
   const importDirectory = useImportDirectory();
   const [dragActive, setDragActive] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (file: File): Promise<void> => {
     const buffer = await file.arrayBuffer();
     importDirectory.mutate(new Uint8Array(buffer));
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent): void => {
     e.preventDefault();
     setDragActive(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
@@ -172,7 +172,7 @@ const ImportDirectoryDialog = () => {
   );
 };
 
-const TeamsPage = () => {
+const TeamsPage = (): React.ReactElement => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const { data: teams, isLoading, error } = useListTeams();
 

@@ -8,7 +8,7 @@ import Link from "next/link";
 
 import { useListSources } from "@ps/hooks";
 
-const DashboardPage = () => {
+const DashboardPage = (): React.ReactElement => {
   const { data: sources } = useListSources();
   const hasSources = sources && sources.length > 0;
 

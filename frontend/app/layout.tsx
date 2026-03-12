@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "Engineering insights platform",
 };
 
-const RootLayout = ({ children }: { children: React.ReactNode }) => {
+const RootLayout = ({ children }: { children: React.ReactNode }): React.ReactElement => {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="min-h-screen bg-background text-foreground antialiased">

@@ -10,7 +10,7 @@ import { useState } from "react";
 
 import { useCompleteSetup, useSetupStatus } from "@ps/hooks/use-auth";
 
-const SetupPage = () => {
+const SetupPage = (): React.ReactElement | null => {
   const router = useRouter();
   const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
   const completeSetup = useCompleteSetup();
@@ -27,7 +27,7 @@ const SetupPage = () => {
     return null;
   }
 
-  const handleSetup = (e: React.FormEvent) => {
+  const handleSetup = (e: React.FormEvent): void => {
     e.preventDefault();
     setError("");
 

@@ -39,7 +39,7 @@ const NAV_ITEMS = [
 
 const ADMIN_ITEMS = [{ title: "Admin", href: "/admin", icon: Settings }];
 
-const UserInitials = ({ name }: { name: string }) => {
+const UserInitials = ({ name }: { name: string }): React.ReactElement => {
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -54,11 +54,11 @@ const UserInitials = ({ name }: { name: string }) => {
   );
 };
 
-export const AppSidebar = ({ user }: { user: User }) => {
+export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
   const pathname = usePathname();
   const logout = useLogout();
 
-  const isActive = (href: string) => {
+  const isActive = (href: string): boolean => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
