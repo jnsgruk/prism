@@ -16,7 +16,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::interceptor::AuthContext;
+use super::common::{backup_err, db_err, require_auth, to_timestamp};
 
 pub struct AdminServiceImpl {
     pool: PgPool,
@@ -26,15 +26,6 @@ impl AdminServiceImpl {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
-}
-
-#[allow(clippy::result_large_err)]
-fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
-    request
-        .extensions()
-        .get::<AuthContext>()
-        .cloned()
-        .ok_or_else(|| Status::unauthenticated("not authenticated"))
 }
 
 #[tonic::async_trait]
@@ -57,25 +48,25 @@ impl AdminService for AdminServiceImpl {
             let source_count = sqlx::query_scalar!("SELECT COUNT(*) FROM config.source_configs")
                 .fetch_one(&pool)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?
+                .map_err(db_err)?
                 .unwrap_or(0);
 
             let people_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.people")
                 .fetch_one(&pool)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?
+                .map_err(db_err)?
                 .unwrap_or(0);
 
             let team_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.teams")
                 .fetch_one(&pool)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?
+                .map_err(db_err)?
                 .unwrap_or(0);
 
             let user_count = sqlx::query_scalar!("SELECT COUNT(*) FROM auth.users")
                 .fetch_one(&pool)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?
+                .map_err(db_err)?
                 .unwrap_or(0);
 
             let mut table_counts = HashMap::new();
@@ -93,7 +84,7 @@ impl AdminService for AdminServiceImpl {
 
             let mut writer = BackupWriter::new(&mut buf);
             writer.write_manifest(&manifest)
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             // Export source configs
             let sources = sqlx::query!(
@@ -101,7 +92,7 @@ impl AdminService for AdminServiceImpl {
             )
             .fetch_all(&pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
             let source_rows: Vec<serde_json::Value> = sources
                 .iter()
@@ -120,7 +111,7 @@ impl AdminService for AdminServiceImpl {
                 .collect();
 
             writer.write_table("source_configs", &source_rows)
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             // Export people
             let people = sqlx::query!(
@@ -128,7 +119,7 @@ impl AdminService for AdminServiceImpl {
             )
             .fetch_all(&pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
             let people_rows: Vec<serde_json::Value> = people
                 .iter()
@@ -146,7 +137,7 @@ impl AdminService for AdminServiceImpl {
                 .collect();
 
             writer.write_table("people", &people_rows)
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             // Export teams
             let teams = sqlx::query!(
@@ -154,7 +145,7 @@ impl AdminService for AdminServiceImpl {
             )
             .fetch_all(&pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
             let team_rows: Vec<serde_json::Value> = teams
                 .iter()
@@ -172,7 +163,7 @@ impl AdminService for AdminServiceImpl {
                 .collect();
 
             writer.write_table("teams", &team_rows)
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             // Export users (without password hashes for security)
             let users = sqlx::query!(
@@ -180,7 +171,7 @@ impl AdminService for AdminServiceImpl {
             )
             .fetch_all(&pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
             let user_rows: Vec<serde_json::Value> = users
                 .iter()
@@ -199,10 +190,10 @@ impl AdminService for AdminServiceImpl {
                 .collect();
 
             writer.write_table("users", &user_rows)
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             writer.finish()
-                .map_err(|e| Status::internal(format!("backup error: {e}")))?;
+                .map_err(backup_err)?;
 
             info!(size_bytes = buf.len(), "backup created");
 
@@ -276,25 +267,15 @@ impl AdminService for AdminServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let token_infos = tokens
             .into_iter()
-            .map(|t| {
-                let created_at = prost_types::Timestamp {
-                    seconds: t.created_at.unix_timestamp(),
-                    nanos: 0,
-                };
-                let last_used_at = prost_types::Timestamp {
-                    seconds: t.last_active_at.unix_timestamp(),
-                    nanos: 0,
-                };
-                ApiTokenInfo {
-                    token_id: t.id.to_string(),
-                    name: t.token_name.unwrap_or_default(),
-                    created_at: Some(created_at),
-                    last_used_at: Some(last_used_at),
-                }
+            .map(|t| ApiTokenInfo {
+                token_id: t.id.to_string(),
+                name: t.token_name.unwrap_or_default(),
+                created_at: Some(to_timestamp(t.created_at)),
+                last_used_at: Some(to_timestamp(t.last_active_at)),
             })
             .collect();
 
@@ -325,7 +306,7 @@ impl AdminService for AdminServiceImpl {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         if result.rows_affected() == 0 {
             return Err(Status::not_found("token not found"));

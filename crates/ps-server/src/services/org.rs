@@ -11,7 +11,48 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::directory::parse_directory_html;
-use crate::interceptor::AuthContext;
+
+use super::common::{db_err, require_auth};
+
+/// A person row from the database (shared between `get_team` and `list_people`).
+struct PersonRow {
+    id: Uuid,
+    name: String,
+    email: Option<String>,
+    level: Option<String>,
+}
+
+/// An identity row from the database.
+struct IdentityRow {
+    person_id: Uuid,
+    platform: String,
+    platform_username: String,
+}
+
+/// Build `Person` proto messages from person rows + their platform identities.
+fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Person> {
+    people
+        .into_iter()
+        .map(|p| {
+            let person_identities: Vec<PlatformIdentity> = identities
+                .iter()
+                .filter(|i| i.person_id == p.id)
+                .map(|i| PlatformIdentity {
+                    platform: i.platform.clone(),
+                    username: i.platform_username.clone(),
+                })
+                .collect();
+
+            Person {
+                id: p.id.to_string(),
+                name: p.name,
+                email: p.email,
+                level: p.level,
+                identities: person_identities,
+            }
+        })
+        .collect()
+}
 
 pub struct OrgServiceImpl {
     pool: PgPool,
@@ -21,19 +62,6 @@ impl OrgServiceImpl {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
-}
-
-#[allow(clippy::result_large_err)]
-fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
-    request
-        .extensions()
-        .get::<AuthContext>()
-        .cloned()
-        .ok_or_else(|| Status::unauthenticated("not authenticated"))
-}
-
-fn db_err(e: sqlx::Error) -> Status {
-    Status::internal(format!("database error: {e}"))
 }
 
 #[tonic::async_trait]
@@ -135,7 +163,7 @@ impl OrgService for OrgServiceImpl {
 
         let person_ids: Vec<Uuid> = members_rows.iter().map(|r| r.id).collect();
 
-        let identities = sqlx::query!(
+        let identity_rows = sqlx::query!(
             r#"
             SELECT person_id, platform, platform_username
             FROM org.platform_identities
@@ -147,27 +175,26 @@ impl OrgService for OrgServiceImpl {
         .await
         .map_err(db_err)?;
 
-        let members = members_rows
+        let identities: Vec<IdentityRow> = identity_rows
             .into_iter()
-            .map(|p| {
-                let person_identities: Vec<PlatformIdentity> = identities
-                    .iter()
-                    .filter(|i| i.person_id == p.id)
-                    .map(|i| PlatformIdentity {
-                        platform: i.platform.clone(),
-                        username: i.platform_username.clone(),
-                    })
-                    .collect();
-
-                Person {
-                    id: p.id.to_string(),
-                    name: p.name,
-                    email: p.email,
-                    level: p.level,
-                    identities: person_identities,
-                }
+            .map(|i| IdentityRow {
+                person_id: i.person_id,
+                platform: i.platform,
+                platform_username: i.platform_username,
             })
             .collect();
+
+        let member_people: Vec<PersonRow> = members_rows
+            .into_iter()
+            .map(|p| PersonRow {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                level: p.level,
+            })
+            .collect();
+
+        let members = build_people(member_people, &identities);
 
         let team_proto = Team {
             id: team.id.to_string(),
@@ -204,7 +231,7 @@ impl OrgService for OrgServiceImpl {
 
         let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
 
-        let identities = sqlx::query!(
+        let identity_rows = sqlx::query!(
             r#"
             SELECT person_id, platform, platform_username
             FROM org.platform_identities
@@ -216,27 +243,26 @@ impl OrgService for OrgServiceImpl {
         .await
         .map_err(db_err)?;
 
-        let people = people_rows
+        let identities: Vec<IdentityRow> = identity_rows
             .into_iter()
-            .map(|p| {
-                let person_identities: Vec<PlatformIdentity> = identities
-                    .iter()
-                    .filter(|i| i.person_id == p.id)
-                    .map(|i| PlatformIdentity {
-                        platform: i.platform.clone(),
-                        username: i.platform_username.clone(),
-                    })
-                    .collect();
-
-                Person {
-                    id: p.id.to_string(),
-                    name: p.name,
-                    email: p.email,
-                    level: p.level,
-                    identities: person_identities,
-                }
+            .map(|i| IdentityRow {
+                person_id: i.person_id,
+                platform: i.platform,
+                platform_username: i.platform_username,
             })
             .collect();
+
+        let person_rows: Vec<PersonRow> = people_rows
+            .into_iter()
+            .map(|p| PersonRow {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                level: p.level,
+            })
+            .collect();
+
+        let people = build_people(person_rows, &identities);
 
         Ok(Response::new(ListPeopleResponse { people }))
     }

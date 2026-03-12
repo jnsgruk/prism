@@ -13,7 +13,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::interceptor::AuthContext;
+use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct ConfigServiceImpl {
     pool: PgPool,
@@ -23,22 +23,6 @@ pub struct ConfigServiceImpl {
 impl ConfigServiceImpl {
     pub fn new(pool: PgPool, secret_key: [u8; 32]) -> Self {
         Self { pool, secret_key }
-    }
-}
-
-#[allow(clippy::result_large_err)]
-fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
-    request
-        .extensions()
-        .get::<AuthContext>()
-        .cloned()
-        .ok_or_else(|| Status::unauthenticated("not authenticated"))
-}
-
-fn to_timestamp(dt: time::OffsetDateTime) -> prost_types::Timestamp {
-    prost_types::Timestamp {
-        seconds: dt.unix_timestamp(),
-        nanos: 0,
     }
 }
 
@@ -144,7 +128,7 @@ async fn fetch_secret_status(
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+    .map_err(db_err)?;
 
     Ok(secrets.into_iter().map(|s| (s.secret_key, true)).collect())
 }
@@ -167,7 +151,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let mut result = Vec::with_capacity(sources.len());
         for s in sources {
@@ -211,7 +195,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found"))?;
 
         let secret_status = fetch_secret_status(&self.pool, s.id).await?;
@@ -310,7 +294,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found"))?;
 
         // Apply partial updates
@@ -322,7 +306,7 @@ impl ConfigService for ConfigServiceImpl {
             )
             .execute(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
         }
 
         if let Some(settings) = &req.settings {
@@ -334,7 +318,7 @@ impl ConfigService for ConfigServiceImpl {
             )
             .execute(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
         }
 
         if let Some(cron) = &req.schedule_cron {
@@ -345,7 +329,7 @@ impl ConfigService for ConfigServiceImpl {
             )
             .execute(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
         }
 
         // Re-fetch the updated source
@@ -360,7 +344,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let secret_status = fetch_secret_status(&self.pool, s.id).await?;
 
@@ -396,7 +380,7 @@ impl ConfigService for ConfigServiceImpl {
         let result = sqlx::query!("DELETE FROM config.source_configs WHERE id = $1", source_id,)
             .execute(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
         if result.rows_affected() == 0 {
             return Err(Status::not_found("source not found"));
@@ -430,7 +414,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found"))?;
 
         let encrypted = crypto::encrypt(&self.secret_key, req.secret_value.as_bytes())
@@ -452,7 +436,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         info!(source_id = %source_id, key = %req.secret_key, "secret set");
 
@@ -477,7 +461,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found"))?;
 
         // Check if required secrets are configured
@@ -487,7 +471,7 @@ impl ConfigService for ConfigServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let secret_keys: Vec<String> = secrets.into_iter().map(|s| s.secret_key).collect();
         let mut details = HashMap::new();

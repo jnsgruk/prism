@@ -16,7 +16,7 @@ use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::interceptor::AuthContext;
+use super::common::{db_err, require_auth};
 
 pub struct AuthServiceImpl {
     pool: PgPool,
@@ -28,15 +28,6 @@ impl AuthServiceImpl {
     }
 }
 
-#[allow(clippy::result_large_err)]
-fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
-    request
-        .extensions()
-        .get::<AuthContext>()
-        .cloned()
-        .ok_or_else(|| Status::unauthenticated("not authenticated"))
-}
-
 #[tonic::async_trait]
 impl AuthService for AuthServiceImpl {
     async fn get_setup_status(
@@ -46,7 +37,7 @@ impl AuthService for AuthServiceImpl {
         let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?
+            .map_err(db_err)?
             .unwrap_or(false);
 
         Ok(Response::new(GetSetupStatusResponse {
@@ -69,7 +60,7 @@ impl AuthService for AuthServiceImpl {
         let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?
+            .map_err(db_err)?
             .unwrap_or(false);
 
         if exists {
@@ -136,7 +127,7 @@ impl AuthService for AuthServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::unauthenticated("invalid credentials"))?;
 
         if !user.is_active {
@@ -185,7 +176,7 @@ impl AuthService for AuthServiceImpl {
         sqlx::query!("DELETE FROM auth.sessions WHERE id = $1", ctx.session_id)
             .execute(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+            .map_err(db_err)?;
 
         Ok(Response::new(LogoutResponse {}))
     }
@@ -247,7 +238,7 @@ impl AuthService for AuthServiceImpl {
         let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?
+            .map_err(db_err)?
             .unwrap_or(false);
 
         if exists {
