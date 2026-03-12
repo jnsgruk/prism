@@ -267,6 +267,17 @@
                     "cargo-test"
                   ];
                 };
+                frontend-test = {
+                  enable = true;
+                  files = "\\.(ts|tsx)$";
+                  entry = "bash -c 'cd frontend && bun run test'";
+                  pass_filenames = false;
+                  stages = [ "pre-commit" ];
+                  before = [
+                    "clippy"
+                    "cargo-test"
+                  ];
+                };
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";
