@@ -62,7 +62,7 @@ macro_rules! define_api_test {
             let admin_pool = sqlx::PgPool::connect(&database_url)
                 .await
                 .expect("reconnect to admin database");
-            sqlx::query(&format!("DROP DATABASE \"{test_db}\""))
+            sqlx::query(&format!("DROP DATABASE \"{test_db}\" WITH (FORCE)"))
                 .execute(&admin_pool)
                 .await
                 .expect("drop test database");
