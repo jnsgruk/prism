@@ -3,28 +3,36 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { setSessionToken } from "@ps/session";
+import { useCompleteSetup, useSetupStatus } from "@ps/hooks/use-auth";
 
 const SetupPage = () => {
   const router = useRouter();
+  const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
+  const completeSetup = useCompleteSetup();
+
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  if (statusLoading) return null;
+
+  if (setupComplete) {
+    router.replace("/login");
+    return null;
+  }
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
-    try {
-      // TODO: Wire up Connect client for CompleteSetup RPC
-      // For now, this is a placeholder that shows the form works
-      setError("Connect client not wired yet — complete setup via gRPC directly");
-    } finally {
-      setLoading(false);
-    }
+    completeSetup.mutate(
+      { username, displayName, password },
+      {
+        onSuccess: () => router.replace("/"),
+        onError: (err) => setError(err.message),
+      },
+    );
   };
 
   return (
@@ -83,10 +91,10 @@ const SetupPage = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={completeSetup.isPending}
             className="w-full rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            {loading ? "Creating..." : "Create Admin Account"}
+            {completeSetup.isPending ? "Creating..." : "Create Admin Account"}
           </button>
         </form>
       </div>
