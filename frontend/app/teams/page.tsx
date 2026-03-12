@@ -89,8 +89,9 @@ const ImportDirectoryDialog = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/10" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Import Directory</h2>
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">
@@ -111,11 +112,11 @@ const ImportDirectoryDialog = ({ onClose }: { onClose: () => void }) => {
           )}
         >
           <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
-          <p className="mb-1 text-sm font-medium">Drop a CSV or JSON file here</p>
+          <p className="mb-1 text-sm font-medium">Drop an HTML or JSON file here</p>
           <p className="mb-3 text-xs text-muted-foreground">or click to browse</p>
           <label className="cursor-pointer rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Browse Files
-            <input type="file" accept=".csv,.json" onChange={handleFileInput} className="hidden" />
+            <input type="file" accept=".html,.json" onChange={handleFileInput} className="hidden" />
           </label>
         </div>
 

@@ -10,6 +10,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
+use crate::directory::parse_directory_html;
 use crate::interceptor::AuthContext;
 
 pub struct OrgServiceImpl {
@@ -245,8 +246,7 @@ impl OrgService for OrgServiceImpl {
         let content = String::from_utf8(req.file_content)
             .map_err(|_| Status::invalid_argument("file content is not valid UTF-8"))?;
 
-        let records: Vec<DirectoryRecord> = serde_json::from_str(&content)
-            .map_err(|e| Status::invalid_argument(format!("invalid JSON: {e}")))?;
+        let records = parse_file_content(&content)?;
 
         let mut people_imported = 0i32;
         let mut teams_created = 0i32;
@@ -477,7 +477,56 @@ impl OrgService for OrgServiceImpl {
     }
 }
 
-/// A single record in a directory import JSON file.
+/// Detect file format and parse into `DirectoryRecord` entries.
+#[allow(clippy::result_large_err)]
+fn parse_file_content(content: &str) -> Result<Vec<DirectoryRecord>, Status> {
+    let trimmed = content.trim_start();
+    if trimmed.starts_with('<') || trimmed.starts_with("<!") {
+        // HTML: parse Canonical staff directory format
+        let people = parse_directory_html(content);
+        if people.is_empty() {
+            return Err(Status::invalid_argument(
+                "no valid entries found in HTML directory file",
+            ));
+        }
+        Ok(people
+            .into_iter()
+            .map(|p| {
+                let mut identities = vec![
+                    DirectoryIdentity {
+                        platform: "github".to_owned(),
+                        username: p.github_username,
+                    },
+                    DirectoryIdentity {
+                        platform: "launchpad".to_owned(),
+                        username: p.launchpad_username,
+                    },
+                ];
+                if let Some(mm) = p.mattermost_username {
+                    identities.push(DirectoryIdentity {
+                        platform: "mattermost".to_owned(),
+                        username: mm,
+                    });
+                }
+                DirectoryRecord {
+                    name: p.display_name,
+                    email: Some(p.email),
+                    level: p.title,
+                    directory_id: None,
+                    team: p.group,
+                    org: Some("Canonical".to_owned()),
+                    identities,
+                }
+            })
+            .collect())
+    } else {
+        // JSON
+        serde_json::from_str(content)
+            .map_err(|e| Status::invalid_argument(format!("invalid JSON: {e}")))
+    }
+}
+
+/// A single record in a directory import file.
 #[derive(Deserialize)]
 struct DirectoryRecord {
     name: String,
