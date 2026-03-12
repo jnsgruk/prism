@@ -171,6 +171,7 @@
 
               # Dev tools
               cargo-watch
+              tilt
             ])
             ++ config.pre-commit.settings.enabledPackages;
           };
