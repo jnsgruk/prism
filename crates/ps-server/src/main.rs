@@ -3,6 +3,7 @@ use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
+use ps_server::interceptor::AuthLayer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use ps_server::services::config::ConfigServiceImpl;
@@ -50,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .accept_http1(true)
         .layer(tonic_web::GrpcWebLayer::new())
+        .layer(AuthLayer::new(pool.clone()))
         .add_service(health_service)
         .add_service(AuthServiceServer::new(auth_service))
         .add_service(AdminServiceServer::new(admin_service))
