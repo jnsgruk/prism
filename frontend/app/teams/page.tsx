@@ -90,8 +90,8 @@ const ImportDirectoryDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/10" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Import Directory</h2>
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">

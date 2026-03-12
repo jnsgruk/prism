@@ -43,8 +43,9 @@ const CreateSourceDialog = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-lg border bg-background p-6 shadow-xl">
         <h2 className="mb-4 text-lg font-semibold">Add Source</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,8 +118,9 @@ const SetSecretDialog = ({ source, onClose }: { source: SourceConfig; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-lg border bg-background p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold">Set Secret</h2>
         <p className="mb-4 text-sm text-muted-foreground">{source.name}</p>
 
