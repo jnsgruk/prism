@@ -26,7 +26,11 @@ const LoadingSkeleton = (): React.ReactElement => (
   </div>
 );
 
-export const AppShell = ({ children }: { children: React.ReactNode }): React.ReactElement | null => {
+export const AppShell = ({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement | null => {
   const pathname = usePathname();
   const router = useRouter();
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));

@@ -9,12 +9,22 @@ import { cn } from "@ps/utils";
 const Select = SelectPrimitive.Root;
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props): React.ReactElement {
-  return <SelectPrimitive.Group data-slot="select-group" className={cn("scroll-my-1 p-1", className)} {...props} />;
+  return (
+    <SelectPrimitive.Group
+      data-slot="select-group"
+      className={cn("scroll-my-1 p-1", className)}
+      {...props}
+    />
+  );
 }
 
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props): React.ReactElement {
   return (
-    <SelectPrimitive.Value data-slot="select-value" className={cn("flex flex-1 text-left", className)} {...props} />
+    <SelectPrimitive.Value
+      data-slot="select-value"
+      className={cn("flex flex-1 text-left", className)}
+      {...props}
+    />
   );
 }
 
@@ -37,7 +47,9 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon render={<ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />} />
+      <SelectPrimitive.Icon
+        render={<ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />}
+      />
     </SelectPrimitive.Trigger>
   );
 }
@@ -84,7 +96,10 @@ function SelectContent({
   );
 }
 
-function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props): React.ReactElement {
+function SelectLabel({
+  className,
+  ...props
+}: SelectPrimitive.GroupLabel.Props): React.ReactElement {
   return (
     <SelectPrimitive.GroupLabel
       data-slot="select-label"
@@ -94,7 +109,11 @@ function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props):
   );
 }
 
-function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props): React.ReactElement {
+function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props): React.ReactElement {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -108,7 +127,9 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator
-        render={<span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />}
+        render={
+          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
+        }
       >
         <CheckIcon className="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
@@ -116,7 +137,10 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
   );
 }
 
-function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props): React.ReactElement {
+function SelectSeparator({
+  className,
+  ...props
+}: SelectPrimitive.Separator.Props): React.ReactElement {
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"

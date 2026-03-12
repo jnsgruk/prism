@@ -19,7 +19,8 @@ const configClient = createClient(ConfigService, transport);
 export const configKeys = {
   all: ["config"] as const,
   sources: (): readonly ["config", "sources"] => [...configKeys.all, "sources"] as const,
-  source: (sourceId: string): readonly ["config", "source", string] => [...configKeys.all, "source", sourceId] as const,
+  source: (sourceId: string): readonly ["config", "source", string] =>
+    [...configKeys.all, "source", sourceId] as const,
 };
 
 export const useListSources = (): UseQueryResult<SourceConfig[], Error> =>
@@ -45,8 +46,12 @@ export const useCreateSource = (): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: { sourceType: string; name: string; settings?: JsonObject; scheduleCron?: string }) =>
-      configClient.createSource(req),
+    mutationFn: (req: {
+      sourceType: string;
+      name: string;
+      settings?: JsonObject;
+      scheduleCron?: string;
+    }) => configClient.createSource(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });
     },
@@ -61,8 +66,12 @@ export const useUpdateSource = (): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: { sourceId: string; enabled?: boolean; settings?: JsonObject; scheduleCron?: string }) =>
-      configClient.updateSource(req),
+    mutationFn: (req: {
+      sourceId: string;
+      enabled?: boolean;
+      settings?: JsonObject;
+      scheduleCron?: string;
+    }) => configClient.updateSource(req),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });
       queryClient.invalidateQueries({ queryKey: configKeys.source(variables.sourceId) });
@@ -89,7 +98,8 @@ export const useSetSecret = (): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: { sourceId: string; secretKey: string; secretValue: string }) => configClient.setSecret(req),
+    mutationFn: (req: { sourceId: string; secretKey: string; secretValue: string }) =>
+      configClient.setSecret(req),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: configKeys.source(variables.sourceId) });
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });

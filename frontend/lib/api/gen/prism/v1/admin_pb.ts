@@ -44,10 +44,8 @@ export type CreateBackupResponse = Message<"prism.v1.CreateBackupResponse"> & {
  * Describes the message prism.v1.CreateBackupResponse.
  * Use `create(CreateBackupResponseSchema)` to create a new message.
  */
-export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  1,
-);
+export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 1);
 
 /**
  * @generated from message prism.v1.CreateApiTokenRequest
@@ -63,10 +61,8 @@ export type CreateApiTokenRequest = Message<"prism.v1.CreateApiTokenRequest"> & 
  * Describes the message prism.v1.CreateApiTokenRequest.
  * Use `create(CreateApiTokenRequestSchema)` to create a new message.
  */
-export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  2,
-);
+export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 2);
 
 /**
  * @generated from message prism.v1.CreateApiTokenResponse
@@ -92,10 +88,8 @@ export type CreateApiTokenResponse = Message<"prism.v1.CreateApiTokenResponse"> 
  * Describes the message prism.v1.CreateApiTokenResponse.
  * Use `create(CreateApiTokenResponseSchema)` to create a new message.
  */
-export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  3,
-);
+export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 3);
 
 /**
  * @generated from message prism.v1.ListApiTokensRequest
@@ -106,10 +100,8 @@ export type ListApiTokensRequest = Message<"prism.v1.ListApiTokensRequest"> & {}
  * Describes the message prism.v1.ListApiTokensRequest.
  * Use `create(ListApiTokensRequestSchema)` to create a new message.
  */
-export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  4,
-);
+export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 4);
 
 /**
  * @generated from message prism.v1.ListApiTokensResponse
@@ -125,10 +117,8 @@ export type ListApiTokensResponse = Message<"prism.v1.ListApiTokensResponse"> & 
  * Describes the message prism.v1.ListApiTokensResponse.
  * Use `create(ListApiTokensResponseSchema)` to create a new message.
  */
-export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  5,
-);
+export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 5);
 
 /**
  * @generated from message prism.v1.ApiTokenInfo
@@ -159,7 +149,10 @@ export type ApiTokenInfo = Message<"prism.v1.ApiTokenInfo"> & {
  * Describes the message prism.v1.ApiTokenInfo.
  * Use `create(ApiTokenInfoSchema)` to create a new message.
  */
-export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> /*@__PURE__*/ = messageDesc(file_prism_v1_admin, 6);
+export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_admin,
+  6,
+);
 
 /**
  * @generated from message prism.v1.RevokeApiTokenRequest
@@ -175,10 +168,8 @@ export type RevokeApiTokenRequest = Message<"prism.v1.RevokeApiTokenRequest"> & 
  * Describes the message prism.v1.RevokeApiTokenRequest.
  * Use `create(RevokeApiTokenRequestSchema)` to create a new message.
  */
-export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  7,
-);
+export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 7);
 
 /**
  * @generated from message prism.v1.RevokeApiTokenResponse
@@ -189,10 +180,8 @@ export type RevokeApiTokenResponse = Message<"prism.v1.RevokeApiTokenResponse"> 
  * Describes the message prism.v1.RevokeApiTokenResponse.
  * Use `create(RevokeApiTokenResponseSchema)` to create a new message.
  */
-export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_admin,
-  8,
-);
+export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_admin, 8);
 
 /**
  * @generated from service prism.v1.AdminService

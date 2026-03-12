@@ -6,7 +6,10 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import {
+  file_google_protobuf_struct,
+  file_google_protobuf_timestamp,
+} from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file prism/v1/config.proto.
@@ -70,7 +73,10 @@ export type SourceConfig = Message<"prism.v1.SourceConfig"> & {
  * Describes the message prism.v1.SourceConfig.
  * Use `create(SourceConfigSchema)` to create a new message.
  */
-export const SourceConfigSchema: GenMessage<SourceConfig> /*@__PURE__*/ = messageDesc(file_prism_v1_config, 0);
+export const SourceConfigSchema: GenMessage<SourceConfig> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_config,
+  0,
+);
 
 /**
  * @generated from message prism.v1.ListSourcesRequest
@@ -119,7 +125,10 @@ export type GetSourceRequest = Message<"prism.v1.GetSourceRequest"> & {
  * Describes the message prism.v1.GetSourceRequest.
  * Use `create(GetSourceRequestSchema)` to create a new message.
  */
-export const GetSourceRequestSchema: GenMessage<GetSourceRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_config, 3);
+export const GetSourceRequestSchema: GenMessage<GetSourceRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_config,
+  3,
+);
 
 /**
  * @generated from message prism.v1.GetSourceResponse
@@ -188,10 +197,8 @@ export type CreateSourceResponse = Message<"prism.v1.CreateSourceResponse"> & {
  * Describes the message prism.v1.CreateSourceResponse.
  * Use `create(CreateSourceResponseSchema)` to create a new message.
  */
-export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_config,
-  6,
-);
+export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_config, 6);
 
 /**
  * @generated from message prism.v1.UpdateSourceRequest
@@ -241,10 +248,8 @@ export type UpdateSourceResponse = Message<"prism.v1.UpdateSourceResponse"> & {
  * Describes the message prism.v1.UpdateSourceResponse.
  * Use `create(UpdateSourceResponseSchema)` to create a new message.
  */
-export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_config,
-  8,
-);
+export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_config, 8);
 
 /**
  * @generated from message prism.v1.DeleteSourceRequest
@@ -274,10 +279,8 @@ export type DeleteSourceResponse = Message<"prism.v1.DeleteSourceResponse"> & {}
  * Describes the message prism.v1.DeleteSourceResponse.
  * Use `create(DeleteSourceResponseSchema)` to create a new message.
  */
-export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_config,
-  10,
-);
+export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_config, 10);
 
 /**
  * @generated from message prism.v1.SetSecretRequest
@@ -303,7 +306,10 @@ export type SetSecretRequest = Message<"prism.v1.SetSecretRequest"> & {
  * Describes the message prism.v1.SetSecretRequest.
  * Use `create(SetSecretRequestSchema)` to create a new message.
  */
-export const SetSecretRequestSchema: GenMessage<SetSecretRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_config, 11);
+export const SetSecretRequestSchema: GenMessage<SetSecretRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_config,
+  11,
+);
 
 /**
  * @generated from message prism.v1.SetSecretResponse
@@ -333,10 +339,8 @@ export type TestConnectionRequest = Message<"prism.v1.TestConnectionRequest"> & 
  * Describes the message prism.v1.TestConnectionRequest.
  * Use `create(TestConnectionRequestSchema)` to create a new message.
  */
-export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_config,
-  13,
-);
+export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_config, 13);
 
 /**
  * @generated from message prism.v1.TestConnectionResponse
@@ -362,10 +366,8 @@ export type TestConnectionResponse = Message<"prism.v1.TestConnectionResponse"> 
  * Describes the message prism.v1.TestConnectionResponse.
  * Use `create(TestConnectionResponseSchema)` to create a new message.
  */
-export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_config,
-  14,
-);
+export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_config, 14);
 
 /**
  * @generated from service prism.v1.ConfigService

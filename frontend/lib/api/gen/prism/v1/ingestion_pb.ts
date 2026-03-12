@@ -60,7 +60,10 @@ export type SourceStatus = Message<"prism.v1.SourceStatus"> & {
  * Describes the message prism.v1.SourceStatus.
  * Use `create(SourceStatusSchema)` to create a new message.
  */
-export const SourceStatusSchema: GenMessage<SourceStatus> /*@__PURE__*/ = messageDesc(file_prism_v1_ingestion, 0);
+export const SourceStatusSchema: GenMessage<SourceStatus> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  0,
+);
 
 /**
  * @generated from message prism.v1.IngestionRun
@@ -111,7 +114,10 @@ export type IngestionRun = Message<"prism.v1.IngestionRun"> & {
  * Describes the message prism.v1.IngestionRun.
  * Use `create(IngestionRunSchema)` to create a new message.
  */
-export const IngestionRunSchema: GenMessage<IngestionRun> /*@__PURE__*/ = messageDesc(file_prism_v1_ingestion, 1);
+export const IngestionRunSchema: GenMessage<IngestionRun> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  1,
+);
 
 /**
  * @generated from message prism.v1.GetStatusRequest
@@ -160,7 +166,10 @@ export type ListRunsRequest = Message<"prism.v1.ListRunsRequest"> & {
  * Describes the message prism.v1.ListRunsRequest.
  * Use `create(ListRunsRequestSchema)` to create a new message.
  */
-export const ListRunsRequestSchema: GenMessage<ListRunsRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_ingestion, 4);
+export const ListRunsRequestSchema: GenMessage<ListRunsRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  4,
+);
 
 /**
  * @generated from message prism.v1.ListRunsResponse
@@ -233,10 +242,8 @@ export type TriggerBackfillRequest = Message<"prism.v1.TriggerBackfillRequest"> 
  * Describes the message prism.v1.TriggerBackfillRequest.
  * Use `create(TriggerBackfillRequestSchema)` to create a new message.
  */
-export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_ingestion,
-  8,
-);
+export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_ingestion, 8);
 
 /**
  * @generated from message prism.v1.TriggerBackfillResponse
@@ -247,10 +254,8 @@ export type TriggerBackfillResponse = Message<"prism.v1.TriggerBackfillResponse"
  * Describes the message prism.v1.TriggerBackfillResponse.
  * Use `create(TriggerBackfillResponseSchema)` to create a new message.
  */
-export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_ingestion,
-  9,
-);
+export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_ingestion, 9);
 
 /**
  * @generated from enum prism.v1.SourceState
@@ -285,7 +290,10 @@ export enum SourceState {
 /**
  * Describes the enum prism.v1.SourceState.
  */
-export const SourceStateSchema: GenEnum<SourceState> /*@__PURE__*/ = enumDesc(file_prism_v1_ingestion, 0);
+export const SourceStateSchema: GenEnum<SourceState> /*@__PURE__*/ = enumDesc(
+  file_prism_v1_ingestion,
+  0,
+);
 
 /**
  * @generated from service prism.v1.IngestionService

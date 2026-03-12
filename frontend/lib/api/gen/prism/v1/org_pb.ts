@@ -114,7 +114,10 @@ export type PlatformIdentity = Message<"prism.v1.PlatformIdentity"> & {
  * Describes the message prism.v1.PlatformIdentity.
  * Use `create(PlatformIdentitySchema)` to create a new message.
  */
-export const PlatformIdentitySchema: GenMessage<PlatformIdentity> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 2);
+export const PlatformIdentitySchema: GenMessage<PlatformIdentity> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  2,
+);
 
 /**
  * @generated from message prism.v1.ListTeamsRequest
@@ -130,7 +133,10 @@ export type ListTeamsRequest = Message<"prism.v1.ListTeamsRequest"> & {
  * Describes the message prism.v1.ListTeamsRequest.
  * Use `create(ListTeamsRequestSchema)` to create a new message.
  */
-export const ListTeamsRequestSchema: GenMessage<ListTeamsRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 3);
+export const ListTeamsRequestSchema: GenMessage<ListTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  3,
+);
 
 /**
  * @generated from message prism.v1.ListTeamsResponse
@@ -146,7 +152,10 @@ export type ListTeamsResponse = Message<"prism.v1.ListTeamsResponse"> & {
  * Describes the message prism.v1.ListTeamsResponse.
  * Use `create(ListTeamsResponseSchema)` to create a new message.
  */
-export const ListTeamsResponseSchema: GenMessage<ListTeamsResponse> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 4);
+export const ListTeamsResponseSchema: GenMessage<ListTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  4,
+);
 
 /**
  * @generated from message prism.v1.GetTeamRequest
@@ -162,7 +171,10 @@ export type GetTeamRequest = Message<"prism.v1.GetTeamRequest"> & {
  * Describes the message prism.v1.GetTeamRequest.
  * Use `create(GetTeamRequestSchema)` to create a new message.
  */
-export const GetTeamRequestSchema: GenMessage<GetTeamRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 5);
+export const GetTeamRequestSchema: GenMessage<GetTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  5,
+);
 
 /**
  * @generated from message prism.v1.GetTeamResponse
@@ -183,7 +195,10 @@ export type GetTeamResponse = Message<"prism.v1.GetTeamResponse"> & {
  * Describes the message prism.v1.GetTeamResponse.
  * Use `create(GetTeamResponseSchema)` to create a new message.
  */
-export const GetTeamResponseSchema: GenMessage<GetTeamResponse> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 6);
+export const GetTeamResponseSchema: GenMessage<GetTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  6,
+);
 
 /**
  * @generated from message prism.v1.ListPeopleRequest
@@ -194,7 +209,10 @@ export type ListPeopleRequest = Message<"prism.v1.ListPeopleRequest"> & {};
  * Describes the message prism.v1.ListPeopleRequest.
  * Use `create(ListPeopleRequestSchema)` to create a new message.
  */
-export const ListPeopleRequestSchema: GenMessage<ListPeopleRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 7);
+export const ListPeopleRequestSchema: GenMessage<ListPeopleRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  7,
+);
 
 /**
  * @generated from message prism.v1.ListPeopleResponse
@@ -210,7 +228,10 @@ export type ListPeopleResponse = Message<"prism.v1.ListPeopleResponse"> & {
  * Describes the message prism.v1.ListPeopleResponse.
  * Use `create(ListPeopleResponseSchema)` to create a new message.
  */
-export const ListPeopleResponseSchema: GenMessage<ListPeopleResponse> /*@__PURE__*/ = messageDesc(file_prism_v1_org, 8);
+export const ListPeopleResponseSchema: GenMessage<ListPeopleResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  8,
+);
 
 /**
  * @generated from message prism.v1.ImportDirectoryRequest
@@ -226,10 +247,8 @@ export type ImportDirectoryRequest = Message<"prism.v1.ImportDirectoryRequest"> 
  * Describes the message prism.v1.ImportDirectoryRequest.
  * Use `create(ImportDirectoryRequestSchema)` to create a new message.
  */
-export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_org,
-  9,
-);
+export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 9);
 
 /**
  * @generated from message prism.v1.ImportDirectoryResponse
@@ -260,10 +279,8 @@ export type ImportDirectoryResponse = Message<"prism.v1.ImportDirectoryResponse"
  * Describes the message prism.v1.ImportDirectoryResponse.
  * Use `create(ImportDirectoryResponseSchema)` to create a new message.
  */
-export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_org,
-  10,
-);
+export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 10);
 
 /**
  * @generated from service prism.v1.OrgService

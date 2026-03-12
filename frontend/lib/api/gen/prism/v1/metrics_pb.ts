@@ -83,7 +83,10 @@ export type TeamMetrics = Message<"prism.v1.TeamMetrics"> & {
  * Describes the message prism.v1.TeamMetrics.
  * Use `create(TeamMetricsSchema)` to create a new message.
  */
-export const TeamMetricsSchema: GenMessage<TeamMetrics> /*@__PURE__*/ = messageDesc(file_prism_v1_metrics, 1);
+export const TeamMetricsSchema: GenMessage<TeamMetrics> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_metrics,
+  1,
+);
 
 /**
  * @generated from message prism.v1.GetTeamMetricsRequest
@@ -104,10 +107,8 @@ export type GetTeamMetricsRequest = Message<"prism.v1.GetTeamMetricsRequest"> & 
  * Describes the message prism.v1.GetTeamMetricsRequest.
  * Use `create(GetTeamMetricsRequestSchema)` to create a new message.
  */
-export const GetTeamMetricsRequestSchema: GenMessage<GetTeamMetricsRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_metrics,
-  2,
-);
+export const GetTeamMetricsRequestSchema: GenMessage<GetTeamMetricsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 2);
 
 /**
  * @generated from message prism.v1.GetTeamMetricsResponse
@@ -123,10 +124,8 @@ export type GetTeamMetricsResponse = Message<"prism.v1.GetTeamMetricsResponse"> 
  * Describes the message prism.v1.GetTeamMetricsResponse.
  * Use `create(GetTeamMetricsResponseSchema)` to create a new message.
  */
-export const GetTeamMetricsResponseSchema: GenMessage<GetTeamMetricsResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_metrics,
-  3,
-);
+export const GetTeamMetricsResponseSchema: GenMessage<GetTeamMetricsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 3);
 
 /**
  * @generated from message prism.v1.CompareTeamsRequest
@@ -166,10 +165,8 @@ export type CompareTeamsResponse = Message<"prism.v1.CompareTeamsResponse"> & {
  * Describes the message prism.v1.CompareTeamsResponse.
  * Use `create(CompareTeamsResponseSchema)` to create a new message.
  */
-export const CompareTeamsResponseSchema: GenMessage<CompareTeamsResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_metrics,
-  5,
-);
+export const CompareTeamsResponseSchema: GenMessage<CompareTeamsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 5);
 
 /**
  * @generated from message prism.v1.ListPeriodsRequest
@@ -232,7 +229,10 @@ export enum PeriodType {
 /**
  * Describes the enum prism.v1.PeriodType.
  */
-export const PeriodTypeSchema: GenEnum<PeriodType> /*@__PURE__*/ = enumDesc(file_prism_v1_metrics, 0);
+export const PeriodTypeSchema: GenEnum<PeriodType> /*@__PURE__*/ = enumDesc(
+  file_prism_v1_metrics,
+  0,
+);
 
 /**
  * @generated from service prism.v1.MetricsService

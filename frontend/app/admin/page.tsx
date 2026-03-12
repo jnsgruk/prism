@@ -17,7 +17,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle2, Key, Loader2, Plug, Plus, Settings2, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Key,
+  Loader2,
+  Plug,
+  Plus,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
@@ -112,7 +121,9 @@ const CreateSourceDialog = (): React.ReactElement => {
 
             {createSource.isError && (
               <Alert variant="destructive">
-                {createSource.error instanceof Error ? createSource.error.message : "Failed to create source"}
+                {createSource.error instanceof Error
+                  ? createSource.error.message
+                  : "Failed to create source"}
               </Alert>
             )}
           </div>
@@ -185,7 +196,9 @@ const SetSecretDialog = ({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="secret-value">{secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}</Label>
+              <Label htmlFor="secret-value">
+                {secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}
+              </Label>
               <Input
                 id="secret-value"
                 type="password"
@@ -199,7 +212,9 @@ const SetSecretDialog = ({
 
             {setSecret.isError && (
               <Alert variant="destructive">
-                {setSecret.error instanceof Error ? setSecret.error.message : "Failed to set secret"}
+                {setSecret.error instanceof Error
+                  ? setSecret.error.message
+                  : "Failed to set secret"}
               </Alert>
             )}
           </div>
@@ -224,7 +239,8 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
 
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
-  const sourceLabel = SOURCE_TYPES.find((t) => t.value === source.sourceType)?.label ?? source.sourceType;
+  const sourceLabel =
+    SOURCE_TYPES.find((t) => t.value === source.sourceType)?.label ?? source.sourceType;
 
   const handleToggleEnabled = (): void => {
     updateSource.mutate({ sourceId: source.id, enabled: !source.enabled });
@@ -275,7 +291,12 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={() => setShowSecret(true)} title="Set secret">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setShowSecret(true)}
+            title="Set secret"
+          >
             <Settings2 className="size-4" />
           </Button>
 
@@ -286,7 +307,11 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
             disabled={testConnection.isPending}
             title="Test connection"
           >
-            {testConnection.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
+            {testConnection.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plug className="size-4" />
+            )}
           </Button>
 
           <Button
@@ -317,7 +342,8 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
             </p>
           ) : (
             <p className="flex items-center gap-1 text-sm text-red-700 dark:text-red-300">
-              <AlertCircle className="size-4" /> {testConnection.data.errorMessage || "Connection failed"}
+              <AlertCircle className="size-4" />{" "}
+              {testConnection.data.errorMessage || "Connection failed"}
             </p>
           )}
         </div>
@@ -374,14 +400,20 @@ const ApiTokensTab = (): React.ReactElement => (
   <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
     <Key className="mb-3 size-10 text-muted-foreground" />
     <p className="mb-1 font-medium">API Tokens</p>
-    <p className="text-sm text-muted-foreground">API token management will be implemented in a future workstream.</p>
+    <p className="text-sm text-muted-foreground">
+      API token management will be implemented in a future workstream.
+    </p>
   </div>
 );
 
 const AdminPage = (): React.ReactElement => {
   return (
     <>
-      <PageHeader title="Admin" description="Manage sources and platform settings" actions={<CreateSourceDialog />} />
+      <PageHeader
+        title="Admin"
+        description="Manage sources and platform settings"
+        actions={<CreateSourceDialog />}
+      />
       <div className="flex-1 p-6">
         <Tabs defaultValue="sources">
           <TabsList>

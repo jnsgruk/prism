@@ -42,7 +42,8 @@ export const useCompleteSetup = (): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: { username: string; displayName: string; password: string }) => authClient.completeSetup(req),
+    mutationFn: (req: { username: string; displayName: string; password: string }) =>
+      authClient.completeSetup(req),
     onSuccess: (data) => {
       setSessionToken(data.sessionToken);
       queryClient.invalidateQueries({ queryKey: authKeys.all });
@@ -50,7 +51,11 @@ export const useCompleteSetup = (): UseMutationResult<
   });
 };
 
-export const useLogin = (): UseMutationResult<LoginResponse, Error, { username: string; password: string }> => {
+export const useLogin = (): UseMutationResult<
+  LoginResponse,
+  Error,
+  { username: string; password: string }
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({

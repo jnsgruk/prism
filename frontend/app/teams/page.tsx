@@ -19,7 +19,13 @@ import { useState } from "react";
 import { useListTeams, useGetTeam, useImportDirectory } from "@ps/hooks";
 import { cn } from "@ps/utils/cn";
 
-const TeamDetailPanel = ({ teamId, onClose }: { teamId: string; onClose: () => void }): React.ReactElement => {
+const TeamDetailPanel = ({
+  teamId,
+  onClose,
+}: {
+  teamId: string;
+  onClose: () => void;
+}): React.ReactElement => {
   const { data, isLoading, error } = useGetTeam(teamId);
 
   if (isLoading) {
@@ -62,7 +68,10 @@ const TeamDetailPanel = ({ teamId, onClose }: { teamId: string; onClose: () => v
         ) : (
           <div className="space-y-2">
             {members.map((person) => (
-              <div key={person.id} className="flex items-center justify-between rounded border px-4 py-3">
+              <div
+                key={person.id}
+                className="flex items-center justify-between rounded border px-4 py-3"
+              >
                 <div>
                   <p className="text-sm font-medium">{person.name}</p>
                   {person.email && <p className="text-xs text-muted-foreground">{person.email}</p>}
@@ -114,7 +123,9 @@ const ImportDirectoryDialog = (): React.ReactElement => {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import Directory</DialogTitle>
-          <DialogDescription>Upload an HTML or JSON directory export to populate teams and people.</DialogDescription>
+          <DialogDescription>
+            Upload an HTML or JSON directory export to populate teams and people.
+          </DialogDescription>
         </DialogHeader>
 
         <div
@@ -142,7 +153,9 @@ const ImportDirectoryDialog = (): React.ReactElement => {
 
         {importDirectory.isSuccess && (
           <div className="rounded border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">Import complete</p>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              Import complete
+            </p>
             <ul className="mt-1 text-xs text-green-700 dark:text-green-300">
               <li>{importDirectory.data.peopleImported} people imported</li>
               <li>{importDirectory.data.teamsCreated} teams created</li>
@@ -164,7 +177,9 @@ const ImportDirectoryDialog = (): React.ReactElement => {
         {importDirectory.isError && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            {importDirectory.error instanceof Error ? importDirectory.error.message : "Import failed"}
+            {importDirectory.error instanceof Error
+              ? importDirectory.error.message
+              : "Import failed"}
           </Alert>
         )}
       </DialogContent>
@@ -232,7 +247,9 @@ const TeamsPage = (): React.ReactElement => {
                 <TeamDetailPanel teamId={selectedTeamId} onClose={() => setSelectedTeamId(null)} />
               ) : (
                 <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed p-12">
-                  <p className="text-sm text-muted-foreground">Select a team to view its members.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Select a team to view its members.
+                  </p>
                 </div>
               )}
             </div>

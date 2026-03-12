@@ -25,10 +25,8 @@ export type GetSetupStatusRequest = Message<"prism.v1.GetSetupStatusRequest"> & 
  * Describes the message prism.v1.GetSetupStatusRequest.
  * Use `create(GetSetupStatusRequestSchema)` to create a new message.
  */
-export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  0,
-);
+export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 0);
 
 /**
  * @generated from message prism.v1.GetSetupStatusResponse
@@ -44,10 +42,8 @@ export type GetSetupStatusResponse = Message<"prism.v1.GetSetupStatusResponse"> 
  * Describes the message prism.v1.GetSetupStatusResponse.
  * Use `create(GetSetupStatusResponseSchema)` to create a new message.
  */
-export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  1,
-);
+export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 1);
 
 /**
  * @generated from message prism.v1.CompleteSetupRequest
@@ -73,10 +69,8 @@ export type CompleteSetupRequest = Message<"prism.v1.CompleteSetupRequest"> & {
  * Describes the message prism.v1.CompleteSetupRequest.
  * Use `create(CompleteSetupRequestSchema)` to create a new message.
  */
-export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  2,
-);
+export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 2);
 
 /**
  * @generated from message prism.v1.CompleteSetupResponse
@@ -92,10 +86,8 @@ export type CompleteSetupResponse = Message<"prism.v1.CompleteSetupResponse"> & 
  * Describes the message prism.v1.CompleteSetupResponse.
  * Use `create(CompleteSetupResponseSchema)` to create a new message.
  */
-export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  3,
-);
+export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 3);
 
 /**
  * @generated from message prism.v1.LoginRequest
@@ -116,7 +108,10 @@ export type LoginRequest = Message<"prism.v1.LoginRequest"> & {
  * Describes the message prism.v1.LoginRequest.
  * Use `create(LoginRequestSchema)` to create a new message.
  */
-export const LoginRequestSchema: GenMessage<LoginRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_auth, 4);
+export const LoginRequestSchema: GenMessage<LoginRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_auth,
+  4,
+);
 
 /**
  * @generated from message prism.v1.LoginResponse
@@ -137,7 +132,10 @@ export type LoginResponse = Message<"prism.v1.LoginResponse"> & {
  * Describes the message prism.v1.LoginResponse.
  * Use `create(LoginResponseSchema)` to create a new message.
  */
-export const LoginResponseSchema: GenMessage<LoginResponse> /*@__PURE__*/ = messageDesc(file_prism_v1_auth, 5);
+export const LoginResponseSchema: GenMessage<LoginResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_auth,
+  5,
+);
 
 /**
  * @generated from message prism.v1.LogoutRequest
@@ -148,7 +146,10 @@ export type LogoutRequest = Message<"prism.v1.LogoutRequest"> & {};
  * Describes the message prism.v1.LogoutRequest.
  * Use `create(LogoutRequestSchema)` to create a new message.
  */
-export const LogoutRequestSchema: GenMessage<LogoutRequest> /*@__PURE__*/ = messageDesc(file_prism_v1_auth, 6);
+export const LogoutRequestSchema: GenMessage<LogoutRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_auth,
+  6,
+);
 
 /**
  * @generated from message prism.v1.LogoutResponse
@@ -159,7 +160,10 @@ export type LogoutResponse = Message<"prism.v1.LogoutResponse"> & {};
  * Describes the message prism.v1.LogoutResponse.
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
-export const LogoutResponseSchema: GenMessage<LogoutResponse> /*@__PURE__*/ = messageDesc(file_prism_v1_auth, 7);
+export const LogoutResponseSchema: GenMessage<LogoutResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_auth,
+  7,
+);
 
 /**
  * @generated from message prism.v1.GetCurrentUserRequest
@@ -170,10 +174,8 @@ export type GetCurrentUserRequest = Message<"prism.v1.GetCurrentUserRequest"> & 
  * Describes the message prism.v1.GetCurrentUserRequest.
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
-export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  8,
-);
+export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 8);
 
 /**
  * @generated from message prism.v1.GetCurrentUserResponse
@@ -204,10 +206,8 @@ export type GetCurrentUserResponse = Message<"prism.v1.GetCurrentUserResponse"> 
  * Describes the message prism.v1.GetCurrentUserResponse.
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
-export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  9,
-);
+export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 9);
 
 /**
  * @generated from message prism.v1.PreviewBackupRequest
@@ -223,10 +223,8 @@ export type PreviewBackupRequest = Message<"prism.v1.PreviewBackupRequest"> & {
  * Describes the message prism.v1.PreviewBackupRequest.
  * Use `create(PreviewBackupRequestSchema)` to create a new message.
  */
-export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  10,
-);
+export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 10);
 
 /**
  * @generated from message prism.v1.PreviewBackupResponse
@@ -262,10 +260,8 @@ export type PreviewBackupResponse = Message<"prism.v1.PreviewBackupResponse"> & 
  * Describes the message prism.v1.PreviewBackupResponse.
  * Use `create(PreviewBackupResponseSchema)` to create a new message.
  */
-export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  11,
-);
+export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 11);
 
 /**
  * @generated from message prism.v1.RestoreBackupRequest
@@ -281,10 +277,8 @@ export type RestoreBackupRequest = Message<"prism.v1.RestoreBackupRequest"> & {
  * Describes the message prism.v1.RestoreBackupRequest.
  * Use `create(RestoreBackupRequestSchema)` to create a new message.
  */
-export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  12,
-);
+export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 12);
 
 /**
  * @generated from message prism.v1.RestoreBackupResponse
@@ -310,10 +304,8 @@ export type RestoreBackupResponse = Message<"prism.v1.RestoreBackupResponse"> & 
  * Describes the message prism.v1.RestoreBackupResponse.
  * Use `create(RestoreBackupResponseSchema)` to create a new message.
  */
-export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> /*@__PURE__*/ = messageDesc(
-  file_prism_v1_auth,
-  13,
-);
+export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_auth, 13);
 
 /**
  * @generated from service prism.v1.AuthService

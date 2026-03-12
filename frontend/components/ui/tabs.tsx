@@ -6,7 +6,11 @@ import * as React from "react";
 
 import { cn } from "@ps/utils";
 
-function Tabs({ className, orientation = "horizontal", ...props }: TabsPrimitive.Root.Props): React.ReactElement {
+function Tabs({
+  className,
+  orientation = "horizontal",
+  ...props
+}: TabsPrimitive.Root.Props): React.ReactElement {
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
@@ -65,7 +69,11 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props): React.Re
 
 function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props): React.ReactElement {
   return (
-    <TabsPrimitive.Panel data-slot="tabs-content" className={cn("flex-1 text-sm outline-none", className)} {...props} />
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      className={cn("flex-1 text-sm outline-none", className)}
+      {...props}
+    />
   );
 }
 

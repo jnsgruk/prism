@@ -24,7 +24,8 @@ const DashboardPage = (): React.ReactElement => {
               </div>
               <CardTitle>Get started with Prism</CardTitle>
               <CardDescription>
-                Connect your first data source to start gathering engineering insights across your team.
+                Connect your first data source to start gathering engineering insights across your
+                team.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
@@ -39,8 +40,8 @@ const DashboardPage = (): React.ReactElement => {
             <CardHeader className="text-center">
               <CardTitle>Welcome to Prism</CardTitle>
               <CardDescription>
-                {sources.length} source{sources.length !== 1 ? "s" : ""} configured. Metrics and dashboards will appear
-                here as data is ingested.
+                {sources.length} source{sources.length !== 1 ? "s" : ""} configured. Metrics and
+                dashboards will appear here as data is ingested.
               </CardDescription>
             </CardHeader>
           </Card>

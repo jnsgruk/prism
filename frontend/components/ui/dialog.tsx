@@ -23,7 +23,10 @@ function DialogClose({ ...props }: DialogPrimitive.Close.Props): React.ReactElem
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
-function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props): React.ReactElement {
+function DialogOverlay({
+  className,
+  ...props
+}: DialogPrimitive.Backdrop.Props): React.ReactElement {
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
@@ -71,7 +74,9 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
-  return <div data-slot="dialog-header" className={cn("flex flex-col gap-2", className)} {...props} />;
+  return (
+    <div data-slot="dialog-header" className={cn("flex flex-col gap-2", className)} {...props} />
+  );
 }
 
 function DialogFooter({
@@ -92,7 +97,9 @@ function DialogFooter({
       {...props}
     >
       {children}
-      {showCloseButton && <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>}
+      {showCloseButton && (
+        <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>
+      )}
     </div>
   );
 }
@@ -107,7 +114,10 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props): Reac
   );
 }
 
-function DialogDescription({ className, ...props }: DialogPrimitive.Description.Props): React.ReactElement {
+function DialogDescription({
+  className,
+  ...props
+}: DialogPrimitive.Description.Props): React.ReactElement {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
