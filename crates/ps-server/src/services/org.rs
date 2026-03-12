@@ -32,7 +32,12 @@ fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
         .ok_or_else(|| Status::unauthenticated("not authenticated"))
 }
 
+fn db_err(e: sqlx::Error) -> Status {
+    Status::internal(format!("database error: {e}"))
+}
+
 #[tonic::async_trait]
+#[allow(clippy::too_many_lines)] // sqlx query macros need inline usage for offline type inference
 impl OrgService for OrgServiceImpl {
     async fn list_teams(
         &self,
@@ -64,7 +69,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let teams = teams
             .into_iter()
@@ -109,7 +114,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?
+        .map_err(db_err)?
         .ok_or_else(|| Status::not_found("team not found"))?;
 
         // Fetch active members with their identities
@@ -126,7 +131,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let person_ids: Vec<Uuid> = members_rows.iter().map(|r| r.id).collect();
 
@@ -140,7 +145,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let members = members_rows
             .into_iter()
@@ -195,7 +200,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
 
@@ -209,7 +214,7 @@ impl OrgService for OrgServiceImpl {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        .map_err(db_err)?;
 
         let people = people_rows
             .into_iter()
@@ -253,11 +258,7 @@ impl OrgService for OrgServiceImpl {
         let mut identities_mapped = 0i32;
         let mut warnings = Vec::new();
 
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
 
         for record in &records {
             if record.name.is_empty() {
@@ -278,7 +279,7 @@ impl OrgService for OrgServiceImpl {
                 )
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                .map_err(db_err)?;
 
                 if let Some(existing_id) = existing {
                     sqlx::query!(
@@ -294,7 +295,7 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
 
                     existing_id
                 } else {
@@ -311,7 +312,7 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
 
                     people_imported += 1;
                     person_id
@@ -329,7 +330,7 @@ impl OrgService for OrgServiceImpl {
                 )
                 .execute(&mut *tx)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                .map_err(db_err)?;
 
                 people_imported += 1;
                 person_id
@@ -346,7 +347,7 @@ impl OrgService for OrgServiceImpl {
                 )
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                .map_err(db_err)?;
 
                 let team_id = if let Some(id) = team_id {
                     id
@@ -363,7 +364,7 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
 
                     teams_created += 1;
                     new_id
@@ -383,7 +384,7 @@ impl OrgService for OrgServiceImpl {
                 )
                 .fetch_one(&mut *tx)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                .map_err(db_err)?;
 
                 if !has_membership {
                     let membership_id = Uuid::now_v7();
@@ -398,7 +399,7 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
                 }
             }
 
@@ -419,7 +420,7 @@ impl OrgService for OrgServiceImpl {
                 )
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                .map_err(db_err)?;
 
                 if existing.is_some() {
                     sqlx::query!(
@@ -434,7 +435,7 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
                 } else {
                     let identity_id = Uuid::now_v7();
                     sqlx::query!(
@@ -449,16 +450,14 @@ impl OrgService for OrgServiceImpl {
                     )
                     .execute(&mut *tx)
                     .await
-                    .map_err(|e| Status::internal(format!("database error: {e}")))?;
+                    .map_err(db_err)?;
 
                     identities_mapped += 1;
                 }
             }
         }
 
-        tx.commit()
-            .await
-            .map_err(|e| Status::internal(format!("database error: {e}")))?;
+        tx.commit().await.map_err(db_err)?;
 
         info!(
             people_imported,
