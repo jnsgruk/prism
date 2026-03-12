@@ -1642,6 +1642,7 @@ dependencies = [
  "ps-core",
  "ps-proto",
  "ps-server",
+ "serde_json",
  "sqlx",
  "time",
  "tokio",
