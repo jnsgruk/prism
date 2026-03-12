@@ -1632,6 +1632,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ps-integration"
+version = "0.1.0"
+dependencies = [
+ "http",
+ "prost-types",
+ "ps-core",
+ "ps-proto",
+ "ps-server",
+ "sqlx",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "ps-metrics"
 version = "0.1.0"
 dependencies = [

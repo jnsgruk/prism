@@ -1,10 +1,7 @@
-pub mod interceptor;
-mod services;
-
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
-use services::admin::AdminServiceImpl;
-use services::auth::AuthServiceImpl;
+use ps_server::services::admin::AdminServiceImpl;
+use ps_server::services::auth::AuthServiceImpl;
 use tonic::transport::Server;
 use tracing::info;
 

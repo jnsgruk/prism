@@ -1,0 +1,32 @@
+[package]
+name = "ps-integration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints.clippy]
+# Tests use expect/unwrap freely
+expect_used = "allow"
+unwrap_used = "allow"
+panic = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+[dependencies]
+ps-core = { path = "../../crates/ps-core" }
+ps-proto = { path = "../../crates/ps-proto" }
+ps-server = { path = "../../crates/ps-server" }
+tokio.workspace = true
+tokio-stream.workspace = true
+tonic.workspace = true
+prost-types.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+time.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tower = { version = "0.5", features = ["util"] }
+http = "1"

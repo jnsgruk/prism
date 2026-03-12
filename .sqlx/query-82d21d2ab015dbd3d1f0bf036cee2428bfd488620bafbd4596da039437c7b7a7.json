@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth.sessions (id, user_id, token_hash, session_type, expires_at)\n        VALUES ($1, $2, $3, 'browser', $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid", "Text", "Timestamptz"]
+    },
+    "nullable": []
+  },
+  "hash": "82d21d2ab015dbd3d1f0bf036cee2428bfd488620bafbd4596da039437c7b7a7"
+}
