@@ -1,5 +1,10 @@
 "use client";
 
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -22,7 +27,7 @@ const SetupPage = () => {
     return null;
   }
 
-  const handleSetup = async (e: React.FormEvent) => {
+  const handleSetup = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -36,68 +41,66 @@ const SetupPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md space-y-6 rounded-lg border p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome to Prism</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create your admin account to get started</p>
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" fill="currentColor" fillOpacity="0.9" />
+            <path d="M8 1L14 4.5L8 8L2 4.5L8 1Z" fill="currentColor" />
+          </svg>
         </div>
-
-        <form onSubmit={handleSetup} className="space-y-4">
-          <div>
-            <label htmlFor="username" className="text-sm font-medium">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="displayName" className="text-sm font-medium">
-              Display Name
-            </label>
-            <input
-              id="displayName"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              required
-              minLength={8}
-            />
-          </div>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={completeSetup.isPending}
-            className="w-full rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            {completeSetup.isPending ? "Creating..." : "Create Admin Account"}
-          </button>
-        </form>
+        <p className="text-sm text-muted-foreground">Engineering Insights Platform</p>
       </div>
+
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle>Welcome to Prism</CardTitle>
+          <CardDescription>Create your admin account to get started</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSetup} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Display Name</Label>
+              <Input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+
+            {error && <Alert variant="destructive">{error}</Alert>}
+
+            <Button type="submit" disabled={completeSetup.isPending} className="w-full">
+              {completeSetup.isPending ? "Creating..." : "Create Admin Account"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,6 +1,23 @@
 "use client";
 
-import { Plus, Plug, Key, AlertCircle, CheckCircle2, Loader2, Trash2, Settings2 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle, CheckCircle2, Key, Loader2, Plug, Plus, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
@@ -32,81 +49,95 @@ const SECRET_KEYS_BY_TYPE: Record<string, string[]> = {
   mailing_list: [],
 };
 
-const CreateSourceDialog = ({ onClose }: { onClose: () => void }) => {
+const CreateSourceDialog = () => {
   const createSource = useCreateSource();
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState("github");
+  const [open, setOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createSource.mutate({ sourceType, name }, { onSuccess: () => onClose() });
+    createSource.mutate(
+      { sourceType, name },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setName("");
+          setSourceType("github");
+        },
+      },
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-lg border bg-background p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">Add Source</h2>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button />}>
+        <Plus className="size-4" />
+        Add Source
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Add Source</DialogTitle>
+            <DialogDescription>Connect a new data source to Prism.</DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="source-name" className="mb-1 block text-sm font-medium">
-              Name
-            </label>
-            <input
-              id="source-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. canonical/ubuntu"
-              className="block w-full rounded border px-3 py-2 text-sm"
-              required
-            />
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="source-name">Name</Label>
+              <Input
+                id="source-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. canonical/ubuntu"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="source-type">Type</Label>
+              <select
+                id="source-type"
+                value={sourceType}
+                onChange={(e) => setSourceType(e.target.value)}
+                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {SOURCE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {createSource.isError && (
+              <Alert variant="destructive">
+                {createSource.error instanceof Error ? createSource.error.message : "Failed to create source"}
+              </Alert>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="source-type" className="mb-1 block text-sm font-medium">
-              Type
-            </label>
-            <select
-              id="source-type"
-              value={sourceType}
-              onChange={(e) => setSourceType(e.target.value)}
-              className="block w-full rounded border bg-background px-3 py-2 text-sm"
-            >
-              {SOURCE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {createSource.isError && (
-            <p className="text-sm text-red-600">
-              {createSource.error instanceof Error ? createSource.error.message : "Failed to create source"}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded border px-4 py-2 text-sm">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createSource.isPending || !name.trim()}
-              className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            >
+          <DialogFooter className="mt-4">
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <Button type="submit" disabled={createSource.isPending || !name.trim()}>
               {createSource.isPending ? "Creating..." : "Create"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-const SetSecretDialog = ({ source, onClose }: { source: SourceConfig; onClose: () => void }) => {
+const SetSecretDialog = ({
+  source,
+  open,
+  onOpenChange,
+}: {
+  source: SourceConfig;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
   const setSecret = useSetSecret();
   const secretKeys = SECRET_KEYS_BY_TYPE[source.sourceType] ?? ["api_token"];
   const [selectedKey, setSelectedKey] = useState(secretKeys[0] ?? "api_token");
@@ -114,73 +145,74 @@ const SetSecretDialog = ({ source, onClose }: { source: SourceConfig; onClose: (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSecret.mutate({ sourceId: source.id, secretKey: selectedKey, secretValue }, { onSuccess: () => onClose() });
+    setSecret.mutate(
+      { sourceId: source.id, secretKey: selectedKey, secretValue },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+          setSecretValue("");
+        },
+      },
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-lg border bg-background p-6 shadow-xl">
-        <h2 className="mb-1 text-lg font-semibold">Set Secret</h2>
-        <p className="mb-4 text-sm text-muted-foreground">{source.name}</p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Set Secret</DialogTitle>
+            <DialogDescription>{source.name}</DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {secretKeys.length > 1 && (
-            <div>
-              <label htmlFor="secret-key" className="mb-1 block text-sm font-medium">
-                Secret Key
-              </label>
-              <select
-                id="secret-key"
-                value={selectedKey}
-                onChange={(e) => setSelectedKey(e.target.value)}
-                className="block w-full rounded border bg-background px-3 py-2 text-sm"
-              >
-                {secretKeys.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
+          <div className="mt-4 space-y-4">
+            {secretKeys.length > 1 && (
+              <div className="space-y-2">
+                <Label htmlFor="secret-key">Secret Key</Label>
+                <select
+                  id="secret-key"
+                  value={selectedKey}
+                  onChange={(e) => setSelectedKey(e.target.value)}
+                  className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {secretKeys.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="secret-value">{secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}</Label>
+              <Input
+                id="secret-value"
+                type="password"
+                value={secretValue}
+                onChange={(e) => setSecretValue(e.target.value)}
+                placeholder="Paste your token here"
+                className="font-mono"
+                required
+              />
             </div>
-          )}
 
-          <div>
-            <label htmlFor="secret-value" className="mb-1 block text-sm font-medium">
-              {secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}
-            </label>
-            <input
-              id="secret-value"
-              type="password"
-              value={secretValue}
-              onChange={(e) => setSecretValue(e.target.value)}
-              placeholder="Paste your token here"
-              className="block w-full rounded border px-3 py-2 font-mono text-sm"
-              required
-            />
+            {setSecret.isError && (
+              <Alert variant="destructive">
+                {setSecret.error instanceof Error ? setSecret.error.message : "Failed to set secret"}
+              </Alert>
+            )}
           </div>
 
-          {setSecret.isError && (
-            <p className="text-sm text-red-600">
-              {setSecret.error instanceof Error ? setSecret.error.message : "Failed to set secret"}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded border px-4 py-2 text-sm">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={setSecret.isPending || !secretValue.trim()}
-              className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            >
+          <DialogFooter className="mt-4">
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <Button type="submit" disabled={setSecret.isPending || !secretValue.trim()}>
               {setSecret.isPending ? "Saving..." : "Save Secret"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -202,10 +234,6 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
     if (confirm(`Delete source "${source.name}"?`)) {
       deleteSource.mutate(source.id);
     }
-  };
-
-  const handleTestConnection = () => {
-    testConnection.mutate(source.id);
   };
 
   return (
@@ -232,14 +260,14 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
           <div>
             <p className="text-sm font-medium">{source.name}</p>
             <div className="flex items-center gap-2">
-              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{sourceLabel}</span>
+              <Badge variant="secondary">{sourceLabel}</Badge>
               {allSecretsSet ? (
                 <span className="flex items-center gap-1 text-xs text-green-600">
-                  <Key className="h-3 w-3" /> Configured
+                  <Key className="size-3" /> Configured
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-xs text-amber-600">
-                  <Key className="h-3 w-3" /> Needs secret
+                  <Key className="size-3" /> Needs secret
                 </span>
               )}
             </div>
@@ -247,31 +275,30 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowSecret(true)}
-            className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Set secret"
-          >
-            <Settings2 className="h-4 w-4" />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={() => setShowSecret(true)} title="Set secret">
+            <Settings2 className="size-4" />
+          </Button>
 
-          <button
-            onClick={handleTestConnection}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => testConnection.mutate(source.id)}
             disabled={testConnection.isPending}
-            className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Test connection"
           >
-            {testConnection.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
-          </button>
+            {testConnection.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={handleDelete}
             disabled={deleteSource.isPending}
-            className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-red-600"
             title="Delete source"
+            className="hover:text-destructive"
           >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <Trash2 className="size-4" />
+          </Button>
         </div>
       </div>
 
@@ -286,11 +313,11 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
         >
           {testConnection.data.success ? (
             <p className="flex items-center gap-1 text-sm text-green-700 dark:text-green-300">
-              <CheckCircle2 className="h-4 w-4" /> Connection successful
+              <CheckCircle2 className="size-4" /> Connection successful
             </p>
           ) : (
             <p className="flex items-center gap-1 text-sm text-red-700 dark:text-red-300">
-              <AlertCircle className="h-4 w-4" /> {testConnection.data.errorMessage || "Connection failed"}
+              <AlertCircle className="size-4" /> {testConnection.data.errorMessage || "Connection failed"}
             </p>
           )}
         </div>
@@ -299,46 +326,34 @@ const SourceRow = ({ source }: { source: SourceConfig }) => {
       {testConnection.isError && (
         <div className="mx-4 -mt-1 mb-1 rounded-b border border-t-0 border-red-200 bg-red-50 px-4 py-2 dark:border-red-900 dark:bg-red-950">
           <p className="flex items-center gap-1 text-sm text-red-700 dark:text-red-300">
-            <AlertCircle className="h-4 w-4" />{" "}
+            <AlertCircle className="size-4" />{" "}
             {testConnection.error instanceof Error ? testConnection.error.message : "Test failed"}
           </p>
         </div>
       )}
 
-      {showSecret && <SetSecretDialog source={source} onClose={() => setShowSecret(false)} />}
+      <SetSecretDialog source={source} open={showSecret} onOpenChange={setShowSecret} />
     </>
   );
 };
 
 const SourcesTab = () => {
   const { data: sources, isLoading, error } = useListSources();
-  const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Configure data sources and their API credentials.</p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-        >
-          <Plus className="h-4 w-4" />
-          Add Source
-        </button>
-      </div>
-
       {isLoading && <p className="text-sm text-muted-foreground">Loading sources...</p>}
 
       {error && (
-        <div className="flex items-start gap-2 rounded border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <AlertCircle className="mt-0.5 h-4 w-4 text-red-600" />
-          <p className="text-sm text-red-700 dark:text-red-300">Failed to load sources.</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          Failed to load sources.
+        </Alert>
       )}
 
       {sources && sources.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
-          <Plug className="mb-3 h-10 w-10 text-muted-foreground" />
+          <Plug className="mb-3 size-10 text-muted-foreground" />
           <p className="mb-1 font-medium">No sources configured</p>
           <p className="text-sm text-muted-foreground">Add a source to start ingesting data.</p>
         </div>
@@ -351,52 +366,43 @@ const SourcesTab = () => {
           ))}
         </div>
       )}
-
-      {showCreate && <CreateSourceDialog onClose={() => setShowCreate(false)} />}
     </div>
   );
 };
 
 const ApiTokensTab = () => (
   <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
-    <Key className="mb-3 h-10 w-10 text-muted-foreground" />
+    <Key className="mb-3 size-10 text-muted-foreground" />
     <p className="mb-1 font-medium">API Tokens</p>
     <p className="text-sm text-muted-foreground">API token management will be implemented in a future workstream.</p>
   </div>
 );
 
 const AdminPage = () => {
-  const [activeTab, setActiveTab] = useState<"sources" | "tokens">("sources");
-
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-2xl font-bold">Admin</h1>
-
-      <div className="mb-6 flex gap-1 rounded-lg border p-1">
-        <button
-          onClick={() => setActiveTab("sources")}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            activeTab === "sources" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Plug className="h-4 w-4" />
-          Sources
-        </button>
-        <button
-          onClick={() => setActiveTab("tokens")}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            activeTab === "tokens" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Key className="h-4 w-4" />
-          API Tokens
-        </button>
+    <>
+      <PageHeader title="Admin" description="Manage sources and platform settings" actions={<CreateSourceDialog />} />
+      <div className="flex-1 p-6">
+        <Tabs defaultValue="sources">
+          <TabsList>
+            <TabsTrigger value="sources">
+              <Plug className="size-4" />
+              Sources
+            </TabsTrigger>
+            <TabsTrigger value="tokens">
+              <Key className="size-4" />
+              API Tokens
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="sources">
+            <SourcesTab />
+          </TabsContent>
+          <TabsContent value="tokens">
+            <ApiTokensTab />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {activeTab === "sources" ? <SourcesTab /> : <ApiTokensTab />}
-    </div>
+    </>
   );
 };
 

@@ -1,35 +1,52 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight, Plug } from "lucide-react";
+import Link from "next/link";
 
-import { useCurrentUser, useSetupStatus } from "@ps/hooks/use-auth";
+import { useListSources } from "@ps/hooks";
 
 const DashboardPage = () => {
-  const router = useRouter();
-  const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
-  const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
-
-  if (statusLoading) return null;
-
-  if (setupComplete === false) {
-    router.replace("/setup");
-    return null;
-  }
-
-  if (userLoading) return null;
-
-  if (userError || !user) {
-    router.replace("/login");
-    return null;
-  }
+  const { data: sources } = useListSources();
+  const hasSources = sources && sources.length > 0;
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">Prism</h1>
-        <p className="mt-2 text-muted-foreground">Welcome, {user.displayName}</p>
+    <>
+      <PageHeader title="Dashboard" />
+      <div className="flex-1 p-6">
+        {!hasSources ? (
+          <Card className="mx-auto max-w-lg">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
+                <Plug className="size-6 text-muted-foreground" />
+              </div>
+              <CardTitle>Get started with Prism</CardTitle>
+              <CardDescription>
+                Connect your first data source to start gathering engineering insights across your team.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <Button render={<Link href="/admin" />}>
+                Configure Sources
+                <ArrowRight className="size-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mx-auto max-w-lg">
+            <CardHeader className="text-center">
+              <CardTitle>Welcome to Prism</CardTitle>
+              <CardDescription>
+                {sources.length} source{sources.length !== 1 ? "s" : ""} configured. Metrics and dashboards will appear
+                here as data is ingested.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
       </div>
-    </div>
+    </>
   );
 };
 
