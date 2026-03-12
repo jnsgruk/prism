@@ -150,9 +150,7 @@ where
                 .and_then(|v| v.strip_prefix("Bearer "))
                 .map(std::borrow::ToOwned::to_owned);
 
-            let token = if let Some(t) = token {
-                t
-            } else {
+            let Some(token) = token else {
                 warn!(path, "rejected request: missing authorization header");
                 return inner.call(req).await;
             };

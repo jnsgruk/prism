@@ -26,9 +26,10 @@ bun test                                  # Run frontend tests via vitest (run f
 **Before finishing any task**, always:
 
 1. Run `prek run -av`
-2. Consider if the test coverage needs updating
-3. Update the **Implementation Progress** checklist in `README.md` if the task completes (or partially completes) a workstream
-4. Provide a **draft commit message** using Conventional Commits format
+2. Ensure **zero warnings** from `cargo clippy` and `nix fmt` — lints must be 100% clean before committing
+3. Consider if the test coverage needs updating
+4. Update the **Implementation Progress** checklist in `README.md` if the task completes (or partially completes) a workstream
+5. Provide a **draft commit message** using Conventional Commits format
 
 **Commit rules:**
 
