@@ -25,6 +25,22 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  name: api-http-route
+spec:
+  parentRefs:
+    - name: prism-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /prism.v1.
+      backendRefs:
+        - name: ps-server
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
   name: frontend-route
 spec:
   parentRefs:
