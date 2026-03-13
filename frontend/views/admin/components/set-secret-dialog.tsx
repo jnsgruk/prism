@@ -23,7 +23,7 @@ import { useState } from "react";
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import { useSetSecret } from "@ps/hooks/use-config";
 
-import { SECRET_KEYS_BY_TYPE } from "@/views/sources/lib/source-types";
+import { SECRET_KEYS_BY_TYPE } from "@/views/admin/lib/source-types";
 
 export const SetSecretDialog = ({
   source,

@@ -8,7 +8,7 @@ import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
 import { cn } from "@ps/cn";
 
-import { SOURCE_TYPES } from "@/views/sources/lib/source-types";
+import { SOURCE_TYPES } from "@/views/admin/lib/source-types";
 import { EditSourceDialog } from "./edit-source-dialog";
 
 export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {

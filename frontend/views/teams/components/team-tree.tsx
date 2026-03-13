@@ -12,11 +12,13 @@ const TeamTreeNode = ({
   depth,
   selectedTeamId,
   onSelect,
+  renderActions,
 }: {
   team: Team;
   depth: number;
   selectedTeamId: string | null;
   onSelect: (teamId: string) => void;
+  renderActions?: (team: Team) => React.ReactNode;
 }): React.ReactElement => {
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = team.children.length > 0;
@@ -67,6 +69,12 @@ const TeamTreeNode = ({
           <Users className="size-3" />
           {team.totalMemberCount > 0 ? team.totalMemberCount : team.memberCount}
         </span>
+
+        {renderActions && (
+          <span className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {renderActions(team)}
+          </span>
+        )}
       </button>
 
       {expanded &&
@@ -78,6 +86,7 @@ const TeamTreeNode = ({
             depth={depth + 1}
             selectedTeamId={selectedTeamId}
             onSelect={onSelect}
+            renderActions={renderActions}
           />
         ))}
     </>
@@ -88,10 +97,12 @@ export const TeamTree = ({
   roots,
   selectedTeamId,
   onSelect,
+  renderActions,
 }: {
   roots: Team[];
   selectedTeamId: string | null;
   onSelect: (teamId: string) => void;
+  renderActions?: (team: Team) => React.ReactNode;
 }): React.ReactElement => {
   if (roots.length === 0) {
     return (
@@ -112,6 +123,7 @@ export const TeamTree = ({
           depth={0}
           selectedTeamId={selectedTeamId}
           onSelect={onSelect}
+          renderActions={renderActions}
         />
       ))}
     </div>

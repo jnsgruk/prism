@@ -24,7 +24,7 @@ import { useState } from "react";
 
 import { useCreateSource } from "@ps/hooks/use-config";
 
-import { SOURCE_TYPES } from "@/views/sources/lib/source-types";
+import { SOURCE_TYPES } from "@/views/admin/lib/source-types";
 
 export const CreateSourceDialog = (): React.ReactElement => {
   const createSource = useCreateSource();

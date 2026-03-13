@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import { cn } from "@ps/cn";
 
-import { useImportDirectory } from "@/views/teams/hooks/use-teams";
+import { useImportDirectory } from "@/views/admin/hooks/use-admin";
 
 export const ImportDirectoryDialog = (): React.ReactElement => {
   const importDirectory = useImportDirectory();

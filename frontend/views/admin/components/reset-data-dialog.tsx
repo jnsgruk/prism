@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 
-import { useResetData } from "@/views/sources/hooks/use-admin";
+import { useResetData } from "@/views/admin/hooks/use-admin";
 
 export const ResetDataDialog = (): React.ReactElement => {
   const resetData = useResetData();

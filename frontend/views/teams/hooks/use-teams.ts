@@ -1,16 +1,12 @@
 import { createClient } from "@connectrpc/connect";
-import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import type {
-  CreateTeamResponse,
-  DeleteTeamResponse,
   GetTeamResponse,
   GetTeamTreeResponse,
-  ImportDirectoryResponse,
   Person,
   Team,
-  UpdateTeamResponse,
 } from "@ps/api/gen/prism/v1/org_pb";
 import { OrgService, TeamType } from "@ps/api/gen/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
@@ -53,66 +49,6 @@ export const useListPeople = (): UseQueryResult<Person[], Error> =>
     queryFn: () => orgClient.listPeople({}),
     select: (data): Person[] => data.people,
   });
-
-export const useImportDirectory = (): UseMutationResult<
-  ImportDirectoryResponse,
-  Error,
-  Uint8Array
-> => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (fileContent: Uint8Array) => orgClient.importDirectory({ fileContent }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orgKeys.all });
-    },
-  });
-};
-
-export const useCreateTeam = (): UseMutationResult<
-  CreateTeamResponse,
-  Error,
-  {
-    name: string;
-    teamType: TeamType;
-    orgName: string;
-    parentTeamId?: string;
-    leadId?: string;
-    githubTeamSlug?: string;
-  }
-> => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input) => orgClient.createTeam(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orgKeys.all });
-    },
-  });
-};
-
-export const useUpdateTeam = (): UseMutationResult<
-  UpdateTeamResponse,
-  Error,
-  { teamId: string; name?: string; parentTeamId?: string; leadId?: string; githubTeamSlug?: string }
-> => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input) => orgClient.updateTeam(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orgKeys.all });
-    },
-  });
-};
-
-export const useDeleteTeam = (): UseMutationResult<DeleteTeamResponse, Error, string> => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (teamId: string) => orgClient.deleteTeam({ teamId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orgKeys.all });
-    },
-  });
-};
 
 /** Human-readable label for a TeamType enum value. */
 export const teamTypeLabel = (t: TeamType): string => {

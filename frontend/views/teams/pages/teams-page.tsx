@@ -19,7 +19,6 @@ import type { Period, TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 import { PeriodSchema, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
 
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
-import { ImportDirectoryDialog } from "@/views/teams/components/import-directory-dialog";
 import { PeriodSelector } from "@/views/teams/components/period-selector";
 import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
 import { TeamTree } from "@/views/teams/components/team-tree";
@@ -103,12 +102,7 @@ const TeamsPage = (): React.ReactElement => {
       <PageHeader
         title="Teams"
         description="Organisation hierarchy and team performance"
-        actions={
-          <div className="flex items-center gap-3">
-            <PeriodSelector value={period} onChange={setPeriod} />
-            <ImportDirectoryDialog />
-          </div>
-        }
+        actions={<PeriodSelector value={period} onChange={setPeriod} />}
       />
       <div className="flex-1 space-y-6 p-6">
         {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
