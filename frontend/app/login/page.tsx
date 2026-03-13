@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PrismLogo } from "@/components/prism-logo";
 import { useLogin, useSetupStatus } from "@ps/hooks/use-auth";
 
 const LoginPage = (): React.ReactElement | null => {
@@ -42,11 +43,8 @@ const LoginPage = (): React.ReactElement | null => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-            <path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" fill="currentColor" fillOpacity="0.9" />
-            <path d="M8 1L14 4.5L8 8L2 4.5L8 1Z" fill="currentColor" />
-          </svg>
+        <div className="mx-auto mb-3">
+          <PrismLogo size={48} />
         </div>
         <p className="text-sm text-muted-foreground">Engineering Insights Platform</p>
       </div>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/option3-spectrum-chevron.svg" width="128" alt="Prism">
+</p>
+
 # Prism
 
 Engineering insights platform for understanding team and individual performance across multiple platforms (GitHub, Jira, Discourse, Launchpad, Google Drive, mailing lists).

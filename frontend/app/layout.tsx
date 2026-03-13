@@ -12,6 +12,9 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "Prism",
   description: "Engineering insights platform",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 const RootLayout = ({ children }: { children: React.ReactNode }): React.ReactElement => {

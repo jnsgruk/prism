@@ -24,6 +24,7 @@ import { Activity, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Users } fr
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
 
 type User = {
@@ -67,15 +68,8 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/" />} tooltip="Prism">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"
-                    fill="currentColor"
-                    fillOpacity="0.9"
-                  />
-                  <path d="M8 1L14 4.5L8 8L2 4.5L8 1Z" fill="currentColor" />
-                </svg>
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 p-1.5 dark:bg-zinc-800">
+                <PrismLogo size={24} />
               </div>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate font-semibold">Prism</span>
