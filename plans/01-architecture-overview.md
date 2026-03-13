@@ -16,7 +16,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Frontend (Next.js)                   │
+│                Frontend (Vite + React Router)             │
 │              React + ShadCN + TypeScript                  │
 └──────────────────────┬──────────────────────────────────┘
                        │ gRPC-Web / Connect
@@ -98,9 +98,9 @@ All workloads run on Kubernetes (Docker Desktop K8s for dev, production K8s TBD)
 
 ### Frontend
 
-- Next.js + React + ShadCN UI component library
+- Vite + React Router SPA + ShadCN UI component library
 - TypeScript with strict mode, enforced by oxlint/oxfmt; type-checked with typescript-go
-- Bun as runtime and package manager
+- Bun as runtime and package manager; static SPA served by Caddy in production (no Node.js runtime)
 - Connects to API via gRPC-Web (or Connect protocol)
 - Dashboards for team comparisons, individual contribution views, ingestion status
 
@@ -147,7 +147,7 @@ prism/
 │   ├── ps-reasoning/     # AI/LLM integration, embeddings
 │   ├── ps-proto/         # Protobuf definitions + generated code
 │   └── ps-cli/           # psctl CLI tool (thin gRPC client, depends on ps-proto only)
-├── frontend/             # Next.js app
+├── frontend/             # Vite + React Router SPA
 ├── proto/                # .proto source files
 ├── plans/
 ├── SPEC.md
@@ -171,9 +171,8 @@ prism/
 | Formatting         | treefmt (rustfmt, nixfmt, oxfmt, deadnix, shfmt) | Unified formatting, no prettier needed |
 | Pre-commit         | prek (git-hooks.nix)     | treefmt, clippy, tests, oxlint, buf-lint                 |
 | Clippy             | Pedantic + restriction subset | Production guardrails with targeted allows for tonic/sqlx |
-| Frontend framework | Next.js + React          | Rich interactivity needed for dashboards                 |
-| UI components      | ShadCN + Radix UI        | Composable owned components + accessible primitives      |
-| Client state       | nanostores               | Lightweight atomic stores for UI state                   |
+| Frontend framework | Vite + React Router + React | SPA with client-side routing; static build served by Caddy |
+| UI components      | ShadCN + Base UI         | Composable owned components + accessible primitives      |
 | Server state       | React Query (TanStack)   | Caching, refetching, optimistic updates for API data     |
 | Frontend API       | @connectrpc/connect-web  | Type-safe clients generated from proto definitions       |
 | Runtime validation  | Zod                      | Schema validation at system boundaries (forms, URL params, env config); complements proto-generated types |

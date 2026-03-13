@@ -12,7 +12,7 @@ These documents capture the architectural decisions and domain design that infor
 | [02 Domain Model](./02-domain-model.md) | Bounded contexts, entity relationships, identity resolution, repository analysis |
 | [03 Data Ingestion Strategy](./03-data-ingestion-strategy.md) | Source trait, watermarks, rate limits, backfill, DB-backed config |
 | [04 Database Design](./04-database-design.md) | All schemas (auth, config, org, activity, metrics, reasoning), sqlx patterns, migrations |
-| [05 Frontend Strategy](./05-frontend-strategy.md) | Next.js, ShadCN/Radix, nanostores, React Query, Connect, Tremor charts |
+| [05 Frontend Strategy](./05-frontend-strategy.md) | Vite + React Router SPA, ShadCN/Base UI, React Query, Connect, Tremor charts |
 | [06 AI Reasoning](./06-ai-reasoning.md) | Traceability, model providers, agent tools, cost model |
 | [08 Open Questions](./08-open-questions.md) | Resolved decisions and remaining open items |
 | [07 Authentication](./07-authentication.md) | Auth schema, session tokens, first-run wizard, auth interceptor, future OIDC path |
@@ -32,7 +32,7 @@ These documents capture the architectural decisions and domain design that infor
 
 Stand up the core platform and prove the end-to-end data pipeline with a single source.
 
-- Project scaffolding (Rust workspace, Next.js app, PostgreSQL, proto definitions, buf config)
+- Project scaffolding (Rust workspace, Vite + React Router app, PostgreSQL, proto definitions, buf config)
 - Authentication — `auth` schema, Argon2id passwords, session tokens, auth interceptor, first-run setup wizard
 - Org context (people, teams, directory import)
 - GitHub source (highest signal, most mature from contristat)

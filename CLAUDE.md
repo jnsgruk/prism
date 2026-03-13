@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Prism is an engineering insights platform for understanding team and individual performance across multiple platforms (GitHub, Jira, Discourse, Launchpad, Google Drive, mailing lists). Built in Rust (backend) + Next.js/React (frontend) with PostgreSQL, gRPC (tonic + Connect), and Restate for ingestion orchestration.
+Prism is an engineering insights platform for understanding team and individual performance across multiple platforms (GitHub, Jira, Discourse, Launchpad, Google Drive, mailing lists). Built in Rust (backend) + Vite/React (frontend) with PostgreSQL, gRPC (tonic + Connect), and Restate for ingestion orchestration.
 
 ## Build & Test Commands
 
@@ -42,7 +42,7 @@ Code is organised **feature-first, layer-second**. See `plans/18-code-structure.
 
 ### Key rules
 
-- **Frontend:** feature UI lives in `views/<feature>/` with `components/`, `hooks/`, `pages/` subdirs. `app/` route files are thin re-exports. Shared components stay in `components/`. Shared hooks stay in `lib/hooks/`. The signal to lift is a concrete second consumer.
+- **Frontend:** feature UI lives in `views/<feature>/` with `components/`, `hooks/`, `pages/` subdirs. Routes are defined in `app.tsx` with lazy imports. Shared components stay in `components/`. Shared hooks stay in `lib/hooks/`. The signal to lift is a concrete second consumer.
 - **Rust services:** new features go in `src/features/<name>/` with handler, service, repository, types files. `ps-core` remains the shared domain layer (models, repo, auth, crypto).
 - **Three-tier escalation:** feature-local → service/app-local → shared crate/package. Only lift when a concrete second consumer exists.
 - **No `utils/` or `helpers/` directories.** Give utilities a proper home.
@@ -52,8 +52,11 @@ Code is organised **feature-first, layer-second**. See `plans/18-code-structure.
 
 ```
 frontend/
-├── app/              # Next.js routes — thin re-exports from views/
-├── views/            # Feature modules (sources, teams, etc.)
+├── app.tsx           # Router — lazy imports from views/, route definitions
+├── main.tsx          # React root — BrowserRouter, Providers, render
+├── index.html        # SPA entry point
+├── globals.css       # Tailwind + shadcn theme variables
+├── views/            # Feature modules (sources, teams, dashboard, login, etc.)
 │   ├── sources/      #   components/, hooks/, lib/, pages/
 │   └── teams/        #   components/, hooks/, pages/
 ├── components/       # Service-level: app-shell, page-header, ui/ (shadcn)
@@ -113,7 +116,7 @@ The `Repos` struct bundles all four repos and is constructed once from a `PgPool
 
 ### Frontend
 
-Next.js App Router + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts.
+Vite + React Router SPA + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts. Production container serves static files via Caddy.
 
 **shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/cn` for the `cn` helper.
 
@@ -132,7 +135,7 @@ Next.js App Router + React + shadcn/ui (built on `@base-ui/react` primitives) + 
 | Shared UI state within a subtree | React Context | Sidebar collapse (already exists) |
 | Persisted client preference | Cookie / `localStorage` | Sidebar state (cookie), session token (localStorage) |
 
-If a future feature genuinely needs **cross-component client state** that isn't server data (e.g., complex multi-step wizard state, global notification queue, coordinated filter state across unrelated components), prefer **Zustand** — it's lightweight, React-idiomatic, and avoids the prop-drilling that Context solves poorly at scale. Do not reach for nanostores (framework-agnostic overhead we don't need in a Next.js app).
+If a future feature genuinely needs **cross-component client state** that isn't server data (e.g., complex multi-step wizard state, global notification queue, coordinated filter state across unrelated components), prefer **Zustand** — it's lightweight, React-idiomatic, and avoids the prop-drilling that Context solves poorly at scale. Do not reach for nanostores (framework-agnostic overhead we don't need in a Vite SPA).
 
 ### Zod — Validate at System Boundaries
 
@@ -199,7 +202,7 @@ Key macros: `define_api_test!`, `define_source_test!`, `define_metric_test!`
 
 Vitest + React Testing Library + happy-dom. API mocking via `createRouterTransport` (Connect, in-memory, type-safe). Fresh `QueryClient` per test with `retry: false`.
 
-Test custom hooks, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, Next.js routing, or CSS.
+Test custom hooks, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, React Router config, or CSS.
 
 ## Gotchas
 

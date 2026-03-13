@@ -1,13 +1,14 @@
 # Frontend Strategy
 
+> **Note:** The frontend has been migrated from Next.js App Router to Vite + React Router (see [19-vite-migration.md](./19-vite-migration.md)). References to App Router, server components, route groups, and SSR elsewhere in these plans are superseded. The architecture is now a static SPA served by Caddy in production (no Node.js runtime).
+
 ## Stack
 
 | Choice | Rationale |
 |--------|-----------|
-| Next.js (App Router) | Server components for data-heavy pages, client components for interactive dashboards |
+| Vite + React Router | Static SPA with client-side routing; fast HMR in dev, static build served by Caddy in production |
 | React | Component model, ecosystem |
 | shadcn/ui + Base UI | shadcn/ui for composable owned components; `@base-ui/react` primitives for accessible, unstyled building blocks (dialogs, popovers, dropdowns, etc.) |
-| nanostores | Lightweight atomic state management — simple, framework-agnostic, no boilerplate |
 | React Query (TanStack) | Server state management — caching, refetching, optimistic updates for API data |
 | TypeScript (strict) | Non-negotiable — full strict mode; type-checked with typescript-go (Go-based `tsc` rewrite) |
 | Bun | Runtime, package manager, and test runner — fast, unified tooling, native TS execution |
@@ -34,7 +35,7 @@ If any RPC returns `UNAUTHENTICATED`, the frontend clears the token and redirect
 
 ### Auth Flow on App Load
 
-The root layout calls `AuthService.GetSetupStatus` on load:
+The root `App` component calls `AuthService.GetSetupStatus` on load:
 - If `setup_complete = false` → redirect to `/setup`
 - If `setup_complete = true` and no valid token → redirect to `/login`
 - If valid token → render the app
@@ -119,31 +120,28 @@ plugins:
 
 ## Component Architecture
 
-> **Note:** The structure below predates the feature-first reorganisation. Frontend code now uses `views/<feature>/` for feature-specific UI (components, hooks, pages) with `app/` routes as thin re-exports. See [18-code-structure.md](./18-code-structure.md) for current conventions.
+> **Note:** The structure below predates the feature-first reorganisation. Frontend code now uses `views/<feature>/` for feature-specific UI (components, hooks, pages). Routes are defined in `app.tsx` with lazy imports from `views/`. See [18-code-structure.md](./18-code-structure.md) for current conventions.
 
 ```
-app/
-├── layout.tsx              # Root layout — auth check, nav (when authenticated)
-├── page.tsx                # Dashboard/home
-├── setup/
-│   └── page.tsx            # First-run wizard (unauthenticated)
-├── login/
-│   └── page.tsx            # Login form (unauthenticated)
+app.tsx                     # Route definitions (react-router-dom), lazy imports from views/
+main.tsx                    # Entry point — renders App with providers
+
+views/
+├── sources/                # Feature modules
+│   ├── components/
+│   ├── hooks/
+│   └── pages/
 ├── teams/
-│   ├── page.tsx            # Team comparison view
-│   └── [teamId]/
-│       └── page.tsx        # Team detail
-├── people/
-│   └── [personId]/
-│       └── page.tsx        # Individual profile
-├── ingestion/
-│   └── page.tsx            # Ingestion status
-└── admin/
-    └── page.tsx            # Configuration
+│   ├── components/
+│   ├── hooks/
+│   └── pages/
+└── ...
 
 components/
 ├── ui/                     # shadcn/ui components (Button, Card, Dialog, etc.)
-├── charts/                 # Chart components (likely recharts or similar)
+├── app-sidebar.tsx         # Sidebar nav component
+├── page-header.tsx         # Reusable page header
+├── charts/                 # Chart components
 ├── metrics/                # Metric display components
 │   ├── MetricCard.tsx
 │   ├── DORAMetrics.tsx
@@ -152,40 +150,21 @@ components/
 ├── team/
 │   ├── TeamTable.tsx
 │   └── TeamComparisonChart.tsx
-├── ingestion/
-│   ├── SourceStatusCard.tsx
-│   └── RunHistoryTable.tsx
-└── layout/
-    ├── Nav.tsx
-    └── PeriodSelector.tsx
+└── ingestion/
+    ├── SourceStatusCard.tsx
+    └── RunHistoryTable.tsx
 
 lib/
 ├── api/                    # Generated Connect/gRPC clients (from buf generate)
 ├── session.ts              # Token storage (in-memory + sessionStorage fallback)
-├── stores/                 # nanostores — app-level state (selected period, active team, UI state)
 ├── hooks/                  # React Query hooks wrapping Connect clients
-└── utils/                  # Formatting, date helpers
+└── providers.tsx           # QueryClient, Transport, Sidebar providers
 ```
 
 ## State Management
 
-Two complementary layers:
-
-### nanostores — Client/UI State
-Lightweight atomic stores for state that doesn't come from the server:
-- Selected time period, active filters
-- UI state (sidebar open, comparison selections)
-- Authentication state (setup complete, logged in)
-
-```typescript
-import { atom } from 'nanostores'
-
-export const $selectedPeriod = atom<Period>({ type: 'month', start: '2026-02-01' })
-export const $comparisonTeamIds = atom<string[]>([])
-```
-
 ### React Query (TanStack Query) — Server State
-All API data flows through React Query:
+All API data flows through React Query. Component-local UI state uses `useState`. Shared UI state within a subtree uses React Context (e.g. sidebar collapse). See `CLAUDE.md` for the full state management policy.
 - Caching, background refetching, stale-while-revalidate
 - Connect client calls wrapped in query hooks
 - Optimistic updates where appropriate (e.g. toggling a source enabled/disabled)
@@ -204,9 +183,8 @@ export function useTeamMetrics(teamId: string, period: Period) {
 
 ## Data Fetching Strategy
 
-- **Server Components** for initial page loads — fetch data on the server, render HTML
-- **Client Components** with React Query for interactive features — period changes, drill-downs, live ingestion status
-- **Streaming** for ingestion status page — server-sent events or polling for real-time job status
+- **React Query** for all data fetching — caching, background refetch, stale-while-revalidate
+- **Polling** for ingestion status page — configurable refetch intervals for real-time job status
 
 ## Charting
 

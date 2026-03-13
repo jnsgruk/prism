@@ -6,7 +6,7 @@
 
 Engineering insights platform for understanding team and individual performance across multiple platforms (GitHub, Jira, Discourse, Launchpad, Google Drive, mailing lists).
 
-Built in Rust (backend) + Next.js/React (frontend) with PostgreSQL, gRPC (tonic + Connect), and Restate for ingestion orchestration.
+Built in Rust (backend) + Vite/React (frontend) with PostgreSQL, gRPC (tonic + Connect), and Restate for ingestion orchestration.
 
 ## Getting Started
 
@@ -42,7 +42,7 @@ crates/
 ├── ps-metrics/       # Metric computation logic
 ├── ps-migrate/       # Migration binary for k8s init container
 └── psctl/            # Lightweight CLI client
-frontend/             # Next.js App Router + ShadCN/Radix UI
+frontend/             # Vite + React Router SPA + shadcn/ui
 proto/prism/v1/       # Protobuf service definitions
 k8s/                  # Kubernetes manifests (Kustomize)
 migrations/           # PostgreSQL migrations (sqlx)
@@ -67,7 +67,7 @@ Core platform with GitHub as the single source, basic metrics, and team views.
 - [x] **W2 — Backend Scaffolding**
   Rust workspace, crate structure, proto definitions, database migrations, CI
 - [x] **W3 — Frontend Scaffolding**
-  Next.js project, Connect client generation, layout, component library setup
+  Vite + React Router SPA, Connect client generation, layout, component library setup
 - [x] **W4 — Org Context, Directory Import & Source Configuration**
   People, teams, platform identities, and data source configuration — via API and UI
 - [x] **W5 — GitHub Ingestion**

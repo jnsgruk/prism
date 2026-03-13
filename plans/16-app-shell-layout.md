@@ -99,52 +99,48 @@ Install via `bunx shadcn@latest add <name>`:
 |------|---------|
 | `components/app-sidebar.tsx` | Sidebar nav component with menu items and user footer |
 | `components/page-header.tsx` | Reusable page header with title |
-| `app/(authenticated)/layout.tsx` | Route group layout wrapping all protected pages with sidebar + auth guard |
-| `app/(public)/layout.tsx` | Route group layout for login/setup with centered branding |
+| `components/app-shell.tsx` | Authenticated layout wrapper: sidebar + header + auth guard |
+| `components/public-layout.tsx` | Public layout for login/setup: centered card with Prism branding |
 
-#### Moved Files (Route Groups)
+#### Route Structure
 
-Next.js route groups `(authenticated)` and `(public)` don't affect URLs but let us apply different layouts:
+Routes are defined in `app.tsx` using `react-router-dom`. The `AppShell` component wraps all authenticated routes (providing sidebar + header + auth guard). Public routes (login, setup) use a separate centered layout.
 
 ```
-app/
-├── (public)/
-│   ├── layout.tsx          # Centered card layout with Prism branding
-│   ├── login/page.tsx      # Existing, upgraded to use shadcn components
-│   └── setup/page.tsx      # Existing, upgraded to use shadcn components
-├── (authenticated)/
-│   ├── layout.tsx          # Sidebar + header + auth guard
-│   ├── page.tsx            # Dashboard (existing /)
-│   ├── teams/page.tsx      # Existing
-│   ├── admin/page.tsx      # Existing
-│   └── ingestion/page.tsx  # Existing
-└── layout.tsx              # Root (unchanged — fonts, providers)
+app.tsx                       # Route definitions with lazy imports
+├── /login                    # PublicLayout → LoginPage
+├── /setup                    # PublicLayout → SetupPage
+├── /                         # AppShell (auth guard + sidebar) → Dashboard
+├── /teams                    # AppShell → TeamsPage
+├── /admin                    # AppShell → AdminPage
+└── /ingestion                # AppShell → IngestionPage
 ```
 
 #### Auth Guard
 
-Currently every protected page duplicates the same auth/setup check logic. Extract this into the `(authenticated)/layout.tsx`:
+Currently every protected page duplicates the same auth/setup check logic. Extract this into `AppShell`:
 
 ```tsx
 // Pseudocode
-const AuthenticatedLayout = ({ children }) => {
+const AppShell = () => {
   const { data: setupComplete, isLoading: setupLoading } = useSetupStatus();
   const { data: user, isLoading: userLoading, isError } = useCurrentUser();
+  const navigate = useNavigate();
 
   if (setupLoading || userLoading) return <LoadingSkeleton />;
-  if (!setupComplete) redirect("/login"); // or /setup
-  if (isError || !user) redirect("/login");
+  if (!setupComplete) { navigate("/setup"); return null; }
+  if (isError || !user) { navigate("/login"); return null; }
 
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <main>{children}</main>
+      <main><Outlet /></main>
     </SidebarProvider>
   );
 };
 ```
 
-This eliminates the duplicated auth checks in every page component.
+This eliminates the duplicated auth checks in every page component. `<Outlet />` renders the matched child route from `react-router-dom`.
 
 ### Login & Setup Page Upgrades
 
@@ -190,14 +186,14 @@ Currently just "Welcome, {name}" centered on screen. With the sidebar providing 
 cd frontend && bunx shadcn@latest add sidebar tooltip sheet skeleton
 ```
 
-### Step 2: Create route groups and layouts
-- Create `app/(public)/layout.tsx` — centered card layout with branding
-- Create `app/(authenticated)/layout.tsx` — sidebar + auth guard
-- Move pages into route groups (file moves, no code changes yet)
+### Step 2: Create layout components and wire routes
+- Create `components/public-layout.tsx` — centered card layout with branding
+- Create `components/app-shell.tsx` — sidebar + auth guard + `<Outlet />`
+- Define routes in `app.tsx` wrapping authenticated routes with `AppShell` and public routes with `PublicLayout`
 
 ### Step 3: Build the sidebar
 - Create `components/app-sidebar.tsx` using shadcn Sidebar primitives
-- Wire up nav items with `next/link` and `usePathname()` for active state
+- Wire up nav items with `react-router-dom` `Link` and `useLocation()` for active state
 - Add user menu footer with logout
 
 ### Step 4: Build the page header

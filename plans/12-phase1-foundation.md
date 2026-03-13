@@ -23,7 +23,7 @@ Phase 1 is organised into eight workstreams. W0 establishes project tooling befo
 | W0  | Project Tooling & Standards    | Nix flake, devshell, treefmt, prek, clippy config, CLAUDE.md, direnv             |
 | W1  | Restate vs Temporal Spike      | Resolve the orchestration question before committing to ingestion implementation |
 | W2  | Backend Scaffolding            | Rust workspace, crate structure, proto definitions, database migrations, CI      |
-| W3  | Frontend Scaffolding           | Next.js project, Connect client generation, layout, component library setup      |
+| W3  | Frontend Scaffolding           | Vite + React Router SPA, Connect client generation, layout, component library setup |
 | W4  | Org Context, Directory Import & Source Configuration | People, teams, platform identities, and data source configuration — via API and UI |
 | W5  | GitHub Ingestion               | Source adapter, Restate workflow, watermark tracking, identity resolution        |
 | W6a | Ingestion Status UI            | Ingestion status page, manual trigger/backfill buttons, run history              |
@@ -223,7 +223,7 @@ Establish the development environment, build tooling, and project conventions be
    - **React Testing Library** + **happy-dom** for component tests (faster than jsdom; swap to jsdom per-file if Radix portals cause issues)
    - **`createRouterTransport`** from `@connectrpc/connect` for API mocking — built-in, in-memory, type-safe, exercises real serialization. No MSW or fetch mocking needed.
    - Fresh `QueryClient` per test with `retry: false` (TanStack testing guidance)
-   - `cleanStores()` in `afterEach` for nanostores cleanup
+   - Fresh `QueryClient` cleanup in `afterEach`
 
    _Dev dependencies (7 total):_
    `vitest`, `@vitejs/plugin-react`, `vite-tsconfig-paths`, `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `happy-dom`
@@ -238,7 +238,7 @@ Establish the development environment, build tooling, and project conventions be
    _What NOT to test:_
    - ShadCN/Radix primitives (tested upstream)
    - Tremor chart SVG output (test that correct data is passed, not rendering)
-   - Next.js routing/layout wiring (framework responsibility)
+   - React Router wiring (framework responsibility)
    - CSS / Tailwind class presence
    - No snapshot/visual testing — internal app with small user base, not worth the noise
 
@@ -309,7 +309,7 @@ Set up the Rust workspace, proto definitions, database migrations, and CI pipeli
    **Reference patterns from cortexlabsai/connect:**
    - `allow_k8s_contexts` scoped to `docker-desktop` (prevent accidental prod deploy)
    - Rust services: `cargo watch` compiles on the host, Tilt syncs the binary into a lightweight dev container via `docker_build` — avoids full image rebuild per change
-   - Next.js: `live_update` syncs source files into the container, HMR handles the rest
+   - Frontend (Vite): `live_update` syncs source files into the container, HMR handles the rest
    - `resource_deps` enforces startup order: database → migrations → Restate → services
    - Envoy Gateway routes all HTTP traffic through `localhost` (no port juggling for the UI)
    - Direct port-forwards for non-HTTP services (PostgreSQL, Restate admin)
@@ -325,7 +325,7 @@ Set up the Rust workspace, proto definitions, database migrations, and CI pipeli
    | Restate        | —                      | `restatedev/restate:1.3`               | `localhost:9070` (admin, port-forward)               |
    | `ps-server`    | `cargo watch` → binary | Dev container (binary sync)            | `localhost/api/*` (via Envoy)                        |
    | `ps-ingestion` | `cargo watch` → binary | Dev container (binary sync)            | —                                                    |
-   | Frontend       | —                      | `bun dev` (Next.js)                    | `localhost/*` (via Envoy, catch-all)                 |
+   | Frontend       | —                      | `bun dev` (Vite)                       | `localhost/*` (via Envoy, catch-all)                 |
 
    **Dockerfiles** — unified multi-stage pattern (modelled on `~/code/cortexlabsai/connect/main/crates/Dockerfile.rust`):
 
@@ -455,14 +455,15 @@ Set up the Rust workspace, proto definitions, database migrations, and CI pipeli
 
 ### W3 — Frontend Scaffolding
 
-Set up the Next.js application, tooling, generated API clients, and component library so UI workstreams can build pages.
+Set up the Vite + React Router SPA, tooling, generated API clients, and component library so UI workstreams can build pages.
 
 **Deliverables:**
 
-1. **Next.js App Router project** in `frontend/`:
+1. **Vite + React Router project** in `frontend/`:
    - TypeScript strict mode (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), type-checked with typescript-go
    - Bun as runtime and package manager (uses `bun.lock`, not `pnpm-lock.yaml`)
    - Tailwind CSS configured
+   - Routes defined in `app.tsx` with lazy imports from `views/`; `react-router-dom` for navigation
 
 2. **Tooling:**
    - oxlint and oxfmt configs already seeded in the repo (`.oxlintrc.json`, `.oxfmtrc.json`) — adapt the `@ctx/*` import alias references to `@ps/*` or whatever alias this project uses
@@ -484,7 +485,6 @@ Set up the Next.js application, tooling, generated API clients, and component li
 
 5. **Session and auth state management:**
    - `lib/session.ts` — token storage (in-memory variable + `sessionStorage` fallback), `setToken`/`getToken`/`clearToken` functions
-   - nanostores set up for client state (selected period, active filters, auth state)
    - React Query (TanStack Query) configured with a `QueryClientProvider`
    - Pattern established: React Query hooks in `frontend/lib/hooks/` wrapping Connect client calls
 
@@ -493,7 +493,7 @@ Set up the Next.js application, tooling, generated API clients, and component li
      - **Create admin account** — username, display name, password + confirm. Calls `AuthService.CompleteSetup`, stores returned token, redirects to dashboard.
      - **Restore from backup** — file upload for `.ps-backup` file. Streams to `AuthService.PreviewBackup` to show summary (table counts, watermarks, export date). On confirm, streams to `AuthService.RestoreBackup`, stores returned session token, redirects to dashboard with all previous state intact.
    - `/login` — username + password form. Calls `AuthService.Login`, stores token, redirects to dashboard.
-   - Root layout calls `AuthService.GetSetupStatus` on load to determine routing: setup → `/setup`, no token → `/login`, valid token → app.
+   - Root `App` component calls `AuthService.GetSetupStatus` on load to determine routing: setup → `/setup`, no token → `/login`, valid token → app.
 
 7. **Stub pages** for the Phase 1 views:
    - `/teams` — team comparison (implemented in W6b)
@@ -677,7 +677,7 @@ Compute team-level PR metrics from ingested GitHub data and display them in the 
 
 3. **Team comparison page** (`/teams`):
    - Table view of teams with columns: team name, PR throughput, avg review turnaround, member count
-   - Period selector (week, month, quarter) using nanostores for state
+   - Period selector (week, month, quarter) using component state
    - Sortable columns
    - Drill-down link to team detail (stub page — full detail view is Phase 2)
    - Tremor bar chart comparing selected metric across teams
@@ -1018,7 +1018,7 @@ This removes what was the primary dependency risk in Phase 1 — W5 (GitHub Inge
 
 | Week | W0 Tooling           | W1 Spike    | W2 Backend                                 | W3 Frontend                | W4 Org                          | W5 GitHub                     | W6a Ingestion UI       | W6b Metrics + Team UI |
 | ---- | -------------------- | ----------- | ------------------------------------------ | -------------------------- | ------------------------------- | ----------------------------- | ---------------------- | --------------------- |
-| 1    | Nix, prek, CLAUDE.md | ✅ COMPLETE | Workspace, migrations, proto               | Next.js, tooling, ShadCN   |                                 |                               |                        |                       |
+| 1    | Nix, prek, CLAUDE.md | ✅ COMPLETE | Workspace, migrations, proto               | Vite, tooling, ShadCN      |                                 |                               |                        |                       |
 | 2    |                      |             | Domain types, CI, k8s                      | Connect gen, layout, hooks | Parser, org API, ConfigService  | API client + Restate scaffold | Status page scaffold   |                       |
 | 3    |                      |             | Stable                                     | Stable                     | Import + source config admin UI | Full pipeline running         | Trigger + run history  | Computation logic     |
 | 4    |                      |             |                                            |                            | Polish                          | Polish + backfill             | ✅ Complete            | Team comparison UI    |

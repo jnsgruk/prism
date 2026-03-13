@@ -47,8 +47,7 @@ frontend/
     secret-form.tsx
   lib/hooks/
     use-config.ts
-  app/admin/
-    page.tsx
+  app.tsx              # route: /admin → SourcesPage
 
 # Feature-first — colocated
 frontend/

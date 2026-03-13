@@ -8,7 +8,7 @@ Phase 2 adds two new data sources (Jira, Discourse), introduces flow and DORA me
 
 ## Assumptions (Phase 1 complete)
 
-- Rust workspace, Next.js app, PostgreSQL, proto definitions, and buf pipeline are operational
+- Rust workspace, Vite + React Router app, PostgreSQL, proto definitions, and buf pipeline are operational
 - `Source` trait, Restate orchestration, watermark tracking, and rate limit handling are proven with GitHub
 - Org context (people, teams, directory import, platform identities) is populated and queryable
 - `activity.contributions` table with upsert-on-`(platform, platform_id)` is working
