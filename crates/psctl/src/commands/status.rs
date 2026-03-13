@@ -1,12 +1,12 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{GetStatusRequest, ingestion_service_client::IngestionServiceClient};
+use ps_proto::prism::v1::{GetStatusRequest, handlers_service_client::HandlersServiceClient};
 use tonic::transport::Channel;
 
 use crate::client::AuthInterceptor;
 use crate::format;
 
 pub async fn status(channel: &Channel, auth: &AuthInterceptor) -> Result<()> {
-    let mut client = IngestionServiceClient::with_interceptor(channel.clone(), auth.clone());
+    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
     let response = client.get_status(GetStatusRequest {}).await?.into_inner();
 
     if response.sources.is_empty() {

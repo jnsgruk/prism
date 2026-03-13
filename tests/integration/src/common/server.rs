@@ -3,13 +3,13 @@ use std::net::SocketAddr;
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
-use ps_proto::prism::v1::ingestion_service_server::IngestionServiceServer;
+use ps_proto::prism::v1::handlers_service_server::HandlersServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_server::interceptor::AuthLayer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use ps_server::services::config::ConfigServiceImpl;
-use ps_server::services::ingestion::IngestionServiceImpl;
+use ps_server::services::handlers::HandlersServiceImpl;
 use ps_server::services::org::OrgServiceImpl;
 use sqlx::PgPool;
 use tonic::transport::{Channel, Server};
@@ -40,9 +40,9 @@ impl TestServer {
         let admin_service = AdminServiceImpl::new(repos.clone());
         let org_service = OrgServiceImpl::new(repos.clone());
         let config_service = ConfigServiceImpl::new(repos.clone(), test_secret_key());
-        // IngestionService uses a dummy Restate URL — trigger tests will get
+        // HandlersService uses a dummy Restate URL — trigger tests will get
         // connection-refused, which is expected (we test the gRPC layer, not Restate).
-        let ingestion_service = IngestionServiceImpl::new(
+        let handlers_service = HandlersServiceImpl::new(
             repos.clone(),
             "http://127.0.0.1:1".into(),
             "http://127.0.0.1:1".into(),
@@ -54,7 +54,7 @@ impl TestServer {
             .add_service(AdminServiceServer::new(admin_service))
             .add_service(OrgServiceServer::new(org_service))
             .add_service(ConfigServiceServer::new(config_service))
-            .add_service(IngestionServiceServer::new(ingestion_service));
+            .add_service(HandlersServiceServer::new(handlers_service));
 
         let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
 

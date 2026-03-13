@@ -1,13 +1,13 @@
 use anyhow::Result;
 use ps_proto::prism::v1::{
-    TriggerBackfillRequest, TriggerRunRequest, ingestion_service_client::IngestionServiceClient,
+    TriggerBackfillRequest, TriggerRunRequest, handlers_service_client::HandlersServiceClient,
 };
 use tonic::transport::Channel;
 
 use crate::client::AuthInterceptor;
 
 pub async fn trigger(channel: &Channel, auth: &AuthInterceptor, source: &str) -> Result<()> {
-    let mut client = IngestionServiceClient::with_interceptor(channel.clone(), auth.clone());
+    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
     client
         .trigger_run(TriggerRunRequest {
             source_name: source.to_string(),
@@ -23,7 +23,7 @@ pub async fn backfill(
     source: &str,
     since: &str,
 ) -> Result<()> {
-    let mut client = IngestionServiceClient::with_interceptor(channel.clone(), auth.clone());
+    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
     client
         .trigger_backfill(TriggerBackfillRequest {
             source_name: source.to_string(),

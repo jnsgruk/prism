@@ -70,13 +70,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
     let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
 
+    // Retain completed/failed/killed invocation journals for 7 days so they're
+    // visible in the Restate UI and admin API after finishing.
+    let retention =
+        ServiceOptions::new().journal_retention(std::time::Duration::from_secs(7 * 24 * 60 * 60));
+
     info!(%restate_addr, "starting Restate endpoint");
     let restate_server = tokio::spawn(async move {
         HttpServer::new(
             Endpoint::builder()
-                .bind(ingestion.serve())
-                .bind(team_sync.serve())
-                .bind(metrics_compute.serve())
+                .bind_with_options(ingestion.serve(), retention.clone())
+                .bind_with_options(team_sync.serve(), retention.clone())
+                .bind_with_options(metrics_compute.serve(), retention)
                 .build(),
         )
         .listen_and_serve(restate_addr)

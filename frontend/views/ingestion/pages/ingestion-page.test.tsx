@@ -6,12 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   GetStatusResponseSchema,
-  IngestionService,
+  HandlersService,
   ListRunsResponseSchema,
   SourceState,
   TriggerBackfillResponseSchema,
   TriggerRunResponseSchema,
-} from "@ps/api/gen/prism/v1/ingestion_pb";
+} from "@ps/api/gen/prism/v1/handlers_pb";
 
 import { TestWrapper } from "./test-wrapper";
 
@@ -58,7 +58,7 @@ const mockRuns = [
 
 vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
-    service(IngestionService, {
+    service(HandlersService, {
       getStatus: () => create(GetStatusResponseSchema, { sources: mockSources }),
       listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
       triggerRun: () => create(TriggerRunResponseSchema, {}),

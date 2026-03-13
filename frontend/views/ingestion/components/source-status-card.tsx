@@ -14,8 +14,8 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { SourceStatus } from "@ps/api/gen/prism/v1/ingestion_pb";
-import { SourceState } from "@ps/api/gen/prism/v1/ingestion_pb";
+import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
 import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";

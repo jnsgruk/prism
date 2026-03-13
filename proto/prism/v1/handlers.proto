@@ -4,7 +4,7 @@ package prism.v1;
 
 import "google/protobuf/timestamp.proto";
 
-service IngestionService {
+service HandlersService {
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
   rpc TriggerRun(TriggerRunRequest) returns (TriggerRunResponse);
@@ -35,7 +35,7 @@ message SourceStatus {
   map<string, string> rate_limit_info = 7;
 }
 
-message IngestionRun {
+message HandlerRun {
   string id = 1;
   string source_name = 2;
   google.protobuf.Timestamp started_at = 3;
@@ -60,7 +60,7 @@ message ListRunsRequest {
 }
 
 message ListRunsResponse {
-  repeated IngestionRun runs = 1;
+  repeated HandlerRun runs = 1;
 }
 
 message TriggerRunRequest {
@@ -94,6 +94,7 @@ message HandlerInfo {
   string name = 1;
   repeated string methods = 2;
   string description = 3;
+  bool requires_key = 4;
 }
 
 message ListHandlersRequest {}

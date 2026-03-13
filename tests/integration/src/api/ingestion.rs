@@ -1,6 +1,6 @@
 use crate::define_api_test;
 use ps_proto::prism::v1::config_service_client::ConfigServiceClient;
-use ps_proto::prism::v1::ingestion_service_client::IngestionServiceClient;
+use ps_proto::prism::v1::handlers_service_client::HandlersServiceClient;
 use ps_proto::prism::v1::{
     CreateSourceRequest, GetStatusRequest, ListRunsRequest, TriggerBackfillRequest,
     TriggerRunRequest,
@@ -17,7 +17,7 @@ fn auth<T>(req: &mut Request<T>, token: &str) {
 
 define_api_test!(get_status_empty, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(GetStatusRequest {});
     auth(&mut req, &token);
@@ -48,7 +48,7 @@ define_api_test!(get_status_shows_enabled_sources, |server| async move {
         .expect("create_source");
 
     // Now check status
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
     let mut req = Request::new(GetStatusRequest {});
     auth(&mut req, &token);
 
@@ -64,7 +64,7 @@ define_api_test!(get_status_shows_enabled_sources, |server| async move {
 
 define_api_test!(list_runs_empty, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(ListRunsRequest {
         source_name: None,
@@ -91,7 +91,7 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
     .await
     .expect("insert runs");
 
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     // Filter by src-a
     let mut req = Request::new(ListRunsRequest {
@@ -117,7 +117,7 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
 
 define_api_test!(trigger_run_requires_valid_source, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     // Empty name
     let mut req = Request::new(TriggerRunRequest {
@@ -138,7 +138,7 @@ define_api_test!(trigger_run_requires_valid_source, |server| async move {
 
 define_api_test!(trigger_backfill_validates_inputs, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     // Empty source name
     let mut req = Request::new(TriggerBackfillRequest {
@@ -160,7 +160,7 @@ define_api_test!(trigger_backfill_validates_inputs, |server| async move {
 });
 
 define_api_test!(unauthenticated_requests_rejected, |server| async move {
-    let mut client = IngestionServiceClient::new(server.channel.clone());
+    let mut client = HandlersServiceClient::new(server.channel.clone());
 
     // No auth token
     let req = Request::new(GetStatusRequest {});

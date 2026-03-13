@@ -1,12 +1,12 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{ListRunsRequest, ingestion_service_client::IngestionServiceClient};
+use ps_proto::prism::v1::{ListRunsRequest, handlers_service_client::HandlersServiceClient};
 use tonic::transport::Channel;
 
 use crate::client::AuthInterceptor;
 use crate::format;
 
 pub async fn runs(channel: &Channel, auth: &AuthInterceptor, source: Option<String>) -> Result<()> {
-    let mut client = IngestionServiceClient::with_interceptor(channel.clone(), auth.clone());
+    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
     let response = client
         .list_runs(ListRunsRequest {
             source_name: source,

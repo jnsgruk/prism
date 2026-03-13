@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use ps_core::repo::Repos;
 use ps_core::repo::activity::SourceStatusRow;
-use ps_proto::prism::v1::ingestion_service_server::IngestionService;
+use ps_proto::prism::v1::handlers_service_server::HandlersService;
 use ps_proto::prism::v1::{
     CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerInfo,
-    IngestionRun, ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse,
+    HandlerRun, ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse,
     SourceState, SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse,
     TriggerHandlerRequest, TriggerHandlerResponse, TriggerRunRequest, TriggerRunResponse,
     TriggerTeamSyncRequest, TriggerTeamSyncResponse,
@@ -15,14 +15,14 @@ use tracing::{info, warn};
 
 use super::common::{db_err, require_auth, to_timestamp};
 
-pub struct IngestionServiceImpl {
+pub struct HandlersServiceImpl {
     repos: Repos,
     restate_url: String,
     restate_admin_url: String,
     http_client: reqwest::Client,
 }
 
-impl IngestionServiceImpl {
+impl HandlersServiceImpl {
     pub fn new(repos: Repos, restate_url: String, restate_admin_url: String) -> Self {
         Self {
             repos,
@@ -215,7 +215,7 @@ impl IngestionServiceImpl {
 }
 
 #[tonic::async_trait]
-impl IngestionService for IngestionServiceImpl {
+impl HandlersService for HandlersServiceImpl {
     async fn get_status(
         &self,
         request: Request<GetStatusRequest>,
@@ -289,7 +289,7 @@ impl IngestionService for IngestionServiceImpl {
 
         let runs = rows
             .into_iter()
-            .map(|r| IngestionRun {
+            .map(|r| HandlerRun {
                 id: r.id.to_string(),
                 source_name: r.source_name,
                 started_at: Some(to_timestamp(r.started_at)),
@@ -483,12 +483,14 @@ impl IngestionService for IngestionServiceImpl {
                 name: "GithubIngestionHandler".into(),
                 methods: vec!["run_ingestion".into(), "backfill".into()],
                 description: "Fetches pull requests and reviews from GitHub repositories".into(),
+                requires_key: true,
             },
             HandlerInfo {
                 name: "GithubTeamSyncHandler".into(),
                 methods: vec!["sync_teams".into()],
                 description: "Discovers GitHub teams, members, and repos for configured orgs"
                     .into(),
+                requires_key: true,
             },
             HandlerInfo {
                 name: "MetricsComputeHandler".into(),
@@ -496,6 +498,7 @@ impl IngestionService for IngestionServiceImpl {
                 description:
                     "Recomputes metric snapshots for all teams across current week/month/quarter"
                         .into(),
+                requires_key: false,
             },
         ];
 

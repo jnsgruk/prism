@@ -30,7 +30,7 @@ import {
 import { AlertCircle, Ban, CheckCircle2, Cog, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 
-import type { HandlerInfo, IngestionRun } from "@ps/api/gen/prism/v1/ingestion_pb";
+import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 import { useListSources } from "@ps/hooks/use-config";
 
 import {
@@ -103,8 +103,10 @@ const TriggerHandlerDialog = ({
   const [method, setMethod] = useState(handler.methods[0] ?? "");
   const [sourceName, setSourceName] = useState("");
 
+  const needsSource = handler.requiresKey;
+
   const handleTrigger = (): void => {
-    if (!sourceName || !method) return;
+    if ((needsSource && !sourceName) || !method) return;
     trigger.mutate(
       { handlerName: handler.name, method, key: sourceName },
       {
@@ -146,26 +148,31 @@ const TriggerHandlerDialog = ({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Source</label>
-            <Select value={sourceName} onValueChange={(v) => v !== null && setSourceName(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a source..." />
-              </SelectTrigger>
-              <SelectContent>
-                {sources?.map((s) => (
-                  <SelectItem key={s.id} value={s.name}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {needsSource && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Source</label>
+              <Select value={sourceName} onValueChange={(v) => v !== null && setSourceName(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a source..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sources?.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-          <Button onClick={handleTrigger} disabled={!sourceName || !method || trigger.isPending}>
+          <Button
+            onClick={handleTrigger}
+            disabled={(needsSource && !sourceName) || !method || trigger.isPending}
+          >
             {trigger.isPending ? (
               <Loader2 className="mr-1 size-4 animate-spin" />
             ) : (
@@ -214,7 +221,7 @@ const RunDetailDialog = ({
   open,
   onOpenChange,
 }: {
-  run: IngestionRun;
+  run: HandlerRun;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
@@ -277,8 +284,8 @@ const RunDetailDialog = ({
   );
 };
 
-const HandlerRunsTable = ({ runs }: { runs: IngestionRun[] }): React.ReactElement => {
-  const [selectedRun, setSelectedRun] = useState<IngestionRun | null>(null);
+const HandlerRunsTable = ({ runs }: { runs: HandlerRun[] }): React.ReactElement => {
+  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
 
   if (runs.length === 0) {
     return (
@@ -309,7 +316,9 @@ const HandlerRunsTable = ({ runs }: { runs: IngestionRun[] }): React.ReactElemen
               <TableRow key={run.id} className="cursor-pointer" onClick={() => setSelectedRun(run)}>
                 <TableCell className="text-xs font-medium">{run.handlerName}</TableCell>
                 <TableCell className="text-xs">{run.handlerMethod}</TableCell>
-                <TableCell className="text-xs">{run.sourceName}</TableCell>
+                <TableCell className="text-xs">
+                  {run.sourceName === "_system" ? "\u2014" : run.sourceName}
+                </TableCell>
                 <TableCell className="text-xs">{formatTimestamp(run.startedAt)}</TableCell>
                 <TableCell className="text-xs">
                   {formatDuration(run.startedAt, run.completedAt)}

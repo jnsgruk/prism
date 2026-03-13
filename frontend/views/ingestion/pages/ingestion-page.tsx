@@ -2,9 +2,9 @@ import { PageHeader } from "@/components/page-header";
 import { Activity, Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
-import { SourceState } from "@ps/api/gen/prism/v1/ingestion_pb";
+import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { IngestionRunsTable } from "@/views/ingestion/components/ingestion-runs-table";
+import { HandlerRunsTable } from "@/views/ingestion/components/ingestion-runs-table";
 import { SourceStatusCard } from "@/views/ingestion/components/source-status-card";
 import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
 
@@ -120,7 +120,7 @@ const IngestionPage = (): React.ReactElement => {
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <IngestionRunsTable runs={runs ?? []} />
+            <HandlerRunsTable runs={runs ?? []} />
           )}
         </div>
       </div>

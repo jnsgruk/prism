@@ -6,13 +6,13 @@ import type {
   CancelRunResponse,
   GetStatusResponse,
   HandlerInfo,
-  IngestionRun,
+  HandlerRun,
   SourceStatus,
   TriggerBackfillResponse,
   TriggerHandlerResponse,
   TriggerRunResponse,
-} from "@ps/api/gen/prism/v1/ingestion_pb";
-import { IngestionService } from "@ps/api/gen/prism/v1/ingestion_pb";
+} from "@ps/api/gen/prism/v1/handlers_pb";
+import { HandlersService } from "@ps/api/gen/prism/v1/handlers_pb";
 import { transport } from "@ps/api/transport";
 
 type RefetchInterval =
@@ -20,22 +20,22 @@ type RefetchInterval =
   | false
   | ((query: { state: { data: GetStatusResponse | undefined } }) => number | false);
 
-const ingestionClient = createClient(IngestionService, transport);
+const handlersClient = createClient(HandlersService, transport);
 
-export const ingestionKeys = {
-  all: ["ingestion"] as const,
-  status: (): readonly ["ingestion", "status"] => [...ingestionKeys.all, "status"] as const,
+export const handlersKeys = {
+  all: ["handlers"] as const,
+  status: (): readonly ["handlers", "status"] => [...handlersKeys.all, "status"] as const,
   runs: (sourceName?: string, handlerName?: string) =>
-    [...ingestionKeys.all, "runs", sourceName, handlerName] as const,
-  handlers: (): readonly ["ingestion", "handlers"] => [...ingestionKeys.all, "handlers"] as const,
+    [...handlersKeys.all, "runs", sourceName, handlerName] as const,
+  handlers: (): readonly ["handlers", "handlers"] => [...handlersKeys.all, "handlers"] as const,
 };
 
 export const useIngestionStatus = (options?: {
   refetchInterval?: RefetchInterval;
 }): UseQueryResult<SourceStatus[], Error> =>
   useQuery({
-    queryKey: ingestionKeys.status(),
-    queryFn: () => ingestionClient.getStatus({}),
+    queryKey: handlersKeys.status(),
+    queryFn: () => handlersClient.getStatus({}),
     select: (data): SourceStatus[] => data.sources,
     refetchInterval: options?.refetchInterval,
   });
@@ -43,11 +43,11 @@ export const useIngestionStatus = (options?: {
 export const useListRuns = (
   sourceName?: string,
   options?: { refetchInterval?: number | false; handlerName?: string },
-): UseQueryResult<IngestionRun[], Error> =>
+): UseQueryResult<HandlerRun[], Error> =>
   useQuery({
-    queryKey: ingestionKeys.runs(sourceName, options?.handlerName),
-    queryFn: () => ingestionClient.listRuns({ sourceName, handlerName: options?.handlerName }),
-    select: (data): IngestionRun[] => data.runs,
+    queryKey: handlersKeys.runs(sourceName, options?.handlerName),
+    queryFn: () => handlersClient.listRuns({ sourceName, handlerName: options?.handlerName }),
+    select: (data): HandlerRun[] => data.runs,
     refetchInterval: options?.refetchInterval,
   });
 
@@ -55,10 +55,10 @@ export const useTriggerRun = (): UseMutationResult<TriggerRunResponse, Error, st
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (sourceName: string) => ingestionClient.triggerRun({ sourceName }),
+    mutationFn: (sourceName: string) => handlersClient.triggerRun({ sourceName }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
@@ -72,10 +72,10 @@ export const useTriggerBackfill = (): UseMutationResult<
 
   return useMutation({
     mutationFn: (req: { sourceName: string; sinceDate: string }) =>
-      ingestionClient.triggerBackfill(req),
+      handlersClient.triggerBackfill(req),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
@@ -84,18 +84,18 @@ export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, stri
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (sourceName: string) => ingestionClient.cancelRun({ sourceName }),
+    mutationFn: (sourceName: string) => handlersClient.cancelRun({ sourceName }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
 
 export const useListHandlers = (): UseQueryResult<HandlerInfo[], Error> =>
   useQuery({
-    queryKey: ingestionKeys.handlers(),
-    queryFn: () => ingestionClient.listHandlers({}),
+    queryKey: handlersKeys.handlers(),
+    queryFn: () => handlersClient.listHandlers({}),
     select: (data): HandlerInfo[] => data.handlers,
   });
 
@@ -108,10 +108,10 @@ export const useTriggerHandler = (): UseMutationResult<
 
   return useMutation({
     mutationFn: (req: { handlerName: string; method: string; key: string; payload?: string }) =>
-      ingestionClient.triggerHandler(req),
+      handlersClient.triggerHandler(req),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
     },
   });
 };
@@ -121,10 +121,10 @@ export const useTriggerTeamSync = (): UseMutationResult<void, Error, string> => 
 
   return useMutation({
     mutationFn: async (sourceName: string) => {
-      await ingestionClient.triggerTeamSync({ sourceName });
+      await handlersClient.triggerTeamSync({ sourceName });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };

@@ -17,7 +17,7 @@ import {
 import { AlertCircle, Ban, CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import type { IngestionRun } from "@ps/api/gen/prism/v1/ingestion_pb";
+import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
 type StatusStyle = {
   label: string;
@@ -71,7 +71,7 @@ const RunDetailDialog = ({
   open,
   onOpenChange,
 }: {
-  run: IngestionRun;
+  run: HandlerRun;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
@@ -130,8 +130,8 @@ const RunDetailDialog = ({
   );
 };
 
-export const IngestionRunsTable = ({ runs }: { runs: IngestionRun[] }): React.ReactElement => {
-  const [selectedRun, setSelectedRun] = useState<IngestionRun | null>(null);
+export const HandlerRunsTable = ({ runs }: { runs: HandlerRun[] }): React.ReactElement => {
+  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
 
   if (runs.length === 0) {
     return (
