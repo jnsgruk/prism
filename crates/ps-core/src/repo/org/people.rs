@@ -166,7 +166,7 @@ impl OrgRepo {
         let limit_sql = if let Some(limit) = params.page.limit() {
             idx += 1;
             binds.push(limit.to_string());
-            format!("LIMIT ${idx}")
+            format!("LIMIT ${idx}::bigint")
         } else {
             String::new()
         };
