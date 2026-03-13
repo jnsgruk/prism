@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { cn } from "@ps/utils";
+import { cn } from "@ps/cn";
 
 function Label({ className, ...props }: React.ComponentProps<"label">): React.ReactElement {
   return (

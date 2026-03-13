@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@ps/utils";
+import { cn } from "@ps/cn";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
   return (

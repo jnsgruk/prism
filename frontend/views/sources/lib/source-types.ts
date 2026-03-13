@@ -1,0 +1,17 @@
+export const SOURCE_TYPES = [
+  { value: "github", label: "GitHub" },
+  { value: "jira", label: "Jira" },
+  { value: "discourse", label: "Discourse" },
+  { value: "launchpad", label: "Launchpad" },
+  { value: "google_drive", label: "Google Drive" },
+  { value: "mailing_list", label: "Mailing List" },
+];
+
+export const SECRET_KEYS_BY_TYPE: Record<string, string[]> = {
+  github: ["api_token"],
+  jira: ["api_token", "email"],
+  discourse: ["api_key"],
+  launchpad: ["oauth_token"],
+  google_drive: ["service_account_key"],
+  mailing_list: [],
+};

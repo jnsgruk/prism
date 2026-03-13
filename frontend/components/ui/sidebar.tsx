@@ -19,7 +19,7 @@ import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 
 import { useIsMobile } from "@ps/hooks/use-mobile";
-import { cn } from "@ps/utils";
+import { cn } from "@ps/cn";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;

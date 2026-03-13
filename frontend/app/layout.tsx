@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 
 import "./globals.css";
-import { cn } from "@/lib/utils";
+import { cn } from "@ps/cn";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
