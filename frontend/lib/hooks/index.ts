@@ -16,3 +16,4 @@ export {
   useTestConnection,
   configKeys,
 } from "./use-config";
+export { useCompareTeams, useListPeriods, metricsKeys, PeriodType } from "./use-metrics";
