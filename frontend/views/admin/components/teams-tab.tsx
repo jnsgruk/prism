@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
@@ -7,7 +7,7 @@ import type { Team } from "@ps/api/gen/prism/v1/org_pb";
 import { TeamTree } from "@/views/teams/components/team-tree";
 import { useGetTeamTree } from "@/views/teams/hooks/use-teams";
 import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
-import { ImportDirectoryDialog } from "@/views/admin/components/import-directory-dialog";
+import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
 import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";
 
 /** Recursively flatten a tree of teams into a flat list. */
@@ -19,6 +19,7 @@ export const TeamsTab = (): React.ReactElement => {
   const deleteTeam = useDeleteTeam();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
 
@@ -34,9 +35,10 @@ export const TeamsTab = (): React.ReactElement => {
         <p className="text-sm text-muted-foreground">
           Manage your organisation hierarchy. Import a directory or create teams manually.
         </p>
-        <div className="flex items-center gap-2">
-          <ImportDirectoryDialog />
-        </div>
+        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+          <Plus className="size-4" />
+          Add Team
+        </Button>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
@@ -69,6 +71,8 @@ export const TeamsTab = (): React.ReactElement => {
           )}
         />
       )}
+
+      <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
 
       {editingTeam && (
         <EditTeamDialog
