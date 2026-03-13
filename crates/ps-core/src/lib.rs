@@ -4,5 +4,6 @@ pub mod crypto;
 pub mod error;
 pub mod ingestion;
 pub mod models;
+pub mod repo;
 
 pub use error::Error;
