@@ -74,7 +74,7 @@ Core platform with GitHub as the single source, basic metrics, and team views.
   Source adapter, Restate workflow, watermark tracking, identity resolution
 - [x] **W6a — Ingestion Status UI**
   Ingestion status page, manual trigger/backfill buttons, run history
-- [ ] **W6b — Metrics Computation & Team UI**
+- [x] **W6b — Metrics Computation & Team UI**
   PR throughput, review turnaround, team comparison view
 
 ### Phase 2 — Breadth
