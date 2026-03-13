@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Restate endpoint
-    let restate_port = std::env::var("RESTATE_PORT").unwrap_or_else(|_| "9081".into());
+    let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
     let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
 
     info!(%restate_addr, "starting Restate endpoint");
