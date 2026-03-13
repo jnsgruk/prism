@@ -98,6 +98,7 @@ export const PeriodSelector = ({
   onChange: (key: string) => void;
 }): React.ReactElement => (
   <ToggleGroup
+    className="h-8 rounded-lg bg-muted p-[3px] text-muted-foreground"
     value={[value]}
     onValueChange={(values) => {
       const selected = values[0];
@@ -105,7 +106,11 @@ export const PeriodSelector = ({
     }}
   >
     {presets.map((p) => (
-      <ToggleGroupItem key={p.key} value={p.key}>
+      <ToggleGroupItem
+        key={p.key}
+        value={p.key}
+        className="h-[calc(100%-1px)] flex-1 rounded-md bg-transparent px-3 py-0.5 text-sm font-medium text-foreground/60 hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+      >
         {p.label}
       </ToggleGroupItem>
     ))}
