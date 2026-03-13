@@ -1,3 +1,3 @@
 pub mod github;
-pub mod handler;
+pub mod handlers;
 pub mod registry;

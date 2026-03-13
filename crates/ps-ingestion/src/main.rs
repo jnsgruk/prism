@@ -1,4 +1,7 @@
-use ps_ingestion::handler::{IngestionHandler, IngestionHandlerImpl};
+use ps_ingestion::handlers::SharedState;
+use ps_ingestion::handlers::github_ingestion::{
+    GithubIngestionHandler, GithubIngestionHandlerImpl,
+};
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -26,12 +29,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Shared HTTP client
     let http_client = reqwest::Client::new();
 
-    // Build the Restate handler
-    let repos = ps_core::repo::Repos::new(pool.clone());
-    let handler = IngestionHandlerImpl {
-        repos,
+    // Build shared state for all handlers
+    let state = SharedState {
+        repos: ps_core::repo::Repos::new(pool.clone()),
         secret_key,
         http_client,
+    };
+
+    let ingestion = GithubIngestionHandlerImpl {
+        state: state.clone(),
     };
 
     // Health service for k8s probes
@@ -54,13 +60,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Restate endpoint
+    // Restate endpoint — all handlers bound to a single endpoint
     let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
     let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
 
     info!(%restate_addr, "starting Restate endpoint");
     let restate_server = tokio::spawn(async move {
-        HttpServer::new(Endpoint::builder().bind(handler.serve()).build())
+        HttpServer::new(Endpoint::builder().bind(ingestion.serve()).build())
             .listen_and_serve(restate_addr)
             .await;
     });

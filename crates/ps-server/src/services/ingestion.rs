@@ -127,7 +127,7 @@ impl IngestionServiceImpl {
         let url = format!("{}/query", self.restate_admin_url);
         let query = format!(
             "SELECT id FROM sys_invocation \
-             WHERE target_service_name = 'IngestionHandler' \
+             WHERE target_service_name = 'GithubIngestionHandler' \
              AND target_service_key = '{source_name}' \
              AND status != 'completed'",
         );
@@ -322,7 +322,7 @@ impl IngestionService for IngestionServiceImpl {
 
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/IngestionHandler/{}/run_ingestion/send",
+            "{}/GithubIngestionHandler/{}/run_ingestion/send",
             self.restate_url, req.source_name,
         );
 
@@ -364,7 +364,7 @@ impl IngestionService for IngestionServiceImpl {
 
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/IngestionHandler/{}/backfill/send",
+            "{}/GithubIngestionHandler/{}/backfill/send",
             self.restate_url, req.source_name,
         );
         let body = serde_json::json!(req.since_date);

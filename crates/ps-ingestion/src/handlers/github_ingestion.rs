@@ -1,21 +1,18 @@
 use ps_core::ingestion::IngestionContext;
 use ps_core::models::SourceConfig;
-use ps_core::repo::Repos;
 use restate_sdk::prelude::*;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+use super::SharedState;
 use crate::registry;
 
-/// Shared state available to all Restate handlers.
-pub struct IngestionHandlerImpl {
-    pub repos: Repos,
-    pub secret_key: [u8; 32],
-    pub http_client: reqwest::Client,
+pub struct GithubIngestionHandlerImpl {
+    pub state: SharedState,
 }
 
 #[restate_sdk::object]
-pub trait IngestionHandler {
+pub trait GithubIngestionHandler {
     /// Run an incremental ingestion for the source identified by the object key.
     async fn run_ingestion() -> Result<(), TerminalError>;
 
@@ -23,7 +20,7 @@ pub trait IngestionHandler {
     async fn backfill(since_date: String) -> Result<(), TerminalError>;
 }
 
-impl IngestionHandler for IngestionHandlerImpl {
+impl GithubIngestionHandler for GithubIngestionHandlerImpl {
     async fn run_ingestion(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
         let source_name = ctx.key().to_string();
         info!(source = %source_name, "starting ingestion run");
@@ -44,7 +41,7 @@ impl IngestionHandler for IngestionHandlerImpl {
     }
 }
 
-impl IngestionHandlerImpl {
+impl GithubIngestionHandlerImpl {
     #[allow(clippy::too_many_lines)]
     async fn execute_ingestion(
         &self,
@@ -53,7 +50,7 @@ impl IngestionHandlerImpl {
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
         // Step 1: Load source config from DB
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let name = source_name.to_string();
         let config: SourceConfig = ctx
             .run(|| {
@@ -83,15 +80,15 @@ impl IngestionHandlerImpl {
 
         // Build the IngestionContext
         let ing_ctx = IngestionContext {
-            repos: self.repos.clone(),
+            repos: self.state.repos.clone(),
             source_config: config.clone(),
-            secret_key: self.secret_key,
-            http_client: self.http_client.clone(),
+            secret_key: self.state.secret_key,
+            http_client: self.state.http_client.clone(),
         };
 
         // Step 3: Create ingestion run record
         let run_id = Uuid::now_v7();
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let sn = source_name.to_string();
         ctx.run(|| {
             let repos = repos.clone();
@@ -143,10 +140,10 @@ impl IngestionHandlerImpl {
 
         loop {
             // Fetch batch (as a durable side effect)
-            let repos = self.repos.clone();
-            let http = self.http_client.clone();
+            let repos = self.state.repos.clone();
+            let http = self.state.http_client.clone();
             let cfg = config.clone();
-            let sk = self.secret_key;
+            let sk = self.state.secret_key;
             let cur = cursor.clone();
             let source_type = config.source_type.clone();
 
@@ -190,10 +187,10 @@ impl IngestionHandlerImpl {
 
             // Store batch
             if !batch.items.is_empty() {
-                let repos = self.repos.clone();
-                let http = self.http_client.clone();
+                let repos = self.state.repos.clone();
+                let http = self.state.http_client.clone();
                 let cfg = config.clone();
-                let sk = self.secret_key;
+                let sk = self.state.secret_key;
                 let items = batch.items.clone();
                 let source_type = config.source_type.clone();
 
@@ -236,6 +233,7 @@ impl IngestionHandlerImpl {
 
                 // Update progress on the run record (best-effort, outside Restate journal)
                 if let Err(e) = self
+                    .state
                     .repos
                     .activity
                     .update_run_progress(run_id, total_items)
@@ -257,10 +255,10 @@ impl IngestionHandlerImpl {
 
         // Step 6: Advance watermark
         if total_items > 0 {
-            let repos = self.repos.clone();
-            let http = self.http_client.clone();
+            let repos = self.state.repos.clone();
+            let http = self.state.http_client.clone();
             let cfg = config.clone();
-            let sk = self.secret_key;
+            let sk = self.state.secret_key;
             let wm = cursor.clone();
             let source_type = config.source_type.clone();
             let ti = total_items;
@@ -307,7 +305,7 @@ impl IngestionHandlerImpl {
         source_name: &str,
         items_collected: i32,
     ) {
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let sn = source_name.to_string();
         let result = ctx
             .run(|| {
@@ -342,7 +340,7 @@ impl IngestionHandlerImpl {
         source_name: &str,
         error_msg: &str,
     ) {
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let err = error_msg.to_string();
         let sn = source_name.to_string();
         let result = ctx
