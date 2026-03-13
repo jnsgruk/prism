@@ -1,8 +1,11 @@
+use ps_ingestion::handler::{IngestionHandler, IngestionHandlerImpl};
+use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
-use tracing::info;
+use tracing::{error, info, warn};
 
 #[tokio::main]
+#[allow(clippy::expect_used)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -12,20 +15,117 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json()
         .init();
 
-    let port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
-    let addr = format!("0.0.0.0:{port}").parse()?;
+    // Database connection
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = sqlx::PgPool::connect(&database_url).await?;
+    info!("connected to database");
+
+    // Load encryption key
+    let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
+
+    // Shared HTTP client
+    let http_client = reqwest::Client::new();
+
+    // Build the Restate handler
+    let handler = IngestionHandlerImpl {
+        pool: pool.clone(),
+        secret_key,
+        http_client,
+    };
+
+    // Health service for k8s probes
+    let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
+    let health_addr = format!("0.0.0.0:{health_port}").parse()?;
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
         .set_service_status("", ServingStatus::Serving)
         .await;
 
-    info!(%addr, "starting ingestion server");
+    info!(%health_addr, "starting health server");
+    let health_server = tokio::spawn(async move {
+        if let Err(e) = Server::builder()
+            .add_service(health_service)
+            .serve(health_addr)
+            .await
+        {
+            error!("health server error: {e}");
+        }
+    });
 
-    Server::builder()
-        .add_service(health_service)
-        .serve(addr)
-        .await?;
+    // Restate endpoint
+    let restate_port = std::env::var("RESTATE_PORT").unwrap_or_else(|_| "9081".into());
+    let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
+
+    info!(%restate_addr, "starting Restate endpoint");
+    let restate_server = tokio::spawn(async move {
+        HttpServer::new(Endpoint::builder().bind(handler.serve()).build())
+            .listen_and_serve(restate_addr)
+            .await;
+    });
+
+    // Register with Restate admin (best-effort, retries on startup)
+    let restate_admin_url =
+        std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
+    let self_url = std::env::var("RESTATE_SELF_URL")
+        .unwrap_or_else(|_| format!("http://ps-ingestion:{restate_port}"));
+
+    tokio::spawn(async move {
+        register_with_restate(&restate_admin_url, &self_url).await;
+    });
+
+    // Wait for either server to exit
+    tokio::select! {
+        r = health_server => {
+            if let Err(e) = r {
+                error!("health server panicked: {e}");
+            }
+        }
+        r = restate_server => {
+            if let Err(e) = r {
+                error!("restate server panicked: {e}");
+            }
+        }
+    }
 
     Ok(())
+}
+
+/// Register this service deployment with the Restate admin API.
+///
+/// Retries up to 10 times with exponential backoff to handle startup
+/// ordering (Restate may not be ready yet when we start).
+async fn register_with_restate(admin_url: &str, self_url: &str) {
+    let client = reqwest::Client::new();
+    let url = format!("{admin_url}/deployments");
+
+    for attempt in 1u64..=10 {
+        let body = serde_json::json!({
+            "uri": self_url,
+        });
+
+        match client.post(&url).json(&body).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                info!(self_url, "registered with Restate");
+                return;
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                warn!(
+                    attempt,
+                    %status,
+                    body,
+                    "failed to register with Restate, retrying"
+                );
+            }
+            Err(e) => {
+                warn!(attempt, "cannot reach Restate admin: {e}");
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(attempt * 2)).await;
+    }
+
+    error!("gave up registering with Restate after 10 attempts");
 }

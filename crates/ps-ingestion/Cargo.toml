@@ -23,6 +23,7 @@ uuid.workspace = true
 time.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
+restate-sdk.workspace = true
 
 [dev-dependencies]
 wiremock.workspace = true

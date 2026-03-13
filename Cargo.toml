@@ -105,5 +105,8 @@ clap = { version = "4", features = ["derive"] }
 # Async trait (needed for dyn Source dispatch)
 async-trait = "0.1"
 
+# Restate durable execution SDK
+restate-sdk = "0.9"
+
 # Testing
 wiremock = "0.6"
