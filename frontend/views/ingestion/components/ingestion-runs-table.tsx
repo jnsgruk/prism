@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import type { IngestionRun } from "@ps/api/gen/prism/v1/ingestion_pb";
@@ -89,8 +90,19 @@ export const IngestionRunsTable = ({ runs }: { runs: IngestionRun[] }): React.Re
               <TableCell className="text-xs">
                 {run.rateLimitWaitsSeconds > 0 ? `${String(run.rateLimitWaitsSeconds)}s` : "—"}
               </TableCell>
-              <TableCell className="max-w-48 truncate text-xs text-destructive">
-                {run.errorMessage ?? "—"}
+              <TableCell className="text-xs text-destructive">
+                {run.errorMessage ? (
+                  <Tooltip>
+                    <TooltipTrigger className="max-w-64 cursor-default truncate text-left">
+                      {run.errorMessage}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-sm">
+                      {run.errorMessage}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  "—"
+                )}
               </TableCell>
             </TableRow>
           );
