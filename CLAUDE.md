@@ -36,9 +36,31 @@ bun test                                  # Run frontend tests via vitest (run f
 - Use `--no-gpg-sign` when committing autonomously
 - Always commit in logical chunks along the way. Don't wait to be prompted.
 
-## Architecture
+## Code Structure
 
-### Crate Structure
+Code is organised **feature-first, layer-second**. See `plans/18-code-structure.md` for the full strategy, invariants, and worked examples.
+
+### Key rules
+
+- **Frontend:** feature UI lives in `views/<feature>/` with `components/`, `hooks/`, `pages/` subdirs. `app/` route files are thin re-exports. Shared components stay in `components/`. Shared hooks stay in `lib/hooks/`. The signal to lift is a concrete second consumer.
+- **Rust services:** new features go in `src/features/<name>/` with handler, service, repository, types files. `ps-core` remains the shared domain layer (models, repo, auth, crypto).
+- **Three-tier escalation:** feature-local → service/app-local → shared crate/package. Only lift when a concrete second consumer exists.
+- **No `utils/` or `helpers/` directories.** Give utilities a proper home.
+- **Tests colocated** with source files. No `__tests__/` directories. Rust uses inline `#[cfg(test)]`.
+
+### Frontend structure
+
+```
+frontend/
+├── app/              # Next.js routes — thin re-exports from views/
+├── views/            # Feature modules (sources, teams, etc.)
+│   ├── sources/      #   components/, hooks/, lib/, pages/
+│   └── teams/        #   components/, hooks/, pages/
+├── components/       # Service-level: app-shell, page-header, ui/ (shadcn)
+└── lib/              # Service plumbing: api/, hooks/ (shared), session, providers
+```
+
+### Crate structure
 
 ```
 crates/
@@ -93,7 +115,7 @@ The `Repos` struct bundles all four repos and is constructed once from a `PgPool
 
 Next.js App Router + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts.
 
-**shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/utils` for the `cn` helper.
+**shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/cn` for the `cn` helper.
 
 ## Frontend State & Validation
 
@@ -183,7 +205,7 @@ Test custom hooks, data transformations, interactive components. Don't test shad
 
 1. **sqlx offline mode** — after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`.
 2. **Proto regeneration** — after changing `.proto` files, run `buf generate`. Both Rust and TypeScript clients need regeneration. `buf breaking --against .git#branch=main` catches compatibility issues.
-3. **Connect client changes** — frontend `TransportProvider` auto-discovers services, but new services need their hooks added to `frontend/lib/hooks/`.
+3. **Connect client changes** — frontend transport auto-discovers services. New service hooks go in `lib/hooks/` if shared, or in `views/<feature>/hooks/` if feature-local.
 4. **Auth interceptor** — all RPCs require authentication except: `GetSetupStatus`, `CompleteSetup`, `PreviewBackup`, `RestoreBackup`, `Login`. Adding new public RPCs requires updating the interceptor allow-list.
 5. **Encrypted secrets** — `config.secrets` values are encrypted at rest. The `GetSource` RPC never returns secret values — only a boolean indicating whether each secret is set.
 

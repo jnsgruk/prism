@@ -4,6 +4,8 @@ Detailed implementation plan for the final phase of Prism. Phase 4 assumes Phase
 
 **Exit criteria:** The system proactively surfaces insights, covers all planned data sources, and correlates activity across platforms.
 
+**Code structure:** All new code follows feature-first organisation per [18-code-structure.md](./18-code-structure.md). New source adapters (Launchpad, mailing list, Google Drive) go in `ps-ingestion/src/sources/<platform>/`. Cross-platform correlation logic goes in `ps-metrics/src/features/correlation/`. Periodic insight generation goes in `ps-reasoning/src/features/periodic/`. Frontend insight views go in `views/insights/`.
+
 ---
 
 ## 1. Workstreams

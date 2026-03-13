@@ -119,6 +119,8 @@ plugins:
 
 ## Component Architecture
 
+> **Note:** The structure below predates the feature-first reorganisation. Frontend code now uses `views/<feature>/` for feature-specific UI (components, hooks, pages) with `app/` routes as thin re-exports. See [18-code-structure.md](./18-code-structure.md) for current conventions.
+
 ```
 app/
 ├── layout.tsx              # Root layout — auth check, nav (when authenticated)

@@ -124,6 +124,8 @@ All workloads run on Kubernetes (Docker Desktop K8s for dev, production K8s TBD)
 
 ## Crate / Package Structure (Rust side)
 
+> **Note:** For detailed directory organisation within each crate and the frontend, including feature-first conventions, naming rules, and tier escalation, see [18-code-structure.md](./18-code-structure.md).
+
 ```
 prism/
 ├── crates/

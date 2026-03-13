@@ -4,6 +4,8 @@ Phase 2 adds two new data sources (Jira, Discourse), introduces flow and DORA me
 
 **Exit criteria:** Multiple data sources feeding metrics. Individual and team views with flow metrics across GitHub, Jira, and Discourse.
 
+**Code structure:** All new code follows feature-first organisation per [18-code-structure.md](./18-code-structure.md). New source adapters go in `ps-ingestion/src/sources/<platform>/`. New frontend features go in `frontend/views/<feature>/` with colocated components, hooks, and pages. New metrics UI goes in `views/metrics/`. Hooks with a single consumer stay feature-local; lift to `lib/hooks/` only when a second feature needs them.
+
 ## Assumptions (Phase 1 complete)
 
 - Rust workspace, Next.js app, PostgreSQL, proto definitions, and buf pipeline are operational

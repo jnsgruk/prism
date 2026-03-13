@@ -4,6 +4,8 @@ Phase 3 layers AI capabilities over the metrics foundation built in Phases 1-2. 
 
 **Exit criteria:** AI-enriched metrics with full traceability. Users can ask natural-language questions and get sourced, auditable answers.
 
+**Code structure:** All new code follows feature-first organisation per [18-code-structure.md](./18-code-structure.md). The `ps-reasoning` crate uses `features/` internally (e.g. `features/enrichment/`, `features/embeddings/`, `features/agentic/`). Frontend AI features go in `views/insights/` or extend existing views (e.g. enrichment badges in `views/teams/`). Shared reasoning types belong in `ps-core` only when consumed by multiple crates.
+
 **References:**
 - [01 Architecture Overview](./01-architecture-overview.md) — system components, `ps-reasoning` crate
 - [02 Domain Model](./02-domain-model.md) — Reasoning context (Enrichment, Insight, Embedding)
