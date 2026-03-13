@@ -126,7 +126,9 @@ export const SourceStatusCard = ({
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground">Last run</p>
+                <p className="text-xs text-muted-foreground">
+                  {isCollecting ? "Started" : "Last run"}
+                </p>
                 <p className={cn("font-medium", !source.lastRun && "text-muted-foreground")}>
                   {source.lastRun ? formatRelativeTime(source.lastRun) : "Never"}
                 </p>
@@ -135,7 +137,9 @@ export const SourceStatusCard = ({
                 )}
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Items collected</p>
+                <p className="text-xs text-muted-foreground">
+                  {isCollecting ? "Items so far" : "Items collected"}
+                </p>
                 <p className="font-medium">{source.itemsCollected.toLocaleString()}</p>
               </div>
             </div>

@@ -33,6 +33,10 @@ pub struct SourceStatusRow {
     pub items_collected_last_run: Option<i32>,
     /// Whether this source has a currently running ingestion (no `completed_at`).
     pub has_active_run: bool,
+    /// Items collected so far in the active run (from `ingestion_runs`).
+    pub active_run_items: Option<i32>,
+    /// When the active run started.
+    pub active_run_started_at: Option<OffsetDateTime>,
 }
 
 impl ActivityRepo {
@@ -386,14 +390,20 @@ impl ActivityRepo {
                 iw.last_attempt,
                 iw.last_error,
                 iw.items_collected_last_run,
-                EXISTS(
-                    SELECT 1 FROM activity.ingestion_runs ir
-                    WHERE ir.source_name = sc.name
-                      AND ir.completed_at IS NULL
-                ) as "has_active_run!"
+                ar.id IS NOT NULL as "has_active_run!",
+                ar.items_collected as "active_run_items?",
+                ar.started_at as "active_run_started_at?"
             FROM config.source_configs sc
             LEFT JOIN activity.ingestion_watermarks iw
                 ON sc.name = iw.source_name
+            LEFT JOIN LATERAL (
+                SELECT id, items_collected, started_at
+                FROM activity.ingestion_runs ir
+                WHERE ir.source_name = sc.name
+                  AND ir.completed_at IS NULL
+                ORDER BY ir.started_at DESC
+                LIMIT 1
+            ) ar ON true
             WHERE sc.enabled = true
             ORDER BY sc.name
             "#,
@@ -413,6 +423,8 @@ impl ActivityRepo {
                 last_error: r.last_error,
                 items_collected_last_run: r.items_collected_last_run,
                 has_active_run: r.has_active_run,
+                active_run_items: r.active_run_items,
+                active_run_started_at: r.active_run_started_at,
             })
             .collect())
     }

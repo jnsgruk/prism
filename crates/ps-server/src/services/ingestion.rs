@@ -82,13 +82,26 @@ impl IngestionService for IngestionServiceImpl {
                     s.last_error.as_deref(),
                 );
 
+                // When actively collecting, show live progress from the running run
+                let (items_collected, last_run) = if s.has_active_run {
+                    (
+                        s.active_run_items.unwrap_or(0),
+                        s.active_run_started_at.map(to_timestamp),
+                    )
+                } else {
+                    (
+                        s.items_collected_last_run.unwrap_or(0),
+                        s.last_successful_run.map(to_timestamp),
+                    )
+                };
+
                 SourceStatus {
                     name: s.name,
                     source_type: s.source_type,
                     state: state.into(),
-                    last_run: s.last_successful_run.map(to_timestamp),
+                    last_run,
                     next_run: None, // TODO: compute from schedule_cron
-                    items_collected: s.items_collected_last_run.unwrap_or(0),
+                    items_collected,
                     rate_limit_info: HashMap::new(),
                 }
             })
