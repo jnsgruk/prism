@@ -164,7 +164,7 @@ impl IngestionServiceImpl {
     /// Cancel a single Restate invocation by ID (best-effort, logs but does not fail).
     async fn cancel_restate_invocation(&self, source_name: &str, invocation_id: &str) {
         let url = format!(
-            "{}/invocations/{}?mode=cancel",
+            "{}/invocations/{}?mode=kill",
             self.restate_admin_url, invocation_id,
         );
 
