@@ -10,6 +10,7 @@ pub async fn runs(channel: &Channel, auth: &AuthInterceptor, source: Option<Stri
     let response = client
         .list_runs(ListRunsRequest {
             source_name: source,
+            handler_name: None,
         })
         .await?
         .into_inner();

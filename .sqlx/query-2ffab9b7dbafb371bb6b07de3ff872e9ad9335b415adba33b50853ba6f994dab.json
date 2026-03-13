@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.ingestion_runs (id, source_name, started_at, status, handler_name, handler_method)\n            VALUES ($1, $2, now(), 'running', $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "2ffab9b7dbafb371bb6b07de3ff872e9ad9335b415adba33b50853ba6f994dab"
+}

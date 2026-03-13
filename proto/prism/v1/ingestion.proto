@@ -11,6 +11,10 @@ service IngestionService {
   rpc TriggerBackfill(TriggerBackfillRequest) returns (TriggerBackfillResponse);
   rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
   rpc TriggerTeamSync(TriggerTeamSyncRequest) returns (TriggerTeamSyncResponse);
+
+  // Generic handler management
+  rpc ListHandlers(ListHandlersRequest) returns (ListHandlersResponse);
+  rpc TriggerHandler(TriggerHandlerRequest) returns (TriggerHandlerResponse);
 }
 
 enum SourceState {
@@ -40,6 +44,8 @@ message IngestionRun {
   int32 items_collected = 6;
   optional string error_message = 7;
   int32 rate_limit_waits_seconds = 8;
+  string handler_name = 9;
+  string handler_method = 10;
 }
 
 message GetStatusRequest {}
@@ -50,6 +56,7 @@ message GetStatusResponse {
 
 message ListRunsRequest {
   optional string source_name = 1;
+  optional string handler_name = 2;
 }
 
 message ListRunsResponse {
@@ -80,3 +87,28 @@ message TriggerTeamSyncRequest {
 }
 
 message TriggerTeamSyncResponse {}
+
+// Generic handler management
+
+message HandlerInfo {
+  string name = 1;
+  repeated string methods = 2;
+  string description = 3;
+}
+
+message ListHandlersRequest {}
+
+message ListHandlersResponse {
+  repeated HandlerInfo handlers = 1;
+}
+
+message TriggerHandlerRequest {
+  string handler_name = 1;
+  string method = 2;
+  string key = 3;
+  optional string payload = 4;
+}
+
+message TriggerHandlerResponse {
+  string invocation_id = 1;
+}

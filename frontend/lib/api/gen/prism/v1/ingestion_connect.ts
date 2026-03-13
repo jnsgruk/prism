@@ -8,10 +8,14 @@ import {
   CancelRunResponse,
   GetStatusRequest,
   GetStatusResponse,
+  ListHandlersRequest,
+  ListHandlersResponse,
   ListRunsRequest,
   ListRunsResponse,
   TriggerBackfillRequest,
   TriggerBackfillResponse,
+  TriggerHandlerRequest,
+  TriggerHandlerResponse,
   TriggerRunRequest,
   TriggerRunResponse,
   TriggerTeamSyncRequest,
@@ -77,6 +81,26 @@ export const IngestionService = {
       name: "TriggerTeamSync",
       I: TriggerTeamSyncRequest,
       O: TriggerTeamSyncResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Generic handler management
+     *
+     * @generated from rpc prism.v1.IngestionService.ListHandlers
+     */
+    listHandlers: {
+      name: "ListHandlers",
+      I: ListHandlersRequest,
+      O: ListHandlersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.IngestionService.TriggerHandler
+     */
+    triggerHandler: {
+      name: "TriggerHandler",
+      I: TriggerHandlerRequest,
+      O: TriggerHandlerResponse,
       kind: MethodKind.Unary,
     },
   },

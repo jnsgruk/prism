@@ -90,13 +90,20 @@ impl GithubIngestionHandlerImpl {
         let run_id = Uuid::now_v7();
         let repos = self.state.repos.clone();
         let sn = source_name.to_string();
+        let method = if override_watermark.is_some() {
+            "backfill"
+        } else {
+            "run_ingestion"
+        };
+        let method_owned = method.to_string();
         ctx.run(|| {
             let repos = repos.clone();
             let sn = sn.clone();
+            let method_owned = method_owned.clone();
             async move {
                 repos
                     .activity
-                    .create_run(run_id, &sn)
+                    .create_run(run_id, &sn, "GithubIngestionHandler", &method_owned)
                     .await
                     .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                 Ok(Json::from(()))

@@ -66,7 +66,10 @@ define_api_test!(list_runs_empty, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = IngestionServiceClient::new(server.channel.clone());
 
-    let mut req = Request::new(ListRunsRequest { source_name: None });
+    let mut req = Request::new(ListRunsRequest {
+        source_name: None,
+        handler_name: None,
+    });
     auth(&mut req, &token);
 
     let resp = client.list_runs(req).await.expect("list_runs").into_inner();
@@ -93,6 +96,7 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
     // Filter by src-a
     let mut req = Request::new(ListRunsRequest {
         source_name: Some("src-a".into()),
+        handler_name: None,
     });
     auth(&mut req, &token);
 
@@ -101,7 +105,10 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
     assert!(resp.runs.iter().all(|r| r.source_name == "src-a"));
 
     // No filter — all 3
-    let mut req = Request::new(ListRunsRequest { source_name: None });
+    let mut req = Request::new(ListRunsRequest {
+        source_name: None,
+        handler_name: None,
+    });
     auth(&mut req, &token);
 
     let resp = client.list_runs(req).await.expect("list_runs").into_inner();

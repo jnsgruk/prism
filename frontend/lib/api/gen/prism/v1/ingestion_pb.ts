@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/ingestion.proto.
  */
 export const file_prism_v1_ingestion: GenFile /*@__PURE__*/ = fileDesc(
-  "ChhwcmlzbS92MS9pbmdlc3Rpb24ucHJvdG8SCHByaXNtLnYxIuoCCgxTb3VyY2VTdGF0dXMSDAoEbmFtZRgBIAEoCRITCgtzb3VyY2VfdHlwZRgCIAEoCRIkCgVzdGF0ZRgDIAEoDjIVLnByaXNtLnYxLlNvdXJjZVN0YXRlEjEKCGxhc3RfcnVuGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBEjEKCG5leHRfcnVuGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRJCCg9yYXRlX2xpbWl0X2luZm8YByADKAsyKS5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5GjQKElJhdGVMaW1pdEluZm9FbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQgsKCV9sYXN0X3J1bkILCglfbmV4dF9ydW4ioAIKDEluZ2VzdGlvblJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESDgoGc3RhdHVzGAUgASgJEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRIaCg1lcnJvcl9tZXNzYWdlGAcgASgJSAGIAQESIAoYcmF0ZV9saW1pdF93YWl0c19zZWNvbmRzGAggASgFQg8KDV9jb21wbGV0ZWRfYXRCEAoOX2Vycm9yX21lc3NhZ2UiEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgdzb3VyY2VzGAEgAygLMhYucHJpc20udjEuU291cmNlU3RhdHVzIjsKD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBQg4KDF9zb3VyY2VfbmFtZSI4ChBMaXN0UnVuc1Jlc3BvbnNlEiQKBHJ1bnMYASADKAsyFi5wcmlzbS52MS5Jbmdlc3Rpb25SdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSInChBDYW5jZWxSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhMKEUNhbmNlbFJ1blJlc3BvbnNlIi0KFlRyaWdnZXJUZWFtU3luY1JlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiGQoXVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2UqkQEKC1NvdXJjZVN0YXRlEhwKGFNPVVJDRV9TVEFURV9VTlNQRUNJRklFRBAAEhUKEVNPVVJDRV9TVEFURV9JRExFEAESGwoXU09VUkNFX1NUQVRFX0NPTExFQ1RJTkcQAhIYChRTT1VSQ0VfU1RBVEVfV0FJVElORxADEhYKElNPVVJDRV9TVEFURV9FUlJPUhAEMtoDChBJbmdlc3Rpb25TZXJ2aWNlEkQKCUdldFN0YXR1cxIaLnByaXNtLnYxLkdldFN0YXR1c1JlcXVlc3QaGy5wcmlzbS52MS5HZXRTdGF0dXNSZXNwb25zZRJBCghMaXN0UnVucxIZLnByaXNtLnYxLkxpc3RSdW5zUmVxdWVzdBoaLnByaXNtLnYxLkxpc3RSdW5zUmVzcG9uc2USRwoKVHJpZ2dlclJ1bhIbLnByaXNtLnYxLlRyaWdnZXJSdW5SZXF1ZXN0GhwucHJpc20udjEuVHJpZ2dlclJ1blJlc3BvbnNlElYKD1RyaWdnZXJCYWNrZmlsbBIgLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QaIS5wcmlzbS52MS5UcmlnZ2VyQmFja2ZpbGxSZXNwb25zZRJECglDYW5jZWxSdW4SGi5wcmlzbS52MS5DYW5jZWxSdW5SZXF1ZXN0GhsucHJpc20udjEuQ2FuY2VsUnVuUmVzcG9uc2USVgoPVHJpZ2dlclRlYW1TeW5jEiAucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVxdWVzdBohLnByaXNtLnYxLlRyaWdnZXJUZWFtU3luY1Jlc3BvbnNlYgZwcm90bzM",
+  "ChhwcmlzbS92MS9pbmdlc3Rpb24ucHJvdG8SCHByaXNtLnYxIuoCCgxTb3VyY2VTdGF0dXMSDAoEbmFtZRgBIAEoCRITCgtzb3VyY2VfdHlwZRgCIAEoCRIkCgVzdGF0ZRgDIAEoDjIVLnByaXNtLnYxLlNvdXJjZVN0YXRlEjEKCGxhc3RfcnVuGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBEjEKCG5leHRfcnVuGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRJCCg9yYXRlX2xpbWl0X2luZm8YByADKAsyKS5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5GjQKElJhdGVMaW1pdEluZm9FbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQgsKCV9sYXN0X3J1bkILCglfbmV4dF9ydW4izgIKDEluZ2VzdGlvblJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESDgoGc3RhdHVzGAUgASgJEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRIaCg1lcnJvcl9tZXNzYWdlGAcgASgJSAGIAQESIAoYcmF0ZV9saW1pdF93YWl0c19zZWNvbmRzGAggASgFEhQKDGhhbmRsZXJfbmFtZRgJIAEoCRIWCg5oYW5kbGVyX21ldGhvZBgKIAEoCUIPCg1fY29tcGxldGVkX2F0QhAKDl9lcnJvcl9tZXNzYWdlIhIKEEdldFN0YXR1c1JlcXVlc3QiPAoRR2V0U3RhdHVzUmVzcG9uc2USJwoHc291cmNlcxgBIAMoCzIWLnByaXNtLnYxLlNvdXJjZVN0YXR1cyJnCg9MaXN0UnVuc1JlcXVlc3QSGAoLc291cmNlX25hbWUYASABKAlIAIgBARIZCgxoYW5kbGVyX25hbWUYAiABKAlIAYgBAUIOCgxfc291cmNlX25hbWVCDwoNX2hhbmRsZXJfbmFtZSI4ChBMaXN0UnVuc1Jlc3BvbnNlEiQKBHJ1bnMYASADKAsyFi5wcmlzbS52MS5Jbmdlc3Rpb25SdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSInChBDYW5jZWxSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhMKEUNhbmNlbFJ1blJlc3BvbnNlIi0KFlRyaWdnZXJUZWFtU3luY1JlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiGQoXVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2UiQQoLSGFuZGxlckluZm8SDAoEbmFtZRgBIAEoCRIPCgdtZXRob2RzGAIgAygJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIhUKE0xpc3RIYW5kbGVyc1JlcXVlc3QiPwoUTGlzdEhhbmRsZXJzUmVzcG9uc2USJwoIaGFuZGxlcnMYASADKAsyFS5wcmlzbS52MS5IYW5kbGVySW5mbyJsChVUcmlnZ2VySGFuZGxlclJlcXVlc3QSFAoMaGFuZGxlcl9uYW1lGAEgASgJEg4KBm1ldGhvZBgCIAEoCRILCgNrZXkYAyABKAkSFAoHcGF5bG9hZBgEIAEoCUgAiAEBQgoKCF9wYXlsb2FkIi8KFlRyaWdnZXJIYW5kbGVyUmVzcG9uc2USFQoNaW52b2NhdGlvbl9pZBgBIAEoCSqRAQoLU291cmNlU3RhdGUSHAoYU09VUkNFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFQoRU09VUkNFX1NUQVRFX0lETEUQARIbChdTT1VSQ0VfU1RBVEVfQ09MTEVDVElORxACEhgKFFNPVVJDRV9TVEFURV9XQUlUSU5HEAMSFgoSU09VUkNFX1NUQVRFX0VSUk9SEAQy/gQKEEluZ2VzdGlvblNlcnZpY2USRAoJR2V0U3RhdHVzEhoucHJpc20udjEuR2V0U3RhdHVzUmVxdWVzdBobLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkEKCExpc3RSdW5zEhkucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GhoucHJpc20udjEuTGlzdFJ1bnNSZXNwb25zZRJHCgpUcmlnZ2VyUnVuEhsucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaHC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USVgoPVHJpZ2dlckJhY2tmaWxsEiAucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVxdWVzdBohLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlEkQKCUNhbmNlbFJ1bhIaLnByaXNtLnYxLkNhbmNlbFJ1blJlcXVlc3QaGy5wcmlzbS52MS5DYW5jZWxSdW5SZXNwb25zZRJWCg9UcmlnZ2VyVGVhbVN5bmMSIC5wcmlzbS52MS5UcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0GiEucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2USTQoMTGlzdEhhbmRsZXJzEh0ucHJpc20udjEuTGlzdEhhbmRsZXJzUmVxdWVzdBoeLnByaXNtLnYxLkxpc3RIYW5kbGVyc1Jlc3BvbnNlElMKDlRyaWdnZXJIYW5kbGVyEh8ucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXF1ZXN0GiAucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXNwb25zZWIGcHJvdG8z",
   [file_google_protobuf_timestamp],
 );
 
@@ -108,6 +108,16 @@ export type IngestionRun = Message<"prism.v1.IngestionRun"> & {
    * @generated from field: int32 rate_limit_waits_seconds = 8;
    */
   rateLimitWaitsSeconds: number;
+
+  /**
+   * @generated from field: string handler_name = 9;
+   */
+  handlerName: string;
+
+  /**
+   * @generated from field: string handler_method = 10;
+   */
+  handlerMethod: string;
 };
 
 /**
@@ -160,6 +170,11 @@ export type ListRunsRequest = Message<"prism.v1.ListRunsRequest"> & {
    * @generated from field: optional string source_name = 1;
    */
   sourceName?: string;
+
+  /**
+   * @generated from field: optional string handler_name = 2;
+   */
+  handlerName?: string;
 };
 
 /**
@@ -320,6 +335,115 @@ export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> 
   messageDesc(file_prism_v1_ingestion, 13);
 
 /**
+ * @generated from message prism.v1.HandlerInfo
+ */
+export type HandlerInfo = Message<"prism.v1.HandlerInfo"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string methods = 2;
+   */
+  methods: string[];
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message prism.v1.HandlerInfo.
+ * Use `create(HandlerInfoSchema)` to create a new message.
+ */
+export const HandlerInfoSchema: GenMessage<HandlerInfo> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  14,
+);
+
+/**
+ * @generated from message prism.v1.ListHandlersRequest
+ */
+export type ListHandlersRequest = Message<"prism.v1.ListHandlersRequest"> & {};
+
+/**
+ * Describes the message prism.v1.ListHandlersRequest.
+ * Use `create(ListHandlersRequestSchema)` to create a new message.
+ */
+export const ListHandlersRequestSchema: GenMessage<ListHandlersRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  15,
+);
+
+/**
+ * @generated from message prism.v1.ListHandlersResponse
+ */
+export type ListHandlersResponse = Message<"prism.v1.ListHandlersResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.HandlerInfo handlers = 1;
+   */
+  handlers: HandlerInfo[];
+};
+
+/**
+ * Describes the message prism.v1.ListHandlersResponse.
+ * Use `create(ListHandlersResponseSchema)` to create a new message.
+ */
+export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_ingestion, 16);
+
+/**
+ * @generated from message prism.v1.TriggerHandlerRequest
+ */
+export type TriggerHandlerRequest = Message<"prism.v1.TriggerHandlerRequest"> & {
+  /**
+   * @generated from field: string handler_name = 1;
+   */
+  handlerName: string;
+
+  /**
+   * @generated from field: string method = 2;
+   */
+  method: string;
+
+  /**
+   * @generated from field: string key = 3;
+   */
+  key: string;
+
+  /**
+   * @generated from field: optional string payload = 4;
+   */
+  payload?: string;
+};
+
+/**
+ * Describes the message prism.v1.TriggerHandlerRequest.
+ * Use `create(TriggerHandlerRequestSchema)` to create a new message.
+ */
+export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_ingestion, 17);
+
+/**
+ * @generated from message prism.v1.TriggerHandlerResponse
+ */
+export type TriggerHandlerResponse = Message<"prism.v1.TriggerHandlerResponse"> & {
+  /**
+   * @generated from field: string invocation_id = 1;
+   */
+  invocationId: string;
+};
+
+/**
+ * Describes the message prism.v1.TriggerHandlerResponse.
+ * Use `create(TriggerHandlerResponseSchema)` to create a new message.
+ */
+export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_ingestion, 18);
+
+/**
  * @generated from enum prism.v1.SourceState
  */
 export enum SourceState {
@@ -408,5 +532,23 @@ export const IngestionService: GenService<{
     methodKind: "unary";
     input: typeof TriggerTeamSyncRequestSchema;
     output: typeof TriggerTeamSyncResponseSchema;
+  };
+  /**
+   * Generic handler management
+   *
+   * @generated from rpc prism.v1.IngestionService.ListHandlers
+   */
+  listHandlers: {
+    methodKind: "unary";
+    input: typeof ListHandlersRequestSchema;
+    output: typeof ListHandlersResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.IngestionService.TriggerHandler
+   */
+  triggerHandler: {
+    methodKind: "unary";
+    input: typeof TriggerHandlerRequestSchema;
+    output: typeof TriggerHandlerResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_ingestion, 0);

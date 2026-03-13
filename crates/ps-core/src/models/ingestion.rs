@@ -23,6 +23,8 @@ pub struct IngestionRun {
     pub error_message: Option<String>,
     pub rate_limit_waits_seconds: Option<i32>,
     pub metadata: Option<serde_json::Value>,
+    pub handler_name: String,
+    pub handler_method: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

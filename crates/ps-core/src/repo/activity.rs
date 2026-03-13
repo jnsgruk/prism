@@ -20,6 +20,8 @@ pub struct IngestionRunRow {
     pub status: String,
     pub items_collected: Option<i32>,
     pub error_message: Option<String>,
+    pub handler_name: String,
+    pub handler_method: String,
 }
 
 /// A joined row from `config.source_configs` + `activity.ingestion_watermarks`.
@@ -195,15 +197,23 @@ impl ActivityRepo {
         Ok(())
     }
 
-    /// Create a new ingestion run record with status 'running'.
-    pub async fn create_run(&self, id: Uuid, source_name: &str) -> Result<(), Error> {
+    /// Create a new run record with status 'running'.
+    pub async fn create_run(
+        &self,
+        id: Uuid,
+        source_name: &str,
+        handler_name: &str,
+        handler_method: &str,
+    ) -> Result<(), Error> {
         sqlx::query!(
             r#"
-            INSERT INTO activity.ingestion_runs (id, source_name, started_at, status)
-            VALUES ($1, $2, now(), 'running')
+            INSERT INTO activity.ingestion_runs (id, source_name, started_at, status, handler_name, handler_method)
+            VALUES ($1, $2, now(), 'running', $3, $4)
             "#,
             id,
             source_name,
+            handler_name,
+            handler_method,
         )
         .execute(&self.pool)
         .await
@@ -248,21 +258,24 @@ impl ActivityRepo {
         Ok(())
     }
 
-    /// List recent ingestion runs, optionally filtered by source name.
+    /// List recent runs, optionally filtered by source name and/or handler name.
     pub async fn list_runs(
         &self,
         source_name: Option<&str>,
+        handler_name: Option<&str>,
     ) -> Result<Vec<IngestionRunRow>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT id, source_name, started_at, completed_at, status,
-                   items_collected, error_message
+                   items_collected, error_message, handler_name, handler_method
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
+              AND ($2::text IS NULL OR handler_name = $2)
             ORDER BY started_at DESC
-            LIMIT 50
+            LIMIT 100
             "#,
             source_name,
+            handler_name,
         )
         .fetch_all(&self.pool)
         .await
@@ -278,6 +291,8 @@ impl ActivityRepo {
                 status: r.status,
                 items_collected: r.items_collected,
                 error_message: r.error_message,
+                handler_name: r.handler_name,
+                handler_method: r.handler_method,
             })
             .collect())
     }

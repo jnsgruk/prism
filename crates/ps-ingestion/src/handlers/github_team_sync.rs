@@ -1,6 +1,7 @@
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
-use tracing::info;
+use tracing::{error, info};
+use uuid::Uuid;
 
 use super::SharedState;
 use crate::github::client::GitHubClient;
@@ -19,6 +20,25 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
     async fn sync_teams(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
         let source_name = ctx.key().to_string();
         info!(source = %source_name, "starting GitHub team sync");
+
+        // Create run record
+        let run_id = Uuid::now_v7();
+        let repos = self.state.repos.clone();
+        let sn = source_name.clone();
+        ctx.run(|| {
+            let repos = repos.clone();
+            let sn = sn.clone();
+            async move {
+                repos
+                    .activity
+                    .create_run(run_id, &sn, "GithubTeamSyncHandler", "sync_teams")
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                Ok(Json::from(()))
+            }
+        })
+        .name("create_run")
+        .await?;
 
         // Step 1: Load source config
         let repos = self.state.repos.clone();
@@ -79,6 +99,13 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             .unwrap_or_default();
 
         if orgs.is_empty() {
+            self.fail_run(
+                &ctx,
+                run_id,
+                &source_name,
+                "no orgs configured for this source",
+            )
+            .await;
             return Err(TerminalError::new("no orgs configured for this source"));
         }
 
@@ -91,17 +118,87 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
         let client = GitHubClient::new(self.state.http_client.clone(), base_url, &token);
 
         // Step 4: For each org, discover teams → members → repos
+        let mut total_teams = 0i32;
         for org in &orgs {
-            self.sync_org(&ctx, &client, source_id, org).await?;
+            match self.sync_org(&ctx, &client, source_id, org).await {
+                Ok(count) => total_teams += count,
+                Err(e) => {
+                    self.fail_run(&ctx, run_id, &source_name, &e.to_string())
+                        .await;
+                    return Err(e);
+                }
+            }
         }
 
-        info!(source = %source_name, "GitHub team sync complete");
+        // Complete run
+        self.complete_run(&ctx, run_id, &source_name, total_teams)
+            .await;
+
+        info!(source = %source_name, total_teams, "GitHub team sync complete");
         Ok(())
     }
 }
 
 impl GithubTeamSyncHandlerImpl {
-    /// Sync all teams for a single GitHub org.
+    async fn complete_run(
+        &self,
+        ctx: &ObjectContext<'_>,
+        run_id: Uuid,
+        source_name: &str,
+        items: i32,
+    ) {
+        let repos = self.state.repos.clone();
+        let result = ctx
+            .run(|| {
+                let repos = repos.clone();
+                async move {
+                    repos
+                        .activity
+                        .complete_run(run_id, items)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(()))
+                }
+            })
+            .name("complete_run")
+            .await;
+
+        if let Err(e) = result {
+            error!(source = source_name, "failed to update run status: {e}");
+        }
+    }
+
+    async fn fail_run(
+        &self,
+        ctx: &ObjectContext<'_>,
+        run_id: Uuid,
+        source_name: &str,
+        error_msg: &str,
+    ) {
+        let repos = self.state.repos.clone();
+        let err = error_msg.to_string();
+        let result = ctx
+            .run(|| {
+                let repos = repos.clone();
+                let err = err.clone();
+                async move {
+                    repos
+                        .activity
+                        .fail_run(run_id, &err)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(()))
+                }
+            })
+            .name("fail_run")
+            .await;
+
+        if let Err(e) = result {
+            error!(source = source_name, "failed to update run status: {e}");
+        }
+    }
+
+    /// Sync all teams for a single GitHub org. Returns the number of teams synced.
     ///
     /// API reads happen outside `ctx.run()` (they are idempotent and safe to
     /// replay on retry). Only DB writes are wrapped in `ctx.run()` for
@@ -112,7 +209,7 @@ impl GithubTeamSyncHandlerImpl {
         client: &GitHubClient,
         source_id: uuid::Uuid,
         org: &str,
-    ) -> Result<(), TerminalError> {
+    ) -> Result<i32, TerminalError> {
         // Discover all teams in the org (paginated)
         let mut all_teams = Vec::new();
         let mut page = 1u32;
@@ -226,7 +323,8 @@ impl GithubTeamSyncHandlerImpl {
             info!(org, removed, "removed stale GitHub teams");
         }
 
-        Ok(())
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        Ok(all_teams.len() as i32)
     }
 }
 

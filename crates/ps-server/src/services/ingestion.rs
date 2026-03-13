@@ -4,10 +4,11 @@ use ps_core::repo::Repos;
 use ps_core::repo::activity::SourceStatusRow;
 use ps_proto::prism::v1::ingestion_service_server::IngestionService;
 use ps_proto::prism::v1::{
-    CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, IngestionRun,
-    ListRunsRequest, ListRunsResponse, SourceState, SourceStatus, TriggerBackfillRequest,
-    TriggerBackfillResponse, TriggerRunRequest, TriggerRunResponse, TriggerTeamSyncRequest,
-    TriggerTeamSyncResponse,
+    CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerInfo,
+    IngestionRun, ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse,
+    SourceState, SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse,
+    TriggerHandlerRequest, TriggerHandlerResponse, TriggerRunRequest, TriggerRunResponse,
+    TriggerTeamSyncRequest, TriggerTeamSyncResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
@@ -277,11 +278,12 @@ impl IngestionService for IngestionServiceImpl {
         let req = request.into_inner();
 
         let filter_name = req.source_name.filter(|n| !n.is_empty());
+        let filter_handler = req.handler_name.filter(|n| !n.is_empty());
 
         let rows = self
             .repos
             .activity
-            .list_runs(filter_name.as_deref())
+            .list_runs(filter_name.as_deref(), filter_handler.as_deref())
             .await
             .map_err(db_err)?;
 
@@ -296,6 +298,8 @@ impl IngestionService for IngestionServiceImpl {
                 items_collected: r.items_collected.unwrap_or(0),
                 error_message: r.error_message,
                 rate_limit_waits_seconds: 0,
+                handler_name: r.handler_name,
+                handler_method: r.handler_method,
             })
             .collect();
 
@@ -466,6 +470,103 @@ impl IngestionService for IngestionServiceImpl {
         info!(source = %req.source_name, %invocation_id, "triggered team sync via Restate");
 
         Ok(Response::new(TriggerTeamSyncResponse {}))
+    }
+
+    async fn list_handlers(
+        &self,
+        request: Request<ListHandlersRequest>,
+    ) -> Result<Response<ListHandlersResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let handlers = vec![
+            HandlerInfo {
+                name: "GithubIngestionHandler".into(),
+                methods: vec!["run_ingestion".into(), "backfill".into()],
+                description: "Fetches pull requests and reviews from GitHub repositories".into(),
+            },
+            HandlerInfo {
+                name: "GithubTeamSyncHandler".into(),
+                methods: vec!["sync_teams".into()],
+                description: "Discovers GitHub teams, members, and repos for configured orgs"
+                    .into(),
+            },
+        ];
+
+        Ok(Response::new(ListHandlersResponse { handlers }))
+    }
+
+    async fn trigger_handler(
+        &self,
+        request: Request<TriggerHandlerRequest>,
+    ) -> Result<Response<TriggerHandlerResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.handler_name.is_empty() {
+            return Err(Status::invalid_argument("handler_name is required"));
+        }
+        if req.method.is_empty() {
+            return Err(Status::invalid_argument("method is required"));
+        }
+        if req.key.is_empty() {
+            return Err(Status::invalid_argument("key (source name) is required"));
+        }
+
+        // Validate handler + method combination
+        let valid = matches!(
+            (req.handler_name.as_str(), req.method.as_str()),
+            ("GithubIngestionHandler", "run_ingestion" | "backfill")
+                | ("GithubTeamSyncHandler", "sync_teams")
+        );
+        if !valid {
+            return Err(Status::invalid_argument(format!(
+                "unknown handler/method: {}/{}",
+                req.handler_name, req.method,
+            )));
+        }
+
+        // Verify source exists and is enabled
+        self.repos
+            .config
+            .get_enabled_source_by_name(&req.key)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+
+        // Build Restate URL: /{handler}/{key}/{method}/send
+        let url = format!(
+            "{}/{}/{}/{}/send",
+            self.restate_url, req.handler_name, req.key, req.method,
+        );
+
+        let body = req.payload.as_deref().and_then(|p| {
+            if p.is_empty() {
+                None
+            } else {
+                serde_json::from_str::<serde_json::Value>(p).ok()
+            }
+        });
+
+        let invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
+
+        // Store invocation ID for ingestion handlers (for cancellation support)
+        if req.handler_name == "GithubIngestionHandler" {
+            let _ = self
+                .repos
+                .activity
+                .set_current_invocation_id(&req.key, &invocation_id)
+                .await;
+        }
+
+        info!(
+            handler = %req.handler_name,
+            method = %req.method,
+            key = %req.key,
+            %invocation_id,
+            "triggered handler via Restate",
+        );
+
+        Ok(Response::new(TriggerHandlerResponse { invocation_id }))
     }
 }
 
