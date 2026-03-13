@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import type { IngestionRun } from "@ps/api/gen/prism/v1/ingestion_pb";
@@ -36,7 +35,12 @@ const statusConfig: Record<string, StatusStyle> = {
 
 const formatTimestamp = (ts?: { seconds: bigint }): string => {
   if (!ts) return "—";
-  return new Date(Number(ts.seconds) * 1000).toLocaleString();
+  const date = new Date(Number(ts.seconds) * 1000);
+  return (
+    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " +
+    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+  );
 };
 
 const formatDuration = (start?: { seconds: bigint }, end?: { seconds: bigint }): string => {
@@ -58,16 +62,15 @@ export const IngestionRunsTable = ({ runs }: { runs: IngestionRun[] }): React.Re
   }
 
   return (
-    <Table>
+    <Table className="table-fixed">
       <TableHeader>
         <TableRow>
-          <TableHead>Source</TableHead>
-          <TableHead>Started</TableHead>
-          <TableHead>Duration</TableHead>
-          <TableHead className="text-right">Items</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Rate limit waits</TableHead>
-          <TableHead>Error</TableHead>
+          <TableHead className="w-[20%]">Source</TableHead>
+          <TableHead className="w-[15%]">Started</TableHead>
+          <TableHead className="w-[10%]">Duration</TableHead>
+          <TableHead className="w-[8%] text-right">Items</TableHead>
+          <TableHead className="w-[12%]">Status</TableHead>
+          <TableHead className="w-[35%]">Error</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -75,7 +78,7 @@ export const IngestionRunsTable = ({ runs }: { runs: IngestionRun[] }): React.Re
           const runConfig = statusConfig[run.status] ?? defaultStatus;
           return (
             <TableRow key={run.id}>
-              <TableCell className="font-medium">{run.sourceName}</TableCell>
+              <TableCell className="truncate font-medium">{run.sourceName}</TableCell>
               <TableCell className="text-xs">{formatTimestamp(run.startedAt)}</TableCell>
               <TableCell className="text-xs">
                 {formatDuration(run.startedAt, run.completedAt)}
@@ -87,22 +90,8 @@ export const IngestionRunsTable = ({ runs }: { runs: IngestionRun[] }): React.Re
                   {runConfig.label}
                 </Badge>
               </TableCell>
-              <TableCell className="text-xs">
-                {run.rateLimitWaitsSeconds > 0 ? `${String(run.rateLimitWaitsSeconds)}s` : "—"}
-              </TableCell>
-              <TableCell className="text-xs text-destructive">
-                {run.errorMessage ? (
-                  <Tooltip>
-                    <TooltipTrigger className="max-w-64 cursor-default truncate text-left">
-                      {run.errorMessage}
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-sm">
-                      {run.errorMessage}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  "—"
-                )}
+              <TableCell className="break-words text-xs text-destructive">
+                {run.errorMessage ?? "—"}
               </TableCell>
             </TableRow>
           );
