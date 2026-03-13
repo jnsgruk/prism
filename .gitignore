@@ -12,7 +12,7 @@ result
 
 # Frontend
 frontend/node_modules/
-frontend/.next/
+frontend/dist/
 
 # IDE
 .idea/

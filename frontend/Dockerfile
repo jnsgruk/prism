@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Multi-stage Dockerfile for the Next.js frontend.
+# Multi-stage Dockerfile for the Vite SPA frontend.
 #
 # Dev target (Tilt):
 #   docker build --target ps-frontend-dev frontend/
@@ -9,7 +9,7 @@
 #   docker build --target ps-frontend frontend/
 
 # ---------------------------------------------------------------------------
-# Builder — install deps, build Next.js standalone
+# Builder — install deps, build static SPA
 # ---------------------------------------------------------------------------
 FROM oven/bun:1 AS builder
 WORKDIR /app
@@ -20,27 +20,23 @@ RUN bun install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
 
 # ---------------------------------------------------------------------------
-# Dev runtime — Ubuntu base for Tilt
+# Dev runtime — Caddy on Ubuntu for Tilt
 # ---------------------------------------------------------------------------
 FROM ubuntu:24.04 AS dev-runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates nodejs \
+    ca-certificates caddy \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --shell /bin/bash prism
 
 FROM dev-runtime AS ps-frontend-dev
-WORKDIR /app
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/dist /srv
 USER prism
-ENV PORT=3000 HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
 
 # ---------------------------------------------------------------------------
 # Chisel — minimal Ubuntu rootfs for prod
@@ -56,19 +52,22 @@ RUN mkdir /rootfs && chisel cut --root /rootfs \
     libc6_libs \
     libssl3t64_libs \
     libstdc++6_libs \
-    zlib1g_libs \
-    nodejs_bins
+    zlib1g_libs
+
+# ---------------------------------------------------------------------------
+# Caddy binary — grab from official image
+# ---------------------------------------------------------------------------
+FROM caddy:2 AS caddy
 
 # ---------------------------------------------------------------------------
 # Prod runtime
 # ---------------------------------------------------------------------------
 FROM scratch AS ps-frontend
 COPY --from=chisel /rootfs /
-WORKDIR /app
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
+WORKDIR /srv
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/dist /srv
 USER 65534:65534
-ENV PORT=3000 HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

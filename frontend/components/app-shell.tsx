@@ -1,9 +1,7 @@
-"use client";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePathname, useRouter } from "next/navigation";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useCurrentUser, useSetupStatus } from "@ps/hooks/use-auth";
 
@@ -31,8 +29,8 @@ export const AppShell = ({
 }: {
   children: React.ReactNode;
 }): React.ReactElement | null => {
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
   const { data: setupComplete, isLoading: setupLoading } = useSetupStatus();
@@ -52,13 +50,13 @@ export const AppShell = ({
 
   // Redirect to setup if not complete
   if (setupComplete === false) {
-    router.replace("/setup");
+    navigate("/setup", { replace: true });
     return null;
   }
 
   // Redirect to login if not authenticated
   if (userError || !user) {
-    router.replace("/login");
+    navigate("/login", { replace: true });
     return null;
   }
 

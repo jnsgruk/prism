@@ -1,40 +1,39 @@
-"use client";
-
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
-import { useLogin, useSetupStatus } from "@ps/hooks/use-auth";
+import { useCompleteSetup, useSetupStatus } from "@ps/hooks/use-auth";
 
-const LoginPage = (): React.ReactElement | null => {
-  const router = useRouter();
+const SetupPage = (): React.ReactElement | null => {
+  const navigate = useNavigate();
   const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
-  const login = useLogin();
+  const completeSetup = useCompleteSetup();
 
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   if (statusLoading) return null;
 
-  if (setupComplete === false) {
-    router.replace("/setup");
+  if (setupComplete) {
+    navigate("/login", { replace: true });
     return null;
   }
 
-  const handleLogin = (e: React.FormEvent): void => {
+  const handleSetup = (e: React.FormEvent): void => {
     e.preventDefault();
     setError("");
 
-    login.mutate(
-      { username, password },
+    completeSetup.mutate(
+      { username, displayName, password },
       {
-        onSuccess: () => router.replace("/"),
+        onSuccess: () => navigate("/", { replace: true }),
         onError: (err) => setError(err.message),
       },
     );
@@ -51,11 +50,11 @@ const LoginPage = (): React.ReactElement | null => {
 
       <Card>
         <CardHeader className="text-center">
-          <CardTitle>Sign in to Prism</CardTitle>
-          <CardDescription>Enter your credentials to continue</CardDescription>
+          <CardTitle>Welcome to Prism</CardTitle>
+          <CardDescription>Create your admin account to get started</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSetup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -68,6 +67,17 @@ const LoginPage = (): React.ReactElement | null => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="displayName">Display Name</Label>
+              <Input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -75,13 +85,14 @@ const LoginPage = (): React.ReactElement | null => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
               />
             </div>
 
             {error && <Alert variant="destructive">{error}</Alert>}
 
-            <Button type="submit" disabled={login.isPending} className="w-full">
-              {login.isPending ? "Signing in..." : "Sign In"}
+            <Button type="submit" disabled={completeSetup.isPending} className="w-full">
+              {completeSetup.isPending ? "Creating..." : "Create Admin Account"}
             </Button>
           </form>
         </CardContent>
@@ -90,4 +101,4 @@ const LoginPage = (): React.ReactElement | null => {
   );
 };
 
-export default LoginPage;
+export default SetupPage;

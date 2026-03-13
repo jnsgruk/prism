@@ -1,12 +1,9 @@
 # dependencies (bun install)
 node_modules
 
-# Next.js
-.next
-
-# output
-out
+# build output
 dist
+out
 *.tgz
 
 # code coverage

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +19,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Activity, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
@@ -54,7 +51,7 @@ const UserInitials = ({ name }: { name: string }): React.ReactElement => {
 };
 
 export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const logout = useLogout();
 
   const isActive = (href: string): boolean => {
@@ -67,7 +64,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />} tooltip="Prism">
+            <SidebarMenuButton size="lg" render={<Link to="/" />} tooltip="Prism">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 p-1.5 dark:bg-zinc-800">
                 <PrismLogo size={24} />
               </div>
@@ -88,7 +85,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    render={<Link href={item.href} />}
+                    render={<Link to={item.href} />}
                     isActive={isActive(item.href)}
                     tooltip={item.title}
                   >
@@ -130,7 +127,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/admin" />}>
+                <DropdownMenuItem render={<Link to="/admin" />}>
                   <Settings className="mr-2 size-4" />
                   Admin
                 </DropdownMenuItem>

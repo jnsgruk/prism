@@ -1,10 +1,8 @@
-"use client";
-
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Plug } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 import { useListSources } from "@ps/hooks";
 
@@ -29,7 +27,7 @@ const DashboardPage = (): React.ReactElement => {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <Button render={<Link href="/admin" />}>
+              <Button render={<Link to="/admin" />}>
                 Configure Sources
                 <ArrowRight className="size-4" />
               </Button>
