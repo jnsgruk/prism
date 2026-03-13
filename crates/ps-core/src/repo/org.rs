@@ -59,6 +59,8 @@ pub struct ImportRecord {
     pub depth: Option<u32>,
     /// Whether this person has direct reports in the directory tree.
     pub has_reports: bool,
+    /// Group name from directory (e.g. "Ubuntu Engineering"), used for parent wiring.
+    pub group: Option<String>,
 }
 
 /// A platform identity within an import record.
@@ -613,50 +615,76 @@ impl OrgRepo {
                 continue;
             };
 
-            if let Some(manager_name) = &record.manager_name {
-                // First try: find team where lead_id = manager's person_id.
-                // This survives team renames.
-                let manager_person_id = person_name_to_id.get(manager_name).copied();
-                let parent_id = if let Some(mgr_id) = manager_person_id {
-                    sqlx::query_scalar!("SELECT id FROM org.teams WHERE lead_id = $1", mgr_id,)
-                        .fetch_optional(&mut *tx)
-                        .await
-                        .map_err(|e| Error::Database(e.to_string()))?
+            // For team-level records (not squads), use the group as parent.
+            // This ensures "Matthieu's Team" goes under "Ubuntu Engineering" (his group),
+            // not under his manager's group (which may be different).
+            // Squads (depth 3+) should be parented under their manager's team instead.
+            let is_squad = record.team_type == Some(TeamType::Squad);
+            let group_parent = if is_squad {
+                None
+            } else {
+                record
+                    .group
+                    .as_ref()
+                    .and_then(|g| team_name_to_id.get(g))
+                    .copied()
+                    .filter(|&gid| gid != team_id)
+            };
+
+            // For squads or when no group parent is available, use the manager relationship.
+            let manager_parent = if group_parent.is_none() {
+                if let Some(manager_name) = &record.manager_name {
+                    // First try: find team where lead_id = manager's person_id.
+                    // This survives team renames.
+                    let manager_person_id = person_name_to_id.get(manager_name).copied();
+                    let parent_id = if let Some(mgr_id) = manager_person_id {
+                        sqlx::query_scalar!("SELECT id FROM org.teams WHERE lead_id = $1", mgr_id,)
+                            .fetch_optional(&mut *tx)
+                            .await
+                            .map_err(|e| Error::Database(e.to_string()))?
+                    } else {
+                        None
+                    };
+
+                    // Fallback: name-based lookup (for first import where leads
+                    // haven't been set yet).
+                    parent_id.or_else(|| {
+                        let parent_team_name = format!("{manager_name}'s Team");
+                        team_name_to_id
+                            .get(&parent_team_name)
+                            .or_else(|| {
+                                let squad_name = format!("{manager_name}'s Squad");
+                                team_name_to_id.get(&squad_name)
+                            })
+                            .or_else(|| {
+                                records
+                                    .iter()
+                                    .find(|r| r.name == *manager_name)
+                                    .and_then(|r| r.team.as_ref())
+                                    .and_then(|t| team_name_to_id.get(t))
+                            })
+                            .copied()
+                    })
                 } else {
                     None
-                };
-
-                // Fallback: name-based lookup (for first import where leads haven't been set).
-                let parent_id = parent_id.or_else(|| {
-                    let parent_team_name = format!("{manager_name}'s Team");
-                    team_name_to_id
-                        .get(&parent_team_name)
-                        .or_else(|| {
-                            let squad_name = format!("{manager_name}'s Squad");
-                            team_name_to_id.get(&squad_name)
-                        })
-                        .or_else(|| {
-                            records
-                                .iter()
-                                .find(|r| r.name == *manager_name)
-                                .and_then(|r| r.team.as_ref())
-                                .and_then(|t| team_name_to_id.get(t))
-                        })
-                        .copied()
-                });
-
-                if let Some(parent_id) = parent_id
-                    && parent_id != team_id
-                {
-                    sqlx::query!(
-                        "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2 AND parent_team_id IS NULL",
-                        parent_id,
-                        team_id,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(|e| Error::Database(e.to_string()))?;
                 }
+            } else {
+                None
+            };
+
+            let parent_id = group_parent.or(manager_parent);
+
+            if let Some(parent_id) = parent_id
+                && parent_id != team_id
+            {
+                sqlx::query!(
+                    "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2 AND parent_team_id IS NULL",
+                    parent_id,
+                    team_id,
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
             }
         }
 

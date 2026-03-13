@@ -380,6 +380,7 @@ impl OrgService for OrgServiceImpl {
                 manager_name: r.manager_name,
                 depth: r.depth,
                 has_reports: r.has_reports,
+                group: r.group,
             })
             .collect();
 
@@ -638,6 +639,7 @@ fn parse_html_to_records(content: &str) -> Result<Vec<DirectoryRecord>, Status> 
                 manager_name: p.manager_name,
                 depth: Some(p.depth),
                 has_reports,
+                group: p.group,
             }
         })
         .collect())
@@ -699,6 +701,8 @@ struct DirectoryRecord {
     depth: Option<u32>,
     #[serde(default)]
     has_reports: bool,
+    #[serde(default)]
+    group: Option<String>,
 }
 
 #[derive(Deserialize)]
