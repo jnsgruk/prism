@@ -1,10 +1,11 @@
 import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import type {
   GetTeamResponse,
   GetTeamTreeResponse,
+  ListPeopleResponse,
   Person,
   Team,
 } from "@ps/api/gen/prism/v1/org_pb";
@@ -48,6 +49,32 @@ export const useListPeople = (): UseQueryResult<Person[], Error> =>
     queryKey: orgKeys.people(),
     queryFn: () => orgClient.listPeople({}),
     select: (data): Person[] => data.people,
+  });
+
+export interface PeopleQueryParams {
+  search?: string;
+  filter?: string;
+  pageSize: number;
+  pageToken?: string;
+  sortField?: string;
+  sortDesc?: boolean;
+}
+
+export const usePaginatedPeople = (
+  params: PeopleQueryParams,
+): UseQueryResult<ListPeopleResponse, Error> =>
+  useQuery({
+    queryKey: [...orgKeys.people(), params] as const,
+    queryFn: () =>
+      orgClient.listPeople({
+        search: params.search || undefined,
+        filter: params.filter || undefined,
+        pagination: { pageSize: params.pageSize, pageToken: params.pageToken ?? "" },
+        sort: params.sortField
+          ? { field: params.sortField, descending: params.sortDesc ?? false }
+          : undefined,
+      }),
+    placeholderData: keepPreviousData,
   });
 
 /** Human-readable label for a TeamType enum value. */

@@ -5,6 +5,8 @@ mod memberships;
 mod people;
 mod teams;
 
+pub use people::ListPeopleParams;
+
 use crate::models::TeamType;
 use sqlx::PgPool;
 use uuid::Uuid;

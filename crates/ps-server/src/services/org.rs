@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use ps_core::models::TeamType;
-use ps_core::repo::Repos;
-use ps_core::repo::org::{IdentityRow, ImportIdentity, ImportRecord, PersonRow, TeamWithCount};
+use ps_core::repo::org::{
+    IdentityRow, ImportIdentity, ImportRecord, ListPeopleParams, PersonRow, TeamWithCount,
+};
+use ps_core::repo::{PageRequest, Repos, SortParams};
 use ps_proto::prism::v1::org_service_server::OrgService;
 use ps_proto::prism::v1::{
     AssignPersonToTeamRequest, AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse,
@@ -10,9 +12,10 @@ use ps_proto::prism::v1::{
     GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse,
     ImportDirectoryRequest, ImportDirectoryResponse, ListPeopleRequest, ListPeopleResponse,
     ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest, ListUnassignedPeopleResponse,
-    Person, PlatformIdentity, ReactivatePersonRequest, ReactivatePersonResponse,
-    RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, Team, TeamType as ProtoTeamType,
-    UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
+    PaginationResponse, Person, PlatformIdentity, ReactivatePersonRequest,
+    ReactivatePersonResponse, RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, Team,
+    TeamType as ProtoTeamType, UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest,
+    UpdateTeamResponse,
 };
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
@@ -327,15 +330,37 @@ impl OrgService for OrgServiceImpl {
     ) -> Result<Response<ListPeopleResponse>, Status> {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
-        let active_only = req.active_only.unwrap_or(false);
 
-        let people_rows = self
+        let pagination = req.pagination.unwrap_or_default();
+        let sort_msg = req.sort.unwrap_or_default();
+
+        let team_id: Option<Uuid> = req
+            .team_id
+            .map(|id| id.parse::<Uuid>())
+            .transpose()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        let sort = SortParams::new(
+            &sort_msg.field,
+            sort_msg.descending,
+            &["name", "email", "team_name", "active"],
+        );
+
+        let page_result = self
             .repos
             .org
-            .list_people(active_only)
+            .list_people_paginated(ListPeopleParams {
+                active_only: req.active_only.unwrap_or(false),
+                search: req.search,
+                team_id,
+                filter: req.filter,
+                page: PageRequest::new(pagination.page_size, &pagination.page_token),
+                sort,
+            })
             .await
             .map_err(db_err)?;
-        let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
+
+        let person_ids: Vec<Uuid> = page_result.items.iter().map(|r| r.id).collect();
         let identities = self
             .repos
             .org
@@ -343,8 +368,14 @@ impl OrgService for OrgServiceImpl {
             .await
             .map_err(db_err)?;
 
-        let people = build_people(people_rows, &identities);
-        Ok(Response::new(ListPeopleResponse { people }))
+        let people = build_people(page_result.items, &identities);
+        Ok(Response::new(ListPeopleResponse {
+            people,
+            pagination: Some(PaginationResponse {
+                next_page_token: page_result.next_page_token.unwrap_or_default(),
+                total_count: page_result.total_count as i32,
+            }),
+        }))
     }
 
     async fn import_directory(

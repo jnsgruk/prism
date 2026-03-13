@@ -117,7 +117,10 @@ define_api_test!(list_people_after_import, |server| async move {
         .expect("import_directory");
 
     // List people
-    let mut req = Request::new(ListPeopleRequest { active_only: None });
+    let mut req = Request::new(ListPeopleRequest {
+        active_only: None,
+        ..Default::default()
+    });
     req.metadata_mut().insert(
         "authorization",
         MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
@@ -280,7 +283,10 @@ define_api_test!(
         assert_eq!(second.teams_created, 0);
 
         // Verify only one person exists with the updated name
-        let mut req = Request::new(ListPeopleRequest { active_only: None });
+        let mut req = Request::new(ListPeopleRequest {
+            active_only: None,
+            ..Default::default()
+        });
         req.metadata_mut().insert(
             "authorization",
             MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),

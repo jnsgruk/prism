@@ -21,19 +21,14 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useEffect, useMemo, useState } from "react";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { Person, Team } from "@ps/api/gen/prism/v1/org_pb";
 
-import { useListPeople, useGetTeamTree } from "@/views/teams/hooks/use-teams";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 import {
   useUpdatePerson,
   useDeactivatePerson,
@@ -48,39 +43,93 @@ type Filter = "all" | "unassigned" | "inactive";
 const flattenTeams = (teams: Team[]): Team[] =>
   teams.flatMap((t) => [t, ...flattenTeams(t.children)]);
 
+const columns: ColumnDef<Person, unknown>[] = [
+  {
+    accessorKey: "name",
+    header: "Name",
+    enableSorting: true,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <span className="font-medium">{row.original.name}</span>
+        {!row.original.active && <Badge variant="destructive">Inactive</Badge>}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "team_name",
+    header: "Team",
+    enableSorting: true,
+    cell: ({ row }) =>
+      row.original.teamName ? (
+        <Badge variant="secondary">{row.original.teamName}</Badge>
+      ) : (
+        <span className="text-muted-foreground">&mdash;</span>
+      ),
+  },
+];
+
 export const PeopleTab = (): React.ReactElement => {
-  const { data: people, isLoading, isError, error } = useListPeople();
   const { data: tree } = useGetTeamTree();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [pageSize, setPageSize] = useState(50);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageTokens, setPageTokens] = useState<string[]>([""]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
 
-  const filtered = useMemo(() => {
-    if (!people) return [];
-    let result = people;
-    if (filter === "unassigned") result = result.filter((p) => p.active && !p.teamId);
-    else if (filter === "inactive") result = result.filter((p) => !p.active);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.email?.toLowerCase().includes(q) ||
-          p.teamName?.toLowerCase().includes(q),
-      );
-    }
-    return result;
-  }, [people, filter, search]);
+  // Debounce search input.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return (): void => {
+      clearTimeout(timer);
+    };
+  }, [search]);
 
-  const unassignedCount = useMemo(
-    () => people?.filter((p) => p.active && !p.teamId).length ?? 0,
-    [people],
-  );
-  const inactiveCount = useMemo(() => people?.filter((p) => !p.active).length ?? 0, [people]);
+  // Reset to first page when filters change.
+  useEffect(() => {
+    setPageIndex(0);
+    setPageTokens([""]);
+  }, [debouncedSearch, filter, pageSize, sorting]);
 
-  if (isLoading) {
+  const sortField = sorting[0]?.id;
+  const sortDesc = sorting[0]?.desc ?? false;
+
+  const { data, isLoading, isError, error } = usePaginatedPeople({
+    search: debouncedSearch || undefined,
+    filter: filter === "all" ? undefined : filter,
+    pageSize,
+    pageToken: pageTokens[pageIndex] ?? "",
+    sortField,
+    sortDesc,
+  });
+
+  const people = data?.people ?? [];
+  const totalCount = data?.pagination?.totalCount ?? 0;
+  const nextPageToken = data?.pagination?.nextPageToken ?? "";
+
+  const handleNextPage = useCallback(() => {
+    if (!nextPageToken) return;
+    setPageTokens((prev) => {
+      const next = [...prev];
+      next[pageIndex + 1] = nextPageToken;
+      return next;
+    });
+    setPageIndex((i) => i + 1);
+  }, [nextPageToken, pageIndex]);
+
+  const handlePrevPage = useCallback(() => {
+    setPageIndex((i) => Math.max(0, i - 1));
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+  }, []);
+
+  if (isLoading && people.length === 0) {
     return (
       <div className="space-y-3 pt-4">
         <Skeleton className="h-10 w-full" />
@@ -113,63 +162,42 @@ export const PeopleTab = (): React.ReactElement => {
             size="sm"
             onClick={() => setFilter("all")}
           >
-            All ({people?.length ?? 0})
+            All
           </Button>
           <Button
             variant={filter === "unassigned" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("unassigned")}
           >
-            Unassigned ({unassignedCount})
+            Unassigned
           </Button>
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("inactive")}
           >
-            Inactive ({inactiveCount})
+            Inactive
           </Button>
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Team</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={2} className="text-center text-muted-foreground">
-                {search ? "No people match your search." : "No people found."}
-              </TableCell>
-            </TableRow>
-          )}
-          {filtered.map((person) => (
-            <TableRow
-              key={person.id}
-              className="cursor-pointer"
-              onClick={() => setSelectedPerson(person)}
-            >
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{person.name}</span>
-                  {!person.active && <Badge variant="destructive">Inactive</Badge>}
-                </div>
-              </TableCell>
-              <TableCell>
-                {person.teamName ? (
-                  <Badge variant="secondary">{person.teamName}</Badge>
-                ) : (
-                  <span className="text-muted-foreground">&mdash;</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={columns}
+        data={people}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        onRowClick={setSelectedPerson}
+      />
+
+      <DataTablePagination
+        totalCount={totalCount}
+        pageSize={pageSize}
+        pageIndex={pageIndex}
+        hasNextPage={!!nextPageToken}
+        onPageSizeChange={handlePageSizeChange}
+        onPreviousPage={handlePrevPage}
+        onNextPage={handleNextPage}
+      />
 
       {selectedPerson && (
         <PersonDetailDialog
@@ -217,7 +245,6 @@ const PersonDetailDialog = ({
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
 
-    // Update person fields if changed.
     const nameChanged = name !== person.name;
     const emailChanged = email !== (person.email ?? "");
     const levelChanged = level !== (person.level ?? "");
@@ -230,7 +257,6 @@ const PersonDetailDialog = ({
       });
     }
 
-    // Update team assignment if changed.
     const teamChanged = teamId !== (person.teamId ?? "");
     if (teamChanged) {
       if (person.teamId) {

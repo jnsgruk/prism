@@ -112,12 +112,34 @@ message DeleteTeamRequest {
 
 message DeleteTeamResponse {}
 
+message PaginationRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message PaginationResponse {
+  string next_page_token = 1;
+  int32 total_count = 2;
+}
+
+message SortOrder {
+  string field = 1;
+  bool descending = 2;
+}
+
 message ListPeopleRequest {
   optional bool active_only = 1;
+  optional string search = 2;
+  optional string team_id = 3;
+  // Filter preset: "unassigned" or "inactive".
+  optional string filter = 4;
+  PaginationRequest pagination = 10;
+  SortOrder sort = 11;
 }
 
 message ListPeopleResponse {
   repeated Person people = 1;
+  PaginationResponse pagination = 2;
 }
 
 message ImportDirectoryRequest {
