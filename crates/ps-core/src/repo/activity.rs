@@ -454,12 +454,10 @@ impl ActivityRepo {
             .map_err(|e| Error::Database(e.to_string()))?;
 
         // Bulk DELETEs — parameterless, table names are hardcoded constants.
-        for table in &["metrics.team_snapshots", "metrics.individual_snapshots"] {
-            sqlx::query(&format!("DELETE FROM {table}"))
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| Error::Database(e.to_string()))?;
-        }
+        sqlx::query("DELETE FROM metrics.team_snapshots")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
 
         let contribs = sqlx::query("DELETE FROM activity.contributions")
             .execute(&mut *tx)
@@ -468,7 +466,7 @@ impl ActivityRepo {
 
         for table in &[
             "activity.ingestion_runs",
-            "activity.watermarks",
+            "activity.ingestion_watermarks",
             "activity.etag_cache",
         ] {
             sqlx::query(&format!("DELETE FROM {table}"))
