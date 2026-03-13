@@ -5,6 +5,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
 
 pub struct GithubIngestionHandlerImpl {
@@ -305,6 +306,14 @@ impl GithubIngestionHandlerImpl {
         // Step 7: Complete run
         self.complete_run(ctx, run_id, source_name, total_items)
             .await;
+
+        // Step 8: Trigger metrics recomputation (fire-and-forget)
+        if total_items > 0 {
+            info!(source = source_name, "triggering metrics recomputation");
+            ctx.service_client::<MetricsComputeHandlerClient>()
+                .compute_current_periods()
+                .send();
+        }
 
         info!(source = source_name, total_items, "ingestion complete");
         Ok(())

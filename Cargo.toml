@@ -3,7 +3,7 @@ members = [
     "crates/ps-core",
     "crates/ps-proto",
     "crates/ps-server",
-    "crates/ps-ingestion",
+    "crates/ps-workers",
     "crates/ps-metrics",
     "crates/ps-migrate",
     "crates/psctl",

@@ -132,7 +132,7 @@ prism/
 │   ├── ps-core/          # Domain types, traits, shared logic
 │   │   └── src/
 │   │       └── auth/     # Password hashing, token generation, session management
-│   ├── ps-ingestion/     # Ingestion service binary + source modules
+│   ├── ps-workers/       # Restate worker binary — ingestion, team sync, metrics compute
 │   │   ├── src/
 │   │   │   ├── sources/
 │   │   │   │   ├── github.rs

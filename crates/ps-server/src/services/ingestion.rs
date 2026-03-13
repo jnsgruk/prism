@@ -490,6 +490,13 @@ impl IngestionService for IngestionServiceImpl {
                 description: "Discovers GitHub teams, members, and repos for configured orgs"
                     .into(),
             },
+            HandlerInfo {
+                name: "MetricsComputeHandler".into(),
+                methods: vec!["compute_current_periods".into()],
+                description:
+                    "Recomputes metric snapshots for all teams across current week/month/quarter"
+                        .into(),
+            },
         ];
 
         Ok(Response::new(ListHandlersResponse { handlers }))
@@ -508,36 +515,47 @@ impl IngestionService for IngestionServiceImpl {
         if req.method.is_empty() {
             return Err(Status::invalid_argument("method is required"));
         }
-        if req.key.is_empty() {
-            return Err(Status::invalid_argument("key (source name) is required"));
-        }
-
         // Validate handler + method combination
-        let valid = matches!(
+        let is_service = matches!(
+            (req.handler_name.as_str(), req.method.as_str()),
+            ("MetricsComputeHandler", "compute_current_periods")
+        );
+        let is_object = matches!(
             (req.handler_name.as_str(), req.method.as_str()),
             ("GithubIngestionHandler", "run_ingestion" | "backfill")
                 | ("GithubTeamSyncHandler", "sync_teams")
         );
-        if !valid {
+        if !is_service && !is_object {
             return Err(Status::invalid_argument(format!(
                 "unknown handler/method: {}/{}",
                 req.handler_name, req.method,
             )));
         }
 
-        // Verify source exists and is enabled
-        self.repos
-            .config
-            .get_enabled_source_by_name(&req.key)
-            .await
-            .map_err(db_err)?
-            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+        // Object handlers require a key (source name); services do not
+        let url = if is_object {
+            if req.key.is_empty() {
+                return Err(Status::invalid_argument("key (source name) is required"));
+            }
+            // Verify source exists and is enabled
+            self.repos
+                .config
+                .get_enabled_source_by_name(&req.key)
+                .await
+                .map_err(db_err)?
+                .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
-        // Build Restate URL: /{handler}/{key}/{method}/send
-        let url = format!(
-            "{}/{}/{}/{}/send",
-            self.restate_url, req.handler_name, req.key, req.method,
-        );
+            format!(
+                "{}/{}/{}/{}/send",
+                self.restate_url, req.handler_name, req.key, req.method,
+            )
+        } else {
+            // Service handler: /{handler}/{method}/send
+            format!(
+                "{}/{}/{}/send",
+                self.restate_url, req.handler_name, req.method,
+            )
+        };
 
         let body = req.payload.as_deref().and_then(|p| {
             if p.is_empty() {

@@ -105,11 +105,11 @@
               }
             );
 
-            ps-ingestion = craneLib.buildPackage (
+            ps-workers = craneLib.buildPackage (
               commonArgs
               // {
                 inherit src cargoArtifacts;
-                cargoExtraArgs = "--bin ps-ingestion";
+                cargoExtraArgs = "--bin ps-workers";
               }
             );
 

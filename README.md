@@ -38,7 +38,7 @@ crates/
 ├── ps-core/          # Domain types, traits, error types, shared logic
 ├── ps-proto/         # Generated Rust code from proto definitions
 ├── ps-server/        # API server binary (tonic + tonic-web)
-├── ps-ingestion/     # Ingestion service binary + source modules
+├── ps-workers/       # Restate worker binary — ingestion, team sync, metrics compute
 ├── ps-metrics/       # Metric computation logic
 ├── ps-migrate/       # Migration binary for k8s init container
 └── psctl/            # Lightweight CLI client

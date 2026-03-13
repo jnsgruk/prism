@@ -6,8 +6,8 @@ use ps_proto::prism::v1::{
     CompareTeamsRequest, CompareTeamsResponse, GetTeamMetricsRequest, GetTeamMetricsResponse,
     ListPeriodsRequest, ListPeriodsResponse, Period, PeriodType, TeamMetrics,
 };
-use time::Date;
 use time::macros::format_description;
+use time::{Date, OffsetDateTime};
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
@@ -99,8 +99,12 @@ impl MetricsService for MetricsServiceImpl {
             .ok_or_else(|| Status::invalid_argument("period required"))?;
         let period_type_str = parse_period_type(period.r#type)?;
         let period_start = parse_date(&period.start)?;
+        let period_end = parse_date(&period.end)?;
+        let today = OffsetDateTime::now_utc().date();
+        let is_open = period_end >= today;
 
-        // Try to get existing snapshot
+        // For open periods, always recompute to pick up fresh data.
+        // For closed periods, use cached snapshot if available.
         let snapshot = self
             .repos
             .metrics
@@ -108,11 +112,9 @@ impl MetricsService for MetricsServiceImpl {
             .await
             .map_err(db_err)?;
 
-        let metrics = if let Some(s) = snapshot {
-            snapshot_to_proto(s)
-        } else {
-            // No snapshot exists — compute on the fly
-            let period_end = parse_date(&period.end)?;
+        let needs_compute = snapshot.is_none() || is_open;
+
+        let metrics = if needs_compute {
             if let Err(e) = ps_metrics::compute_team_snapshot(
                 &self.repos,
                 team_id,
@@ -125,7 +127,6 @@ impl MetricsService for MetricsServiceImpl {
                 tracing::warn!(%team_id, error = %e, "failed to compute snapshot on-the-fly");
             }
 
-            // Try again after computation
             let snapshot = self
                 .repos
                 .metrics
@@ -158,6 +159,10 @@ impl MetricsService for MetricsServiceImpl {
                     raw_metrics: HashMap::default(),
                 }
             }
+        } else if let Some(s) = snapshot {
+            snapshot_to_proto(s)
+        } else {
+            unreachable!("needs_compute is false only when snapshot is Some")
         };
 
         Ok(Response::new(GetTeamMetricsResponse {
@@ -185,15 +190,21 @@ impl MetricsService for MetricsServiceImpl {
         let period_type_str = parse_period_type(period.r#type)?;
         let period_start = parse_date(&period.start)?;
         let period_end = parse_date(&period.end)?;
+        let today = OffsetDateTime::now_utc().date();
+        let is_open = period_end >= today;
 
-        // Compute any missing snapshots on the fly
+        // For open periods, always recompute all teams.
+        // For closed periods, only compute missing snapshots.
         for &team_id in &team_ids {
-            let existing = self
-                .repos
-                .metrics
-                .get_team_snapshot(team_id, period_start, period_type_str)
-                .await
-                .map_err(db_err)?;
+            let existing = if is_open {
+                None
+            } else {
+                self.repos
+                    .metrics
+                    .get_team_snapshot(team_id, period_start, period_type_str)
+                    .await
+                    .map_err(db_err)?
+            };
 
             if existing.is_none() {
                 let _ = ps_metrics::compute_team_snapshot(

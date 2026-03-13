@@ -7,6 +7,6 @@ resources:
   - restate.yaml
   - ps-migrate.yaml
   - ps-server.yaml
-  - ps-ingestion.yaml
+  - ps-workers.yaml
   - ps-frontend.yaml
   - gateway.yaml

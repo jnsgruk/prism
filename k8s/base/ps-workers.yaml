@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ps-ingestion
+  name: ps-workers
 spec:
   selector:
-    app: ps-ingestion
+    app: ps-workers
   ports:
     - name: health
       port: 9080
@@ -16,20 +16,20 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ps-ingestion
+  name: ps-workers
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ps-ingestion
+      app: ps-workers
   template:
     metadata:
       labels:
-        app: ps-ingestion
+        app: ps-workers
     spec:
       containers:
-        - name: ps-ingestion
-          image: prism/ps-ingestion
+        - name: ps-workers
+          image: prism/ps-workers
           ports:
             - containerPort: 9080
             - containerPort: 9081
@@ -47,7 +47,7 @@ spec:
             - name: RESTATE_URL
               value: http://restate:8080
             - name: RUST_LOG
-              value: info,ps_ingestion=debug,ps_core=debug
+              value: info,ps_workers=debug,ps_core=debug
           resources:
             requests:
               memory: 128Mi

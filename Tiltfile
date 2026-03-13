@@ -38,7 +38,7 @@ _tomls = [
     "crates/ps-core/Cargo.toml",
     "crates/ps-proto/Cargo.toml",
     "crates/ps-server/Cargo.toml",
-    "crates/ps-ingestion/Cargo.toml",
+    "crates/ps-workers/Cargo.toml",
     "crates/ps-metrics/Cargo.toml",
     "crates/ps-migrate/Cargo.toml",
     "crates/psctl/Cargo.toml",
@@ -58,12 +58,12 @@ docker_build(
 )
 
 docker_build(
-    "prism/ps-ingestion",
+    "prism/ps-workers",
     ".",
     dockerfile="crates/Dockerfile",
-    target="ps-ingestion-dev",
-    build_args={"PROFILE": "debug", "BIN": "ps-ingestion"},
-    only=_meta + _tomls + _shared + ["crates/ps-ingestion"],
+    target="ps-workers-dev",
+    build_args={"PROFILE": "debug", "BIN": "ps-workers"},
+    only=_meta + _tomls + _shared + ["crates/ps-workers", "crates/ps-metrics"],
 )
 
 docker_build(
@@ -90,7 +90,7 @@ docker_build(
 # ---------------------------------------------------------------------------
 k8s_resource("ps-migrate", resource_deps=["postgres"], labels=["prism"])
 k8s_resource("ps-server", resource_deps=["ps-migrate"], port_forwards=["8080:8080"],labels=["prism"],)
-k8s_resource("ps-ingestion", resource_deps=["ps-migrate"], port_forwards=["9080:9080"],labels=["prism"],)
+k8s_resource("ps-workers", resource_deps=["ps-migrate"], port_forwards=["9080:9080"],labels=["prism"],)
 k8s_resource("ps-frontend", resource_deps=["ps-server"], port_forwards=["3000:3000"], labels=["prism"])
 
 k8s_resource(workload="envoy-gateway", labels=["gateway"])

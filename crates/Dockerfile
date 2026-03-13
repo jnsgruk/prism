@@ -6,7 +6,7 @@
 #
 # Build args:
 #   PROFILE  — "debug" (Tilt) or "release" (CI/prod, default)
-#   BIN      — binary to build: ps-server, ps-ingestion, or ps-migrate
+#   BIN      — binary to build: ps-server, ps-workers, or ps-migrate
 #
 # Dev targets (Tilt):
 #   docker build -f crates/Dockerfile --target ps-server-dev --build-arg PROFILE=debug --build-arg BIN=ps-server .
@@ -66,10 +66,10 @@ COPY --from=builder /out/ps-server /usr/local/bin/ps-server
 USER prism
 ENTRYPOINT ["ps-server"]
 
-FROM dev-runtime AS ps-ingestion-dev
-COPY --from=builder /out/ps-ingestion /usr/local/bin/ps-ingestion
+FROM dev-runtime AS ps-workers-dev
+COPY --from=builder /out/ps-workers /usr/local/bin/ps-workers
 USER prism
-ENTRYPOINT ["ps-ingestion"]
+ENTRYPOINT ["ps-workers"]
 
 FROM dev-runtime AS ps-migrate-dev
 COPY --from=builder /out/ps-migrate /usr/local/bin/ps-migrate
@@ -100,11 +100,11 @@ COPY --from=builder /out/ps-server /usr/local/bin/ps-server
 USER 65534:65534
 ENTRYPOINT ["ps-server"]
 
-FROM scratch AS ps-ingestion
+FROM scratch AS ps-workers
 COPY --from=chisel /rootfs /
-COPY --from=builder /out/ps-ingestion /usr/local/bin/ps-ingestion
+COPY --from=builder /out/ps-workers /usr/local/bin/ps-workers
 USER 65534:65534
-ENTRYPOINT ["ps-ingestion"]
+ENTRYPOINT ["ps-workers"]
 
 FROM scratch AS ps-migrate
 COPY --from=chisel /rootfs /

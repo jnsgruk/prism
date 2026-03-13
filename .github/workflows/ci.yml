@@ -128,7 +128,7 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
       - name: Build all packages
-        run: nix build .#ps-server .#ps-ingestion .#ps-migrate .#psctl
+        run: nix build .#ps-server .#ps-workers .#ps-migrate .#psctl
 
       - name: Check flake
         run: nix flake check

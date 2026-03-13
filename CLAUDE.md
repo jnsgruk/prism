@@ -75,13 +75,13 @@ crates/
 │       └── backup.rs # Export/import logic
 ├── ps-proto/         # Generated Rust code from proto definitions (pedantic lints disabled)
 ├── ps-server/        # API server binary (tonic + tonic-web), services, auth interceptor
-├── ps-ingestion/     # Ingestion service binary + source modules
+├── ps-workers/       # Restate worker binary — ingestion, team sync, metrics compute handlers
 ├── ps-metrics/       # Metric computation logic (DORA, flow, etc.)
 ├── ps-migrate/       # Migration binary for k8s init container
 └── psctl/            # Lightweight CLI client (depends only on ps-proto)
 ```
 
-**Dependency flow:** `psctl → ps-proto` | `ps-server → ps-core, ps-proto, ps-metrics` | `ps-ingestion → ps-core, ps-proto` | `ps-metrics → ps-core`
+**Dependency flow:** `psctl → ps-proto` | `ps-server → ps-core, ps-proto, ps-metrics` | `ps-workers → ps-core, ps-proto, ps-metrics` | `ps-metrics → ps-core`
 
 ### Repository Layer (`ps-core/src/repo/`)
 

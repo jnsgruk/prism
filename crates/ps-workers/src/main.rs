@@ -1,8 +1,7 @@
-use ps_ingestion::handlers::SharedState;
-use ps_ingestion::handlers::github_ingestion::{
-    GithubIngestionHandler, GithubIngestionHandlerImpl,
-};
-use ps_ingestion::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
+use ps_workers::handlers::SharedState;
+use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
+use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
+use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -43,6 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let team_sync = GithubTeamSyncHandlerImpl {
         state: state.clone(),
     };
+    let metrics_compute = MetricsComputeHandlerImpl {
+        repos: state.repos.clone(),
+    };
 
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
@@ -74,6 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Endpoint::builder()
                 .bind(ingestion.serve())
                 .bind(team_sync.serve())
+                .bind(metrics_compute.serve())
                 .build(),
         )
         .listen_and_serve(restate_addr)
@@ -84,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
     let self_url = std::env::var("RESTATE_SELF_URL")
-        .unwrap_or_else(|_| format!("http://ps-ingestion:{restate_port}"));
+        .unwrap_or_else(|_| format!("http://ps-workers:{restate_port}"));
 
     tokio::spawn(async move {
         register_with_restate(&restate_admin_url, &self_url).await;
