@@ -123,8 +123,6 @@ impl IngestionService for IngestionServiceImpl {
 
         self.http_client
             .post(&url)
-            .header("Content-Type", "application/json")
-            .body("{}")
             .send()
             .await
             .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
