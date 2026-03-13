@@ -3,12 +3,14 @@ use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
 use ps_proto::prism::v1::ingestion_service_server::IngestionServiceServer;
+use ps_proto::prism::v1::metrics_service_server::MetricsServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_server::interceptor::AuthLayer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use ps_server::services::config::ConfigServiceImpl;
 use ps_server::services::ingestion::IngestionServiceImpl;
+use ps_server::services::metrics::MetricsServiceImpl;
 use ps_server::services::org::OrgServiceImpl;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -47,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
+    let metrics_service = MetricsServiceImpl::new(repos.clone());
     let ingestion_service =
         IngestionServiceImpl::new(repos.clone(), restate_url, restate_admin_url);
 
@@ -66,6 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(AdminServiceServer::new(admin_service))
         .add_service(OrgServiceServer::new(org_service))
         .add_service(ConfigServiceServer::new(config_service))
+        .add_service(MetricsServiceServer::new(metrics_service))
         .add_service(IngestionServiceServer::new(ingestion_service))
         .serve(addr)
         .await?;

@@ -2255,9 +2255,11 @@ name = "ps-metrics"
 version = "0.1.0"
 dependencies = [
  "ps-core",
+ "serde_json",
  "sqlx",
  "time",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

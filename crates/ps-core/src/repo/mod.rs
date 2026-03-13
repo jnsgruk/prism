@@ -1,11 +1,13 @@
 pub mod activity;
 pub mod auth;
 pub mod config;
+pub mod metrics;
 pub mod org;
 
 pub use activity::ActivityRepo;
 pub use auth::AuthRepo;
 pub use config::ConfigRepo;
+pub use metrics::MetricsRepo;
 pub use org::OrgRepo;
 
 use sqlx::PgPool;
@@ -19,6 +21,7 @@ pub struct Repos {
     pub config: ConfigRepo,
     pub org: OrgRepo,
     pub activity: ActivityRepo,
+    pub metrics: MetricsRepo,
 }
 
 impl Repos {
@@ -27,7 +30,8 @@ impl Repos {
             auth: AuthRepo::new(pool.clone()),
             config: ConfigRepo::new(pool.clone()),
             org: OrgRepo::new(pool.clone()),
-            activity: ActivityRepo::new(pool),
+            activity: ActivityRepo::new(pool.clone()),
+            metrics: MetricsRepo::new(pool),
         }
     }
 }
