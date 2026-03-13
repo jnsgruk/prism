@@ -1,0 +1,137 @@
+use crate::Error;
+use crate::models::{RateLimitInfo, SourceConfig};
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use time::OffsetDateTime;
+
+/// Shared context provided to every source adapter during ingestion.
+pub struct IngestionContext {
+    pub pool: PgPool,
+    pub source_config: SourceConfig,
+    pub secret_key: [u8; 32],
+    pub http_client: reqwest::Client,
+}
+
+/// A single contribution to upsert into `activity.contributions`.
+///
+/// The `platform_username` field is used for identity resolution:
+/// we look up `org.platform_identities` to find the corresponding `person_id`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContributionInput {
+    pub platform: String,
+    pub contribution_type: String,
+    pub platform_id: String,
+    pub platform_username: String,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub state: Option<String>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: Option<OffsetDateTime>,
+    pub closed_at: Option<OffsetDateTime>,
+    pub metrics: serde_json::Value,
+    pub metadata: serde_json::Value,
+    pub content: Option<String>,
+    pub state_history: Option<serde_json::Value>,
+}
+
+/// The plan produced by a source adapter at the start of an ingestion run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IngestionPlan {
+    pub source_name: String,
+    pub watermark: Option<String>,
+    pub repos: Vec<RepoTarget>,
+}
+
+/// A GitHub org/repo pair to fetch data from.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoTarget {
+    pub owner: String,
+    pub repo: String,
+}
+
+/// Result of fetching a single batch of data from an external API.
+#[derive(Debug, Clone)]
+pub struct FetchResult {
+    pub items: Vec<ContributionInput>,
+    /// Opaque cursor for the next batch. `None` means no more data.
+    pub next_cursor: Option<String>,
+    pub rate_limit: Option<RateLimitInfo>,
+    pub etag: Option<String>,
+}
+
+/// Orchestrator-agnostic interface for data sources.
+///
+/// Each method maps to a discrete retriable step in the Restate handler.
+/// Business logic is kept here; the orchestrator controls retry policy,
+/// timeouts, and checkpointing.
+#[async_trait]
+pub trait Source: Send + Sync {
+    /// Human-readable name for logging and UI display.
+    fn name(&self) -> &str;
+
+    /// Determine what work needs to be done based on configuration and the
+    /// current watermark.
+    async fn plan(&self, ctx: &IngestionContext) -> Result<IngestionPlan, Error>;
+
+    /// Fetch a single batch of data from the external API.
+    ///
+    /// `cursor` is an opaque string that the source interprets (e.g. serialised
+    /// JSON with repo index + page number). On the first call, pass the initial
+    /// cursor from the plan.
+    async fn fetch_batch(&self, ctx: &IngestionContext, cursor: &str)
+    -> Result<FetchResult, Error>;
+
+    /// Persist a batch of fetched items to the database, resolving platform
+    /// identities to `person_id` values.
+    async fn store_batch(
+        &self,
+        ctx: &IngestionContext,
+        items: &[ContributionInput],
+    ) -> Result<usize, Error>;
+
+    /// Update the watermark after a successful store, recording the new
+    /// high-water mark and item count.
+    async fn advance_watermark(
+        &self,
+        ctx: &IngestionContext,
+        new_watermark: &str,
+        items_collected: i32,
+    ) -> Result<(), Error>;
+
+    /// Return an initial cursor string for the given plan.
+    ///
+    /// The default implementation returns a JSON cursor starting at
+    /// repo index 0, page 1, with the plan's watermark.
+    fn initial_cursor(&self, plan: &IngestionPlan) -> String {
+        serde_json::json!({
+            "repo_index": 0,
+            "page": 1,
+            "watermark": plan.watermark,
+        })
+        .to_string()
+    }
+
+    /// Report current rate limit status. Returns `None` if not tracked.
+    fn rate_limit_status(&self) -> Option<RateLimitInfo> {
+        None
+    }
+}
+
+/// Unique identifier for a contribution: `(platform, platform_id)`.
+///
+/// Used for identity resolution caching within a batch.
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct ContributionKey {
+    pub platform: String,
+    pub platform_id: String,
+}
+
+impl ContributionInput {
+    pub fn key(&self) -> ContributionKey {
+        ContributionKey {
+            platform: self.platform.clone(),
+            platform_id: self.platform_id.clone(),
+        }
+    }
+}

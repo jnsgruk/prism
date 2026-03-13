@@ -102,5 +102,8 @@ uuid = { version = "1", features = ["v7", "serde"] }
 # CLI
 clap = { version = "4", features = ["derive"] }
 
+# Async trait (needed for dyn Source dispatch)
+async-trait = "0.1"
+
 # Testing
 wiremock = "0.6"
