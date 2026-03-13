@@ -421,22 +421,14 @@ fn build_client(ctx: &IngestionContext, token: &str) -> GitHubClient {
 
 /// Decrypt the GitHub API token from the source's encrypted secrets.
 async fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
-    let row = sqlx::query_scalar!(
-        r#"
-        SELECT encrypted_value
-        FROM config.secrets
-        WHERE source_id = $1
-          AND secret_key = 'api_token'
-        "#,
-        ctx.source_config.id,
-    )
-    .fetch_optional(ctx.repos.config.pool())
-    .await
-    .map_err(|e| ps_core::Error::Database(e.to_string()))?;
-
-    let encrypted = row.ok_or_else(|| {
-        ps_core::Error::Validation("GitHub source has no api_token configured".into())
-    })?;
+    let encrypted = ctx
+        .repos
+        .config
+        .get_encrypted_secret(ctx.source_config.id, "api_token")
+        .await?
+        .ok_or_else(|| {
+            ps_core::Error::Validation("GitHub source has no api_token configured".into())
+        })?;
 
     let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &encrypted)
         .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;

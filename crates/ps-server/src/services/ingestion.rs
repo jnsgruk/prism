@@ -107,15 +107,13 @@ impl IngestionService for IngestionServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
-        // Verify source exists and is enabled (config schema — will move to ConfigRepo in T3)
-        sqlx::query_scalar!(
-            "SELECT id FROM config.source_configs WHERE name = $1 AND enabled = true",
-            req.source_name,
-        )
-        .fetch_optional(self.repos.config.pool())
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+        // Verify source exists and is enabled
+        self.repos
+            .config
+            .get_enabled_source_by_name(&req.source_name)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
         // Fire-and-forget send to Restate ingress
         let url = format!(
@@ -150,15 +148,13 @@ impl IngestionService for IngestionServiceImpl {
             return Err(Status::invalid_argument("since_date is required"));
         }
 
-        // Verify source exists and is enabled (config schema — will move to ConfigRepo in T3)
-        sqlx::query_scalar!(
-            "SELECT id FROM config.source_configs WHERE name = $1 AND enabled = true",
-            req.source_name,
-        )
-        .fetch_optional(self.repos.config.pool())
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+        // Verify source exists and is enabled
+        self.repos
+            .config
+            .get_enabled_source_by_name(&req.source_name)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
         // Fire-and-forget send to Restate ingress
         let url = format!(

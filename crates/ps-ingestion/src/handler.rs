@@ -52,30 +52,22 @@ impl IngestionHandlerImpl {
         source_name: &str,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        // Step 1: Load source config from DB (config schema — will move to ConfigRepo in T3)
-        let pool = self.repos.config.pool().clone();
+        // Step 1: Load source config from DB
+        let repos = self.repos.clone();
         let name = source_name.to_string();
         let config: SourceConfig = ctx
             .run(|| {
-                let pool = pool.clone();
+                let repos = repos.clone();
                 let name = name.clone();
                 async move {
-                    let row = sqlx::query_as!(
-                        SourceConfig,
-                        r#"
-                        SELECT id, source_type, name, enabled, settings,
-                               schedule_cron, created_at, updated_at
-                        FROM config.source_configs
-                        WHERE name = $1 AND enabled = true
-                        "#,
-                        name,
-                    )
-                    .fetch_optional(&pool)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?
-                    .ok_or_else(|| {
-                        TerminalError::new(format!("source '{name}' not found or disabled"))
-                    })?;
+                    let row = repos
+                        .config
+                        .get_enabled_source_by_name(&name)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?
+                        .ok_or_else(|| {
+                            TerminalError::new(format!("source '{name}' not found or disabled"))
+                        })?;
 
                     Ok(Json::from(row))
                 }

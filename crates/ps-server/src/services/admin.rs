@@ -3,13 +3,13 @@ use std::pin::Pin;
 
 use ps_core::auth::{generate_token, hash_token};
 use ps_core::backup::{BackupManifest, BackupWriter};
+use ps_core::repo::Repos;
 use ps_proto::prism::v1::admin_service_server::AdminService;
 use ps_proto::prism::v1::{
     ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, CreateBackupRequest,
     CreateBackupResponse, ListApiTokensRequest, ListApiTokensResponse, RevokeApiTokenRequest,
     RevokeApiTokenResponse,
 };
-use sqlx::PgPool;
 use time::OffsetDateTime;
 use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
@@ -19,12 +19,12 @@ use uuid::Uuid;
 use super::common::{backup_err, db_err, require_auth, to_timestamp};
 
 pub struct AdminServiceImpl {
-    pool: PgPool,
+    repos: Repos,
 }
 
 impl AdminServiceImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(repos: Repos) -> Self {
+        Self { repos }
     }
 }
 
@@ -39,41 +39,41 @@ impl AdminService for AdminServiceImpl {
     ) -> Result<Response<Self::CreateBackupStream>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let pool = self.pool.clone();
+        let repos = self.repos.clone();
 
         let stream = async_stream::try_stream! {
             let mut buf = Vec::new();
 
             // Gather table counts and write backup
-            let source_count = sqlx::query_scalar!("SELECT COUNT(*) FROM config.source_configs")
-                .fetch_one(&pool)
-                .await
-                .map_err(db_err)?
-                .unwrap_or(0);
+            let source_count = repos.config.count_sources().await.map_err(db_err)?;
 
+            // org and auth counts — will move to OrgRepo/AuthRepo in T4/T5
             let people_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.people")
-                .fetch_one(&pool)
+                .fetch_one(repos.org.pool())
                 .await
                 .map_err(db_err)?
                 .unwrap_or(0);
 
             let team_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.teams")
-                .fetch_one(&pool)
+                .fetch_one(repos.org.pool())
                 .await
                 .map_err(db_err)?
                 .unwrap_or(0);
 
             let user_count = sqlx::query_scalar!("SELECT COUNT(*) FROM auth.users")
-                .fetch_one(&pool)
+                .fetch_one(repos.auth.pool())
                 .await
                 .map_err(db_err)?
                 .unwrap_or(0);
 
             let mut table_counts = HashMap::new();
-            table_counts.insert("source_configs".into(), source_count as i32);
-            table_counts.insert("people".into(), people_count as i32);
-            table_counts.insert("teams".into(), team_count as i32);
-            table_counts.insert("users".into(), user_count as i32);
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                table_counts.insert("source_configs".into(), source_count as i32);
+                table_counts.insert("people".into(), people_count as i32);
+                table_counts.insert("teams".into(), team_count as i32);
+                table_counts.insert("users".into(), user_count as i32);
+            }
 
             let manifest = BackupManifest {
                 schema_version: 5,
@@ -87,37 +87,16 @@ impl AdminService for AdminServiceImpl {
                 .map_err(backup_err)?;
 
             // Export source configs
-            let sources = sqlx::query!(
-                "SELECT id, source_type, name, enabled, settings, schedule_cron, created_at, updated_at FROM config.source_configs"
-            )
-            .fetch_all(&pool)
-            .await
-            .map_err(db_err)?;
-
-            let source_rows: Vec<serde_json::Value> = sources
-                .iter()
-                .map(|s| {
-                    serde_json::json!({
-                        "id": s.id,
-                        "source_type": s.source_type,
-                        "name": s.name,
-                        "enabled": s.enabled,
-                        "settings": s.settings,
-                        "schedule_cron": s.schedule_cron,
-                        "created_at": s.created_at.to_string(),
-                        "updated_at": s.updated_at.to_string(),
-                    })
-                })
-                .collect();
+            let source_rows = repos.config.export_sources().await.map_err(db_err)?;
 
             writer.write_table("source_configs", &source_rows)
                 .map_err(backup_err)?;
 
-            // Export people
+            // Export people (will move to OrgRepo in T4)
             let people = sqlx::query!(
                 "SELECT id, name, email, level, directory_id, created_at, updated_at FROM org.people"
             )
-            .fetch_all(&pool)
+            .fetch_all(repos.org.pool())
             .await
             .map_err(db_err)?;
 
@@ -139,11 +118,11 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("people", &people_rows)
                 .map_err(backup_err)?;
 
-            // Export teams
+            // Export teams (will move to OrgRepo in T4)
             let teams = sqlx::query!(
                 "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug, created_at FROM org.teams"
             )
-            .fetch_all(&pool)
+            .fetch_all(repos.org.pool())
             .await
             .map_err(db_err)?;
 
@@ -165,11 +144,11 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("teams", &team_rows)
                 .map_err(backup_err)?;
 
-            // Export users (without password hashes for security)
+            // Export users (without password hashes for security; will move to AuthRepo in T5)
             let users = sqlx::query!(
                 "SELECT id, username, display_name, role, is_active, person_id, created_at, updated_at FROM auth.users"
             )
-            .fetch_all(&pool)
+            .fetch_all(repos.auth.pool())
             .await
             .map_err(db_err)?;
 
@@ -224,7 +203,7 @@ impl AdminService for AdminServiceImpl {
         let token_hash = hash_token(&raw_token);
         let token_id = Uuid::now_v7();
 
-        // Use the authenticated user's ID
+        // Use the authenticated user's ID (will move to AuthRepo in T5)
         let user_id = _ctx.user_id;
 
         sqlx::query!(
@@ -237,7 +216,7 @@ impl AdminService for AdminServiceImpl {
             token_hash,
             req.name,
         )
-        .execute(&self.pool)
+        .execute(self.repos.auth.pool())
         .await
         .map_err(|e| Status::internal(format!("failed to create token: {e}")))?;
 
@@ -265,7 +244,7 @@ impl AdminService for AdminServiceImpl {
             "#,
             ctx.user_id,
         )
-        .fetch_all(&self.pool)
+        .fetch_all(self.repos.auth.pool())
         .await
         .map_err(db_err)?;
 
@@ -304,7 +283,7 @@ impl AdminService for AdminServiceImpl {
             token_id,
             ctx.user_id,
         )
-        .execute(&self.pool)
+        .execute(self.repos.auth.pool())
         .await
         .map_err(db_err)?;
 

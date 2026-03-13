@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use ps_core::crypto;
+use ps_core::repo::Repos;
 use ps_proto::prism::v1::config_service_server::ConfigService;
 use ps_proto::prism::v1::{
     CreateSourceRequest, CreateSourceResponse, DeleteSourceRequest, DeleteSourceResponse,
@@ -8,7 +9,6 @@ use ps_proto::prism::v1::{
     SetSecretResponse, SourceConfig, TestConnectionRequest, TestConnectionResponse,
     UpdateSourceRequest, UpdateSourceResponse,
 };
-use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
@@ -16,41 +16,33 @@ use uuid::Uuid;
 use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct ConfigServiceImpl {
-    pool: PgPool,
+    repos: Repos,
     secret_key: [u8; 32],
 }
 
 impl ConfigServiceImpl {
-    pub fn new(pool: PgPool, secret_key: [u8; 32]) -> Self {
-        Self { pool, secret_key }
+    pub fn new(repos: Repos, secret_key: [u8; 32]) -> Self {
+        Self { repos, secret_key }
     }
 }
 
 /// Build a `SourceConfig` proto from a DB row + secret status map.
-#[allow(clippy::too_many_arguments)]
 fn build_source_proto(
-    id: Uuid,
-    source_type: String,
-    name: String,
-    enabled: bool,
-    settings: serde_json::Value,
-    schedule_cron: Option<String>,
-    created_at: time::OffsetDateTime,
-    updated_at: time::OffsetDateTime,
+    source: &ps_core::models::SourceConfig,
     secret_status: HashMap<String, bool>,
 ) -> SourceConfig {
-    let settings_struct = serde_json_to_prost_struct(&settings);
+    let settings_struct = serde_json_to_prost_struct(&source.settings);
 
     SourceConfig {
-        id: id.to_string(),
-        source_type,
-        name,
-        enabled,
+        id: source.id.to_string(),
+        source_type: source.source_type.clone(),
+        name: source.name.clone(),
+        enabled: source.enabled,
         settings: Some(settings_struct),
         secret_status,
-        schedule_cron,
-        created_at: Some(to_timestamp(created_at)),
-        updated_at: Some(to_timestamp(updated_at)),
+        schedule_cron: source.schedule_cron.clone(),
+        created_at: Some(to_timestamp(source.created_at)),
+        updated_at: Some(to_timestamp(source.updated_at)),
     }
 }
 
@@ -119,18 +111,15 @@ fn prost_value_to_serde_json(v: &prost_types::Value) -> serde_json::Value {
 }
 
 async fn fetch_secret_status(
-    pool: &PgPool,
+    repos: &Repos,
     source_id: Uuid,
 ) -> Result<HashMap<String, bool>, Status> {
-    let secrets = sqlx::query!(
-        "SELECT secret_key FROM config.secrets WHERE source_id = $1",
-        source_id,
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(db_err)?;
-
-    Ok(secrets.into_iter().map(|s| (s.secret_key, true)).collect())
+    let keys = repos
+        .config
+        .list_secret_keys(source_id)
+        .await
+        .map_err(db_err)?;
+    Ok(keys.into_iter().map(|k| (k, true)).collect())
 }
 
 #[tonic::async_trait]
@@ -141,32 +130,12 @@ impl ConfigService for ConfigServiceImpl {
     ) -> Result<Response<ListSourcesResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let sources = sqlx::query!(
-            r#"
-            SELECT id, source_type, name, enabled, settings, schedule_cron,
-                   created_at, updated_at
-            FROM config.source_configs
-            ORDER BY name
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let sources = self.repos.config.list_sources().await.map_err(db_err)?;
 
         let mut result = Vec::with_capacity(sources.len());
-        for s in sources {
-            let secret_status = fetch_secret_status(&self.pool, s.id).await?;
-            result.push(build_source_proto(
-                s.id,
-                s.source_type,
-                s.name,
-                s.enabled,
-                s.settings,
-                s.schedule_cron,
-                s.created_at,
-                s.updated_at,
-                secret_status,
-            ));
+        for s in &sources {
+            let secret_status = fetch_secret_status(&self.repos, s.id).await?;
+            result.push(build_source_proto(s, secret_status));
         }
 
         Ok(Response::new(ListSourcesResponse { sources: result }))
@@ -184,34 +153,18 @@ impl ConfigService for ConfigServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid source_id"))?;
 
-        let s = sqlx::query!(
-            r#"
-            SELECT id, source_type, name, enabled, settings, schedule_cron,
-                   created_at, updated_at
-            FROM config.source_configs
-            WHERE id = $1
-            "#,
-            source_id,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found"))?;
+        let s = self
+            .repos
+            .config
+            .get_source(source_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found"))?;
 
-        let secret_status = fetch_secret_status(&self.pool, s.id).await?;
+        let secret_status = fetch_secret_status(&self.repos, s.id).await?;
 
         Ok(Response::new(GetSourceResponse {
-            source: Some(build_source_proto(
-                s.id,
-                s.source_type,
-                s.name,
-                s.enabled,
-                s.settings,
-                s.schedule_cron,
-                s.created_at,
-                s.updated_at,
-                secret_status,
-            )),
+            source: Some(build_source_proto(&s, secret_status)),
         }))
     }
 
@@ -236,42 +189,26 @@ impl ConfigService for ConfigServiceImpl {
 
         let source_id = Uuid::now_v7();
 
-        let s = sqlx::query!(
-            r#"
-            INSERT INTO config.source_configs (id, source_type, name, settings, schedule_cron)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, source_type, name, enabled, settings, schedule_cron, created_at, updated_at
-            "#,
-            source_id,
-            req.source_type,
-            req.name,
-            settings,
-            req.schedule_cron,
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| {
-            if e.to_string().contains("duplicate key") {
-                Status::already_exists(format!("source '{}' already exists", req.name))
-            } else {
-                Status::internal(format!("database error: {e}"))
-            }
-        })?;
+        let s = self
+            .repos
+            .config
+            .create_source(
+                source_id,
+                &req.source_type,
+                &req.name,
+                &settings,
+                req.schedule_cron.as_deref(),
+            )
+            .await
+            .map_err(|e| match e {
+                ps_core::Error::Conflict(msg) => Status::already_exists(msg),
+                other => db_err(other),
+            })?;
 
         info!(source_id = %source_id, name = %req.name, source_type = %req.source_type, "source created");
 
         Ok(Response::new(CreateSourceResponse {
-            source: Some(build_source_proto(
-                s.id,
-                s.source_type,
-                s.name,
-                s.enabled,
-                s.settings,
-                s.schedule_cron,
-                s.created_at,
-                s.updated_at,
-                HashMap::new(),
-            )),
+            source: Some(build_source_proto(&s, HashMap::new())),
         }))
     }
 
@@ -287,81 +224,58 @@ impl ConfigService for ConfigServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid source_id"))?;
 
-        // Fetch current state
-        let current = sqlx::query!(
-            "SELECT id FROM config.source_configs WHERE id = $1",
-            source_id,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found"))?;
+        // Verify source exists
+        if !self
+            .repos
+            .config
+            .source_exists(source_id)
+            .await
+            .map_err(db_err)?
+        {
+            return Err(Status::not_found("source not found"));
+        }
 
         // Apply partial updates
         if let Some(enabled) = req.enabled {
-            sqlx::query!(
-                "UPDATE config.source_configs SET enabled = $1, updated_at = now() WHERE id = $2",
-                enabled,
-                current.id,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
+            self.repos
+                .config
+                .update_source_enabled(source_id, enabled)
+                .await
+                .map_err(db_err)?;
         }
 
         if let Some(settings) = &req.settings {
             let settings_json = prost_struct_to_serde_json(settings);
-            sqlx::query!(
-                "UPDATE config.source_configs SET settings = $1, updated_at = now() WHERE id = $2",
-                settings_json,
-                current.id,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
+            self.repos
+                .config
+                .update_source_settings(source_id, &settings_json)
+                .await
+                .map_err(db_err)?;
         }
 
         if let Some(cron) = &req.schedule_cron {
-            sqlx::query!(
-                "UPDATE config.source_configs SET schedule_cron = $1, updated_at = now() WHERE id = $2",
-                cron,
-                current.id,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
+            self.repos
+                .config
+                .update_source_schedule(source_id, cron)
+                .await
+                .map_err(db_err)?;
         }
 
         // Re-fetch the updated source
-        let s = sqlx::query!(
-            r#"
-            SELECT id, source_type, name, enabled, settings, schedule_cron,
-                   created_at, updated_at
-            FROM config.source_configs
-            WHERE id = $1
-            "#,
-            source_id,
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let s = self
+            .repos
+            .config
+            .get_source(source_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found"))?;
 
-        let secret_status = fetch_secret_status(&self.pool, s.id).await?;
+        let secret_status = fetch_secret_status(&self.repos, s.id).await?;
 
         info!(source_id = %source_id, "source updated");
 
         Ok(Response::new(UpdateSourceResponse {
-            source: Some(build_source_proto(
-                s.id,
-                s.source_type,
-                s.name,
-                s.enabled,
-                s.settings,
-                s.schedule_cron,
-                s.created_at,
-                s.updated_at,
-                secret_status,
-            )),
+            source: Some(build_source_proto(&s, secret_status)),
         }))
     }
 
@@ -377,12 +291,14 @@ impl ConfigService for ConfigServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid source_id"))?;
 
-        let result = sqlx::query!("DELETE FROM config.source_configs WHERE id = $1", source_id,)
-            .execute(&self.pool)
+        let deleted = self
+            .repos
+            .config
+            .delete_source(source_id)
             .await
             .map_err(db_err)?;
 
-        if result.rows_affected() == 0 {
+        if !deleted {
             return Err(Status::not_found("source not found"));
         }
 
@@ -408,35 +324,26 @@ impl ConfigService for ConfigServiceImpl {
         }
 
         // Verify source exists
-        sqlx::query_scalar!(
-            "SELECT id FROM config.source_configs WHERE id = $1",
-            source_id
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found"))?;
+        if !self
+            .repos
+            .config
+            .source_exists(source_id)
+            .await
+            .map_err(db_err)?
+        {
+            return Err(Status::not_found("source not found"));
+        }
 
         let encrypted = crypto::encrypt(&self.secret_key, req.secret_value.as_bytes())
             .map_err(|e| Status::internal(format!("encryption error: {e}")))?;
 
         let secret_id = Uuid::now_v7();
 
-        sqlx::query!(
-            r#"
-            INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (source_id, secret_key)
-            DO UPDATE SET encrypted_value = $4, updated_at = now()
-            "#,
-            secret_id,
-            source_id,
-            req.secret_key,
-            encrypted,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(db_err)?;
+        self.repos
+            .config
+            .upsert_secret(secret_id, source_id, &req.secret_key, &encrypted)
+            .await
+            .map_err(db_err)?;
 
         info!(source_id = %source_id, key = %req.secret_key, "secret set");
 
@@ -455,25 +362,22 @@ impl ConfigService for ConfigServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid source_id"))?;
 
-        let source = sqlx::query!(
-            "SELECT source_type, settings FROM config.source_configs WHERE id = $1",
-            source_id,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("source not found"))?;
+        let source = self
+            .repos
+            .config
+            .get_source(source_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found"))?;
 
         // Check if required secrets are configured
-        let secrets = sqlx::query!(
-            "SELECT secret_key FROM config.secrets WHERE source_id = $1",
-            source_id,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let secret_keys = self
+            .repos
+            .config
+            .list_secret_keys(source_id)
+            .await
+            .map_err(db_err)?;
 
-        let secret_keys: Vec<String> = secrets.into_iter().map(|s| s.secret_key).collect();
         let mut details = HashMap::new();
         details.insert("source_type".into(), source.source_type.clone());
         details.insert("secrets_configured".into(), secret_keys.len().to_string());
