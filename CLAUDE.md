@@ -95,6 +95,37 @@ Next.js App Router + React + shadcn/ui (built on `@base-ui/react` primitives) + 
 
 **shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/utils` for the `cn` helper.
 
+## Frontend State & Validation
+
+### State Management — React Query + Local State
+
+**React Query** is the only state management library. It handles all server data via custom hooks (`useAuth`, `useConfig`, `useOrg`) with hierarchical query keys. Do not add nanostores, Redux, Jotai, or other global state libraries.
+
+**When to use what:**
+
+| State type | Tool | Example |
+| --- | --- | --- |
+| Server data (queries, mutations) | React Query | Auth status, source configs, team lists |
+| Component-local UI | `useState` | Dialog open/close, form inputs, drag state |
+| Shared UI state within a subtree | React Context | Sidebar collapse (already exists) |
+| Persisted client preference | Cookie / `localStorage` | Sidebar state (cookie), session token (localStorage) |
+
+If a future feature genuinely needs **cross-component client state** that isn't server data (e.g., complex multi-step wizard state, global notification queue, coordinated filter state across unrelated components), prefer **Zustand** — it's lightweight, React-idiomatic, and avoids the prop-drilling that Context solves poorly at scale. Do not reach for nanostores (framework-agnostic overhead we don't need in a Next.js app).
+
+### Zod — Validate at System Boundaries
+
+Zod is installed. Use it for **runtime validation at system boundaries** — places where data enters the app from outside TypeScript's compile-time guarantees:
+
+- **Form validation** — define Zod schemas for non-trivial forms (multi-field, cross-field rules, format constraints). Pair with shadcn/ui `<Form>` + `react-hook-form` when forms outgrow simple `required` attributes.
+- **File uploads** — validate structure/format of imported files (JSON shape, CSV headers) before processing.
+- **localStorage / cookies** — validate shape when reading persisted data that could be stale or corrupted.
+
+**Do not use Zod for:**
+
+- **Proto responses** — Connect + `@bufbuild/protobuf` already handles serialization. Adding Zod on top is redundant.
+- **Simple required-field checks** — HTML5 `required` attribute is sufficient for basic presence checks.
+- **Internal function arguments** — TypeScript types are enough within the app boundary.
+
 ## Key Conventions
 
 ### sqlx — Type-Safe Queries Only
