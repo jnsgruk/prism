@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AlertCircle, ChevronRight, Upload, Users } from "lucide-react";
+import { AlertCircle, ChevronRight, Upload, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import { useListTeams, useGetTeam, useImportDirectory } from "@ps/hooks";
@@ -51,14 +51,15 @@ const TeamDetailPanel = ({
   const { team, members } = data;
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="flex-row items-center justify-between">
-        <div>
-          <CardTitle>{team.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">{team.orgName}</p>
+        <div className="min-w-0">
+          <CardTitle className="truncate">{team.name}</CardTitle>
+          <p className="truncate text-sm text-muted-foreground">{team.orgName}</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Close
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
+          <X className="size-4" />
+          <span className="sr-only">Close</span>
         </Button>
       </CardHeader>
       <CardContent>
@@ -70,13 +71,15 @@ const TeamDetailPanel = ({
             {members.map((person) => (
               <div
                 key={person.id}
-                className="flex items-center justify-between rounded border px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-2 rounded border px-4 py-3"
               >
-                <div>
-                  <p className="text-sm font-medium">{person.name}</p>
-                  {person.email && <p className="text-xs text-muted-foreground">{person.email}</p>}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{person.name}</p>
+                  {person.email && (
+                    <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                  )}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
                   {person.identities.map((id) => (
                     <Badge key={`${id.platform}-${id.username}`} variant="secondary">
                       {id.platform}
