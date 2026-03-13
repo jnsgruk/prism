@@ -109,6 +109,37 @@ async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Err
     )
     .await?;
 
+    // Scope to repos from mapped GitHub teams (if any mappings exist).
+    // When no teams are mapped, fall back to all discovered repos.
+    let mapped_repos = ctx
+        .repos
+        .org
+        .get_mapped_github_team_repos(ctx.source_config.id)
+        .await?;
+
+    let final_repos = if mapped_repos.is_empty() {
+        discovered_repos
+    } else {
+        let mapped_set: std::collections::HashSet<(&str, &str)> = mapped_repos
+            .iter()
+            .map(|(org, repo)| (org.as_str(), repo.as_str()))
+            .collect();
+
+        let scoped: Vec<_> = discovered_repos
+            .into_iter()
+            .filter(|r| mapped_set.contains(&(r.owner.as_str(), r.repo.as_str())))
+            .collect();
+
+        info!(
+            source = ctx.source_config.name,
+            mapped_team_repos = mapped_repos.len(),
+            scoped_repos = scoped.len(),
+            "scoped ingestion to mapped GitHub team repos"
+        );
+
+        scoped
+    };
+
     let watermark = ctx
         .repos
         .activity
@@ -117,7 +148,7 @@ async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Err
 
     info!(
         source = ctx.source_config.name,
-        repos = discovered_repos.len(),
+        repos = final_repos.len(),
         watermark = ?watermark,
         "planned GitHub ingestion"
     );
@@ -125,7 +156,7 @@ async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Err
     Ok(IngestionPlan {
         source_name: ctx.source_config.name.clone(),
         watermark,
-        repos: discovered_repos,
+        repos: final_repos,
     })
 }
 
