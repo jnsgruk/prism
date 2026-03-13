@@ -100,7 +100,9 @@ export const EditTeamDialog = ({
               <Label htmlFor="team-lead">Lead</Label>
               <Select value={leadId} onValueChange={(v) => v !== null && setLeadId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a lead..." />
+                  <SelectValue placeholder="Select a lead...">
+                    {people?.find((p) => p.id === leadId)?.name ?? "Select a lead..."}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {people?.map((p) => (
@@ -116,7 +118,9 @@ export const EditTeamDialog = ({
               <Label htmlFor="team-parent">Parent Team</Label>
               <Select value={parentTeamId} onValueChange={(v) => v !== null && setParentTeamId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No parent" />
+                  <SelectValue placeholder="No parent">
+                    {validParents.find((t) => t.id === parentTeamId)?.name ?? "No parent"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {validParents.map((t) => (
