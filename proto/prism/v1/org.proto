@@ -11,6 +11,12 @@ service OrgService {
   rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
   rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse);
   rpc ImportDirectory(ImportDirectoryRequest) returns (ImportDirectoryResponse);
+  rpc UpdatePerson(UpdatePersonRequest) returns (UpdatePersonResponse);
+  rpc DeactivatePerson(DeactivatePersonRequest) returns (DeactivatePersonResponse);
+  rpc ReactivatePerson(ReactivatePersonRequest) returns (ReactivatePersonResponse);
+  rpc AssignPersonToTeam(AssignPersonToTeamRequest) returns (AssignPersonToTeamResponse);
+  rpc RemovePersonFromTeam(RemovePersonFromTeamRequest) returns (RemovePersonFromTeamResponse);
+  rpc ListUnassignedPeople(ListUnassignedPeopleRequest) returns (ListUnassignedPeopleResponse);
 }
 
 enum TeamType {
@@ -41,6 +47,9 @@ message Person {
   optional string email = 3;
   optional string level = 4;
   repeated PlatformIdentity identities = 5;
+  bool active = 6;
+  optional string team_name = 7;
+  optional string team_id = 8;
 }
 
 message PlatformIdentity {
@@ -103,7 +112,9 @@ message DeleteTeamRequest {
 
 message DeleteTeamResponse {}
 
-message ListPeopleRequest {}
+message ListPeopleRequest {
+  optional bool active_only = 1;
+}
 
 message ListPeopleResponse {
   repeated Person people = 1;
@@ -118,4 +129,50 @@ message ImportDirectoryResponse {
   int32 teams_created = 2;
   int32 identities_mapped = 3;
   repeated string warnings = 4;
+  int32 people_updated = 5;
+  int32 stale_people_count = 6;
+  int32 unassigned_count = 7;
+}
+
+message UpdatePersonRequest {
+  string person_id = 1;
+  optional string name = 2;
+  optional string email = 3;
+  optional string level = 4;
+}
+
+message UpdatePersonResponse {
+  Person person = 1;
+}
+
+message DeactivatePersonRequest {
+  string person_id = 1;
+}
+
+message DeactivatePersonResponse {}
+
+message ReactivatePersonRequest {
+  string person_id = 1;
+}
+
+message ReactivatePersonResponse {}
+
+message AssignPersonToTeamRequest {
+  string person_id = 1;
+  string team_id = 2;
+}
+
+message AssignPersonToTeamResponse {}
+
+message RemovePersonFromTeamRequest {
+  string person_id = 1;
+  string team_id = 2;
+}
+
+message RemovePersonFromTeamResponse {}
+
+message ListUnassignedPeopleRequest {}
+
+message ListUnassignedPeopleResponse {
+  repeated Person people = 1;
 }

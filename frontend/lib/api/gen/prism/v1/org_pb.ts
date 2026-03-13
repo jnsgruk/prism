@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/org.proto.
  */
 export const file_prism_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxItkCCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgGIAEoCUgCiAEBEhQKDG1lbWJlcl9jb3VudBgHIAEoBRIlCgl0ZWFtX3R5cGUYCCABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIaChJ0b3RhbF9tZW1iZXJfY291bnQYCSABKAUSIAoIY2hpbGRyZW4YCiADKAsyDi5wcmlzbS52MS5UZWFtEhYKCWxlYWRfbmFtZRgLIAEoCUgDiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1Z0IMCgpfbGVhZF9uYW1lIo4BCgZQZXJzb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgVlbWFpbBgDIAEoCUgAiAEBEhIKBWxldmVsGAQgASgJSAGIAQESLgoKaWRlbnRpdGllcxgFIAMoCzIaLnByaXNtLnYxLlBsYXRmb3JtSWRlbnRpdHlCCAoGX2VtYWlsQggKBl9sZXZlbCI2ChBQbGF0Zm9ybUlkZW50aXR5EhAKCHBsYXRmb3JtGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJInwKEExpc3RUZWFtc1JlcXVlc3QSGwoOcGFyZW50X3RlYW1faWQYASABKAlIAIgBARIqCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZUgBiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIMCgpfdGVhbV90eXBlIjIKEUxpc3RUZWFtc1Jlc3BvbnNlEh0KBXRlYW1zGAEgAygLMg4ucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIlIKD0dldFRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbRIhCgdtZW1iZXJzGAIgAygLMhAucHJpc20udjEuUGVyc29uIhQKEkdldFRlYW1UcmVlUmVxdWVzdCI0ChNHZXRUZWFtVHJlZVJlc3BvbnNlEh0KBXJvb3RzGAEgAygLMg4ucHJpc20udjEuVGVhbSLgAQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIlCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgAiAEBEhQKB2xlYWRfaWQYBCABKAlIAYgBARIdChBnaXRodWJfdGVhbV9zbHVnGAUgASgJSAKIAQESEAoIb3JnX25hbWUYBiABKAlCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkQhMKEV9naXRodWJfdGVhbV9zbHVnIjIKEkNyZWF0ZVRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbSLGAQoRVXBkYXRlVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESGwoOcGFyZW50X3RlYW1faWQYAyABKAlIAYgBARIUCgdsZWFkX2lkGAQgASgJSAKIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgFIAEoCUgDiAEBQgcKBV9uYW1lQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1ZyIyChJVcGRhdGVUZWFtUmVzcG9uc2USHAoEdGVhbRgBIAEoCzIOLnByaXNtLnYxLlRlYW0iJAoRRGVsZXRlVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCSIUChJEZWxldGVUZWFtUmVzcG9uc2UiEwoRTGlzdFBlb3BsZVJlcXVlc3QiNgoSTGlzdFBlb3BsZVJlc3BvbnNlEiAKBnBlb3BsZRgBIAMoCzIQLnByaXNtLnYxLlBlcnNvbiIuChZJbXBvcnREaXJlY3RvcnlSZXF1ZXN0EhQKDGZpbGVfY29udGVudBgBIAEoDCJ2ChdJbXBvcnREaXJlY3RvcnlSZXNwb25zZRIXCg9wZW9wbGVfaW1wb3J0ZWQYASABKAUSFQoNdGVhbXNfY3JlYXRlZBgCIAEoBRIZChFpZGVudGl0aWVzX21hcHBlZBgDIAEoBRIQCgh3YXJuaW5ncxgEIAMoCSp2CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABIRCg1URUFNX1RZUEVfT1JHEAESEwoPVEVBTV9UWVBFX0dST1VQEAISEgoOVEVBTV9UWVBFX1RFQU0QAxITCg9URUFNX1RZUEVfU1FVQUQQBDLaBAoKT3JnU2VydmljZRJECglMaXN0VGVhbXMSGi5wcmlzbS52MS5MaXN0VGVhbXNSZXF1ZXN0GhsucHJpc20udjEuTGlzdFRlYW1zUmVzcG9uc2USPgoHR2V0VGVhbRIYLnByaXNtLnYxLkdldFRlYW1SZXF1ZXN0GhkucHJpc20udjEuR2V0VGVhbVJlc3BvbnNlEkoKC0dldFRlYW1UcmVlEhwucHJpc20udjEuR2V0VGVhbVRyZWVSZXF1ZXN0Gh0ucHJpc20udjEuR2V0VGVhbVRyZWVSZXNwb25zZRJHCgpDcmVhdGVUZWFtEhsucHJpc20udjEuQ3JlYXRlVGVhbVJlcXVlc3QaHC5wcmlzbS52MS5DcmVhdGVUZWFtUmVzcG9uc2USRwoKVXBkYXRlVGVhbRIbLnByaXNtLnYxLlVwZGF0ZVRlYW1SZXF1ZXN0GhwucHJpc20udjEuVXBkYXRlVGVhbVJlc3BvbnNlEkcKCkRlbGV0ZVRlYW0SGy5wcmlzbS52MS5EZWxldGVUZWFtUmVxdWVzdBocLnByaXNtLnYxLkRlbGV0ZVRlYW1SZXNwb25zZRJHCgpMaXN0UGVvcGxlEhsucHJpc20udjEuTGlzdFBlb3BsZVJlcXVlc3QaHC5wcmlzbS52MS5MaXN0UGVvcGxlUmVzcG9uc2USVgoPSW1wb3J0RGlyZWN0b3J5EiAucHJpc20udjEuSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBohLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlc3BvbnNlYgZwcm90bzM",
+  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxItkCCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgGIAEoCUgCiAEBEhQKDG1lbWJlcl9jb3VudBgHIAEoBRIlCgl0ZWFtX3R5cGUYCCABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIaChJ0b3RhbF9tZW1iZXJfY291bnQYCSABKAUSIAoIY2hpbGRyZW4YCiADKAsyDi5wcmlzbS52MS5UZWFtEhYKCWxlYWRfbmFtZRgLIAEoCUgDiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1Z0IMCgpfbGVhZF9uYW1lIuYBCgZQZXJzb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgVlbWFpbBgDIAEoCUgAiAEBEhIKBWxldmVsGAQgASgJSAGIAQESLgoKaWRlbnRpdGllcxgFIAMoCzIaLnByaXNtLnYxLlBsYXRmb3JtSWRlbnRpdHkSDgoGYWN0aXZlGAYgASgIEhYKCXRlYW1fbmFtZRgHIAEoCUgCiAEBEhQKB3RlYW1faWQYCCABKAlIA4gBAUIICgZfZW1haWxCCAoGX2xldmVsQgwKCl90ZWFtX25hbWVCCgoIX3RlYW1faWQiNgoQUGxhdGZvcm1JZGVudGl0eRIQCghwbGF0Zm9ybRgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCSJ8ChBMaXN0VGVhbXNSZXF1ZXN0EhsKDnBhcmVudF90ZWFtX2lkGAEgASgJSACIAQESKgoJdGVhbV90eXBlGAIgASgOMhIucHJpc20udjEuVGVhbVR5cGVIAYgBAUIRCg9fcGFyZW50X3RlYW1faWRCDAoKX3RlYW1fdHlwZSIyChFMaXN0VGVhbXNSZXNwb25zZRIdCgV0ZWFtcxgBIAMoCzIOLnByaXNtLnYxLlRlYW0iIQoOR2V0VGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCSJSCg9HZXRUZWFtUmVzcG9uc2USHAoEdGVhbRgBIAEoCzIOLnByaXNtLnYxLlRlYW0SIQoHbWVtYmVycxgCIAMoCzIQLnByaXNtLnYxLlBlcnNvbiIUChJHZXRUZWFtVHJlZVJlcXVlc3QiNAoTR2V0VGVhbVRyZWVSZXNwb25zZRIdCgVyb290cxgBIAMoCzIOLnByaXNtLnYxLlRlYW0i4AEKEUNyZWF0ZVRlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkSJQoJdGVhbV90eXBlGAIgASgOMhIucHJpc20udjEuVGVhbVR5cGUSGwoOcGFyZW50X3RlYW1faWQYAyABKAlIAIgBARIUCgdsZWFkX2lkGAQgASgJSAGIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgFIAEoCUgCiAEBEhAKCG9yZ19uYW1lGAYgASgJQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1ZyIyChJDcmVhdGVUZWFtUmVzcG9uc2USHAoEdGVhbRgBIAEoCzIOLnByaXNtLnYxLlRlYW0ixgEKEVVwZGF0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhsKDnBhcmVudF90ZWFtX2lkGAMgASgJSAGIAQESFAoHbGVhZF9pZBgEIAEoCUgCiAEBEh0KEGdpdGh1Yl90ZWFtX3NsdWcYBSABKAlIA4gBAUIHCgVfbmFtZUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRCEwoRX2dpdGh1Yl90ZWFtX3NsdWciMgoSVXBkYXRlVGVhbVJlc3BvbnNlEhwKBHRlYW0YASABKAsyDi5wcmlzbS52MS5UZWFtIiQKEURlbGV0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkiFAoSRGVsZXRlVGVhbVJlc3BvbnNlIj0KEUxpc3RQZW9wbGVSZXF1ZXN0EhgKC2FjdGl2ZV9vbmx5GAEgASgISACIAQFCDgoMX2FjdGl2ZV9vbmx5IjYKEkxpc3RQZW9wbGVSZXNwb25zZRIgCgZwZW9wbGUYASADKAsyEC5wcmlzbS52MS5QZXJzb24iLgoWSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBIUCgxmaWxlX2NvbnRlbnQYASABKAwixAEKF0ltcG9ydERpcmVjdG9yeVJlc3BvbnNlEhcKD3Blb3BsZV9pbXBvcnRlZBgBIAEoBRIVCg10ZWFtc19jcmVhdGVkGAIgASgFEhkKEWlkZW50aXRpZXNfbWFwcGVkGAMgASgFEhAKCHdhcm5pbmdzGAQgAygJEhYKDnBlb3BsZV91cGRhdGVkGAUgASgFEhoKEnN0YWxlX3Blb3BsZV9jb3VudBgGIAEoBRIYChB1bmFzc2lnbmVkX2NvdW50GAcgASgFIoABChNVcGRhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESEgoFZW1haWwYAyABKAlIAYgBARISCgVsZXZlbBgEIAEoCUgCiAEBQgcKBV9uYW1lQggKBl9lbWFpbEIICgZfbGV2ZWwiOAoUVXBkYXRlUGVyc29uUmVzcG9uc2USIAoGcGVyc29uGAEgASgLMhAucHJpc20udjEuUGVyc29uIiwKF0RlYWN0aXZhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCSIaChhEZWFjdGl2YXRlUGVyc29uUmVzcG9uc2UiLAoXUmVhY3RpdmF0ZVBlcnNvblJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJIhoKGFJlYWN0aXZhdGVQZXJzb25SZXNwb25zZSI/ChlBc3NpZ25QZXJzb25Ub1RlYW1SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIPCgd0ZWFtX2lkGAIgASgJIhwKGkFzc2lnblBlcnNvblRvVGVhbVJlc3BvbnNlIkEKG1JlbW92ZVBlcnNvbkZyb21UZWFtUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSDwoHdGVhbV9pZBgCIAEoCSIeChxSZW1vdmVQZXJzb25Gcm9tVGVhbVJlc3BvbnNlIh0KG0xpc3RVbmFzc2lnbmVkUGVvcGxlUmVxdWVzdCJAChxMaXN0VW5hc3NpZ25lZFBlb3BsZVJlc3BvbnNlEiAKBnBlb3BsZRgBIAMoCzIQLnByaXNtLnYxLlBlcnNvbip2CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABIRCg1URUFNX1RZUEVfT1JHEAESEwoPVEVBTV9UWVBFX0dST1VQEAISEgoOVEVBTV9UWVBFX1RFQU0QAxITCg9URUFNX1RZUEVfU1FVQUQQBDKOCQoKT3JnU2VydmljZRJECglMaXN0VGVhbXMSGi5wcmlzbS52MS5MaXN0VGVhbXNSZXF1ZXN0GhsucHJpc20udjEuTGlzdFRlYW1zUmVzcG9uc2USPgoHR2V0VGVhbRIYLnByaXNtLnYxLkdldFRlYW1SZXF1ZXN0GhkucHJpc20udjEuR2V0VGVhbVJlc3BvbnNlEkoKC0dldFRlYW1UcmVlEhwucHJpc20udjEuR2V0VGVhbVRyZWVSZXF1ZXN0Gh0ucHJpc20udjEuR2V0VGVhbVRyZWVSZXNwb25zZRJHCgpDcmVhdGVUZWFtEhsucHJpc20udjEuQ3JlYXRlVGVhbVJlcXVlc3QaHC5wcmlzbS52MS5DcmVhdGVUZWFtUmVzcG9uc2USRwoKVXBkYXRlVGVhbRIbLnByaXNtLnYxLlVwZGF0ZVRlYW1SZXF1ZXN0GhwucHJpc20udjEuVXBkYXRlVGVhbVJlc3BvbnNlEkcKCkRlbGV0ZVRlYW0SGy5wcmlzbS52MS5EZWxldGVUZWFtUmVxdWVzdBocLnByaXNtLnYxLkRlbGV0ZVRlYW1SZXNwb25zZRJHCgpMaXN0UGVvcGxlEhsucHJpc20udjEuTGlzdFBlb3BsZVJlcXVlc3QaHC5wcmlzbS52MS5MaXN0UGVvcGxlUmVzcG9uc2USVgoPSW1wb3J0RGlyZWN0b3J5EiAucHJpc20udjEuSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBohLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlc3BvbnNlEk0KDFVwZGF0ZVBlcnNvbhIdLnByaXNtLnYxLlVwZGF0ZVBlcnNvblJlcXVlc3QaHi5wcmlzbS52MS5VcGRhdGVQZXJzb25SZXNwb25zZRJZChBEZWFjdGl2YXRlUGVyc29uEiEucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlcXVlc3QaIi5wcmlzbS52MS5EZWFjdGl2YXRlUGVyc29uUmVzcG9uc2USWQoQUmVhY3RpdmF0ZVBlcnNvbhIhLnByaXNtLnYxLlJlYWN0aXZhdGVQZXJzb25SZXF1ZXN0GiIucHJpc20udjEuUmVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlEl8KEkFzc2lnblBlcnNvblRvVGVhbRIjLnByaXNtLnYxLkFzc2lnblBlcnNvblRvVGVhbVJlcXVlc3QaJC5wcmlzbS52MS5Bc3NpZ25QZXJzb25Ub1RlYW1SZXNwb25zZRJlChRSZW1vdmVQZXJzb25Gcm9tVGVhbRIlLnByaXNtLnYxLlJlbW92ZVBlcnNvbkZyb21UZWFtUmVxdWVzdBomLnByaXNtLnYxLlJlbW92ZVBlcnNvbkZyb21UZWFtUmVzcG9uc2USZQoUTGlzdFVuYXNzaWduZWRQZW9wbGUSJS5wcmlzbS52MS5MaXN0VW5hc3NpZ25lZFBlb3BsZVJlcXVlc3QaJi5wcmlzbS52MS5MaXN0VW5hc3NpZ25lZFBlb3BsZVJlc3BvbnNlYgZwcm90bzM",
 );
 
 /**
@@ -107,6 +107,21 @@ export type Person = Message<"prism.v1.Person"> & {
    * @generated from field: repeated prism.v1.PlatformIdentity identities = 5;
    */
   identities: PlatformIdentity[];
+
+  /**
+   * @generated from field: bool active = 6;
+   */
+  active: boolean;
+
+  /**
+   * @generated from field: optional string team_name = 7;
+   */
+  teamName?: string;
+
+  /**
+   * @generated from field: optional string team_id = 8;
+   */
+  teamId?: string;
 };
 
 /**
@@ -415,7 +430,12 @@ export const DeleteTeamResponseSchema: GenMessage<DeleteTeamResponse> /*@__PURE_
 /**
  * @generated from message prism.v1.ListPeopleRequest
  */
-export type ListPeopleRequest = Message<"prism.v1.ListPeopleRequest"> & {};
+export type ListPeopleRequest = Message<"prism.v1.ListPeopleRequest"> & {
+  /**
+   * @generated from field: optional bool active_only = 1;
+   */
+  activeOnly?: boolean;
+};
 
 /**
  * Describes the message prism.v1.ListPeopleRequest.
@@ -485,6 +505,21 @@ export type ImportDirectoryResponse = Message<"prism.v1.ImportDirectoryResponse"
    * @generated from field: repeated string warnings = 4;
    */
   warnings: string[];
+
+  /**
+   * @generated from field: int32 people_updated = 5;
+   */
+  peopleUpdated: number;
+
+  /**
+   * @generated from field: int32 stale_people_count = 6;
+   */
+  stalePeopleCount: number;
+
+  /**
+   * @generated from field: int32 unassigned_count = 7;
+   */
+  unassignedCount: number;
 };
 
 /**
@@ -493,6 +528,212 @@ export type ImportDirectoryResponse = Message<"prism.v1.ImportDirectoryResponse"
  */
 export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ =
   messageDesc(file_prism_v1_org, 18);
+
+/**
+ * @generated from message prism.v1.UpdatePersonRequest
+ */
+export type UpdatePersonRequest = Message<"prism.v1.UpdatePersonRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * @generated from field: optional string email = 3;
+   */
+  email?: string;
+
+  /**
+   * @generated from field: optional string level = 4;
+   */
+  level?: string;
+};
+
+/**
+ * Describes the message prism.v1.UpdatePersonRequest.
+ * Use `create(UpdatePersonRequestSchema)` to create a new message.
+ */
+export const UpdatePersonRequestSchema: GenMessage<UpdatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  19,
+);
+
+/**
+ * @generated from message prism.v1.UpdatePersonResponse
+ */
+export type UpdatePersonResponse = Message<"prism.v1.UpdatePersonResponse"> & {
+  /**
+   * @generated from field: prism.v1.Person person = 1;
+   */
+  person?: Person;
+};
+
+/**
+ * Describes the message prism.v1.UpdatePersonResponse.
+ * Use `create(UpdatePersonResponseSchema)` to create a new message.
+ */
+export const UpdatePersonResponseSchema: GenMessage<UpdatePersonResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 20);
+
+/**
+ * @generated from message prism.v1.DeactivatePersonRequest
+ */
+export type DeactivatePersonRequest = Message<"prism.v1.DeactivatePersonRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
+};
+
+/**
+ * Describes the message prism.v1.DeactivatePersonRequest.
+ * Use `create(DeactivatePersonRequestSchema)` to create a new message.
+ */
+export const DeactivatePersonRequestSchema: GenMessage<DeactivatePersonRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 21);
+
+/**
+ * @generated from message prism.v1.DeactivatePersonResponse
+ */
+export type DeactivatePersonResponse = Message<"prism.v1.DeactivatePersonResponse"> & {};
+
+/**
+ * Describes the message prism.v1.DeactivatePersonResponse.
+ * Use `create(DeactivatePersonResponseSchema)` to create a new message.
+ */
+export const DeactivatePersonResponseSchema: GenMessage<DeactivatePersonResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 22);
+
+/**
+ * @generated from message prism.v1.ReactivatePersonRequest
+ */
+export type ReactivatePersonRequest = Message<"prism.v1.ReactivatePersonRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
+};
+
+/**
+ * Describes the message prism.v1.ReactivatePersonRequest.
+ * Use `create(ReactivatePersonRequestSchema)` to create a new message.
+ */
+export const ReactivatePersonRequestSchema: GenMessage<ReactivatePersonRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 23);
+
+/**
+ * @generated from message prism.v1.ReactivatePersonResponse
+ */
+export type ReactivatePersonResponse = Message<"prism.v1.ReactivatePersonResponse"> & {};
+
+/**
+ * Describes the message prism.v1.ReactivatePersonResponse.
+ * Use `create(ReactivatePersonResponseSchema)` to create a new message.
+ */
+export const ReactivatePersonResponseSchema: GenMessage<ReactivatePersonResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 24);
+
+/**
+ * @generated from message prism.v1.AssignPersonToTeamRequest
+ */
+export type AssignPersonToTeamRequest = Message<"prism.v1.AssignPersonToTeamRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
+
+  /**
+   * @generated from field: string team_id = 2;
+   */
+  teamId: string;
+};
+
+/**
+ * Describes the message prism.v1.AssignPersonToTeamRequest.
+ * Use `create(AssignPersonToTeamRequestSchema)` to create a new message.
+ */
+export const AssignPersonToTeamRequestSchema: GenMessage<AssignPersonToTeamRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 25);
+
+/**
+ * @generated from message prism.v1.AssignPersonToTeamResponse
+ */
+export type AssignPersonToTeamResponse = Message<"prism.v1.AssignPersonToTeamResponse"> & {};
+
+/**
+ * Describes the message prism.v1.AssignPersonToTeamResponse.
+ * Use `create(AssignPersonToTeamResponseSchema)` to create a new message.
+ */
+export const AssignPersonToTeamResponseSchema: GenMessage<AssignPersonToTeamResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 26);
+
+/**
+ * @generated from message prism.v1.RemovePersonFromTeamRequest
+ */
+export type RemovePersonFromTeamRequest = Message<"prism.v1.RemovePersonFromTeamRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
+
+  /**
+   * @generated from field: string team_id = 2;
+   */
+  teamId: string;
+};
+
+/**
+ * Describes the message prism.v1.RemovePersonFromTeamRequest.
+ * Use `create(RemovePersonFromTeamRequestSchema)` to create a new message.
+ */
+export const RemovePersonFromTeamRequestSchema: GenMessage<RemovePersonFromTeamRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 27);
+
+/**
+ * @generated from message prism.v1.RemovePersonFromTeamResponse
+ */
+export type RemovePersonFromTeamResponse = Message<"prism.v1.RemovePersonFromTeamResponse"> & {};
+
+/**
+ * Describes the message prism.v1.RemovePersonFromTeamResponse.
+ * Use `create(RemovePersonFromTeamResponseSchema)` to create a new message.
+ */
+export const RemovePersonFromTeamResponseSchema: GenMessage<RemovePersonFromTeamResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 28);
+
+/**
+ * @generated from message prism.v1.ListUnassignedPeopleRequest
+ */
+export type ListUnassignedPeopleRequest = Message<"prism.v1.ListUnassignedPeopleRequest"> & {};
+
+/**
+ * Describes the message prism.v1.ListUnassignedPeopleRequest.
+ * Use `create(ListUnassignedPeopleRequestSchema)` to create a new message.
+ */
+export const ListUnassignedPeopleRequestSchema: GenMessage<ListUnassignedPeopleRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 29);
+
+/**
+ * @generated from message prism.v1.ListUnassignedPeopleResponse
+ */
+export type ListUnassignedPeopleResponse = Message<"prism.v1.ListUnassignedPeopleResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.Person people = 1;
+   */
+  people: Person[];
+};
+
+/**
+ * Describes the message prism.v1.ListUnassignedPeopleResponse.
+ * Use `create(ListUnassignedPeopleResponseSchema)` to create a new message.
+ */
+export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeopleResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 30);
 
 /**
  * @generated from enum prism.v1.TeamType
@@ -596,5 +837,53 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ImportDirectoryRequestSchema;
     output: typeof ImportDirectoryResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.UpdatePerson
+   */
+  updatePerson: {
+    methodKind: "unary";
+    input: typeof UpdatePersonRequestSchema;
+    output: typeof UpdatePersonResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.DeactivatePerson
+   */
+  deactivatePerson: {
+    methodKind: "unary";
+    input: typeof DeactivatePersonRequestSchema;
+    output: typeof DeactivatePersonResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.ReactivatePerson
+   */
+  reactivatePerson: {
+    methodKind: "unary";
+    input: typeof ReactivatePersonRequestSchema;
+    output: typeof ReactivatePersonResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.AssignPersonToTeam
+   */
+  assignPersonToTeam: {
+    methodKind: "unary";
+    input: typeof AssignPersonToTeamRequestSchema;
+    output: typeof AssignPersonToTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.RemovePersonFromTeam
+   */
+  removePersonFromTeam: {
+    methodKind: "unary";
+    input: typeof RemovePersonFromTeamRequestSchema;
+    output: typeof RemovePersonFromTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.ListUnassignedPeople
+   */
+  listUnassignedPeople: {
+    methodKind: "unary";
+    input: typeof ListUnassignedPeopleRequestSchema;
+    output: typeof ListUnassignedPeopleResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_org, 0);

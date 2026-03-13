@@ -4,8 +4,12 @@
 // @ts-nocheck
 
 import {
+  AssignPersonToTeamRequest,
+  AssignPersonToTeamResponse,
   CreateTeamRequest,
   CreateTeamResponse,
+  DeactivatePersonRequest,
+  DeactivatePersonResponse,
   DeleteTeamRequest,
   DeleteTeamResponse,
   GetTeamRequest,
@@ -18,6 +22,14 @@ import {
   ListPeopleResponse,
   ListTeamsRequest,
   ListTeamsResponse,
+  ListUnassignedPeopleRequest,
+  ListUnassignedPeopleResponse,
+  ReactivatePersonRequest,
+  ReactivatePersonResponse,
+  RemovePersonFromTeamRequest,
+  RemovePersonFromTeamResponse,
+  UpdatePersonRequest,
+  UpdatePersonResponse,
   UpdateTeamRequest,
   UpdateTeamResponse,
 } from "./org_pb.js";
@@ -99,6 +111,60 @@ export const OrgService = {
       name: "ImportDirectory",
       I: ImportDirectoryRequest,
       O: ImportDirectoryResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.UpdatePerson
+     */
+    updatePerson: {
+      name: "UpdatePerson",
+      I: UpdatePersonRequest,
+      O: UpdatePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.DeactivatePerson
+     */
+    deactivatePerson: {
+      name: "DeactivatePerson",
+      I: DeactivatePersonRequest,
+      O: DeactivatePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.ReactivatePerson
+     */
+    reactivatePerson: {
+      name: "ReactivatePerson",
+      I: ReactivatePersonRequest,
+      O: ReactivatePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.AssignPersonToTeam
+     */
+    assignPersonToTeam: {
+      name: "AssignPersonToTeam",
+      I: AssignPersonToTeamRequest,
+      O: AssignPersonToTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.RemovePersonFromTeam
+     */
+    removePersonFromTeam: {
+      name: "RemovePersonFromTeam",
+      I: RemovePersonFromTeamRequest,
+      O: RemovePersonFromTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.ListUnassignedPeople
+     */
+    listUnassignedPeople: {
+      name: "ListUnassignedPeople",
+      I: ListUnassignedPeopleRequest,
+      O: ListUnassignedPeopleResponse,
       kind: MethodKind.Unary,
     },
   },
