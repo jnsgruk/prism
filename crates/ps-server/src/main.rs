@@ -40,12 +40,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let repos = ps_core::repo::Repos::new(pool.clone());
 
-    let auth_service = AuthServiceImpl::new(pool.clone());
+    let auth_service = AuthServiceImpl::new(repos.clone());
     let admin_service = AdminServiceImpl::new(repos.clone());
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key);
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
-    let ingestion_service = IngestionServiceImpl::new(repos, restate_url);
+    let ingestion_service = IngestionServiceImpl::new(repos.clone(), restate_url);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .accept_http1(true)
         .layer(tonic_web::GrpcWebLayer::new())
-        .layer(AuthLayer::new(pool.clone()))
+        .layer(AuthLayer::new(repos.auth.clone()))
         .add_service(health_service)
         .add_service(AuthServiceServer::new(auth_service))
         .add_service(AdminServiceServer::new(admin_service))

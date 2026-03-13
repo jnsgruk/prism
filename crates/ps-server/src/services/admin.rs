@@ -50,11 +50,7 @@ impl AdminService for AdminServiceImpl {
             let people_count = repos.org.count_people().await.map_err(db_err)?;
             let team_count = repos.org.count_teams().await.map_err(db_err)?;
 
-            let user_count = sqlx::query_scalar!("SELECT COUNT(*) FROM auth.users")
-                .fetch_one(repos.auth.pool())
-                .await
-                .map_err(db_err)?
-                .unwrap_or(0);
+            let user_count = repos.auth.count_users().await.map_err(db_err)?;
 
             let mut table_counts = HashMap::new();
             #[allow(clippy::cast_possible_truncation)]
@@ -90,30 +86,7 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("teams", &team_rows)
                 .map_err(backup_err)?;
 
-            // Export users (without password hashes for security; will move to AuthRepo in T5)
-            let users = sqlx::query!(
-                "SELECT id, username, display_name, role, is_active, person_id, created_at, updated_at FROM auth.users"
-            )
-            .fetch_all(repos.auth.pool())
-            .await
-            .map_err(db_err)?;
-
-            let user_rows: Vec<serde_json::Value> = users
-                .iter()
-                .map(|u| {
-                    serde_json::json!({
-                        "id": u.id,
-                        "username": u.username,
-                        "display_name": u.display_name,
-                        "role": u.role,
-                        "is_active": u.is_active,
-                        "person_id": u.person_id,
-                        "created_at": u.created_at.to_string(),
-                        "updated_at": u.updated_at.to_string(),
-                    })
-                })
-                .collect();
-
+            let user_rows = repos.auth.export_users().await.map_err(db_err)?;
             writer.write_table("users", &user_rows)
                 .map_err(backup_err)?;
 
@@ -144,27 +117,23 @@ impl AdminService for AdminServiceImpl {
             return Err(Status::invalid_argument("token name is required"));
         }
 
-        // API tokens are stored as sessions with type 'api_token'
         let raw_token = generate_token();
         let token_hash = hash_token(&raw_token);
         let token_id = Uuid::now_v7();
-
-        // Use the authenticated user's ID (will move to AuthRepo in T5)
         let user_id = _ctx.user_id;
 
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.sessions (id, user_id, token_hash, session_type, token_name)
-            VALUES ($1, $2, $3, 'api_token', $4)
-            "#,
-            token_id,
-            user_id,
-            token_hash,
-            req.name,
-        )
-        .execute(self.repos.auth.pool())
-        .await
-        .map_err(|e| Status::internal(format!("failed to create token: {e}")))?;
+        self.repos
+            .auth
+            .create_session(
+                token_id,
+                user_id,
+                &token_hash,
+                "api_token",
+                None,
+                Some(&req.name),
+            )
+            .await
+            .map_err(|e| Status::internal(format!("failed to create token: {e}")))?;
 
         info!(token_id = %token_id, name = %req.name, "API token created");
 
@@ -181,18 +150,12 @@ impl AdminService for AdminServiceImpl {
     ) -> Result<Response<ListApiTokensResponse>, Status> {
         let ctx = require_auth(&request)?;
 
-        let tokens = sqlx::query!(
-            r#"
-            SELECT id, token_name, created_at, last_active_at
-            FROM auth.sessions
-            WHERE user_id = $1 AND session_type = 'api_token'
-            ORDER BY created_at DESC
-            "#,
-            ctx.user_id,
-        )
-        .fetch_all(self.repos.auth.pool())
-        .await
-        .map_err(db_err)?;
+        let tokens = self
+            .repos
+            .auth
+            .list_api_tokens(ctx.user_id)
+            .await
+            .map_err(db_err)?;
 
         let token_infos = tokens
             .into_iter()
@@ -221,19 +184,14 @@ impl AdminService for AdminServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid token_id format"))?;
 
-        let result = sqlx::query!(
-            r#"
-            DELETE FROM auth.sessions
-            WHERE id = $1 AND user_id = $2 AND session_type = 'api_token'
-            "#,
-            token_id,
-            ctx.user_id,
-        )
-        .execute(self.repos.auth.pool())
-        .await
-        .map_err(db_err)?;
+        let deleted = self
+            .repos
+            .auth
+            .delete_api_token(token_id, ctx.user_id)
+            .await
+            .map_err(db_err)?;
 
-        if result.rows_affected() == 0 {
+        if !deleted {
             return Err(Status::not_found("token not found"));
         }
 

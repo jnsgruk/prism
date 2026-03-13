@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ps_core::auth::{generate_token, hash_password, hash_token, verify_password};
 use ps_core::backup::BackupReader;
+use ps_core::repo::Repos;
 use ps_proto::prism::v1::auth_service_server::AuthService;
 use ps_proto::prism::v1::{
     CompleteSetupRequest, CompleteSetupResponse, GetCurrentUserRequest, GetCurrentUserResponse,
@@ -9,7 +10,6 @@ use ps_proto::prism::v1::{
     LogoutResponse, PreviewBackupRequest, PreviewBackupResponse, RestoreBackupRequest,
     RestoreBackupResponse,
 };
-use sqlx::PgPool;
 use time::OffsetDateTime;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
@@ -19,12 +19,12 @@ use uuid::Uuid;
 use super::common::{db_err, require_auth};
 
 pub struct AuthServiceImpl {
-    pool: PgPool,
+    repos: Repos,
 }
 
 impl AuthServiceImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(repos: Repos) -> Self {
+        Self { repos }
     }
 }
 
@@ -34,11 +34,7 @@ impl AuthService for AuthServiceImpl {
         &self,
         _request: Request<GetSetupStatusRequest>,
     ) -> Result<Response<GetSetupStatusResponse>, Status> {
-        let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(db_err)?
-            .unwrap_or(false);
+        let exists = self.repos.auth.any_users_exist().await.map_err(db_err)?;
 
         Ok(Response::new(GetSetupStatusResponse {
             setup_complete: exists,
@@ -57,11 +53,7 @@ impl AuthService for AuthServiceImpl {
             ));
         }
 
-        let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(db_err)?
-            .unwrap_or(false);
+        let exists = self.repos.auth.any_users_exist().await.map_err(db_err)?;
 
         if exists {
             return Err(Status::failed_precondition("setup already complete"));
@@ -71,38 +63,35 @@ impl AuthService for AuthServiceImpl {
             .map_err(|e| Status::internal(format!("password hashing failed: {e}")))?;
 
         let user_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.users (id, username, display_name, password_hash, role)
-            VALUES ($1, $2, $3, $4, 'admin')
-            "#,
-            user_id,
-            req.username,
-            req.display_name,
-            password_hash,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("failed to create user: {e}")))?;
+        self.repos
+            .auth
+            .create_user(
+                user_id,
+                &req.username,
+                &req.display_name,
+                &password_hash,
+                "admin",
+            )
+            .await
+            .map_err(|e| Status::internal(format!("failed to create user: {e}")))?;
 
         let raw_token = generate_token();
         let token_hash = hash_token(&raw_token);
         let session_id = Uuid::now_v7();
         let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
 
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.sessions (id, user_id, token_hash, session_type, expires_at)
-            VALUES ($1, $2, $3, 'browser', $4)
-            "#,
-            session_id,
-            user_id,
-            token_hash,
-            expires_at,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
+        self.repos
+            .auth
+            .create_session(
+                session_id,
+                user_id,
+                &token_hash,
+                "browser",
+                Some(expires_at),
+                None,
+            )
+            .await
+            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
 
         info!(user_id = %user_id, username = %req.username, "initial admin user created");
 
@@ -117,18 +106,13 @@ impl AuthService for AuthServiceImpl {
     ) -> Result<Response<LoginResponse>, Status> {
         let req = request.into_inner();
 
-        let user = sqlx::query!(
-            r#"
-            SELECT id, password_hash, is_active
-            FROM auth.users
-            WHERE username = $1
-            "#,
-            req.username,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::unauthenticated("invalid credentials"))?;
+        let user = self
+            .repos
+            .auth
+            .find_user_by_username(&req.username)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::unauthenticated("invalid credentials"))?;
 
         if !user.is_active {
             return Err(Status::unauthenticated("account is disabled"));
@@ -142,19 +126,18 @@ impl AuthService for AuthServiceImpl {
         let session_id = Uuid::now_v7();
         let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
 
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.sessions (id, user_id, token_hash, session_type, expires_at)
-            VALUES ($1, $2, $3, 'browser', $4)
-            "#,
-            session_id,
-            user.id,
-            token_hash,
-            expires_at,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
+        self.repos
+            .auth
+            .create_session(
+                session_id,
+                user.id,
+                &token_hash,
+                "browser",
+                Some(expires_at),
+                None,
+            )
+            .await
+            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
 
         let timestamp = prost_types::Timestamp {
             seconds: expires_at.unix_timestamp(),
@@ -173,8 +156,9 @@ impl AuthService for AuthServiceImpl {
     ) -> Result<Response<LogoutResponse>, Status> {
         let ctx = require_auth(&request)?;
 
-        sqlx::query!("DELETE FROM auth.sessions WHERE id = $1", ctx.session_id)
-            .execute(&self.pool)
+        self.repos
+            .auth
+            .delete_session(ctx.session_id)
             .await
             .map_err(db_err)?;
 
@@ -235,11 +219,7 @@ impl AuthService for AuthServiceImpl {
         request: Request<Streaming<RestoreBackupRequest>>,
     ) -> Result<Response<RestoreBackupResponse>, Status> {
         // Ensure no users exist (restore only works on fresh instance)
-        let exists = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM auth.users)")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(db_err)?
-            .unwrap_or(false);
+        let exists = self.repos.auth.any_users_exist().await.map_err(db_err)?;
 
         if exists {
             return Err(Status::failed_precondition(
@@ -276,36 +256,29 @@ impl AuthService for AuthServiceImpl {
             .map_err(|e| Status::internal(format!("password hashing failed: {e}")))?;
 
         let user_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.users (id, username, display_name, password_hash, role)
-            VALUES ($1, 'admin', 'Administrator', $2, 'admin')
-            "#,
-            user_id,
-            password_hash,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("failed to create admin user: {e}")))?;
+        self.repos
+            .auth
+            .create_user(user_id, "admin", "Administrator", &password_hash, "admin")
+            .await
+            .map_err(|e| Status::internal(format!("failed to create admin user: {e}")))?;
 
         let raw_token = generate_token();
         let token_hash = hash_token(&raw_token);
         let session_id = Uuid::now_v7();
         let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
 
-        sqlx::query!(
-            r#"
-            INSERT INTO auth.sessions (id, user_id, token_hash, session_type, expires_at)
-            VALUES ($1, $2, $3, 'browser', $4)
-            "#,
-            session_id,
-            user_id,
-            token_hash,
-            expires_at,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
+        self.repos
+            .auth
+            .create_session(
+                session_id,
+                user_id,
+                &token_hash,
+                "browser",
+                Some(expires_at),
+                None,
+            )
+            .await
+            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
 
         let timestamp = prost_types::Timestamp {
             seconds: expires_at.unix_timestamp(),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT s.id as session_id, s.expires_at, u.id as user_id,\n               u.username, u.display_name, u.role, u.is_active\n        FROM auth.sessions s\n        JOIN auth.users u ON s.user_id = u.id\n        WHERE s.token_hash = $1\n        ",
+  "query": "\n            SELECT s.id as session_id, s.expires_at, u.id as user_id,\n                   u.username, u.display_name, u.role, u.is_active\n            FROM auth.sessions s\n            JOIN auth.users u ON s.user_id = u.id\n            WHERE s.token_hash = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -44,5 +44,5 @@
     },
     "nullable": [false, true, false, false, false, false, false]
   },
-  "hash": "5b542dd5b0d34033745aa12a40c8ae715f344f6fa468a67752b7e2cbe9c85e23"
+  "hash": "62039c6541858a1f1c2a13cdc5417e181e540f658265a84985bf12466c396383"
 }
