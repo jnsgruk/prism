@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/org.proto.
  */
 export const file_prism_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxIqsCCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESFAoMbWVtYmVyX2NvdW50GAcgASgFEiUKCXRlYW1fdHlwZRgIIAEoDjISLnByaXNtLnYxLlRlYW1UeXBlEhoKEnRvdGFsX21lbWJlcl9jb3VudBgJIAEoBRIgCghjaGlsZHJlbhgKIAMoCzIOLnByaXNtLnYxLlRlYW0SFgoJbGVhZF9uYW1lGAsgASgJSAKIAQFCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkQgwKCl9sZWFkX25hbWVKBAgGEAci5gEKBlBlcnNvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhIKBWVtYWlsGAMgASgJSACIAQESEgoFbGV2ZWwYBCABKAlIAYgBARIuCgppZGVudGl0aWVzGAUgAygLMhoucHJpc20udjEuUGxhdGZvcm1JZGVudGl0eRIOCgZhY3RpdmUYBiABKAgSFgoJdGVhbV9uYW1lGAcgASgJSAKIAQESFAoHdGVhbV9pZBgIIAEoCUgDiAEBQggKBl9lbWFpbEIICgZfbGV2ZWxCDAoKX3RlYW1fbmFtZUIKCghfdGVhbV9pZCI2ChBQbGF0Zm9ybUlkZW50aXR5EhAKCHBsYXRmb3JtGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJInwKEExpc3RUZWFtc1JlcXVlc3QSGwoOcGFyZW50X3RlYW1faWQYASABKAlIAIgBARIqCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZUgBiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIMCgpfdGVhbV90eXBlIjIKEUxpc3RUZWFtc1Jlc3BvbnNlEh0KBXRlYW1zGAEgAygLMg4ucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIlIKD0dldFRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbRIhCgdtZW1iZXJzGAIgAygLMhAucHJpc20udjEuUGVyc29uIhQKEkdldFRlYW1UcmVlUmVxdWVzdCI0ChNHZXRUZWFtVHJlZVJlc3BvbnNlEh0KBXJvb3RzGAEgAygLMg4ucHJpc20udjEuVGVhbSKyAQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIlCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgAiAEBEhQKB2xlYWRfaWQYBCABKAlIAYgBARIQCghvcmdfbmFtZRgGIAEoCUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRKBAgFEAYiMgoSQ3JlYXRlVGVhbVJlc3BvbnNlEhwKBHRlYW0YASABKAsyDi5wcmlzbS52MS5UZWFtIpgBChFVcGRhdGVUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgBiAEBEhQKB2xlYWRfaWQYBCABKAlIAogBAUIHCgVfbmFtZUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRKBAgFEAYiMgoSVXBkYXRlVGVhbVJlc3BvbnNlEhwKBHRlYW0YASABKAsyDi5wcmlzbS52MS5UZWFtIiQKEURlbGV0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkiFAoSRGVsZXRlVGVhbVJlc3BvbnNlIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLgoJU29ydE9yZGVyEg0KBWZpZWxkGAEgASgJEhIKCmRlc2NlbmRpbmcYAiABKAgi8wEKEUxpc3RQZW9wbGVSZXF1ZXN0EhgKC2FjdGl2ZV9vbmx5GAEgASgISACIAQESEwoGc2VhcmNoGAIgASgJSAGIAQESFAoHdGVhbV9pZBgDIAEoCUgCiAEBEhMKBmZpbHRlchgEIAEoCUgDiAEBEi8KCnBhZ2luYXRpb24YCiABKAsyGy5wcmlzbS52MS5QYWdpbmF0aW9uUmVxdWVzdBIhCgRzb3J0GAsgASgLMhMucHJpc20udjEuU29ydE9yZGVyQg4KDF9hY3RpdmVfb25seUIJCgdfc2VhcmNoQgoKCF90ZWFtX2lkQgkKB19maWx0ZXIiaAoSTGlzdFBlb3BsZVJlc3BvbnNlEiAKBnBlb3BsZRgBIAMoCzIQLnByaXNtLnYxLlBlcnNvbhIwCgpwYWdpbmF0aW9uGAIgASgLMhwucHJpc20udjEuUGFnaW5hdGlvblJlc3BvbnNlIi4KFkltcG9ydERpcmVjdG9yeVJlcXVlc3QSFAoMZmlsZV9jb250ZW50GAEgASgMIsQBChdJbXBvcnREaXJlY3RvcnlSZXNwb25zZRIXCg9wZW9wbGVfaW1wb3J0ZWQYASABKAUSFQoNdGVhbXNfY3JlYXRlZBgCIAEoBRIZChFpZGVudGl0aWVzX21hcHBlZBgDIAEoBRIQCgh3YXJuaW5ncxgEIAMoCRIWCg5wZW9wbGVfdXBkYXRlZBgFIAEoBRIaChJzdGFsZV9wZW9wbGVfY291bnQYBiABKAUSGAoQdW5hc3NpZ25lZF9jb3VudBgHIAEoBSKAAQoTVXBkYXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhIKBWVtYWlsGAMgASgJSAGIAQESEgoFbGV2ZWwYBCABKAlIAogBAUIHCgVfbmFtZUIICgZfZW1haWxCCAoGX2xldmVsIjgKFFVwZGF0ZVBlcnNvblJlc3BvbnNlEiAKBnBlcnNvbhgBIAEoCzIQLnByaXNtLnYxLlBlcnNvbiIsChdEZWFjdGl2YXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkiGgoYRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlIiwKF1JlYWN0aXZhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCSIaChhSZWFjdGl2YXRlUGVyc29uUmVzcG9uc2UiPwoZQXNzaWduUGVyc29uVG9UZWFtUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSDwoHdGVhbV9pZBgCIAEoCSIcChpBc3NpZ25QZXJzb25Ub1RlYW1SZXNwb25zZSJBChtSZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJEg8KB3RlYW1faWQYAiABKAkiHgocUmVtb3ZlUGVyc29uRnJvbVRlYW1SZXNwb25zZSIdChtMaXN0VW5hc3NpZ25lZFBlb3BsZVJlcXVlc3QiQAocTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZRIgCgZwZW9wbGUYASADKAsyEC5wcmlzbS52MS5QZXJzb24qdgoIVGVhbVR5cGUSGQoVVEVBTV9UWVBFX1VOU1BFQ0lGSUVEEAASEQoNVEVBTV9UWVBFX09SRxABEhMKD1RFQU1fVFlQRV9HUk9VUBACEhIKDlRFQU1fVFlQRV9URUFNEAMSEwoPVEVBTV9UWVBFX1NRVUFEEAQyjgkKCk9yZ1NlcnZpY2USRAoJTGlzdFRlYW1zEhoucHJpc20udjEuTGlzdFRlYW1zUmVxdWVzdBobLnByaXNtLnYxLkxpc3RUZWFtc1Jlc3BvbnNlEj4KB0dldFRlYW0SGC5wcmlzbS52MS5HZXRUZWFtUmVxdWVzdBoZLnByaXNtLnYxLkdldFRlYW1SZXNwb25zZRJKCgtHZXRUZWFtVHJlZRIcLnByaXNtLnYxLkdldFRlYW1UcmVlUmVxdWVzdBodLnByaXNtLnYxLkdldFRlYW1UcmVlUmVzcG9uc2USRwoKQ3JlYXRlVGVhbRIbLnByaXNtLnYxLkNyZWF0ZVRlYW1SZXF1ZXN0GhwucHJpc20udjEuQ3JlYXRlVGVhbVJlc3BvbnNlEkcKClVwZGF0ZVRlYW0SGy5wcmlzbS52MS5VcGRhdGVUZWFtUmVxdWVzdBocLnByaXNtLnYxLlVwZGF0ZVRlYW1SZXNwb25zZRJHCgpEZWxldGVUZWFtEhsucHJpc20udjEuRGVsZXRlVGVhbVJlcXVlc3QaHC5wcmlzbS52MS5EZWxldGVUZWFtUmVzcG9uc2USRwoKTGlzdFBlb3BsZRIbLnByaXNtLnYxLkxpc3RQZW9wbGVSZXF1ZXN0GhwucHJpc20udjEuTGlzdFBlb3BsZVJlc3BvbnNlElYKD0ltcG9ydERpcmVjdG9yeRIgLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlcXVlc3QaIS5wcmlzbS52MS5JbXBvcnREaXJlY3RvcnlSZXNwb25zZRJNCgxVcGRhdGVQZXJzb24SHS5wcmlzbS52MS5VcGRhdGVQZXJzb25SZXF1ZXN0Gh4ucHJpc20udjEuVXBkYXRlUGVyc29uUmVzcG9uc2USWQoQRGVhY3RpdmF0ZVBlcnNvbhIhLnByaXNtLnYxLkRlYWN0aXZhdGVQZXJzb25SZXF1ZXN0GiIucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlElkKEFJlYWN0aXZhdGVQZXJzb24SIS5wcmlzbS52MS5SZWFjdGl2YXRlUGVyc29uUmVxdWVzdBoiLnByaXNtLnYxLlJlYWN0aXZhdGVQZXJzb25SZXNwb25zZRJfChJBc3NpZ25QZXJzb25Ub1RlYW0SIy5wcmlzbS52MS5Bc3NpZ25QZXJzb25Ub1RlYW1SZXF1ZXN0GiQucHJpc20udjEuQXNzaWduUGVyc29uVG9UZWFtUmVzcG9uc2USZQoUUmVtb3ZlUGVyc29uRnJvbVRlYW0SJS5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QaJi5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlc3BvbnNlEmUKFExpc3RVbmFzc2lnbmVkUGVvcGxlEiUucHJpc20udjEuTGlzdFVuYXNzaWduZWRQZW9wbGVSZXF1ZXN0GiYucHJpc20udjEuTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZWIGcHJvdG8z",
+  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxIqsCCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESFAoMbWVtYmVyX2NvdW50GAcgASgFEiUKCXRlYW1fdHlwZRgIIAEoDjISLnByaXNtLnYxLlRlYW1UeXBlEhoKEnRvdGFsX21lbWJlcl9jb3VudBgJIAEoBRIgCghjaGlsZHJlbhgKIAMoCzIOLnByaXNtLnYxLlRlYW0SFgoJbGVhZF9uYW1lGAsgASgJSAKIAQFCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkQgwKCl9sZWFkX25hbWVKBAgGEAci5gEKBlBlcnNvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhIKBWVtYWlsGAMgASgJSACIAQESEgoFbGV2ZWwYBCABKAlIAYgBARIuCgppZGVudGl0aWVzGAUgAygLMhoucHJpc20udjEuUGxhdGZvcm1JZGVudGl0eRIOCgZhY3RpdmUYBiABKAgSFgoJdGVhbV9uYW1lGAcgASgJSAKIAQESFAoHdGVhbV9pZBgIIAEoCUgDiAEBQggKBl9lbWFpbEIICgZfbGV2ZWxCDAoKX3RlYW1fbmFtZUIKCghfdGVhbV9pZCI2ChBQbGF0Zm9ybUlkZW50aXR5EhAKCHBsYXRmb3JtGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJInwKEExpc3RUZWFtc1JlcXVlc3QSGwoOcGFyZW50X3RlYW1faWQYASABKAlIAIgBARIqCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZUgBiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIMCgpfdGVhbV90eXBlIjIKEUxpc3RUZWFtc1Jlc3BvbnNlEh0KBXRlYW1zGAEgAygLMg4ucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIlIKD0dldFRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbRIhCgdtZW1iZXJzGAIgAygLMhAucHJpc20udjEuUGVyc29uIhQKEkdldFRlYW1UcmVlUmVxdWVzdCI0ChNHZXRUZWFtVHJlZVJlc3BvbnNlEh0KBXJvb3RzGAEgAygLMg4ucHJpc20udjEuVGVhbSKyAQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIlCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgAiAEBEhQKB2xlYWRfaWQYBCABKAlIAYgBARIQCghvcmdfbmFtZRgGIAEoCUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRKBAgFEAYiMgoSQ3JlYXRlVGVhbVJlc3BvbnNlEhwKBHRlYW0YASABKAsyDi5wcmlzbS52MS5UZWFtIpgBChFVcGRhdGVUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgBiAEBEhQKB2xlYWRfaWQYBCABKAlIAogBAUIHCgVfbmFtZUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRKBAgFEAYiMgoSVXBkYXRlVGVhbVJlc3BvbnNlEhwKBHRlYW0YASABKAsyDi5wcmlzbS52MS5UZWFtIiQKEURlbGV0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkiFAoSRGVsZXRlVGVhbVJlc3BvbnNlIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLgoJU29ydE9yZGVyEg0KBWZpZWxkGAEgASgJEhIKCmRlc2NlbmRpbmcYAiABKAgi8wEKEUxpc3RQZW9wbGVSZXF1ZXN0EhgKC2FjdGl2ZV9vbmx5GAEgASgISACIAQESEwoGc2VhcmNoGAIgASgJSAGIAQESFAoHdGVhbV9pZBgDIAEoCUgCiAEBEhMKBmZpbHRlchgEIAEoCUgDiAEBEi8KCnBhZ2luYXRpb24YCiABKAsyGy5wcmlzbS52MS5QYWdpbmF0aW9uUmVxdWVzdBIhCgRzb3J0GAsgASgLMhMucHJpc20udjEuU29ydE9yZGVyQg4KDF9hY3RpdmVfb25seUIJCgdfc2VhcmNoQgoKCF90ZWFtX2lkQgkKB19maWx0ZXIiaAoSTGlzdFBlb3BsZVJlc3BvbnNlEiAKBnBlb3BsZRgBIAMoCzIQLnByaXNtLnYxLlBlcnNvbhIwCgpwYWdpbmF0aW9uGAIgASgLMhwucHJpc20udjEuUGFnaW5hdGlvblJlc3BvbnNlIi4KFkltcG9ydERpcmVjdG9yeVJlcXVlc3QSFAoMZmlsZV9jb250ZW50GAEgASgMIsQBChdJbXBvcnREaXJlY3RvcnlSZXNwb25zZRIXCg9wZW9wbGVfaW1wb3J0ZWQYASABKAUSFQoNdGVhbXNfY3JlYXRlZBgCIAEoBRIZChFpZGVudGl0aWVzX21hcHBlZBgDIAEoBRIQCgh3YXJuaW5ncxgEIAMoCRIWCg5wZW9wbGVfdXBkYXRlZBgFIAEoBRIaChJzdGFsZV9wZW9wbGVfY291bnQYBiABKAUSGAoQdW5hc3NpZ25lZF9jb3VudBgHIAEoBSKAAQoTVXBkYXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhIKBWVtYWlsGAMgASgJSAGIAQESEgoFbGV2ZWwYBCABKAlIAogBAUIHCgVfbmFtZUIICgZfZW1haWxCCAoGX2xldmVsIjgKFFVwZGF0ZVBlcnNvblJlc3BvbnNlEiAKBnBlcnNvbhgBIAEoCzIQLnByaXNtLnYxLlBlcnNvbiIsChdEZWFjdGl2YXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkiGgoYRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlIiwKF1JlYWN0aXZhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCSIaChhSZWFjdGl2YXRlUGVyc29uUmVzcG9uc2UiPwoZQXNzaWduUGVyc29uVG9UZWFtUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSDwoHdGVhbV9pZBgCIAEoCSIcChpBc3NpZ25QZXJzb25Ub1RlYW1SZXNwb25zZSJBChtSZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJEg8KB3RlYW1faWQYAiABKAkiHgocUmVtb3ZlUGVyc29uRnJvbVRlYW1SZXNwb25zZSIdChtMaXN0VW5hc3NpZ25lZFBlb3BsZVJlcXVlc3QiQAocTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZRIgCgZwZW9wbGUYASADKAsyEC5wcmlzbS52MS5QZXJzb24ixwEKCkdpdEh1YlRlYW0SCgoCaWQYASABKAkSEQoJc291cmNlX2lkGAIgASgJEhIKCmdpdGh1Yl9vcmcYAyABKAkSFgoOZ2l0aHViX3RlYW1faWQYBCABKAMSDAoEc2x1ZxgFIAEoCRIMCgRuYW1lGAYgASgJEhgKC2Rlc2NyaXB0aW9uGAcgASgJSACIAQESFAoMbWVtYmVyX2NvdW50GAggASgDEhIKCnJlcG9fY291bnQYCSABKANCDgoMX2Rlc2NyaXB0aW9uIu8BChVUZWFtTWFwcGluZ1N1Z2dlc3Rpb24SFgoOZ2l0aHViX3RlYW1faWQYASABKAkSGAoQZ2l0aHViX3RlYW1fbmFtZRgCIAEoCRISCgpnaXRodWJfb3JnGAMgASgJEhgKEGdpdGh1Yl90ZWFtX3NsdWcYBCABKAkSFQoNcHJpc21fdGVhbV9pZBgFIAEoCRIXCg9wcmlzbV90ZWFtX25hbWUYBiABKAkSFQoNb3ZlcmxhcF9jb3VudBgHIAEoAxIXCg9naXRodWJfY292ZXJhZ2UYCCABKAESFgoOcHJpc21fY292ZXJhZ2UYCSABKAEiYAoWTGlzdEdpdGh1YlRlYW1zUmVxdWVzdBITCgZzZWFyY2gYASABKAlIAIgBARIXCgpnaXRodWJfb3JnGAIgASgJSAGIAQFCCQoHX3NlYXJjaEINCgtfZ2l0aHViX29yZyI+ChdMaXN0R2l0aHViVGVhbXNSZXNwb25zZRIjCgV0ZWFtcxgBIAMoCzIULnByaXNtLnYxLkdpdEh1YlRlYW0iLQoaTGlzdFRlYW1HaXRodWJUZWFtc1JlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCSJCChtMaXN0VGVhbUdpdGh1YlRlYW1zUmVzcG9uc2USIwoFdGVhbXMYASADKAsyFC5wcmlzbS52MS5HaXRIdWJUZWFtIkIKF0Fzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSFgoOZ2l0aHViX3RlYW1faWQYAiABKAkiGgoYQXNzaWduR2l0aHViVGVhbVJlc3BvbnNlIkQKGVVuYXNzaWduR2l0aHViVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIWCg5naXRodWJfdGVhbV9pZBgCIAEoCSIcChpVbmFzc2lnbkdpdGh1YlRlYW1SZXNwb25zZSIiCiBHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVxdWVzdCJZCiFHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVzcG9uc2USNAoLc3VnZ2VzdGlvbnMYASADKAsyHy5wcmlzbS52MS5UZWFtTWFwcGluZ1N1Z2dlc3Rpb24iTgojRGlzbWlzc1RlYW1NYXBwaW5nU3VnZ2VzdGlvblJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIWCg5naXRodWJfdGVhbV9pZBgCIAEoCSImCiREaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVzcG9uc2UqdgoIVGVhbVR5cGUSGQoVVEVBTV9UWVBFX1VOU1BFQ0lGSUVEEAASEQoNVEVBTV9UWVBFX09SRxABEhMKD1RFQU1fVFlQRV9HUk9VUBACEhIKDlRFQU1fVFlQRV9URUFNEAMSEwoPVEVBTV9UWVBFX1NRVUFEEAQy+w0KCk9yZ1NlcnZpY2USRAoJTGlzdFRlYW1zEhoucHJpc20udjEuTGlzdFRlYW1zUmVxdWVzdBobLnByaXNtLnYxLkxpc3RUZWFtc1Jlc3BvbnNlEj4KB0dldFRlYW0SGC5wcmlzbS52MS5HZXRUZWFtUmVxdWVzdBoZLnByaXNtLnYxLkdldFRlYW1SZXNwb25zZRJKCgtHZXRUZWFtVHJlZRIcLnByaXNtLnYxLkdldFRlYW1UcmVlUmVxdWVzdBodLnByaXNtLnYxLkdldFRlYW1UcmVlUmVzcG9uc2USRwoKQ3JlYXRlVGVhbRIbLnByaXNtLnYxLkNyZWF0ZVRlYW1SZXF1ZXN0GhwucHJpc20udjEuQ3JlYXRlVGVhbVJlc3BvbnNlEkcKClVwZGF0ZVRlYW0SGy5wcmlzbS52MS5VcGRhdGVUZWFtUmVxdWVzdBocLnByaXNtLnYxLlVwZGF0ZVRlYW1SZXNwb25zZRJHCgpEZWxldGVUZWFtEhsucHJpc20udjEuRGVsZXRlVGVhbVJlcXVlc3QaHC5wcmlzbS52MS5EZWxldGVUZWFtUmVzcG9uc2USRwoKTGlzdFBlb3BsZRIbLnByaXNtLnYxLkxpc3RQZW9wbGVSZXF1ZXN0GhwucHJpc20udjEuTGlzdFBlb3BsZVJlc3BvbnNlElYKD0ltcG9ydERpcmVjdG9yeRIgLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlcXVlc3QaIS5wcmlzbS52MS5JbXBvcnREaXJlY3RvcnlSZXNwb25zZRJNCgxVcGRhdGVQZXJzb24SHS5wcmlzbS52MS5VcGRhdGVQZXJzb25SZXF1ZXN0Gh4ucHJpc20udjEuVXBkYXRlUGVyc29uUmVzcG9uc2USWQoQRGVhY3RpdmF0ZVBlcnNvbhIhLnByaXNtLnYxLkRlYWN0aXZhdGVQZXJzb25SZXF1ZXN0GiIucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlElkKEFJlYWN0aXZhdGVQZXJzb24SIS5wcmlzbS52MS5SZWFjdGl2YXRlUGVyc29uUmVxdWVzdBoiLnByaXNtLnYxLlJlYWN0aXZhdGVQZXJzb25SZXNwb25zZRJfChJBc3NpZ25QZXJzb25Ub1RlYW0SIy5wcmlzbS52MS5Bc3NpZ25QZXJzb25Ub1RlYW1SZXF1ZXN0GiQucHJpc20udjEuQXNzaWduUGVyc29uVG9UZWFtUmVzcG9uc2USZQoUUmVtb3ZlUGVyc29uRnJvbVRlYW0SJS5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QaJi5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlc3BvbnNlEmUKFExpc3RVbmFzc2lnbmVkUGVvcGxlEiUucHJpc20udjEuTGlzdFVuYXNzaWduZWRQZW9wbGVSZXF1ZXN0GiYucHJpc20udjEuTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZRJWCg9MaXN0R2l0aHViVGVhbXMSIC5wcmlzbS52MS5MaXN0R2l0aHViVGVhbXNSZXF1ZXN0GiEucHJpc20udjEuTGlzdEdpdGh1YlRlYW1zUmVzcG9uc2USYgoTTGlzdFRlYW1HaXRodWJUZWFtcxIkLnByaXNtLnYxLkxpc3RUZWFtR2l0aHViVGVhbXNSZXF1ZXN0GiUucHJpc20udjEuTGlzdFRlYW1HaXRodWJUZWFtc1Jlc3BvbnNlElkKEEFzc2lnbkdpdGh1YlRlYW0SIS5wcmlzbS52MS5Bc3NpZ25HaXRodWJUZWFtUmVxdWVzdBoiLnByaXNtLnYxLkFzc2lnbkdpdGh1YlRlYW1SZXNwb25zZRJfChJVbmFzc2lnbkdpdGh1YlRlYW0SIy5wcmlzbS52MS5VbmFzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0GiQucHJpc20udjEuVW5hc3NpZ25HaXRodWJUZWFtUmVzcG9uc2USdAoZR2V0VGVhbU1hcHBpbmdTdWdnZXN0aW9ucxIqLnByaXNtLnYxLkdldFRlYW1NYXBwaW5nU3VnZ2VzdGlvbnNSZXF1ZXN0GisucHJpc20udjEuR2V0VGVhbU1hcHBpbmdTdWdnZXN0aW9uc1Jlc3BvbnNlEn0KHERpc21pc3NUZWFtTWFwcGluZ1N1Z2dlc3Rpb24SLS5wcmlzbS52MS5EaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVxdWVzdBouLnByaXNtLnYxLkRpc21pc3NUZWFtTWFwcGluZ1N1Z2dlc3Rpb25SZXNwb25zZWIGcHJvdG8z",
 );
 
 /**
@@ -825,6 +825,330 @@ export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeople
   messageDesc(file_prism_v1_org, 33);
 
 /**
+ * @generated from message prism.v1.GitHubTeam
+ */
+export type GitHubTeam = Message<"prism.v1.GitHubTeam"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string source_id = 2;
+   */
+  sourceId: string;
+
+  /**
+   * @generated from field: string github_org = 3;
+   */
+  githubOrg: string;
+
+  /**
+   * @generated from field: int64 github_team_id = 4;
+   */
+  githubTeamId: bigint;
+
+  /**
+   * @generated from field: string slug = 5;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: string name = 6;
+   */
+  name: string;
+
+  /**
+   * @generated from field: optional string description = 7;
+   */
+  description?: string;
+
+  /**
+   * @generated from field: int64 member_count = 8;
+   */
+  memberCount: bigint;
+
+  /**
+   * @generated from field: int64 repo_count = 9;
+   */
+  repoCount: bigint;
+};
+
+/**
+ * Describes the message prism.v1.GitHubTeam.
+ * Use `create(GitHubTeamSchema)` to create a new message.
+ */
+export const GitHubTeamSchema: GenMessage<GitHubTeam> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  34,
+);
+
+/**
+ * @generated from message prism.v1.TeamMappingSuggestion
+ */
+export type TeamMappingSuggestion = Message<"prism.v1.TeamMappingSuggestion"> & {
+  /**
+   * @generated from field: string github_team_id = 1;
+   */
+  githubTeamId: string;
+
+  /**
+   * @generated from field: string github_team_name = 2;
+   */
+  githubTeamName: string;
+
+  /**
+   * @generated from field: string github_org = 3;
+   */
+  githubOrg: string;
+
+  /**
+   * @generated from field: string github_team_slug = 4;
+   */
+  githubTeamSlug: string;
+
+  /**
+   * @generated from field: string prism_team_id = 5;
+   */
+  prismTeamId: string;
+
+  /**
+   * @generated from field: string prism_team_name = 6;
+   */
+  prismTeamName: string;
+
+  /**
+   * @generated from field: int64 overlap_count = 7;
+   */
+  overlapCount: bigint;
+
+  /**
+   * @generated from field: double github_coverage = 8;
+   */
+  githubCoverage: number;
+
+  /**
+   * @generated from field: double prism_coverage = 9;
+   */
+  prismCoverage: number;
+};
+
+/**
+ * Describes the message prism.v1.TeamMappingSuggestion.
+ * Use `create(TeamMappingSuggestionSchema)` to create a new message.
+ */
+export const TeamMappingSuggestionSchema: GenMessage<TeamMappingSuggestion> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 35);
+
+/**
+ * @generated from message prism.v1.ListGithubTeamsRequest
+ */
+export type ListGithubTeamsRequest = Message<"prism.v1.ListGithubTeamsRequest"> & {
+  /**
+   * @generated from field: optional string search = 1;
+   */
+  search?: string;
+
+  /**
+   * @generated from field: optional string github_org = 2;
+   */
+  githubOrg?: string;
+};
+
+/**
+ * Describes the message prism.v1.ListGithubTeamsRequest.
+ * Use `create(ListGithubTeamsRequestSchema)` to create a new message.
+ */
+export const ListGithubTeamsRequestSchema: GenMessage<ListGithubTeamsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 36);
+
+/**
+ * @generated from message prism.v1.ListGithubTeamsResponse
+ */
+export type ListGithubTeamsResponse = Message<"prism.v1.ListGithubTeamsResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.GitHubTeam teams = 1;
+   */
+  teams: GitHubTeam[];
+};
+
+/**
+ * Describes the message prism.v1.ListGithubTeamsResponse.
+ * Use `create(ListGithubTeamsResponseSchema)` to create a new message.
+ */
+export const ListGithubTeamsResponseSchema: GenMessage<ListGithubTeamsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 37);
+
+/**
+ * @generated from message prism.v1.ListTeamGithubTeamsRequest
+ */
+export type ListTeamGithubTeamsRequest = Message<"prism.v1.ListTeamGithubTeamsRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+};
+
+/**
+ * Describes the message prism.v1.ListTeamGithubTeamsRequest.
+ * Use `create(ListTeamGithubTeamsRequestSchema)` to create a new message.
+ */
+export const ListTeamGithubTeamsRequestSchema: GenMessage<ListTeamGithubTeamsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 38);
+
+/**
+ * @generated from message prism.v1.ListTeamGithubTeamsResponse
+ */
+export type ListTeamGithubTeamsResponse = Message<"prism.v1.ListTeamGithubTeamsResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.GitHubTeam teams = 1;
+   */
+  teams: GitHubTeam[];
+};
+
+/**
+ * Describes the message prism.v1.ListTeamGithubTeamsResponse.
+ * Use `create(ListTeamGithubTeamsResponseSchema)` to create a new message.
+ */
+export const ListTeamGithubTeamsResponseSchema: GenMessage<ListTeamGithubTeamsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 39);
+
+/**
+ * @generated from message prism.v1.AssignGithubTeamRequest
+ */
+export type AssignGithubTeamRequest = Message<"prism.v1.AssignGithubTeamRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+
+  /**
+   * @generated from field: string github_team_id = 2;
+   */
+  githubTeamId: string;
+};
+
+/**
+ * Describes the message prism.v1.AssignGithubTeamRequest.
+ * Use `create(AssignGithubTeamRequestSchema)` to create a new message.
+ */
+export const AssignGithubTeamRequestSchema: GenMessage<AssignGithubTeamRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 40);
+
+/**
+ * @generated from message prism.v1.AssignGithubTeamResponse
+ */
+export type AssignGithubTeamResponse = Message<"prism.v1.AssignGithubTeamResponse"> & {};
+
+/**
+ * Describes the message prism.v1.AssignGithubTeamResponse.
+ * Use `create(AssignGithubTeamResponseSchema)` to create a new message.
+ */
+export const AssignGithubTeamResponseSchema: GenMessage<AssignGithubTeamResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 41);
+
+/**
+ * @generated from message prism.v1.UnassignGithubTeamRequest
+ */
+export type UnassignGithubTeamRequest = Message<"prism.v1.UnassignGithubTeamRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+
+  /**
+   * @generated from field: string github_team_id = 2;
+   */
+  githubTeamId: string;
+};
+
+/**
+ * Describes the message prism.v1.UnassignGithubTeamRequest.
+ * Use `create(UnassignGithubTeamRequestSchema)` to create a new message.
+ */
+export const UnassignGithubTeamRequestSchema: GenMessage<UnassignGithubTeamRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 42);
+
+/**
+ * @generated from message prism.v1.UnassignGithubTeamResponse
+ */
+export type UnassignGithubTeamResponse = Message<"prism.v1.UnassignGithubTeamResponse"> & {};
+
+/**
+ * Describes the message prism.v1.UnassignGithubTeamResponse.
+ * Use `create(UnassignGithubTeamResponseSchema)` to create a new message.
+ */
+export const UnassignGithubTeamResponseSchema: GenMessage<UnassignGithubTeamResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 43);
+
+/**
+ * @generated from message prism.v1.GetTeamMappingSuggestionsRequest
+ */
+export type GetTeamMappingSuggestionsRequest =
+  Message<"prism.v1.GetTeamMappingSuggestionsRequest"> & {};
+
+/**
+ * Describes the message prism.v1.GetTeamMappingSuggestionsRequest.
+ * Use `create(GetTeamMappingSuggestionsRequestSchema)` to create a new message.
+ */
+export const GetTeamMappingSuggestionsRequestSchema: GenMessage<GetTeamMappingSuggestionsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 44);
+
+/**
+ * @generated from message prism.v1.GetTeamMappingSuggestionsResponse
+ */
+export type GetTeamMappingSuggestionsResponse =
+  Message<"prism.v1.GetTeamMappingSuggestionsResponse"> & {
+    /**
+     * @generated from field: repeated prism.v1.TeamMappingSuggestion suggestions = 1;
+     */
+    suggestions: TeamMappingSuggestion[];
+  };
+
+/**
+ * Describes the message prism.v1.GetTeamMappingSuggestionsResponse.
+ * Use `create(GetTeamMappingSuggestionsResponseSchema)` to create a new message.
+ */
+export const GetTeamMappingSuggestionsResponseSchema: GenMessage<GetTeamMappingSuggestionsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 45);
+
+/**
+ * @generated from message prism.v1.DismissTeamMappingSuggestionRequest
+ */
+export type DismissTeamMappingSuggestionRequest =
+  Message<"prism.v1.DismissTeamMappingSuggestionRequest"> & {
+    /**
+     * @generated from field: string team_id = 1;
+     */
+    teamId: string;
+
+    /**
+     * @generated from field: string github_team_id = 2;
+     */
+    githubTeamId: string;
+  };
+
+/**
+ * Describes the message prism.v1.DismissTeamMappingSuggestionRequest.
+ * Use `create(DismissTeamMappingSuggestionRequestSchema)` to create a new message.
+ */
+export const DismissTeamMappingSuggestionRequestSchema: GenMessage<DismissTeamMappingSuggestionRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 46);
+
+/**
+ * @generated from message prism.v1.DismissTeamMappingSuggestionResponse
+ */
+export type DismissTeamMappingSuggestionResponse =
+  Message<"prism.v1.DismissTeamMappingSuggestionResponse"> & {};
+
+/**
+ * Describes the message prism.v1.DismissTeamMappingSuggestionResponse.
+ * Use `create(DismissTeamMappingSuggestionResponseSchema)` to create a new message.
+ */
+export const DismissTeamMappingSuggestionResponseSchema: GenMessage<DismissTeamMappingSuggestionResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_org, 47);
+
+/**
  * @generated from enum prism.v1.TeamType
  */
 export enum TeamType {
@@ -974,5 +1298,55 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListUnassignedPeopleRequestSchema;
     output: typeof ListUnassignedPeopleResponseSchema;
+  };
+  /**
+   * GitHub team management
+   *
+   * @generated from rpc prism.v1.OrgService.ListGithubTeams
+   */
+  listGithubTeams: {
+    methodKind: "unary";
+    input: typeof ListGithubTeamsRequestSchema;
+    output: typeof ListGithubTeamsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.ListTeamGithubTeams
+   */
+  listTeamGithubTeams: {
+    methodKind: "unary";
+    input: typeof ListTeamGithubTeamsRequestSchema;
+    output: typeof ListTeamGithubTeamsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.AssignGithubTeam
+   */
+  assignGithubTeam: {
+    methodKind: "unary";
+    input: typeof AssignGithubTeamRequestSchema;
+    output: typeof AssignGithubTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.UnassignGithubTeam
+   */
+  unassignGithubTeam: {
+    methodKind: "unary";
+    input: typeof UnassignGithubTeamRequestSchema;
+    output: typeof UnassignGithubTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.GetTeamMappingSuggestions
+   */
+  getTeamMappingSuggestions: {
+    methodKind: "unary";
+    input: typeof GetTeamMappingSuggestionsRequestSchema;
+    output: typeof GetTeamMappingSuggestionsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.DismissTeamMappingSuggestion
+   */
+  dismissTeamMappingSuggestion: {
+    methodKind: "unary";
+    input: typeof DismissTeamMappingSuggestionRequestSchema;
+    output: typeof DismissTeamMappingSuggestionResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_org, 0);

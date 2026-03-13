@@ -17,6 +17,14 @@ service OrgService {
   rpc AssignPersonToTeam(AssignPersonToTeamRequest) returns (AssignPersonToTeamResponse);
   rpc RemovePersonFromTeam(RemovePersonFromTeamRequest) returns (RemovePersonFromTeamResponse);
   rpc ListUnassignedPeople(ListUnassignedPeopleRequest) returns (ListUnassignedPeopleResponse);
+
+  // GitHub team management
+  rpc ListGithubTeams(ListGithubTeamsRequest) returns (ListGithubTeamsResponse);
+  rpc ListTeamGithubTeams(ListTeamGithubTeamsRequest) returns (ListTeamGithubTeamsResponse);
+  rpc AssignGithubTeam(AssignGithubTeamRequest) returns (AssignGithubTeamResponse);
+  rpc UnassignGithubTeam(UnassignGithubTeamRequest) returns (UnassignGithubTeamResponse);
+  rpc GetTeamMappingSuggestions(GetTeamMappingSuggestionsRequest) returns (GetTeamMappingSuggestionsResponse);
+  rpc DismissTeamMappingSuggestion(DismissTeamMappingSuggestionRequest) returns (DismissTeamMappingSuggestionResponse);
 }
 
 enum TeamType {
@@ -198,3 +206,73 @@ message ListUnassignedPeopleRequest {}
 message ListUnassignedPeopleResponse {
   repeated Person people = 1;
 }
+
+// GitHub team types and RPCs
+
+message GitHubTeam {
+  string id = 1;
+  string source_id = 2;
+  string github_org = 3;
+  int64 github_team_id = 4;
+  string slug = 5;
+  string name = 6;
+  optional string description = 7;
+  int64 member_count = 8;
+  int64 repo_count = 9;
+}
+
+message TeamMappingSuggestion {
+  string github_team_id = 1;
+  string github_team_name = 2;
+  string github_org = 3;
+  string github_team_slug = 4;
+  string prism_team_id = 5;
+  string prism_team_name = 6;
+  int64 overlap_count = 7;
+  double github_coverage = 8;
+  double prism_coverage = 9;
+}
+
+message ListGithubTeamsRequest {
+  optional string search = 1;
+  optional string github_org = 2;
+}
+
+message ListGithubTeamsResponse {
+  repeated GitHubTeam teams = 1;
+}
+
+message ListTeamGithubTeamsRequest {
+  string team_id = 1;
+}
+
+message ListTeamGithubTeamsResponse {
+  repeated GitHubTeam teams = 1;
+}
+
+message AssignGithubTeamRequest {
+  string team_id = 1;
+  string github_team_id = 2;
+}
+
+message AssignGithubTeamResponse {}
+
+message UnassignGithubTeamRequest {
+  string team_id = 1;
+  string github_team_id = 2;
+}
+
+message UnassignGithubTeamResponse {}
+
+message GetTeamMappingSuggestionsRequest {}
+
+message GetTeamMappingSuggestionsResponse {
+  repeated TeamMappingSuggestion suggestions = 1;
+}
+
+message DismissTeamMappingSuggestionRequest {
+  string team_id = 1;
+  string github_team_id = 2;
+}
+
+message DismissTeamMappingSuggestionResponse {}

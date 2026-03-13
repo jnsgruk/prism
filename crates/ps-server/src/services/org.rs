@@ -3,19 +3,25 @@ use std::collections::{HashMap, HashSet};
 use ps_core::models::TeamType;
 use ps_core::repo::org::{
     IdentityRow, ImportIdentity, ImportRecord, ListPeopleParams, PersonRow, TeamWithCount,
+    github_teams::GitHubTeamRow,
 };
 use ps_core::repo::{PageRequest, Repos, SortParams};
 use ps_proto::prism::v1::org_service_server::OrgService;
 use ps_proto::prism::v1::{
-    AssignPersonToTeamRequest, AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse,
-    DeactivatePersonRequest, DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,
-    GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse,
-    ImportDirectoryRequest, ImportDirectoryResponse, ListPeopleRequest, ListPeopleResponse,
-    ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest, ListUnassignedPeopleResponse,
-    PaginationResponse, Person, PlatformIdentity, ReactivatePersonRequest,
-    ReactivatePersonResponse, RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, Team,
-    TeamType as ProtoTeamType, UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest,
-    UpdateTeamResponse,
+    AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest,
+    AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest,
+    DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,
+    DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse,
+    GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse, GetTeamRequest,
+    GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse, GitHubTeam as ProtoGitHubTeam,
+    ImportDirectoryRequest, ImportDirectoryResponse, ListGithubTeamsRequest,
+    ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse, ListTeamGithubTeamsRequest,
+    ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest,
+    ListUnassignedPeopleResponse, PaginationResponse, Person, PlatformIdentity,
+    ReactivatePersonRequest, ReactivatePersonResponse, RemovePersonFromTeamRequest,
+    RemovePersonFromTeamResponse, Team, TeamMappingSuggestion as ProtoTeamMappingSuggestion,
+    TeamType as ProtoTeamType, UnassignGithubTeamRequest, UnassignGithubTeamResponse,
+    UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
 };
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
@@ -71,6 +77,20 @@ fn proto_to_team_type(v: i32) -> Result<TeamType, Status> {
         Ok(ProtoTeamType::Team) => Ok(TeamType::Team),
         Ok(ProtoTeamType::Squad) => Ok(TeamType::Squad),
         _ => Err(Status::invalid_argument("invalid team_type")),
+    }
+}
+
+fn github_team_to_proto(t: GitHubTeamRow) -> ProtoGitHubTeam {
+    ProtoGitHubTeam {
+        id: t.id.to_string(),
+        source_id: t.source_id.to_string(),
+        github_org: t.github_org,
+        github_team_id: t.github_team_id,
+        slug: t.slug,
+        name: t.name,
+        description: t.description,
+        member_count: t.member_count,
+        repo_count: t.repo_count,
     }
 }
 
@@ -572,6 +592,146 @@ impl OrgService for OrgServiceImpl {
 
         let people = build_people(people_rows, &identities);
         Ok(Response::new(ListUnassignedPeopleResponse { people }))
+    }
+
+    async fn list_github_teams(
+        &self,
+        request: Request<ListGithubTeamsRequest>,
+    ) -> Result<Response<ListGithubTeamsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let search = req.search.filter(|s| !s.is_empty());
+        let github_org = req.github_org.filter(|s| !s.is_empty());
+
+        let rows = self
+            .repos
+            .org
+            .list_github_teams(search.as_deref(), github_org.as_deref())
+            .await
+            .map_err(db_err)?;
+
+        let teams = rows.into_iter().map(github_team_to_proto).collect();
+        Ok(Response::new(ListGithubTeamsResponse { teams }))
+    }
+
+    async fn list_team_github_teams(
+        &self,
+        request: Request<ListTeamGithubTeamsRequest>,
+    ) -> Result<Response<ListTeamGithubTeamsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let team_id = Uuid::parse_str(&req.team_id)
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        let rows = self
+            .repos
+            .org
+            .list_team_github_teams(team_id)
+            .await
+            .map_err(db_err)?;
+
+        let teams = rows.into_iter().map(github_team_to_proto).collect();
+        Ok(Response::new(ListTeamGithubTeamsResponse { teams }))
+    }
+
+    async fn assign_github_team(
+        &self,
+        request: Request<AssignGithubTeamRequest>,
+    ) -> Result<Response<AssignGithubTeamResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let team_id = Uuid::parse_str(&req.team_id)
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+        let github_team_id = Uuid::parse_str(&req.github_team_id)
+            .map_err(|_| Status::invalid_argument("invalid github_team_id"))?;
+
+        self.repos
+            .org
+            .assign_github_team(team_id, github_team_id)
+            .await
+            .map_err(db_err)?;
+
+        info!(%team_id, %github_team_id, "assigned GitHub team to Prism team");
+        Ok(Response::new(AssignGithubTeamResponse {}))
+    }
+
+    async fn unassign_github_team(
+        &self,
+        request: Request<UnassignGithubTeamRequest>,
+    ) -> Result<Response<UnassignGithubTeamResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let team_id = Uuid::parse_str(&req.team_id)
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+        let github_team_id = Uuid::parse_str(&req.github_team_id)
+            .map_err(|_| Status::invalid_argument("invalid github_team_id"))?;
+
+        self.repos
+            .org
+            .unassign_github_team(team_id, github_team_id)
+            .await
+            .map_err(db_err)?;
+
+        info!(%team_id, %github_team_id, "unassigned GitHub team from Prism team");
+        Ok(Response::new(UnassignGithubTeamResponse {}))
+    }
+
+    async fn get_team_mapping_suggestions(
+        &self,
+        request: Request<GetTeamMappingSuggestionsRequest>,
+    ) -> Result<Response<GetTeamMappingSuggestionsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let rows = self
+            .repos
+            .org
+            .get_team_mapping_suggestions()
+            .await
+            .map_err(db_err)?;
+
+        let suggestions = rows
+            .into_iter()
+            .map(|s| ProtoTeamMappingSuggestion {
+                github_team_id: s.github_team_id.to_string(),
+                github_team_name: s.github_team_name,
+                github_org: s.github_org,
+                github_team_slug: s.github_team_slug,
+                prism_team_id: s.prism_team_id.to_string(),
+                prism_team_name: s.prism_team_name,
+                overlap_count: s.overlap_count,
+                github_coverage: s.github_coverage,
+                prism_coverage: s.prism_coverage,
+            })
+            .collect();
+
+        Ok(Response::new(GetTeamMappingSuggestionsResponse {
+            suggestions,
+        }))
+    }
+
+    async fn dismiss_team_mapping_suggestion(
+        &self,
+        request: Request<DismissTeamMappingSuggestionRequest>,
+    ) -> Result<Response<DismissTeamMappingSuggestionResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let team_id = Uuid::parse_str(&req.team_id)
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+        let github_team_id = Uuid::parse_str(&req.github_team_id)
+            .map_err(|_| Status::invalid_argument("invalid github_team_id"))?;
+
+        self.repos
+            .org
+            .dismiss_github_team_suggestion(team_id, github_team_id)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(DismissTeamMappingSuggestionResponse {}))
     }
 }
 

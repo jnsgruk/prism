@@ -5,9 +5,11 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type {
   GetTeamResponse,
   GetTeamTreeResponse,
+  GitHubTeam,
   ListPeopleResponse,
   Person,
   Team,
+  TeamMappingSuggestion,
 } from "@ps/api/gen/prism/v1/org_pb";
 import { OrgService, TeamType } from "@ps/api/gen/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
@@ -22,6 +24,10 @@ export const orgKeys = {
   team: (teamId: string): readonly ["org", "team", string] =>
     [...orgKeys.all, "team", teamId] as const,
   people: (): readonly ["org", "people"] => [...orgKeys.all, "people"] as const,
+  githubTeams: (search?: string, githubOrg?: string) =>
+    [...orgKeys.all, "github-teams", search, githubOrg] as const,
+  teamGithubTeams: (teamId: string) => [...orgKeys.all, "team-github-teams", teamId] as const,
+  mappingSuggestions: () => [...orgKeys.all, "mapping-suggestions"] as const,
 };
 
 export const useListTeams = (parentTeamId?: string): UseQueryResult<Team[], Error> =>
@@ -139,3 +145,32 @@ export const teamTypeBadgeVariant = (
       return "secondary";
   }
 };
+
+export const useListGithubTeams = (
+  search?: string,
+  githubOrg?: string,
+): UseQueryResult<GitHubTeam[], Error> =>
+  useQuery({
+    queryKey: orgKeys.githubTeams(search, githubOrg),
+    queryFn: () =>
+      orgClient.listGithubTeams({
+        search: search || undefined,
+        githubOrg: githubOrg || undefined,
+      }),
+    select: (data): GitHubTeam[] => data.teams,
+  });
+
+export const useListTeamGithubTeams = (teamId: string): UseQueryResult<GitHubTeam[], Error> =>
+  useQuery({
+    queryKey: orgKeys.teamGithubTeams(teamId),
+    queryFn: () => orgClient.listTeamGithubTeams({ teamId }),
+    select: (data): GitHubTeam[] => data.teams,
+    enabled: !!teamId,
+  });
+
+export const useGetTeamMappingSuggestions = (): UseQueryResult<TeamMappingSuggestion[], Error> =>
+  useQuery({
+    queryKey: orgKeys.mappingSuggestions(),
+    queryFn: () => orgClient.getTeamMappingSuggestions({}),
+    select: (data): TeamMappingSuggestion[] => data.suggestions,
+  });

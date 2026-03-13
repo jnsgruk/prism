@@ -205,3 +205,51 @@ export const useListUnassignedPeople = (): UseQueryResult<Person[], Error> =>
     queryFn: () => orgClient.listUnassignedPeople({}),
     select: (data): Person[] => data.people,
   });
+
+export const useAssignGithubTeam = (): UseMutationResult<
+  void,
+  Error,
+  { teamId: string; githubTeamId: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, githubTeamId }) => {
+      await orgClient.assignGithubTeam({ teamId, githubTeamId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useUnassignGithubTeam = (): UseMutationResult<
+  void,
+  Error,
+  { teamId: string; githubTeamId: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, githubTeamId }) => {
+      await orgClient.unassignGithubTeam({ teamId, githubTeamId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useDismissTeamMappingSuggestion = (): UseMutationResult<
+  void,
+  Error,
+  { teamId: string; githubTeamId: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, githubTeamId }) => {
+      await orgClient.dismissTeamMappingSuggestion({ teamId, githubTeamId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};

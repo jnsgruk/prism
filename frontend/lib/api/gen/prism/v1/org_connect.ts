@@ -4,6 +4,8 @@
 // @ts-nocheck
 
 import {
+  AssignGithubTeamRequest,
+  AssignGithubTeamResponse,
   AssignPersonToTeamRequest,
   AssignPersonToTeamResponse,
   CreateTeamRequest,
@@ -12,14 +14,22 @@ import {
   DeactivatePersonResponse,
   DeleteTeamRequest,
   DeleteTeamResponse,
+  DismissTeamMappingSuggestionRequest,
+  DismissTeamMappingSuggestionResponse,
+  GetTeamMappingSuggestionsRequest,
+  GetTeamMappingSuggestionsResponse,
   GetTeamRequest,
   GetTeamResponse,
   GetTeamTreeRequest,
   GetTeamTreeResponse,
   ImportDirectoryRequest,
   ImportDirectoryResponse,
+  ListGithubTeamsRequest,
+  ListGithubTeamsResponse,
   ListPeopleRequest,
   ListPeopleResponse,
+  ListTeamGithubTeamsRequest,
+  ListTeamGithubTeamsResponse,
   ListTeamsRequest,
   ListTeamsResponse,
   ListUnassignedPeopleRequest,
@@ -28,6 +38,8 @@ import {
   ReactivatePersonResponse,
   RemovePersonFromTeamRequest,
   RemovePersonFromTeamResponse,
+  UnassignGithubTeamRequest,
+  UnassignGithubTeamResponse,
   UpdatePersonRequest,
   UpdatePersonResponse,
   UpdateTeamRequest,
@@ -165,6 +177,62 @@ export const OrgService = {
       name: "ListUnassignedPeople",
       I: ListUnassignedPeopleRequest,
       O: ListUnassignedPeopleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GitHub team management
+     *
+     * @generated from rpc prism.v1.OrgService.ListGithubTeams
+     */
+    listGithubTeams: {
+      name: "ListGithubTeams",
+      I: ListGithubTeamsRequest,
+      O: ListGithubTeamsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.ListTeamGithubTeams
+     */
+    listTeamGithubTeams: {
+      name: "ListTeamGithubTeams",
+      I: ListTeamGithubTeamsRequest,
+      O: ListTeamGithubTeamsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.AssignGithubTeam
+     */
+    assignGithubTeam: {
+      name: "AssignGithubTeam",
+      I: AssignGithubTeamRequest,
+      O: AssignGithubTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.UnassignGithubTeam
+     */
+    unassignGithubTeam: {
+      name: "UnassignGithubTeam",
+      I: UnassignGithubTeamRequest,
+      O: UnassignGithubTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.GetTeamMappingSuggestions
+     */
+    getTeamMappingSuggestions: {
+      name: "GetTeamMappingSuggestions",
+      I: GetTeamMappingSuggestionsRequest,
+      O: GetTeamMappingSuggestionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.DismissTeamMappingSuggestion
+     */
+    dismissTeamMappingSuggestion: {
+      name: "DismissTeamMappingSuggestion",
+      I: DismissTeamMappingSuggestionRequest,
+      O: DismissTeamMappingSuggestionResponse,
       kind: MethodKind.Unary,
     },
   },
