@@ -354,6 +354,46 @@ impl OrgRepo {
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
+        // --- Pre-pass: ensure Group teams exist for every unique group value ---
+        // Groups from the directory (e.g. "Ubuntu Engineering") may not have a
+        // depth-1 leader in this import, so we create them upfront.
+        let unique_groups: HashSet<&str> =
+            records.iter().filter_map(|r| r.group.as_deref()).collect();
+        for &group_name in &unique_groups {
+            let org_name = "Canonical";
+            let gname = group_name.to_owned();
+            let existing = sqlx::query_scalar!(
+                "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
+                gname,
+                org_name,
+            )
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+            let gid = if let Some(id) = existing {
+                id
+            } else {
+                let new_id = Uuid::now_v7();
+                sqlx::query!(
+                    r#"
+                    INSERT INTO org.teams (id, name, org_name, team_type)
+                    VALUES ($1, $2, $3, $4::org.team_type)
+                    "#,
+                    new_id,
+                    gname,
+                    org_name,
+                    TeamType::Group as TeamType,
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
+                teams_created += 1;
+                new_id
+            };
+            team_name_to_id.insert(gname, gid);
+        }
+
         // --- Pass 1: upsert people, create teams, map identities ---
         for record in records {
             if record.name.is_empty() {
