@@ -37,8 +37,6 @@ const NAV_ITEMS = [
   { title: "Ingestion", href: "/ingestion", icon: Activity },
 ];
 
-const ADMIN_ITEMS = [{ title: "Admin", href: "/admin", icon: Settings }];
-
 const UserInitials = ({ name }: { name: string }): React.ReactElement => {
   const initials = name
     .split(" ")
@@ -108,26 +106,6 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {ADMIN_ITEMS.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={isActive(item.href)}
-                    tooltip={item.title}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
@@ -157,6 +135,11 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                     <span className="truncate text-xs text-muted-foreground">{user.username}</span>
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href="/admin" />}>
+                  <Settings className="mr-2 size-4" />
+                  Admin
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout.mutate()}>
                   <LogOut className="mr-2 size-4" />

@@ -11,7 +11,7 @@ export const PageHeader = ({
   actions?: React.ReactNode;
 }): React.ReactElement => (
   <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-    <SidebarTrigger className="-ml-1" />
+    <SidebarTrigger />
     <Separator orientation="vertical" className="mr-2 h-4" />
     <div className="flex flex-1 items-center justify-between">
       <div>
