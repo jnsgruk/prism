@@ -1,27 +1,27 @@
 use std::collections::HashMap;
 
+use ps_core::repo::Repos;
 use ps_proto::prism::v1::ingestion_service_server::IngestionService;
 use ps_proto::prism::v1::{
     GetStatusRequest, GetStatusResponse, IngestionRun, ListRunsRequest, ListRunsResponse,
     SourceState, SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse, TriggerRunRequest,
     TriggerRunResponse,
 };
-use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
 use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct IngestionServiceImpl {
-    pool: PgPool,
+    repos: Repos,
     restate_url: String,
     http_client: reqwest::Client,
 }
 
 impl IngestionServiceImpl {
-    pub fn new(pool: PgPool, restate_url: String) -> Self {
+    pub fn new(repos: Repos, restate_url: String) -> Self {
         Self {
-            pool,
+            repos,
             restate_url,
             http_client: reqwest::Client::new(),
         }
@@ -36,26 +36,12 @@ impl IngestionService for IngestionServiceImpl {
     ) -> Result<Response<GetStatusResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let sources = sqlx::query!(
-            r#"
-            SELECT
-                sc.name,
-                sc.source_type,
-                iw.watermark_value,
-                iw.last_successful_run,
-                iw.last_attempt,
-                iw.last_error,
-                iw.items_collected_last_run
-            FROM config.source_configs sc
-            LEFT JOIN activity.ingestion_watermarks iw
-                ON sc.name = iw.source_name
-            WHERE sc.enabled = true
-            ORDER BY sc.name
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let sources = self
+            .repos
+            .activity
+            .get_source_statuses()
+            .await
+            .map_err(db_err)?;
 
         let statuses = sources
             .into_iter()
@@ -86,22 +72,14 @@ impl IngestionService for IngestionServiceImpl {
 
         let filter_name = req.source_name.filter(|n| !n.is_empty());
 
-        let runs = sqlx::query!(
-            r#"
-            SELECT id, source_name, started_at, completed_at, status,
-                   items_collected, error_message
-            FROM activity.ingestion_runs
-            WHERE ($1::text IS NULL OR source_name = $1)
-            ORDER BY started_at DESC
-            LIMIT 50
-            "#,
-            filter_name.as_deref(),
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let rows = self
+            .repos
+            .activity
+            .list_runs(filter_name.as_deref())
+            .await
+            .map_err(db_err)?;
 
-        let runs = runs
+        let runs = rows
             .into_iter()
             .map(|r| IngestionRun {
                 id: r.id.to_string(),
@@ -129,12 +107,12 @@ impl IngestionService for IngestionServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
-        // Verify source exists and is enabled
+        // Verify source exists and is enabled (config schema — will move to ConfigRepo in T3)
         sqlx::query_scalar!(
             "SELECT id FROM config.source_configs WHERE name = $1 AND enabled = true",
             req.source_name,
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(self.repos.config.pool())
         .await
         .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found or disabled"))?;
@@ -172,12 +150,12 @@ impl IngestionService for IngestionServiceImpl {
             return Err(Status::invalid_argument("since_date is required"));
         }
 
-        // Verify source exists and is enabled
+        // Verify source exists and is enabled (config schema — will move to ConfigRepo in T3)
         sqlx::query_scalar!(
             "SELECT id FROM config.source_configs WHERE name = $1 AND enabled = true",
             req.source_name,
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(self.repos.config.pool())
         .await
         .map_err(db_err)?
         .ok_or_else(|| Status::not_found("source not found or disabled"))?;

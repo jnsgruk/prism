@@ -14,8 +14,8 @@ pub fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
         .ok_or_else(|| Status::unauthenticated("not authenticated"))
 }
 
-/// Map a `sqlx::Error` to a gRPC `Internal` status.
-pub fn db_err(e: sqlx::Error) -> Status {
+/// Map a database/repo error to a gRPC `Internal` status.
+pub fn db_err(e: impl std::fmt::Display) -> Status {
     Status::internal(format!("database error: {e}"))
 }
 

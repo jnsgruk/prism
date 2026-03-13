@@ -34,14 +34,15 @@ impl TestServer {
             .expect("bind to random port");
         let addr = listener.local_addr().expect("local addr");
 
+        let repos = ps_core::repo::Repos::new(pool.clone());
+
         let auth_service = AuthServiceImpl::new(pool.clone());
         let admin_service = AdminServiceImpl::new(pool.clone());
         let org_service = OrgServiceImpl::new(pool.clone());
         let config_service = ConfigServiceImpl::new(pool.clone(), test_secret_key());
         // IngestionService uses a dummy Restate URL — trigger tests will get
         // connection-refused, which is expected (we test the gRPC layer, not Restate).
-        let ingestion_service =
-            IngestionServiceImpl::new(pool.clone(), "http://127.0.0.1:1".into());
+        let ingestion_service = IngestionServiceImpl::new(repos, "http://127.0.0.1:1".into());
 
         let server = Server::builder()
             .layer(AuthLayer::new(pool.clone()))

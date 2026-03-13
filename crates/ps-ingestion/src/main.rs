@@ -27,8 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_client = reqwest::Client::new();
 
     // Build the Restate handler
+    let repos = ps_core::repo::Repos::new(pool.clone());
     let handler = IngestionHandlerImpl {
-        pool: pool.clone(),
+        repos,
         secret_key,
         http_client,
     };

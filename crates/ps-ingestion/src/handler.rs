@@ -1,7 +1,7 @@
 use ps_core::ingestion::IngestionContext;
 use ps_core::models::SourceConfig;
+use ps_core::repo::Repos;
 use restate_sdk::prelude::*;
-use sqlx::PgPool;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -9,7 +9,7 @@ use crate::registry;
 
 /// Shared state available to all Restate handlers.
 pub struct IngestionHandlerImpl {
-    pub pool: PgPool,
+    pub repos: Repos,
     pub secret_key: [u8; 32],
     pub http_client: reqwest::Client,
 }
@@ -52,8 +52,8 @@ impl IngestionHandlerImpl {
         source_name: &str,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        // Step 1: Load source config from DB
-        let pool = self.pool.clone();
+        // Step 1: Load source config from DB (config schema — will move to ConfigRepo in T3)
+        let pool = self.repos.config.pool().clone();
         let name = source_name.to_string();
         let config: SourceConfig = ctx
             .run(|| {
@@ -91,7 +91,7 @@ impl IngestionHandlerImpl {
 
         // Build the IngestionContext
         let ing_ctx = IngestionContext {
-            pool: self.pool.clone(),
+            repos: self.repos.clone(),
             source_config: config.clone(),
             secret_key: self.secret_key,
             http_client: self.http_client.clone(),
@@ -99,24 +99,17 @@ impl IngestionHandlerImpl {
 
         // Step 3: Create ingestion run record
         let run_id = Uuid::now_v7();
-        let pool = self.pool.clone();
+        let repos = self.repos.clone();
         let sn = source_name.to_string();
         ctx.run(|| {
-            let pool = pool.clone();
+            let repos = repos.clone();
             let sn = sn.clone();
             async move {
-                sqlx::query!(
-                    r#"
-                    INSERT INTO activity.ingestion_runs (id, source_name, started_at, status)
-                    VALUES ($1, $2, now(), 'running')
-                    "#,
-                    run_id,
-                    sn,
-                )
-                .execute(&pool)
-                .await
-                .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
+                repos
+                    .activity
+                    .create_run(run_id, &sn)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                 Ok(Json::from(()))
             }
         })
@@ -151,7 +144,7 @@ impl IngestionHandlerImpl {
 
         loop {
             // Fetch batch (as a durable side effect)
-            let pool = self.pool.clone();
+            let repos = self.repos.clone();
             let http = self.http_client.clone();
             let cfg = config.clone();
             let sk = self.secret_key;
@@ -160,7 +153,7 @@ impl IngestionHandlerImpl {
 
             let fetch_result = ctx
                 .run(|| {
-                    let pool = pool.clone();
+                    let repos = repos.clone();
                     let http = http.clone();
                     let cfg = cfg.clone();
                     let cur = cur.clone();
@@ -169,7 +162,7 @@ impl IngestionHandlerImpl {
                         let src = registry::create_source(&source_type)
                             .ok_or_else(|| TerminalError::new("source unavailable"))?;
                         let ic = IngestionContext {
-                            pool,
+                            repos,
                             source_config: cfg,
                             secret_key: sk,
                             http_client: http,
@@ -198,7 +191,7 @@ impl IngestionHandlerImpl {
 
             // Store batch
             if !batch.items.is_empty() {
-                let pool = self.pool.clone();
+                let repos = self.repos.clone();
                 let http = self.http_client.clone();
                 let cfg = config.clone();
                 let sk = self.secret_key;
@@ -207,7 +200,7 @@ impl IngestionHandlerImpl {
 
                 let stored: i32 = ctx
                     .run(|| {
-                        let pool = pool.clone();
+                        let repos = repos.clone();
                         let http = http.clone();
                         let cfg = cfg.clone();
                         let items = items.clone();
@@ -216,7 +209,7 @@ impl IngestionHandlerImpl {
                             let src = registry::create_source(&source_type)
                                 .ok_or_else(|| TerminalError::new("source unavailable"))?;
                             let ic = IngestionContext {
-                                pool,
+                                repos,
                                 source_config: cfg,
                                 secret_key: sk,
                                 http_client: http,
@@ -248,7 +241,7 @@ impl IngestionHandlerImpl {
 
         // Step 6: Advance watermark
         if total_items > 0 {
-            let pool = self.pool.clone();
+            let repos = self.repos.clone();
             let http = self.http_client.clone();
             let cfg = config.clone();
             let sk = self.secret_key;
@@ -257,7 +250,7 @@ impl IngestionHandlerImpl {
             let ti = total_items;
 
             ctx.run(|| {
-                let pool = pool.clone();
+                let repos = repos.clone();
                 let http = http.clone();
                 let cfg = cfg.clone();
                 let wm = wm.clone();
@@ -266,7 +259,7 @@ impl IngestionHandlerImpl {
                     let src = registry::create_source(&source_type)
                         .ok_or_else(|| TerminalError::new("source unavailable"))?;
                     let ic = IngestionContext {
-                        pool,
+                        repos,
                         source_config: cfg,
                         secret_key: sk,
                         http_client: http,
@@ -298,24 +291,16 @@ impl IngestionHandlerImpl {
         source_name: &str,
         items_collected: i32,
     ) {
-        let pool = self.pool.clone();
+        let repos = self.repos.clone();
         let result = ctx
             .run(|| {
-                let pool = pool.clone();
+                let repos = repos.clone();
                 async move {
-                    sqlx::query!(
-                        r#"
-                        UPDATE activity.ingestion_runs
-                        SET completed_at = now(), status = 'completed', items_collected = $2
-                        WHERE id = $1
-                        "#,
-                        run_id,
-                        items_collected,
-                    )
-                    .execute(&pool)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
+                    repos
+                        .activity
+                        .complete_run(run_id, items_collected)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                     Ok(Json::from(()))
                 }
             })
@@ -334,26 +319,18 @@ impl IngestionHandlerImpl {
         source_name: &str,
         error_msg: &str,
     ) {
-        let pool = self.pool.clone();
+        let repos = self.repos.clone();
         let err = error_msg.to_string();
         let result = ctx
             .run(|| {
-                let pool = pool.clone();
+                let repos = repos.clone();
                 let err = err.clone();
                 async move {
-                    sqlx::query!(
-                        r#"
-                        UPDATE activity.ingestion_runs
-                        SET completed_at = now(), status = 'failed', error_message = $2
-                        WHERE id = $1
-                        "#,
-                        run_id,
-                        err,
-                    )
-                    .execute(&pool)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
+                    repos
+                        .activity
+                        .fail_run(run_id, &err)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                     Ok(Json::from(()))
                 }
             })

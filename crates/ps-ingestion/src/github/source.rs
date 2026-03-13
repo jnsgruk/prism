@@ -101,20 +101,20 @@ async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Err
     let token = decrypt_token(ctx).await?;
     let client = build_client(ctx, &token);
 
-    let discovered_repos =
-        repos::discover_repos(&client, &orgs, &ctx.pool, exclude_archived, &exclude_repos).await?;
-
-    let watermark = sqlx::query_scalar!(
-        r#"
-        SELECT watermark_value
-        FROM activity.ingestion_watermarks
-        WHERE source_name = $1
-        "#,
-        ctx.source_config.name,
+    let discovered_repos = repos::discover_repos(
+        &client,
+        &orgs,
+        ctx.repos.org.pool(),
+        exclude_archived,
+        &exclude_repos,
     )
-    .fetch_optional(&ctx.pool)
-    .await
-    .map_err(|e| ps_core::Error::Database(e.to_string()))?;
+    .await?;
+
+    let watermark = ctx
+        .repos
+        .activity
+        .get_watermark(&ctx.source_config.name)
+        .await?;
 
     info!(
         source = ctx.source_config.name,
@@ -157,7 +157,9 @@ async fn fetch_batch_impl(
     let endpoint_key =
         etag::normalise_endpoint(&format!("{}/repos/{owner}/{repo}/pulls", client.base_url()));
     let cached_etag = if cur.page == 1 {
-        etag::get_cached_etag(&ctx.pool, &ctx.source_config.name, &endpoint_key)
+        ctx.repos
+            .activity
+            .get_cached_etag(&ctx.source_config.name, &endpoint_key)
             .await
             .ok()
             .flatten()
@@ -194,8 +196,11 @@ async fn fetch_batch_impl(
     // Update ETag cache if we got a new one on page 1
     if let Some(new_etag) = &result.etag
         && cur.page == 1
-        && let Err(e) =
-            etag::set_cached_etag(&ctx.pool, &ctx.source_config.name, &endpoint_key, new_etag).await
+        && let Err(e) = ctx
+            .repos
+            .activity
+            .set_cached_etag(&ctx.source_config.name, &endpoint_key, new_etag)
+            .await
     {
         warn!("failed to cache ETag: {e}");
     }
@@ -363,7 +368,7 @@ async fn store_batch_impl(
         .into_iter()
         .collect();
 
-    let person_map = identity::batch_resolve_person_ids(&ctx.pool, &usernames)
+    let person_map = identity::batch_resolve_person_ids(ctx.repos.org.pool(), &usernames)
         .await
         .map_err(|e| ps_core::Error::Database(e.to_string()))?;
 
@@ -372,47 +377,10 @@ async fn store_batch_impl(
         let person_id = person_map.get(&item.platform_username).copied();
         let id = Uuid::now_v7();
 
-        sqlx::query!(
-            r#"
-            INSERT INTO activity.contributions (
-                id, person_id, platform, contribution_type, platform_id,
-                title, url, state, created_at, updated_at, closed_at,
-                metrics, metadata, content, state_history, ingested_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
-            ON CONFLICT (platform, platform_id)
-            DO UPDATE SET
-                person_id = COALESCE(EXCLUDED.person_id, activity.contributions.person_id),
-                title = EXCLUDED.title,
-                url = EXCLUDED.url,
-                state = EXCLUDED.state,
-                updated_at = EXCLUDED.updated_at,
-                closed_at = EXCLUDED.closed_at,
-                metrics = EXCLUDED.metrics,
-                metadata = EXCLUDED.metadata,
-                content = EXCLUDED.content,
-                state_history = EXCLUDED.state_history,
-                ingested_at = now()
-            "#,
-            id,
-            person_id,
-            item.platform,
-            item.contribution_type,
-            item.platform_id,
-            item.title,
-            item.url,
-            item.state,
-            item.created_at,
-            item.updated_at,
-            item.closed_at,
-            item.metrics,
-            item.metadata,
-            item.content,
-            item.state_history,
-        )
-        .execute(&ctx.pool)
-        .await
-        .map_err(|e| ps_core::Error::Database(e.to_string()))?;
+        ctx.repos
+            .activity
+            .upsert_contribution(id, person_id, item)
+            .await?;
 
         stored += 1;
     }
@@ -426,27 +394,10 @@ async fn advance_watermark_impl(
     new_watermark: &str,
     items_collected: i32,
 ) -> Result<(), ps_core::Error> {
-    sqlx::query!(
-        r#"
-        INSERT INTO activity.ingestion_watermarks (
-            source_name, watermark_value, last_successful_run, last_attempt, items_collected_last_run
-        )
-        VALUES ($1, $2, now(), now(), $3)
-        ON CONFLICT (source_name)
-        DO UPDATE SET
-            watermark_value = $2,
-            last_successful_run = now(),
-            last_attempt = now(),
-            last_error = NULL,
-            items_collected_last_run = $3
-        "#,
-        ctx.source_config.name,
-        new_watermark,
-        items_collected,
-    )
-    .execute(&ctx.pool)
-    .await
-    .map_err(|e| ps_core::Error::Database(e.to_string()))?;
+    ctx.repos
+        .activity
+        .upsert_watermark(&ctx.source_config.name, new_watermark, items_collected)
+        .await?;
 
     info!(
         source = ctx.source_config.name,
@@ -479,7 +430,7 @@ async fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error>
         "#,
         ctx.source_config.id,
     )
-    .fetch_optional(&ctx.pool)
+    .fetch_optional(ctx.repos.config.pool())
     .await
     .map_err(|e| ps_core::Error::Database(e.to_string()))?;
 

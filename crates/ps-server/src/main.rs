@@ -38,12 +38,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&database_url)
         .await?;
 
+    let repos = ps_core::repo::Repos::new(pool.clone());
+
     let auth_service = AuthServiceImpl::new(pool.clone());
     let admin_service = AdminServiceImpl::new(pool.clone());
     let org_service = OrgServiceImpl::new(pool.clone());
     let config_service = ConfigServiceImpl::new(pool.clone(), secret_key);
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
-    let ingestion_service = IngestionServiceImpl::new(pool.clone(), restate_url);
+    let ingestion_service = IngestionServiceImpl::new(repos, restate_url);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter

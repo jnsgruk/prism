@@ -1,13 +1,13 @@
 use crate::Error;
 use crate::models::{RateLimitInfo, SourceConfig};
+use crate::repo::Repos;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use time::OffsetDateTime;
 
 /// Shared context provided to every source adapter during ingestion.
 pub struct IngestionContext {
-    pub pool: PgPool,
+    pub repos: Repos,
     pub source_config: SourceConfig,
     pub secret_key: [u8; 32],
     pub http_client: reqwest::Client,
