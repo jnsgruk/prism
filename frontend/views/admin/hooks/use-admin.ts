@@ -1,8 +1,13 @@
 import { createClient } from "@connectrpc/connect";
-import type { UseMutationResult } from "@tanstack/react-query";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AdminService, type ResetDataResponse } from "@ps/api/gen/prism/v1/admin_pb";
+import {
+  AdminService,
+  type ApiTokenInfo,
+  type CreateApiTokenResponse,
+  type ResetDataResponse,
+} from "@ps/api/gen/prism/v1/admin_pb";
 import type {
   CreateTeamResponse,
   DeleteTeamResponse,
@@ -17,6 +22,40 @@ import { orgKeys } from "@/views/teams/hooks/use-teams";
 
 const adminClient = createClient(AdminService, transport);
 const orgClient = createClient(OrgService, transport);
+
+export const adminKeys = {
+  all: ["admin"] as const,
+  tokens: (): readonly ["admin", "tokens"] => [...adminKeys.all, "tokens"] as const,
+};
+
+export const useListApiTokens = (): UseQueryResult<ApiTokenInfo[], Error> =>
+  useQuery({
+    queryKey: adminKeys.tokens(),
+    queryFn: () => adminClient.listApiTokens({}),
+    select: (data): ApiTokenInfo[] => data.tokens,
+  });
+
+export const useCreateApiToken = (): UseMutationResult<CreateApiTokenResponse, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => adminClient.createApiToken({ name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.tokens() });
+    },
+  });
+};
+
+export const useRevokeApiToken = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (tokenId: string) => {
+      await adminClient.revokeApiToken({ tokenId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.tokens() });
+    },
+  });
+};
 
 export const useResetData = (): UseMutationResult<ResetDataResponse, Error, void> => {
   const queryClient = useQueryClient();
