@@ -67,7 +67,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/" />} tooltip="Prism">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path
                     d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"
@@ -77,9 +77,9 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                   <path d="M8 1L14 4.5L8 8L2 4.5L8 1Z" fill="currentColor" />
                 </svg>
               </div>
-              <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold">Prism</span>
-                <span className="text-xs text-muted-foreground">Engineering Insights</span>
+              <div className="grid flex-1 text-left leading-tight">
+                <span className="truncate font-semibold">Prism</span>
+                <span className="truncate text-xs text-muted-foreground">Engineering Insights</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
