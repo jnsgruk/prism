@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.team_memberships (id, person_id, team_id, start_date)\n            VALUES (\n                $1, $2, $3,\n                COALESCE(\n                    (SELECT MIN(created_at)::date FROM activity.contributions WHERE person_id = $2),\n                    CURRENT_DATE\n                )\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "7cd7ecfc24c7b36572a85b87bef6f28347ab906da7c18fda9ceffa2e24657f1e"
+}

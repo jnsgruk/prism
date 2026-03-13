@@ -87,7 +87,7 @@ impl GithubIngestionHandlerImpl {
         };
 
         // Step 3: Create ingestion run record
-        let run_id = Uuid::now_v7();
+        // Generate run_id inside the side effect so it survives Restate replays.
         let repos = self.state.repos.clone();
         let sn = source_name.to_string();
         let method = if override_watermark.is_some() {
@@ -96,21 +96,26 @@ impl GithubIngestionHandlerImpl {
             "run_ingestion"
         };
         let method_owned = method.to_string();
-        ctx.run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            let method_owned = method_owned.clone();
-            async move {
-                repos
-                    .activity
-                    .create_run(run_id, &sn, "GithubIngestionHandler", &method_owned)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("create_run")
-        .await?;
+        let run_id: Uuid = ctx
+            .run(|| {
+                let repos = repos.clone();
+                let sn = sn.clone();
+                let method_owned = method_owned.clone();
+                async move {
+                    let id = Uuid::now_v7();
+                    repos
+                        .activity
+                        .create_run(id, &sn, "GithubIngestionHandler", &method_owned)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(id.to_string()))
+                }
+            })
+            .name("create_run")
+            .await?
+            .into_inner()
+            .parse()
+            .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))?;
 
         // Step 4: Plan
         let plan = match source.plan(&ing_ctx).await {

@@ -21,24 +21,28 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
         let source_name = ctx.key().to_string();
         info!(source = %source_name, "starting GitHub team sync");
 
-        // Create run record
-        let run_id = Uuid::now_v7();
+        // Create run record (generate ID inside side effect to survive replays)
         let repos = self.state.repos.clone();
         let sn = source_name.clone();
-        ctx.run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            async move {
-                repos
-                    .activity
-                    .create_run(run_id, &sn, "GithubTeamSyncHandler", "sync_teams")
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("create_run")
-        .await?;
+        let run_id: Uuid = ctx
+            .run(|| {
+                let repos = repos.clone();
+                let sn = sn.clone();
+                async move {
+                    let id = Uuid::now_v7();
+                    repos
+                        .activity
+                        .create_run(id, &sn, "GithubTeamSyncHandler", "sync_teams")
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(id.to_string()))
+                }
+            })
+            .name("create_run")
+            .await?
+            .into_inner()
+            .parse()
+            .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))?;
 
         // Step 1: Load source config
         let repos = self.state.repos.clone();

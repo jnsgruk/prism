@@ -414,10 +414,10 @@ impl ActivityRepo {
                 sc.name,
                 sc.source_type,
                 iw.watermark_value as "watermark_value?",
-                iw.last_successful_run,
+                lr.completed_at as "last_successful_run?",
                 iw.last_attempt,
                 iw.last_error,
-                iw.items_collected_last_run,
+                lr.items_collected as "items_collected_last_run?",
                 ar.id IS NOT NULL as "has_active_run!",
                 ar.items_collected as "active_run_items?",
                 ar.started_at as "active_run_started_at?",
@@ -430,9 +430,19 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.completed_at IS NULL
+                  AND ir.handler_name = 'GithubIngestionHandler'
                 ORDER BY ir.started_at DESC
                 LIMIT 1
             ) ar ON true
+            LEFT JOIN LATERAL (
+                SELECT completed_at, items_collected
+                FROM activity.ingestion_runs ir
+                WHERE ir.source_name = sc.name
+                  AND ir.status = 'completed'
+                  AND ir.handler_name = 'GithubIngestionHandler'
+                ORDER BY ir.completed_at DESC
+                LIMIT 1
+            ) lr ON true
             WHERE sc.enabled = true
             ORDER BY sc.name
             "#,

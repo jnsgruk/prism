@@ -39,6 +39,10 @@ impl OrgRepo {
     }
 
     /// Assign a person to a team: end any active membership first, then create a new one.
+    ///
+    /// The start date defaults to the person's earliest contribution date so that
+    /// historical metrics include their work. Falls back to `CURRENT_DATE` if the
+    /// person has no contributions yet.
     pub async fn assign_person_to_team(&self, person_id: Uuid, team_id: Uuid) -> Result<(), Error> {
         let mut tx = self
             .pool
@@ -59,12 +63,18 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        // Create new membership.
+        // Create new membership with start_date = earliest contribution (or today).
         let membership_id = Uuid::now_v7();
         sqlx::query!(
             r#"
             INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
-            VALUES ($1, $2, $3, CURRENT_DATE)
+            VALUES (
+                $1, $2, $3,
+                COALESCE(
+                    (SELECT MIN(created_at)::date FROM activity.contributions WHERE person_id = $2),
+                    CURRENT_DATE
+                )
+            )
             "#,
             membership_id,
             person_id,

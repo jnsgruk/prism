@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO org.people (id, name, active)\n                VALUES ($1, $2, true)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "25b7e5d772cbbe7a874bd902fb2d6aa239ec8eb86c566822a2583c38171f1c75"
+}

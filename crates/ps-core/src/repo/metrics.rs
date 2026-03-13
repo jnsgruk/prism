@@ -47,10 +47,17 @@ impl MetricsRepo {
     ) -> Result<Option<TeamSnapshotRow>, Error> {
         let row = sqlx::query!(
             r#"
+            WITH RECURSIVE team_tree AS (
+                SELECT id FROM org.teams WHERE id = $1
+                UNION ALL
+                SELECT ch.id FROM org.teams ch
+                JOIN team_tree tt ON ch.parent_team_id = tt.id
+            )
             SELECT ts.id, ts.team_id, t.name AS team_name,
-                   (SELECT COUNT(*)::int FROM org.team_memberships tm
-                    WHERE tm.team_id = t.id
-                      AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)) AS "member_count!",
+                   (SELECT COUNT(DISTINCT tm.person_id)::int
+                    FROM org.team_memberships tm
+                    JOIN team_tree tt ON tm.team_id = tt.id
+                    WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE) AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
                    ts.throughput, ts.avg_review_turnaround_hours
             FROM metrics.team_snapshots ts
@@ -90,13 +97,23 @@ impl MetricsRepo {
         let rows = sqlx::query!(
             r#"
             SELECT ts.id, ts.team_id, t.name AS team_name,
-                   (SELECT COUNT(*)::int FROM org.team_memberships tm
-                    WHERE tm.team_id = t.id
-                      AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)) AS "member_count!",
+                   mc.count AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
                    ts.throughput, ts.avg_review_turnaround_hours
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
+            CROSS JOIN LATERAL (
+                WITH RECURSIVE team_tree AS (
+                    SELECT t.id
+                    UNION ALL
+                    SELECT ch.id FROM org.teams ch
+                    JOIN team_tree tt ON ch.parent_team_id = tt.id
+                )
+                SELECT COUNT(DISTINCT tm.person_id)::int AS count
+                FROM org.team_memberships tm
+                JOIN team_tree tt ON tm.team_id = tt.id
+                WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE
+            ) mc
             WHERE ts.team_id = ANY($1)
               AND ts.period_start = $2
               AND ts.period_type = $3
@@ -188,7 +205,9 @@ impl MetricsRepo {
     }
 
     /// Get contributions for a team's members within a date range.
-    /// Used by metrics computation to calculate throughput and review turnaround.
+    ///
+    /// Uses a recursive CTE to include members of all descendant teams so that
+    /// parent/group-level metrics aggregate correctly.
     pub async fn get_team_contributions(
         &self,
         team_id: Uuid,
@@ -197,13 +216,19 @@ impl MetricsRepo {
     ) -> Result<Vec<ContributionMetricRow>, Error> {
         let rows = sqlx::query!(
             r#"
-            SELECT c.person_id, c.contribution_type, c.state,
+            WITH RECURSIVE team_tree AS (
+                SELECT id FROM org.teams WHERE id = $1
+                UNION ALL
+                SELECT t.id FROM org.teams t
+                JOIN team_tree tt ON t.parent_team_id = tt.id
+            )
+            SELECT DISTINCT c.person_id, c.contribution_type, c.state,
                    c.created_at, c.closed_at,
                    c.metrics, c.metadata
             FROM activity.contributions c
             JOIN org.team_memberships tm ON tm.person_id = c.person_id
-            WHERE tm.team_id = $1
-              AND (tm.end_date IS NULL OR tm.end_date > $3::date)
+            JOIN team_tree tt ON tm.team_id = tt.id
+            WHERE (tm.end_date IS NULL OR tm.end_date > $3::date)
               AND tm.start_date <= $3::date
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz

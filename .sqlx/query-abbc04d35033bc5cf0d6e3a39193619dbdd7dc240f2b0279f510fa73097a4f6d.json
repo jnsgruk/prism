@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams WHERE id = $1\n                UNION ALL\n                SELECT t.id FROM org.teams t\n                JOIN team_tree tt ON t.parent_team_id = tt.id\n            )\n            SELECT DISTINCT c.person_id, c.contribution_type, c.state,\n                   c.created_at, c.closed_at,\n                   c.metrics, c.metadata\n            FROM activity.contributions c\n            JOIN org.team_memberships tm ON tm.person_id = c.person_id\n            JOIN team_tree tt ON tm.team_id = tt.id\n            WHERE (tm.end_date IS NULL OR tm.end_date > $3::date)\n              AND tm.start_date <= $3::date\n              AND c.created_at >= $2::date::timestamptz\n              AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "contribution_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "closed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "metrics",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid", "Date", "Date"]
+    },
+    "nullable": [true, false, true, false, true, false, false]
+  },
+  "hash": "abbc04d35033bc5cf0d6e3a39193619dbdd7dc240f2b0279f510fa73097a4f6d"
+}
