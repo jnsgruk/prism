@@ -5,9 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CancelRunResponse,
   GetStatusResponse,
+  HandlerInfo,
   IngestionRun,
   SourceStatus,
   TriggerBackfillResponse,
+  TriggerHandlerResponse,
   TriggerRunResponse,
 } from "@ps/api/gen/prism/v1/ingestion_pb";
 import { IngestionService } from "@ps/api/gen/prism/v1/ingestion_pb";
@@ -23,8 +25,9 @@ const ingestionClient = createClient(IngestionService, transport);
 export const ingestionKeys = {
   all: ["ingestion"] as const,
   status: (): readonly ["ingestion", "status"] => [...ingestionKeys.all, "status"] as const,
-  runs: (sourceName?: string): readonly ["ingestion", "runs", string | undefined] =>
-    [...ingestionKeys.all, "runs", sourceName] as const,
+  runs: (sourceName?: string, handlerName?: string) =>
+    [...ingestionKeys.all, "runs", sourceName, handlerName] as const,
+  handlers: (): readonly ["ingestion", "handlers"] => [...ingestionKeys.all, "handlers"] as const,
 };
 
 export const useIngestionStatus = (options?: {
@@ -39,11 +42,11 @@ export const useIngestionStatus = (options?: {
 
 export const useListRuns = (
   sourceName?: string,
-  options?: { refetchInterval?: number | false },
+  options?: { refetchInterval?: number | false; handlerName?: string },
 ): UseQueryResult<IngestionRun[], Error> =>
   useQuery({
-    queryKey: ingestionKeys.runs(sourceName),
-    queryFn: () => ingestionClient.listRuns({ sourceName }),
+    queryKey: ingestionKeys.runs(sourceName, options?.handlerName),
+    queryFn: () => ingestionClient.listRuns({ sourceName, handlerName: options?.handlerName }),
     select: (data): IngestionRun[] => data.runs,
     refetchInterval: options?.refetchInterval,
   });
@@ -84,6 +87,43 @@ export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, stri
     mutationFn: (sourceName: string) => ingestionClient.cancelRun({ sourceName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
+      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+    },
+  });
+};
+
+export const useListHandlers = (): UseQueryResult<HandlerInfo[], Error> =>
+  useQuery({
+    queryKey: ingestionKeys.handlers(),
+    queryFn: () => ingestionClient.listHandlers({}),
+    select: (data): HandlerInfo[] => data.handlers,
+  });
+
+export const useTriggerHandler = (): UseMutationResult<
+  TriggerHandlerResponse,
+  Error,
+  { handlerName: string; method: string; key: string; payload?: string }
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (req: { handlerName: string; method: string; key: string; payload?: string }) =>
+      ingestionClient.triggerHandler(req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
+    },
+  });
+};
+
+export const useTriggerTeamSync = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sourceName: string) => {
+      await ingestionClient.triggerTeamSync({ sourceName });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
     },
   });

@@ -1,8 +1,9 @@
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Key, Plug, Settings, UserCog, Users } from "lucide-react";
+import { Cog, Key, Plug, Settings, UserCog, Users } from "lucide-react";
 
 import { ApiTokensTab } from "@/views/admin/components/api-tokens-tab";
+import { HandlersTab } from "@/views/admin/components/handlers-tab";
 import { PeopleTab } from "@/views/admin/components/people-tab";
 import { SourcesTab } from "@/views/admin/components/sources-tab";
 import { SystemTab } from "@/views/admin/components/system-tab";
@@ -31,6 +32,10 @@ const AdminPage = (): React.ReactElement => {
               <Key className="size-4" />
               API Tokens
             </TabsTrigger>
+            <TabsTrigger value="handlers">
+              <Cog className="size-4" />
+              Handlers
+            </TabsTrigger>
             <TabsTrigger value="system">
               <Settings className="size-4" />
               System
@@ -47,6 +52,9 @@ const AdminPage = (): React.ReactElement => {
           </TabsContent>
           <TabsContent value="tokens">
             <ApiTokensTab />
+          </TabsContent>
+          <TabsContent value="handlers">
+            <HandlersTab />
           </TabsContent>
           <TabsContent value="system">
             <SystemTab />

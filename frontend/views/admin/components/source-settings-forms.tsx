@@ -65,6 +65,13 @@ const GitHubSettingsForm = ({
 
   return (
     <div className="space-y-4">
+      {/* Scope hint */}
+      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+        Your Personal Access Token needs the <code className="font-semibold">repo</code> and{" "}
+        <code className="font-semibold">read:org</code> scopes. The <code>read:org</code> scope
+        enables team discovery and team-scoped ingestion.
+      </div>
+
       {/* Orgs */}
       <div className="space-y-2">
         <Label>

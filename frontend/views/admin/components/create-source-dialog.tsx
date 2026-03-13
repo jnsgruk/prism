@@ -25,6 +25,7 @@ import { useState } from "react";
 
 import type { JsonObject } from "@bufbuild/protobuf";
 import { useCreateSource, useSetSecret } from "@ps/hooks/use-config";
+import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
 
 import { BufferedSecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
@@ -41,6 +42,7 @@ const hasConfigStep = (sourceType: string): boolean => {
 export const CreateSourceDialog = (): React.ReactElement => {
   const createSource = useCreateSource();
   const setSecret = useSetSecret();
+  const triggerTeamSync = useTriggerTeamSync();
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("basics");
@@ -102,6 +104,11 @@ export const CreateSourceDialog = (): React.ReactElement => {
         for (const [secretKey, secretValue] of secretEntries) {
           await setSecret.mutateAsync({ sourceId, secretKey, secretValue });
         }
+      }
+
+      // Auto-trigger team sync for GitHub sources (fire-and-forget)
+      if (sourceType === "github" && name) {
+        triggerTeamSync.mutate(name);
       }
 
       handleOpenChange(false);
