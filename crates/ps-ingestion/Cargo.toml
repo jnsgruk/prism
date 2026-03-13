@@ -19,3 +19,10 @@ reqwest.workspace = true
 sqlx.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+uuid.workspace = true
+time.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+wiremock.workspace = true
