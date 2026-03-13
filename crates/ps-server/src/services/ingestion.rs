@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use ps_core::repo::Repos;
+use ps_core::repo::activity::SourceStatusRow;
 use ps_proto::prism::v1::ingestion_service_server::IngestionService;
 use ps_proto::prism::v1::{
     CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, IngestionRun,
@@ -8,7 +9,7 @@ use ps_proto::prism::v1::{
     TriggerBackfillResponse, TriggerRunRequest, TriggerRunResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::info;
+use tracing::{info, warn};
 
 use super::common::{db_err, require_auth, to_timestamp};
 
@@ -26,6 +27,89 @@ impl IngestionServiceImpl {
             restate_url,
             restate_admin_url,
             http_client: reqwest::Client::new(),
+        }
+    }
+
+    /// Check whether a Restate invocation is still alive.
+    /// Returns `true` if the invocation is actively running/suspended, `false`
+    /// if it has completed, been cancelled, or doesn't exist.
+    async fn is_invocation_alive(&self, invocation_id: &str) -> bool {
+        let url = format!(
+            "{}/restate/invocations/{}",
+            self.restate_admin_url, invocation_id,
+        );
+
+        let resp = match self.http_client.get(&url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                // If we can't reach Restate, assume alive to avoid false reconciliation
+                warn!(error = %e, "failed to reach Restate admin for reconciliation");
+                return true;
+            }
+        };
+
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return false;
+        }
+
+        if !resp.status().is_success() {
+            // Unexpected error — assume alive
+            return true;
+        }
+
+        let body: serde_json::Value = match resp.json().await {
+            Ok(v) => v,
+            Err(_) => return true,
+        };
+
+        // Restate invocation status: "pending", "ready", "running",
+        // "suspended", "backing-off", "completed"
+        !matches!(
+            body.get("status").and_then(|s| s.as_str()),
+            Some("completed")
+        )
+    }
+
+    /// Reconcile sources that the DB thinks are active but whose Restate
+    /// invocations are no longer running. Mutates the slice in-place so
+    /// callers see corrected `has_active_run` values.
+    async fn reconcile_stale_runs(&self, sources: &mut [SourceStatusRow]) {
+        for source in sources.iter_mut() {
+            if !source.has_active_run {
+                continue;
+            }
+
+            let invocation_id = match &source.current_invocation_id {
+                Some(id) if !id.is_empty() => id.clone(),
+                _ => continue, // No invocation ID to check
+            };
+
+            if !self.is_invocation_alive(&invocation_id).await {
+                warn!(
+                    source = %source.name,
+                    %invocation_id,
+                    "reconciling stale run — Restate invocation no longer active",
+                );
+
+                if let Err(e) = self
+                    .repos
+                    .activity
+                    .cancel_active_runs_with_reason(
+                        &source.name,
+                        "Cancelled — invocation no longer active in Restate",
+                    )
+                    .await
+                {
+                    warn!(source = %source.name, error = %e, "failed to reconcile stale run");
+                    continue;
+                }
+
+                // Update in-memory state so this request returns correct data
+                source.has_active_run = false;
+                source.active_run_items = None;
+                source.active_run_started_at = None;
+                source.current_invocation_id = None;
+            }
         }
     }
 
@@ -66,12 +150,16 @@ impl IngestionService for IngestionServiceImpl {
     ) -> Result<Response<GetStatusResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let sources = self
+        let mut sources = self
             .repos
             .activity
             .get_source_statuses()
             .await
             .map_err(db_err)?;
+
+        // Reconcile any runs the DB thinks are active but Restate has
+        // already finished (e.g. invocation died, was externally cancelled).
+        self.reconcile_stale_runs(&mut sources).await;
 
         let statuses = sources
             .into_iter()

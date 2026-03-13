@@ -37,6 +37,8 @@ pub struct SourceStatusRow {
     pub active_run_items: Option<i32>,
     /// When the active run started.
     pub active_run_started_at: Option<OffsetDateTime>,
+    /// Current Restate invocation ID (for reconciliation).
+    pub current_invocation_id: Option<String>,
 }
 
 impl ActivityRepo {
@@ -359,14 +361,25 @@ impl ActivityRepo {
 
     /// Cancel all active (incomplete) runs for a source and clear the invocation ID.
     pub async fn cancel_active_runs(&self, source_name: &str) -> Result<(), Error> {
+        self.cancel_active_runs_with_reason(source_name, "Cancelled by user")
+            .await
+    }
+
+    /// Cancel all active (incomplete) runs for a source with a custom reason.
+    pub async fn cancel_active_runs_with_reason(
+        &self,
+        source_name: &str,
+        reason: &str,
+    ) -> Result<(), Error> {
         sqlx::query!(
             r#"
             UPDATE activity.ingestion_runs
-            SET completed_at = now(), status = 'cancelled', error_message = 'Cancelled by user'
+            SET completed_at = now(), status = 'cancelled', error_message = $2
             WHERE source_name = $1
               AND completed_at IS NULL
             "#,
             source_name,
+            reason,
         )
         .execute(&self.pool)
         .await
@@ -392,7 +405,8 @@ impl ActivityRepo {
                 iw.items_collected_last_run,
                 ar.id IS NOT NULL as "has_active_run!",
                 ar.items_collected as "active_run_items?",
-                ar.started_at as "active_run_started_at?"
+                ar.started_at as "active_run_started_at?",
+                iw.current_invocation_id as "current_invocation_id?"
             FROM config.source_configs sc
             LEFT JOIN activity.ingestion_watermarks iw
                 ON sc.name = iw.source_name
@@ -425,6 +439,7 @@ impl ActivityRepo {
                 has_active_run: r.has_active_run,
                 active_run_items: r.active_run_items,
                 active_run_started_at: r.active_run_started_at,
+                current_invocation_id: r.current_invocation_id,
             })
             .collect())
     }
