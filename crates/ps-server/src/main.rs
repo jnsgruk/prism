@@ -2,11 +2,13 @@ use ps_core::crypto::load_secret_key;
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
+use ps_proto::prism::v1::ingestion_service_server::IngestionServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_server::interceptor::AuthLayer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use ps_server::services::config::ConfigServiceImpl;
+use ps_server::services::ingestion::IngestionServiceImpl;
 use ps_server::services::org::OrgServiceImpl;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -40,6 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let admin_service = AdminServiceImpl::new(pool.clone());
     let org_service = OrgServiceImpl::new(pool.clone());
     let config_service = ConfigServiceImpl::new(pool.clone(), secret_key);
+    let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
+    let ingestion_service = IngestionServiceImpl::new(pool.clone(), restate_url);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
@@ -57,6 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(AdminServiceServer::new(admin_service))
         .add_service(OrgServiceServer::new(org_service))
         .add_service(ConfigServiceServer::new(config_service))
+        .add_service(IngestionServiceServer::new(ingestion_service))
         .serve(addr)
         .await?;
 

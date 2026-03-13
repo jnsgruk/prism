@@ -29,3 +29,4 @@ scraper.workspace = true
 tower = { version = "0.5", features = ["util"] }
 http = "1"
 http-body = "1"
+reqwest.workspace = true
