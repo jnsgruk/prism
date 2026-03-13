@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/admin.proto.
  */
 export const file_prism_v1_admin: GenFile /*@__PURE__*/ = fileDesc(
-  "ChRwcmlzbS92MS9hZG1pbi5wcm90bxIIcHJpc20udjEiFQoTQ3JlYXRlQmFja3VwUmVxdWVzdCIlChRDcmVhdGVCYWNrdXBSZXNwb25zZRINCgVjaHVuaxgBIAEoDCIlChVDcmVhdGVBcGlUb2tlblJlcXVlc3QSDAoEbmFtZRgBIAEoCSJHChZDcmVhdGVBcGlUb2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkiFgoUTGlzdEFwaVRva2Vuc1JlcXVlc3QiPwoVTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEiYKBnRva2VucxgBIAMoCzIWLnByaXNtLnYxLkFwaVRva2VuSW5mbyKQAQoMQXBpVG9rZW5JbmZvEhAKCHRva2VuX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIpChVSZXZva2VBcGlUb2tlblJlcXVlc3QSEAoIdG9rZW5faWQYASABKAkiGAoWUmV2b2tlQXBpVG9rZW5SZXNwb25zZTLbAgoMQWRtaW5TZXJ2aWNlEk8KDENyZWF0ZUJhY2t1cBIdLnByaXNtLnYxLkNyZWF0ZUJhY2t1cFJlcXVlc3QaHi5wcmlzbS52MS5DcmVhdGVCYWNrdXBSZXNwb25zZTABElMKDkNyZWF0ZUFwaVRva2VuEh8ucHJpc20udjEuQ3JlYXRlQXBpVG9rZW5SZXF1ZXN0GiAucHJpc20udjEuQ3JlYXRlQXBpVG9rZW5SZXNwb25zZRJQCg1MaXN0QXBpVG9rZW5zEh4ucHJpc20udjEuTGlzdEFwaVRva2Vuc1JlcXVlc3QaHy5wcmlzbS52MS5MaXN0QXBpVG9rZW5zUmVzcG9uc2USUwoOUmV2b2tlQXBpVG9rZW4SHy5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlcXVlc3QaIC5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlc3BvbnNlYgZwcm90bzM",
+  "ChRwcmlzbS92MS9hZG1pbi5wcm90bxIIcHJpc20udjEiFQoTQ3JlYXRlQmFja3VwUmVxdWVzdCIlChRDcmVhdGVCYWNrdXBSZXNwb25zZRINCgVjaHVuaxgBIAEoDCIlChVDcmVhdGVBcGlUb2tlblJlcXVlc3QSDAoEbmFtZRgBIAEoCSJHChZDcmVhdGVBcGlUb2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkiFgoUTGlzdEFwaVRva2Vuc1JlcXVlc3QiPwoVTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEiYKBnRva2VucxgBIAMoCzIWLnByaXNtLnYxLkFwaVRva2VuSW5mbyKQAQoMQXBpVG9rZW5JbmZvEhAKCHRva2VuX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIpChVSZXZva2VBcGlUb2tlblJlcXVlc3QSEAoIdG9rZW5faWQYASABKAkiGAoWUmV2b2tlQXBpVG9rZW5SZXNwb25zZSIjChBSZXNldERhdGFSZXF1ZXN0Eg8KB2NvbmZpcm0YASABKAgiYQoRUmVzZXREYXRhUmVzcG9uc2USFgoOcGVvcGxlX2RlbGV0ZWQYASABKAUSFQoNdGVhbXNfZGVsZXRlZBgCIAEoBRIdChVjb250cmlidXRpb25zX2RlbGV0ZWQYAyABKAUyoQMKDEFkbWluU2VydmljZRJPCgxDcmVhdGVCYWNrdXASHS5wcmlzbS52MS5DcmVhdGVCYWNrdXBSZXF1ZXN0Gh4ucHJpc20udjEuQ3JlYXRlQmFja3VwUmVzcG9uc2UwARJTCg5DcmVhdGVBcGlUb2tlbhIfLnByaXNtLnYxLkNyZWF0ZUFwaVRva2VuUmVxdWVzdBogLnByaXNtLnYxLkNyZWF0ZUFwaVRva2VuUmVzcG9uc2USUAoNTGlzdEFwaVRva2VucxIeLnByaXNtLnYxLkxpc3RBcGlUb2tlbnNSZXF1ZXN0Gh8ucHJpc20udjEuTGlzdEFwaVRva2Vuc1Jlc3BvbnNlElMKDlJldm9rZUFwaVRva2VuEh8ucHJpc20udjEuUmV2b2tlQXBpVG9rZW5SZXF1ZXN0GiAucHJpc20udjEuUmV2b2tlQXBpVG9rZW5SZXNwb25zZRJECglSZXNldERhdGESGi5wcmlzbS52MS5SZXNldERhdGFSZXF1ZXN0GhsucHJpc20udjEuUmVzZXREYXRhUmVzcG9uc2ViBnByb3RvMw",
   [file_google_protobuf_timestamp],
 );
 
@@ -184,6 +184,54 @@ export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*
   messageDesc(file_prism_v1_admin, 8);
 
 /**
+ * @generated from message prism.v1.ResetDataRequest
+ */
+export type ResetDataRequest = Message<"prism.v1.ResetDataRequest"> & {
+  /**
+   * @generated from field: bool confirm = 1;
+   */
+  confirm: boolean;
+};
+
+/**
+ * Describes the message prism.v1.ResetDataRequest.
+ * Use `create(ResetDataRequestSchema)` to create a new message.
+ */
+export const ResetDataRequestSchema: GenMessage<ResetDataRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_admin,
+  9,
+);
+
+/**
+ * @generated from message prism.v1.ResetDataResponse
+ */
+export type ResetDataResponse = Message<"prism.v1.ResetDataResponse"> & {
+  /**
+   * @generated from field: int32 people_deleted = 1;
+   */
+  peopleDeleted: number;
+
+  /**
+   * @generated from field: int32 teams_deleted = 2;
+   */
+  teamsDeleted: number;
+
+  /**
+   * @generated from field: int32 contributions_deleted = 3;
+   */
+  contributionsDeleted: number;
+};
+
+/**
+ * Describes the message prism.v1.ResetDataResponse.
+ * Use `create(ResetDataResponseSchema)` to create a new message.
+ */
+export const ResetDataResponseSchema: GenMessage<ResetDataResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_admin,
+  10,
+);
+
+/**
  * @generated from service prism.v1.AdminService
  */
 export const AdminService: GenService<{
@@ -218,5 +266,13 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof RevokeApiTokenRequestSchema;
     output: typeof RevokeApiTokenResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.AdminService.ResetData
+   */
+  resetData: {
+    methodKind: "unary";
+    input: typeof ResetDataRequestSchema;
+    output: typeof ResetDataResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_admin, 0);

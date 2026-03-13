@@ -10,6 +10,8 @@ import {
   CreateBackupResponse,
   ListApiTokensRequest,
   ListApiTokensResponse,
+  ResetDataRequest,
+  ResetDataResponse,
   RevokeApiTokenRequest,
   RevokeApiTokenResponse,
 } from "./admin_pb.js";
@@ -55,6 +57,15 @@ export const AdminService = {
       name: "RevokeApiToken",
       I: RevokeApiTokenRequest,
       O: RevokeApiTokenResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.AdminService.ResetData
+     */
+    resetData: {
+      name: "ResetData",
+      I: ResetDataRequest,
+      O: ResetDataResponse,
       kind: MethodKind.Unary,
     },
   },

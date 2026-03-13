@@ -443,4 +443,44 @@ impl ActivityRepo {
             })
             .collect())
     }
+
+    /// Delete all activity data: contributions, watermarks, runs, etag cache, metric snapshots.
+    /// Returns the number of contributions deleted.
+    pub async fn reset_all(&self) -> Result<i64, Error> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        // Bulk DELETEs — parameterless, table names are hardcoded constants.
+        for table in &["metrics.team_snapshots", "metrics.individual_snapshots"] {
+            sqlx::query(&format!("DELETE FROM {table}"))
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
+        }
+
+        let contribs = sqlx::query("DELETE FROM activity.contributions")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        for table in &[
+            "activity.ingestion_runs",
+            "activity.watermarks",
+            "activity.etag_cache",
+        ] {
+            sqlx::query(&format!("DELETE FROM {table}"))
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(contribs.rows_affected().cast_signed())
+    }
 }

@@ -9,6 +9,7 @@ service AdminService {
   rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
   rpc ListApiTokens(ListApiTokensRequest) returns (ListApiTokensResponse);
   rpc RevokeApiToken(RevokeApiTokenRequest) returns (RevokeApiTokenResponse);
+  rpc ResetData(ResetDataRequest) returns (ResetDataResponse);
 }
 
 message CreateBackupRequest {}
@@ -45,3 +46,13 @@ message RevokeApiTokenRequest {
 }
 
 message RevokeApiTokenResponse {}
+
+message ResetDataRequest {
+  bool confirm = 1;
+}
+
+message ResetDataResponse {
+  int32 people_deleted = 1;
+  int32 teams_deleted = 2;
+  int32 contributions_deleted = 3;
+}

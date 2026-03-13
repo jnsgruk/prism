@@ -814,4 +814,48 @@ impl OrgRepo {
             })
             .collect())
     }
+
+    /// Delete all org data: memberships, identities, people, teams.
+    /// Returns (`people_deleted`, `teams_deleted`).
+    pub async fn reset_all(&self) -> Result<(i64, i64), Error> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        // Order matters: children first due to foreign keys.
+        // Bulk DELETEs — parameterless, table names are hardcoded constants.
+        for table in &["org.team_memberships", "org.platform_identities"] {
+            sqlx::query(&format!("DELETE FROM {table}"))
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
+        }
+
+        // Clear lead_id references before deleting people.
+        sqlx::query("UPDATE org.teams SET lead_id = NULL")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        let people = sqlx::query("DELETE FROM org.people")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        let teams = sqlx::query("DELETE FROM org.teams")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok((
+            people.rows_affected().cast_signed(),
+            teams.rows_affected().cast_signed(),
+        ))
+    }
 }

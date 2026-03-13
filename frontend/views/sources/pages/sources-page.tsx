@@ -4,6 +4,7 @@ import { Key, Plug } from "lucide-react";
 
 import { ApiTokensTab } from "@/views/sources/components/api-tokens-tab";
 import { CreateSourceDialog } from "@/views/sources/components/create-source-dialog";
+import { ResetDataDialog } from "@/views/sources/components/reset-data-dialog";
 import { SourcesTab } from "@/views/sources/components/sources-tab";
 
 const SourcesPage = (): React.ReactElement => {
@@ -12,7 +13,12 @@ const SourcesPage = (): React.ReactElement => {
       <PageHeader
         title="Admin"
         description="Manage sources and platform settings"
-        actions={<CreateSourceDialog />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ResetDataDialog />
+            <CreateSourceDialog />
+          </div>
+        }
       />
       <div className="flex-1 p-6">
         <Tabs defaultValue="sources">

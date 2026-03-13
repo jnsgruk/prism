@@ -7,8 +7,8 @@ use ps_core::repo::Repos;
 use ps_proto::prism::v1::admin_service_server::AdminService;
 use ps_proto::prism::v1::{
     ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, CreateBackupRequest,
-    CreateBackupResponse, ListApiTokensRequest, ListApiTokensResponse, RevokeApiTokenRequest,
-    RevokeApiTokenResponse,
+    CreateBackupResponse, ListApiTokensRequest, ListApiTokensResponse, ResetDataRequest,
+    ResetDataResponse, RevokeApiTokenRequest, RevokeApiTokenResponse,
 };
 use time::OffsetDateTime;
 use tokio_stream::Stream;
@@ -198,5 +198,41 @@ impl AdminService for AdminServiceImpl {
         info!(token_id = %token_id, "API token revoked");
 
         Ok(Response::new(RevokeApiTokenResponse {}))
+    }
+
+    async fn reset_data(
+        &self,
+        request: Request<ResetDataRequest>,
+    ) -> Result<Response<ResetDataResponse>, Status> {
+        let ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if !req.confirm {
+            return Err(Status::invalid_argument(
+                "confirm must be true to reset data",
+            ));
+        }
+
+        info!(user = %ctx.username, "resetting all ingested data");
+
+        let contributions_deleted = self.repos.activity.reset_all().await.map_err(db_err)?;
+
+        let (people_deleted, teams_deleted) = self.repos.org.reset_all().await.map_err(db_err)?;
+
+        #[allow(clippy::cast_possible_truncation)]
+        let resp = ResetDataResponse {
+            people_deleted: people_deleted as i32,
+            teams_deleted: teams_deleted as i32,
+            contributions_deleted: contributions_deleted as i32,
+        };
+
+        info!(
+            people = people_deleted,
+            teams = teams_deleted,
+            contributions = contributions_deleted,
+            "data reset complete"
+        );
+
+        Ok(Response::new(resp))
     }
 }
