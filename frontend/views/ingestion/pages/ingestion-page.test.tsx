@@ -111,7 +111,8 @@ describe("IngestionPage", () => {
     // Status badges inside the table
     expect(tableScope.getByText("Completed")).toBeInTheDocument();
     expect(tableScope.getByText("Failed")).toBeInTheDocument();
-    expect(tableScope.getByText("Authentication failed: invalid token")).toBeInTheDocument();
+
+    // Error message is no longer in the table — it's shown in the detail dialog on row click
   });
 
   it("renders Run Now and Backfill buttons for each source", async () => {
