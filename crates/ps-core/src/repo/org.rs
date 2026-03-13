@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::Error;
 use crate::models::TeamType;
@@ -25,12 +25,15 @@ pub struct TeamWithCount {
     pub member_count: i32,
 }
 
-/// A minimal person row (id, name, email, level).
+/// A person row with optional current team info.
 pub struct PersonRow {
     pub id: Uuid,
     pub name: String,
     pub email: Option<String>,
     pub level: Option<String>,
+    pub active: bool,
+    pub team_id: Option<Uuid>,
+    pub team_name: Option<String>,
 }
 
 /// A platform identity row.
@@ -67,9 +70,12 @@ pub struct ImportIdentity {
 /// Result of a directory import operation.
 pub struct ImportResult {
     pub people_imported: i32,
+    pub people_updated: i32,
     pub teams_created: i32,
     pub identities_mapped: i32,
     pub warnings: Vec<String>,
+    pub stale_people_count: i32,
+    pub unassigned_count: i32,
 }
 
 impl OrgRepo {
@@ -93,15 +99,16 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   p.name AS lead_name,
-                   COUNT(tm.id)::int AS "member_count!"
+                   lp.name AS lead_name,
+                   COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
                 AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            LEFT JOIN org.people p ON p.id = t.lead_id
+            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true
+            LEFT JOIN org.people lp ON lp.id = t.lead_id
             WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)
               AND ($2::text IS NULL OR t.team_type::text = $2)
-            GROUP BY t.id, p.name
+            GROUP BY t.id, lp.name
             ORDER BY t.name
             "#,
             parent_filter,
@@ -134,14 +141,15 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   p.name AS lead_name,
-                   COUNT(tm.id)::int AS "member_count!"
+                   lp.name AS lead_name,
+                   COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
                 AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            LEFT JOIN org.people p ON p.id = t.lead_id
+            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true
+            LEFT JOIN org.people lp ON lp.id = t.lead_id
             WHERE t.id = $1
-            GROUP BY t.id, p.name
+            GROUP BY t.id, lp.name
             "#,
             id,
         )
@@ -166,11 +174,14 @@ impl OrgRepo {
     pub async fn get_team_members(&self, team_id: Uuid) -> Result<Vec<PersonRow>, Error> {
         let rows = sqlx::query!(
             r#"
-            SELECT p.id, p.name, p.email, p.level
+            SELECT p.id, p.name, p.email, p.level, p.active,
+                   tm.team_id AS "team_id?", t.name AS "team_name?"
             FROM org.people p
             JOIN org.team_memberships tm ON tm.person_id = p.id
+                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.teams t ON t.id = tm.team_id
             WHERE tm.team_id = $1
-              AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+              AND p.active = true
             ORDER BY p.name
             "#,
             team_id,
@@ -186,18 +197,27 @@ impl OrgRepo {
                 name: p.name,
                 email: p.email,
                 level: p.level,
+                active: p.active,
+                team_id: p.team_id,
+                team_name: p.team_name,
             })
             .collect())
     }
 
-    /// List all people ordered by name.
-    pub async fn list_people(&self) -> Result<Vec<PersonRow>, Error> {
+    /// List people ordered by name, optionally filtering by active status.
+    pub async fn list_people(&self, active_only: bool) -> Result<Vec<PersonRow>, Error> {
         let rows = sqlx::query!(
             r#"
-            SELECT id, name, email, level
-            FROM org.people
-            ORDER BY name
+            SELECT p.id, p.name, p.email, p.level, p.active,
+                   tm.team_id AS "team_id?", t.name AS "team_name?"
+            FROM org.people p
+            LEFT JOIN org.team_memberships tm ON tm.person_id = p.id
+                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.teams t ON t.id = tm.team_id
+            WHERE ($1::bool = false OR p.active = true)
+            ORDER BY p.name
             "#,
+            active_only,
         )
         .fetch_all(&self.pool)
         .await
@@ -210,6 +230,9 @@ impl OrgRepo {
                 name: p.name,
                 email: p.email,
                 level: p.level,
+                active: p.active,
+                team_id: p.team_id,
+                team_name: p.team_name,
             })
             .collect())
     }
@@ -303,9 +326,16 @@ impl OrgRepo {
     }
 
     /// Import directory records within a transaction.
+    ///
+    /// Safe re-import behaviour:
+    /// - People with an existing active membership are **not** reassigned.
+    /// - Teams are resolved by leader (`lead_id`), not by auto-generated name.
+    /// - `last_import_at` is set for every person seen in this import.
+    /// - Stale people (previously imported but absent from this file) are counted.
     #[allow(clippy::too_many_lines)]
     pub async fn import_records(&self, records: &[ImportRecord]) -> Result<ImportResult, Error> {
         let mut people_imported = 0i32;
+        let mut people_updated = 0i32;
         let mut teams_created = 0i32;
         let mut identities_mapped = 0i32;
         let mut warnings = Vec::new();
@@ -313,6 +343,8 @@ impl OrgRepo {
         // Track mappings for second pass (hierarchy wiring).
         let mut person_name_to_id: HashMap<String, Uuid> = HashMap::new();
         let mut team_name_to_id: HashMap<String, Uuid> = HashMap::new();
+        // Track which people already have an active membership (skip team assignment).
+        let mut has_active_membership: HashSet<Uuid> = HashSet::new();
 
         let mut tx = self
             .pool
@@ -320,6 +352,7 @@ impl OrgRepo {
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
+        // --- Pass 1: upsert people, create teams, map identities ---
         for record in records {
             if record.name.is_empty() {
                 warnings.push(format!(
@@ -331,7 +364,8 @@ impl OrgRepo {
 
             let person_id = Uuid::now_v7();
 
-            // Upsert person by directory_id if present, otherwise insert
+            // Upsert person by directory_id if present, otherwise insert.
+            // Always set last_import_at = NOW().
             let resolved_id = if let Some(dir_id) = &record.directory_id {
                 let existing = sqlx::query_scalar!(
                     "SELECT id FROM org.people WHERE directory_id = $1",
@@ -345,7 +379,8 @@ impl OrgRepo {
                     sqlx::query!(
                         r#"
                         UPDATE org.people
-                        SET name = $1, email = $2, level = $3, updated_at = now()
+                        SET name = $1, email = $2, level = $3,
+                            last_import_at = now(), updated_at = now()
                         WHERE id = $4
                         "#,
                         record.name,
@@ -357,12 +392,13 @@ impl OrgRepo {
                     .await
                     .map_err(|e| Error::Database(e.to_string()))?;
 
+                    people_updated += 1;
                     existing_id
                 } else {
                     sqlx::query!(
                         r#"
-                        INSERT INTO org.people (id, name, email, level, directory_id)
-                        VALUES ($1, $2, $3, $4, $5)
+                        INSERT INTO org.people (id, name, email, level, directory_id, last_import_at)
+                        VALUES ($1, $2, $3, $4, $5, now())
                         "#,
                         person_id,
                         record.name,
@@ -380,8 +416,8 @@ impl OrgRepo {
             } else {
                 sqlx::query!(
                     r#"
-                    INSERT INTO org.people (id, name, email, level)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO org.people (id, name, email, level, last_import_at)
+                    VALUES ($1, $2, $3, $4, now())
                     "#,
                     person_id,
                     record.name,
@@ -399,8 +435,26 @@ impl OrgRepo {
             // Track person name → id for hierarchy wiring
             person_name_to_id.insert(record.name.clone(), resolved_id);
 
-            // Create team if specified and doesn't exist
-            if let Some(team_name) = &record.team {
+            // Check if this person already has ANY active team membership.
+            let any_membership = sqlx::query_scalar!(
+                r#"
+                SELECT EXISTS(
+                    SELECT 1 FROM org.team_memberships
+                    WHERE person_id = $1
+                      AND (end_date IS NULL OR end_date > CURRENT_DATE)
+                ) AS "exists!"
+                "#,
+                resolved_id,
+            )
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+            if any_membership {
+                // Person already assigned — don't touch their membership.
+                has_active_membership.insert(resolved_id);
+            } else if let Some(team_name) = &record.team {
+                // Person has no membership — assign to their import-derived team.
                 let org_name = record.org.as_deref().unwrap_or("default");
 
                 let team_id = sqlx::query_scalar!(
@@ -438,36 +492,37 @@ impl OrgRepo {
                 // Track team name → id for hierarchy wiring
                 team_name_to_id.insert(team_name.clone(), team_id);
 
-                // Create membership if not already active
-                let has_membership = sqlx::query_scalar!(
+                let membership_id = Uuid::now_v7();
+                sqlx::query!(
                     r#"
-                    SELECT EXISTS(
-                        SELECT 1 FROM org.team_memberships
-                        WHERE person_id = $1 AND team_id = $2
-                          AND (end_date IS NULL OR end_date > CURRENT_DATE)
-                    ) AS "exists!"
+                    INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
+                    VALUES ($1, $2, $3, CURRENT_DATE)
                     "#,
+                    membership_id,
                     resolved_id,
                     team_id,
                 )
-                .fetch_one(&mut *tx)
+                .execute(&mut *tx)
                 .await
                 .map_err(|e| Error::Database(e.to_string()))?;
+            }
 
-                if !has_membership {
-                    let membership_id = Uuid::now_v7();
-                    sqlx::query!(
-                        r#"
-                        INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
-                        VALUES ($1, $2, $3, CURRENT_DATE)
-                        "#,
-                        membership_id,
-                        resolved_id,
-                        team_id,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(|e| Error::Database(e.to_string()))?;
+            // Still track team name → id even if person already has membership,
+            // because we need it for hierarchy wiring.
+            if let Some(team_name) = &record.team
+                && !team_name_to_id.contains_key(team_name)
+            {
+                let org_name = record.org.as_deref().unwrap_or("default");
+                if let Some(tid) = sqlx::query_scalar!(
+                    "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
+                    team_name,
+                    org_name,
+                )
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?
+                {
+                    team_name_to_id.insert(team_name.clone(), tid);
                 }
             }
 
@@ -525,7 +580,31 @@ impl OrgRepo {
             }
         }
 
-        // Second pass: wire up team hierarchy (lead_id, parent_team_id).
+        // --- Pass 2: wire up team hierarchy (lead_id, parent_team_id) ---
+        // Also resolve team by leader for people whose manager has a renamed team.
+        for record in records {
+            // Wire lead_id for teams this person leads.
+            if record.has_reports
+                && let Some(&person_id) = person_name_to_id.get(&record.name)
+            {
+                // Find any team where this person should be the lead (by team name
+                // from the import record, or by existing lead_id match).
+                if let Some(team_name) = &record.team
+                    && let Some(&team_id) = team_name_to_id.get(team_name)
+                {
+                    sqlx::query!(
+                        "UPDATE org.teams SET lead_id = $1 WHERE id = $2 AND lead_id IS NULL",
+                        person_id,
+                        team_id,
+                    )
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| Error::Database(e.to_string()))?;
+                }
+            }
+        }
+
+        // Wire parent_team_id in a separate loop (leads must be set first).
         for record in records {
             let Some(team_name) = &record.team else {
                 continue;
@@ -534,56 +613,82 @@ impl OrgRepo {
                 continue;
             };
 
-            // Set lead_id: if this person has reports, they lead their team.
-            if record.has_reports
-                && let Some(&person_id) = person_name_to_id.get(&record.name)
-            {
-                sqlx::query!(
-                    "UPDATE org.teams SET lead_id = $1 WHERE id = $2 AND lead_id IS NULL",
-                    person_id,
-                    team_id,
-                )
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| Error::Database(e.to_string()))?;
-            }
-
-            // Set parent_team_id: look up the manager's team as the parent.
             if let Some(manager_name) = &record.manager_name {
-                // Find the team the manager leads (the manager's name appears in
-                // a team name like "X's Team" or "X's Squad", or the manager is
-                // assigned to a group).
-                let parent_team_name = format!("{manager_name}'s Team");
-                let parent_id = team_name_to_id
-                    .get(&parent_team_name)
-                    .or_else(|| {
-                        let squad_name = format!("{manager_name}'s Squad");
-                        team_name_to_id.get(&squad_name)
-                    })
-                    .or_else(|| {
-                        // Manager might be at group level — find which group
-                        // the manager belongs to.
-                        records
-                            .iter()
-                            .find(|r| r.name == *manager_name)
-                            .and_then(|r| r.team.as_ref())
-                            .and_then(|t| team_name_to_id.get(t))
-                    });
+                // First try: find team where lead_id = manager's person_id.
+                // This survives team renames.
+                let manager_person_id = person_name_to_id.get(manager_name).copied();
+                let parent_id = if let Some(mgr_id) = manager_person_id {
+                    sqlx::query_scalar!("SELECT id FROM org.teams WHERE lead_id = $1", mgr_id,)
+                        .fetch_optional(&mut *tx)
+                        .await
+                        .map_err(|e| Error::Database(e.to_string()))?
+                } else {
+                    None
+                };
 
-                if let Some(&parent_id) = parent_id
+                // Fallback: name-based lookup (for first import where leads haven't been set).
+                let parent_id = parent_id.or_else(|| {
+                    let parent_team_name = format!("{manager_name}'s Team");
+                    team_name_to_id
+                        .get(&parent_team_name)
+                        .or_else(|| {
+                            let squad_name = format!("{manager_name}'s Squad");
+                            team_name_to_id.get(&squad_name)
+                        })
+                        .or_else(|| {
+                            records
+                                .iter()
+                                .find(|r| r.name == *manager_name)
+                                .and_then(|r| r.team.as_ref())
+                                .and_then(|t| team_name_to_id.get(t))
+                        })
+                        .copied()
+                });
+
+                if let Some(parent_id) = parent_id
                     && parent_id != team_id
                 {
                     sqlx::query!(
-                            "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2 AND parent_team_id IS NULL",
-                            parent_id,
-                            team_id,
-                        )
-                        .execute(&mut *tx)
-                        .await
-                        .map_err(|e| Error::Database(e.to_string()))?;
+                        "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2 AND parent_team_id IS NULL",
+                        parent_id,
+                        team_id,
+                    )
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| Error::Database(e.to_string()))?;
                 }
             }
         }
+
+        // --- Post-import: count stale and unassigned people ---
+        let stale_people_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*)::int AS "count!"
+            FROM org.people
+            WHERE active = true
+              AND directory_id IS NOT NULL
+              AND (last_import_at IS NULL OR last_import_at < now() - interval '1 minute')
+            "#,
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        let unassigned_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*)::int AS "count!"
+            FROM org.people p
+            WHERE p.active = true
+              AND NOT EXISTS (
+                  SELECT 1 FROM org.team_memberships tm
+                  WHERE tm.person_id = p.id
+                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+              )
+            "#,
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
 
         tx.commit()
             .await
@@ -591,9 +696,12 @@ impl OrgRepo {
 
         Ok(ImportResult {
             people_imported,
+            people_updated,
             teams_created,
             identities_mapped,
             warnings,
+            stale_people_count,
+            unassigned_count,
         })
     }
 
@@ -604,13 +712,14 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   p.name AS lead_name,
-                   COUNT(tm.id)::int AS "member_count!"
+                   lp.name AS lead_name,
+                   COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
                 AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            LEFT JOIN org.people p ON p.id = t.lead_id
-            GROUP BY t.id, p.name
+            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true
+            LEFT JOIN org.people lp ON lp.id = t.lead_id
+            GROUP BY t.id, lp.name
             ORDER BY t.name
             "#,
         )
@@ -742,6 +851,213 @@ impl OrgRepo {
             .map_err(|e| Error::Database(e.to_string()))?;
 
         Ok(())
+    }
+
+    /// Update a person's fields (COALESCE pattern — only non-NULL values change).
+    pub async fn update_person(
+        &self,
+        id: Uuid,
+        name: Option<&str>,
+        email: Option<&str>,
+        level: Option<&str>,
+    ) -> Result<PersonRow, Error> {
+        sqlx::query!(
+            r#"
+            UPDATE org.people
+            SET name = COALESCE($2, name),
+                email = COALESCE($3, email),
+                level = COALESCE($4, level),
+                updated_at = now()
+            WHERE id = $1
+            "#,
+            id,
+            name,
+            email,
+            level,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        self.get_person(id)
+            .await?
+            .ok_or_else(|| Error::Database("person not found after update".to_owned()))
+    }
+
+    /// Get a single person with their current team info.
+    pub async fn get_person(&self, id: Uuid) -> Result<Option<PersonRow>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT p.id, p.name, p.email, p.level, p.active,
+                   tm.team_id AS "team_id?", t.name AS "team_name?"
+            FROM org.people p
+            LEFT JOIN org.team_memberships tm ON tm.person_id = p.id
+                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.teams t ON t.id = tm.team_id
+            WHERE p.id = $1
+            "#,
+            id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(row.map(|p| PersonRow {
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            level: p.level,
+            active: p.active,
+            team_id: p.team_id,
+            team_name: p.team_name,
+        }))
+    }
+
+    /// Deactivate a person: set `active = false` and end all active memberships.
+    pub async fn deactivate_person(&self, id: Uuid) -> Result<(), Error> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        sqlx::query!(
+            "UPDATE org.people SET active = false, updated_at = now() WHERE id = $1",
+            id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        sqlx::query!(
+            r#"
+            UPDATE org.team_memberships
+            SET end_date = CURRENT_DATE
+            WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Reactivate a person: set `active = true`. Does not restore memberships.
+    pub async fn reactivate_person(&self, id: Uuid) -> Result<(), Error> {
+        sqlx::query!(
+            "UPDATE org.people SET active = true, updated_at = now() WHERE id = $1",
+            id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Assign a person to a team: end any active membership first, then create a new one.
+    pub async fn assign_person_to_team(&self, person_id: Uuid, team_id: Uuid) -> Result<(), Error> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        // End all current active memberships for this person.
+        sqlx::query!(
+            r#"
+            UPDATE org.team_memberships
+            SET end_date = CURRENT_DATE
+            WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
+            "#,
+            person_id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        // Create new membership.
+        let membership_id = Uuid::now_v7();
+        sqlx::query!(
+            r#"
+            INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
+            VALUES ($1, $2, $3, CURRENT_DATE)
+            "#,
+            membership_id,
+            person_id,
+            team_id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Remove a person from a specific team (end the membership).
+    pub async fn remove_person_from_team(
+        &self,
+        person_id: Uuid,
+        team_id: Uuid,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE org.team_memberships
+            SET end_date = CURRENT_DATE
+            WHERE person_id = $1 AND team_id = $2
+              AND (end_date IS NULL OR end_date > CURRENT_DATE)
+            "#,
+            person_id,
+            team_id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// List active people with no active team membership.
+    pub async fn list_unassigned_people(&self) -> Result<Vec<PersonRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT p.id, p.name, p.email, p.level, p.active
+            FROM org.people p
+            WHERE p.active = true
+              AND NOT EXISTS (
+                  SELECT 1 FROM org.team_memberships tm
+                  WHERE tm.person_id = p.id
+                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+              )
+            ORDER BY p.name
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|p| PersonRow {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                level: p.level,
+                active: p.active,
+                team_id: None,
+                team_name: None,
+            })
+            .collect())
     }
 
     /// Count people (for backup manifest).

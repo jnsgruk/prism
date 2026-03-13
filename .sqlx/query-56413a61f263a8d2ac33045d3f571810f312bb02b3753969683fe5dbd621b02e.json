@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE org.team_memberships\n            SET end_date = CURRENT_DATE\n            WHERE person_id = $1 AND team_id = $2\n              AND (end_date IS NULL OR end_date > CURRENT_DATE)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "56413a61f263a8d2ac33045d3f571810f312bb02b3753969683fe5dbd621b02e"
+}

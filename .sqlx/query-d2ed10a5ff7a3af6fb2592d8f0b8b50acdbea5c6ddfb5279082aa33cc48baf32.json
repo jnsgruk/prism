@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*)::int AS \"count!\"\n            FROM org.people\n            WHERE active = true\n              AND directory_id IS NOT NULL\n              AND (last_import_at IS NULL OR last_import_at < now() - interval '1 minute')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [null]
+  },
+  "hash": "d2ed10a5ff7a3af6fb2592d8f0b8b50acdbea5c6ddfb5279082aa33cc48baf32"
+}

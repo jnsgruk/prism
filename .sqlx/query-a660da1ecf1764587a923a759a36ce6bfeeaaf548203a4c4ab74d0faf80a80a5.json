@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   p.name AS lead_name,\n                   COUNT(tm.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people p ON p.id = t.lead_id\n            WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)\n              AND ($2::text IS NULL OR t.team_type::text = $2)\n            GROUP BY t.id, p.name\n            ORDER BY t.name\n            ",
+  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS lead_name,\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)\n              AND ($2::text IS NULL OR t.team_type::text = $2)\n            GROUP BY t.id, lp.name\n            ORDER BY t.name\n            ",
   "describe": {
     "columns": [
       {
@@ -61,5 +61,5 @@
     },
     "nullable": [false, false, false, true, true, true, false, false, null]
   },
-  "hash": "1c375562552307fd3c24c775f5a56aac363bd7d2a77467f3c3b45bf33a6838ae"
+  "hash": "a660da1ecf1764587a923a759a36ce6bfeeaaf548203a4c4ab74d0faf80a80a5"
 }

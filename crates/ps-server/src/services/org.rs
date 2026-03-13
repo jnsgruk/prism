@@ -5,11 +5,14 @@ use ps_core::repo::Repos;
 use ps_core::repo::org::{IdentityRow, ImportIdentity, ImportRecord, PersonRow, TeamWithCount};
 use ps_proto::prism::v1::org_service_server::OrgService;
 use ps_proto::prism::v1::{
-    CreateTeamRequest, CreateTeamResponse, DeleteTeamRequest, DeleteTeamResponse, GetTeamRequest,
-    GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse, ImportDirectoryRequest,
-    ImportDirectoryResponse, ListPeopleRequest, ListPeopleResponse, ListTeamsRequest,
-    ListTeamsResponse, Person, PlatformIdentity, Team, TeamType as ProtoTeamType,
-    UpdateTeamRequest, UpdateTeamResponse,
+    AssignPersonToTeamRequest, AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse,
+    DeactivatePersonRequest, DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,
+    GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse,
+    ImportDirectoryRequest, ImportDirectoryResponse, ListPeopleRequest, ListPeopleResponse,
+    ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest, ListUnassignedPeopleResponse,
+    Person, PlatformIdentity, ReactivatePersonRequest, ReactivatePersonResponse,
+    RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, Team, TeamType as ProtoTeamType,
+    UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
 };
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
@@ -40,6 +43,9 @@ fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Perso
                 email: p.email,
                 level: p.level,
                 identities: person_identities,
+                active: p.active,
+                team_name: p.team_name,
+                team_id: p.team_id.map(|id| id.to_string()),
             }
         })
         .collect()
@@ -320,8 +326,15 @@ impl OrgService for OrgServiceImpl {
         request: Request<ListPeopleRequest>,
     ) -> Result<Response<ListPeopleResponse>, Status> {
         let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+        let active_only = req.active_only.unwrap_or(false);
 
-        let people_rows = self.repos.org.list_people().await.map_err(db_err)?;
+        let people_rows = self
+            .repos
+            .org
+            .list_people(active_only)
+            .await
+            .map_err(db_err)?;
         let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
         let identities = self
             .repos
@@ -390,7 +403,157 @@ impl OrgService for OrgServiceImpl {
             teams_created: result.teams_created,
             identities_mapped: result.identities_mapped,
             warnings: result.warnings,
+            people_updated: result.people_updated,
+            stale_people_count: result.stale_people_count,
+            unassigned_count: result.unassigned_count,
         }))
+    }
+
+    async fn update_person(
+        &self,
+        request: Request<UpdatePersonRequest>,
+    ) -> Result<Response<UpdatePersonResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+        let person = self
+            .repos
+            .org
+            .update_person(
+                id,
+                req.name.as_deref(),
+                req.email.as_deref(),
+                req.level.as_deref(),
+            )
+            .await
+            .map_err(db_err)?;
+
+        let identities = self
+            .repos
+            .org
+            .get_identities_for_people(&[person.id])
+            .await
+            .map_err(db_err)?;
+
+        let people = build_people(vec![person], &identities);
+
+        Ok(Response::new(UpdatePersonResponse {
+            person: people.into_iter().next(),
+        }))
+    }
+
+    async fn deactivate_person(
+        &self,
+        request: Request<DeactivatePersonRequest>,
+    ) -> Result<Response<DeactivatePersonResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+        self.repos.org.deactivate_person(id).await.map_err(db_err)?;
+
+        Ok(Response::new(DeactivatePersonResponse {}))
+    }
+
+    async fn reactivate_person(
+        &self,
+        request: Request<ReactivatePersonRequest>,
+    ) -> Result<Response<ReactivatePersonResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+        self.repos.org.reactivate_person(id).await.map_err(db_err)?;
+
+        Ok(Response::new(ReactivatePersonResponse {}))
+    }
+
+    async fn assign_person_to_team(
+        &self,
+        request: Request<AssignPersonToTeamRequest>,
+    ) -> Result<Response<AssignPersonToTeamResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let person_id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+        let team_id: Uuid = req
+            .team_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        self.repos
+            .org
+            .assign_person_to_team(person_id, team_id)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(AssignPersonToTeamResponse {}))
+    }
+
+    async fn remove_person_from_team(
+        &self,
+        request: Request<RemovePersonFromTeamRequest>,
+    ) -> Result<Response<RemovePersonFromTeamResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let person_id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+        let team_id: Uuid = req
+            .team_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        self.repos
+            .org
+            .remove_person_from_team(person_id, team_id)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(RemovePersonFromTeamResponse {}))
+    }
+
+    async fn list_unassigned_people(
+        &self,
+        request: Request<ListUnassignedPeopleRequest>,
+    ) -> Result<Response<ListUnassignedPeopleResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let people_rows = self
+            .repos
+            .org
+            .list_unassigned_people()
+            .await
+            .map_err(db_err)?;
+
+        let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
+        let identities = self
+            .repos
+            .org
+            .get_identities_for_people(&person_ids)
+            .await
+            .map_err(db_err)?;
+
+        let people = build_people(people_rows, &identities);
+        Ok(Response::new(ListUnassignedPeopleResponse { people }))
     }
 }
 

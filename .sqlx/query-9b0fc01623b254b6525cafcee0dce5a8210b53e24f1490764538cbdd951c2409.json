@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id, p.name, p.email, p.level, p.active\n            FROM org.people p\n            WHERE p.active = true\n              AND NOT EXISTS (\n                  SELECT 1 FROM org.team_memberships tm\n                  WHERE tm.person_id = p.id\n                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n              )\n            ORDER BY p.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [false, false, true, true, false]
+  },
+  "hash": "9b0fc01623b254b6525cafcee0dce5a8210b53e24f1490764538cbdd951c2409"
+}

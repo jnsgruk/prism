@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE org.people SET active = false, updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "240be712c5696b0e3ec8e6cd5cae0e8f5b03eab414673aee1a4cd2317a5e69d4"
+}

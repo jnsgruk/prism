@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT EXISTS(\n                    SELECT 1 FROM org.team_memberships\n                    WHERE person_id = $1\n                      AND (end_date IS NULL OR end_date > CURRENT_DATE)\n                ) AS \"exists!\"\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid"]
+    },
+    "nullable": [null]
+  },
+  "hash": "04ce6fa0d24502249b38f98ea96f64c67a5dcaf024be568db7383dd26c0c5493"
+}
