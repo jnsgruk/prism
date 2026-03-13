@@ -35,7 +35,7 @@ export const TeamsTab = (): React.ReactElement => {
         <p className="text-sm text-muted-foreground">
           Manage your organisation hierarchy. Import a directory or create teams manually.
         </p>
-        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+        <Button onClick={() => setAddDialogOpen(true)}>
           <Plus className="size-4" />
           Add Team
         </Button>
