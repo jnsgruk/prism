@@ -655,6 +655,11 @@ impl OrgRepo {
                 continue;
             };
 
+            // Groups are always top-level — never wire a parent for them.
+            if record.team_type == Some(TeamType::Group) {
+                continue;
+            }
+
             // For team-level records (not squads), use the group as parent.
             // This ensures "Matthieu's Team" goes under "Ubuntu Engineering" (his group),
             // not under his manager's group (which may be different).
