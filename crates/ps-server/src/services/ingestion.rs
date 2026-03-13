@@ -30,16 +30,20 @@ impl IngestionServiceImpl {
         }
     }
 
-    /// Check whether a Restate invocation is still alive.
+    /// Check whether a Restate invocation is still alive via the SQL introspection API.
     /// Returns `true` if the invocation is actively running/suspended, `false`
     /// if it has completed, been cancelled, or doesn't exist.
     async fn is_invocation_alive(&self, invocation_id: &str) -> bool {
-        let url = format!(
-            "{}/restate/invocations/{}",
-            self.restate_admin_url, invocation_id,
-        );
+        let url = format!("{}/query", self.restate_admin_url);
+        let query = format!("SELECT status FROM sys_invocation WHERE id = '{invocation_id}'",);
 
-        let resp = match self.http_client.get(&url).send().await {
+        let resp = match self
+            .http_client
+            .post(&url)
+            .json(&serde_json::json!({ "query": query }))
+            .send()
+            .await
+        {
             Ok(r) => r,
             Err(e) => {
                 // If we can't reach Restate, assume alive to avoid false reconciliation
@@ -48,12 +52,7 @@ impl IngestionServiceImpl {
             }
         };
 
-        if resp.status() == reqwest::StatusCode::NOT_FOUND {
-            return false;
-        }
-
         if !resp.status().is_success() {
-            // Unexpected error — assume alive
             return true;
         }
 
@@ -62,10 +61,19 @@ impl IngestionServiceImpl {
             Err(_) => return true,
         };
 
-        // Restate invocation status: "pending", "ready", "running",
-        // "suspended", "backing-off", "completed"
+        // If no rows, invocation doesn't exist
+        let Some(rows) = body.get("rows").and_then(|r| r.as_array()) else {
+            return false;
+        };
+
+        // If empty, invocation not found — treat as not alive
+        let Some(row) = rows.first() else {
+            return false;
+        };
+
+        // "pending", "ready", "running", "suspended", "backing-off", "completed"
         !matches!(
-            body.get("status").and_then(|s| s.as_str()),
+            row.get("status").and_then(|s| s.as_str()),
             Some("completed")
         )
     }
@@ -109,6 +117,68 @@ impl IngestionServiceImpl {
                 source.active_run_items = None;
                 source.active_run_started_at = None;
                 source.current_invocation_id = None;
+            }
+        }
+    }
+
+    /// Query Restate admin SQL API for active invocations on the given virtual object.
+    /// Returns `None` if the query fails (best-effort).
+    async fn query_active_invocations(&self, source_name: &str) -> Option<Vec<String>> {
+        let url = format!("{}/query", self.restate_admin_url);
+        let query = format!(
+            "SELECT id FROM sys_invocation \
+             WHERE target_service_name = 'IngestionHandler' \
+             AND target_service_key = '{source_name}' \
+             AND status != 'completed'",
+        );
+
+        let resp = match self
+            .http_client
+            .post(&url)
+            .json(&serde_json::json!({ "query": query }))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(source = %source_name, error = %e, "failed to query Restate invocations");
+                return None;
+            }
+        };
+
+        if !resp.status().is_success() {
+            warn!(source = %source_name, status = %resp.status(), "Restate invocation query failed");
+            return None;
+        }
+
+        let body: serde_json::Value = resp.json().await.ok()?;
+        let rows = body.get("rows")?.as_array()?;
+        let ids: Vec<String> = rows
+            .iter()
+            .filter_map(|row| row.get("id").and_then(|v| v.as_str()).map(String::from))
+            .collect();
+
+        Some(ids)
+    }
+
+    /// Cancel a single Restate invocation by ID (best-effort, logs but does not fail).
+    async fn cancel_restate_invocation(&self, source_name: &str, invocation_id: &str) {
+        let url = format!(
+            "{}/invocations/{}?mode=cancel",
+            self.restate_admin_url, invocation_id,
+        );
+
+        match self.http_client.delete(&url).send().await {
+            Ok(resp) if !resp.status().is_success() => {
+                let status_code = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                info!(source = %source_name, %invocation_id, %status_code, %body, "Restate cancel response");
+            }
+            Err(e) => {
+                warn!(source = %source_name, %invocation_id, error = %e, "failed to cancel Restate invocation");
+            }
+            _ => {
+                info!(source = %source_name, %invocation_id, "cancelled Restate invocation");
             }
         }
     }
@@ -324,33 +394,33 @@ impl IngestionService for IngestionServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
-        // Get the current invocation ID
-        let invocation_id = self
+        // Collect invocation IDs to cancel: start with the stored one, then
+        // also query Restate for any active invocations on this virtual object
+        // (covers cases where the stored ID is stale or missing).
+        let mut ids_to_cancel = Vec::new();
+
+        if let Some(id) = self
             .repos
             .activity
             .get_current_invocation_id(&req.source_name)
             .await
             .map_err(db_err)?
-            .ok_or_else(|| Status::not_found("no active invocation found for this source"))?;
+        {
+            ids_to_cancel.push(id);
+        }
 
-        // Cancel the Restate invocation via admin API
-        let url = format!(
-            "{}/restate/invocations/{}",
-            self.restate_admin_url, invocation_id,
-        );
+        // Query Restate admin for active invocations on this virtual object
+        if let Some(active_ids) = self.query_active_invocations(&req.source_name).await {
+            for id in active_ids {
+                if !ids_to_cancel.contains(&id) {
+                    ids_to_cancel.push(id);
+                }
+            }
+        }
 
-        let resp = self
-            .http_client
-            .delete(&url)
-            .send()
-            .await
-            .map_err(|e| Status::unavailable(format!("failed to reach Restate admin: {e}")))?;
-
-        if !resp.status().is_success() {
-            let status_code = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            info!(source = %req.source_name, %status_code, %body, "Restate cancel response");
-            // Don't fail — the invocation may have already completed
+        // Cancel all discovered invocations
+        for id in &ids_to_cancel {
+            self.cancel_restate_invocation(&req.source_name, id).await;
         }
 
         // Mark active runs as cancelled in the database
@@ -360,7 +430,7 @@ impl IngestionService for IngestionServiceImpl {
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, %invocation_id, "cancelled ingestion run");
+        info!(source = %req.source_name, cancelled = ?ids_to_cancel, "cancelled ingestion run");
 
         Ok(Response::new(CancelRunResponse {}))
     }

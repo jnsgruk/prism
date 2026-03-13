@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.ingestion_watermarks (source_name, watermark_value, current_invocation_id)\n            VALUES ($1, '', $2)\n            ON CONFLICT (source_name)\n            DO UPDATE SET current_invocation_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "9eecf400fae9e5a34aba23aa360c4556e68ba713918434681e790dbbc2faaec9"
+}

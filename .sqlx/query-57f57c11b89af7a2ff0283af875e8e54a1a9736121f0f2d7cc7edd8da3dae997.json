@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET completed_at = now(), status = 'failed', error_message = $2\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "57f57c11b89af7a2ff0283af875e8e54a1a9736121f0f2d7cc7edd8da3dae997"
+}

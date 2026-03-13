@@ -308,8 +308,8 @@ impl ActivityRepo {
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
-            INSERT INTO activity.ingestion_watermarks (source_name, current_invocation_id)
-            VALUES ($1, $2)
+            INSERT INTO activity.ingestion_watermarks (source_name, watermark_value, current_invocation_id)
+            VALUES ($1, '', $2)
             ON CONFLICT (source_name)
             DO UPDATE SET current_invocation_id = $2
             "#,

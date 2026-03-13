@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id, p.name, p.email, p.level, p.active,\n                   tm.team_id AS \"team_id?\", t.name AS \"team_name?\"\n            FROM org.people p\n            LEFT JOIN org.team_memberships tm ON tm.person_id = p.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.teams t ON t.id = tm.team_id\n            WHERE p.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "team_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "team_name?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid"]
+    },
+    "nullable": [false, false, true, true, false, false, false]
+  },
+  "hash": "be5c373844a578726344a72af487f9ccbed44eda723c21287a558920f5b14f2c"
+}

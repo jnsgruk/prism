@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM auth.sessions\n            WHERE id = $1 AND user_id = $2 AND session_type = 'api_token'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "c9e31137fbaf55d325c92411113c60bf3e307b69f41cef4cf29c8cec454b0e81"
+}

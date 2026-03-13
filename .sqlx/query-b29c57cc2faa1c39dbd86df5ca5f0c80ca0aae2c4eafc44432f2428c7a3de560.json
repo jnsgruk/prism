@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) FROM org.people",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [null]
+  },
+  "hash": "b29c57cc2faa1c39dbd86df5ca5f0c80ca0aae2c4eafc44432f2428c7a3de560"
+}

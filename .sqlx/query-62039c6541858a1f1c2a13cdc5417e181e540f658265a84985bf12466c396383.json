@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT s.id as session_id, s.expires_at, u.id as user_id,\n                   u.username, u.display_name, u.role, u.is_active\n            FROM auth.sessions s\n            JOIN auth.users u ON s.user_id = u.id\n            WHERE s.token_hash = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_active",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false, true, false, false, false, false, false]
+  },
+  "hash": "62039c6541858a1f1c2a13cdc5417e181e540f658265a84985bf12466c396383"
+}

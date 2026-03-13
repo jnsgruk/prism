@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO config.source_configs (id, source_type, name, settings, schedule_cron)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING id, source_type, name, enabled, settings, schedule_cron, created_at, updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "settings",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "schedule_cron",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Text", "Jsonb", "Text"]
+    },
+    "nullable": [false, false, false, false, false, true, false, false]
+  },
+  "hash": "fd6452f88b887bf59b6e664273ff155b5d05d4c2c70b0481ae89c8ac12f6f8be"
+}
