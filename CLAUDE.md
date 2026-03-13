@@ -44,6 +44,7 @@ bun test                                  # Run frontend tests via vitest (run f
 crates/
 ├── ps-core/          # Domain types, traits, error types, shared logic
 │   └── src/
+│       ├── repo/     # Repository layer — ALL database access lives here
 │       ├── auth/     # Password hashing, token generation, session management
 │       ├── crypto.rs # AES-256-GCM encryption for source credentials
 │       └── backup.rs # Export/import logic
@@ -56,6 +57,26 @@ crates/
 ```
 
 **Dependency flow:** `psctl → ps-proto` | `ps-server → ps-core, ps-proto, ps-metrics` | `ps-ingestion → ps-core, ps-proto` | `ps-metrics → ps-core`
+
+### Repository Layer (`ps-core/src/repo/`)
+
+All database access is centralized in the repository layer. Each repo maps to one database schema (bounded context):
+
+| Repo           | Schema     | Responsibility                                         |
+| -------------- | ---------- | ------------------------------------------------------ |
+| `AuthRepo`     | `auth`     | Users, sessions, API tokens                            |
+| `ConfigRepo`   | `config`   | Source configs, encrypted secrets                      |
+| `OrgRepo`      | `org`      | People, teams, platform identities, repositories       |
+| `ActivityRepo` | `activity` | Contributions, watermarks, ingestion runs, ETag cache  |
+
+The `Repos` struct bundles all four repos and is constructed once from a `PgPool`, then cloned into each service and the ingestion handler.
+
+**Layering rules:**
+
+1. **All `sqlx::query!` calls must live in `ps-core/src/repo/`** — services, ingestion sources, and other crates must never contain direct SQL. They access data exclusively through repo methods.
+2. **Services are thin gRPC adapters** — they receive `Repos`, delegate to repo methods, and map between domain types and proto types. Business logic that doesn't need proto types belongs in `ps-core`.
+3. **One repo per schema** — each repo owns queries for its schema. Cross-schema joins are permitted only as read-only queries within the repo that is the primary consumer of the result (e.g., `ActivityRepo::get_source_statuses` joins `config` + `activity`).
+4. **No `PgPool` in services or sources** — services and ingestion sources receive `Repos`, never a raw pool. Only `main.rs` (server/ingestion binaries) and the repo layer itself should touch `PgPool`.
 
 ### Database Schemas (Bounded Contexts)
 
