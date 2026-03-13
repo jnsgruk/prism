@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM org.github_teams\n            WHERE source_id = $1 AND github_org = $2 AND slug != ALL($3)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text", "TextArray"]
+    },
+    "nullable": []
+  },
+  "hash": "0b6c14c4ffcff1e5b5af5620ba59e280418dc98a10664e36b2a6b3ebe886ca79"
+}

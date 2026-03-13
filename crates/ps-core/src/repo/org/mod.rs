@@ -1,4 +1,5 @@
 mod export;
+pub mod github_teams;
 mod identities;
 mod import;
 mod memberships;
@@ -26,7 +27,6 @@ pub struct TeamWithCount {
     pub parent_team_id: Option<Uuid>,
     pub lead_id: Option<Uuid>,
     pub lead_name: Option<String>,
-    pub github_team_slug: Option<String>,
     pub team_type: TeamType,
     pub member_count: i32,
 }

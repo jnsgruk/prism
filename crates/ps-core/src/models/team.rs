@@ -32,7 +32,6 @@ pub struct Team {
     pub org_name: String,
     pub parent_team_id: Option<Uuid>,
     pub lead_id: Option<Uuid>,
-    pub github_team_slug: Option<String>,
     pub team_type: TeamType,
     pub created_at: OffsetDateTime,
 }

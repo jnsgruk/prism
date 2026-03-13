@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug,\n                      team_type AS \"team_type: TeamType\", created_at\n               FROM org.teams",
+  "query": "SELECT id, name, org_name, parent_team_id, lead_id,\n                      team_type AS \"team_type: TeamType\", created_at\n               FROM org.teams",
   "describe": {
     "columns": [
       {
@@ -30,11 +30,6 @@
       },
       {
         "ordinal": 5,
-        "name": "github_team_slug",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 6,
         "name": "team_type: TeamType",
         "type_info": {
           "Custom": {
@@ -46,7 +41,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -54,7 +49,7 @@
     "parameters": {
       "Left": []
     },
-    "nullable": [false, false, false, true, true, true, false, false]
+    "nullable": [false, false, false, true, true, false, false]
   },
-  "hash": "084004e6d161f70642329b18b2f01b215c80e71d33cc63b7817b00266d713395"
+  "hash": "d0c10b62b891ad4b25f397cd33d5273595df65d77c3551d810a3351c275bc3a8"
 }

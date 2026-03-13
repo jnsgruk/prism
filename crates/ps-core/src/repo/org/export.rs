@@ -82,7 +82,7 @@ impl OrgRepo {
     /// Export all teams as JSON rows (for backup).
     pub async fn export_teams(&self) -> Result<Vec<serde_json::Value>, Error> {
         let teams = sqlx::query!(
-            r#"SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug,
+            r#"SELECT id, name, org_name, parent_team_id, lead_id,
                       team_type AS "team_type: TeamType", created_at
                FROM org.teams"#
         )
@@ -99,7 +99,6 @@ impl OrgRepo {
                     "org_name": t.org_name,
                     "parent_team_id": t.parent_team_id,
                     "lead_id": t.lead_id,
-                    "github_team_slug": t.github_team_slug,
                     "team_type": t.team_type.to_string(),
                     "created_at": t.created_at.to_string(),
                 })

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.dismissed_github_team_suggestions (team_id, github_team_id)\n            VALUES ($1, $2)\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "0b2cdfa8548b1dbdcdca279f528fe9ef53ac2a1a618df07ab94c1efaf28a57fc"
+}

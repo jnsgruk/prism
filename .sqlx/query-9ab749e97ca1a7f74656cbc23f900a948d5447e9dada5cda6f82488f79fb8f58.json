@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS \"lead_name?\",\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)\n              AND ($2::text IS NULL OR t.team_type::text = $2)\n            GROUP BY t.id, lp.name\n            ORDER BY t.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "org_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "lead_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "team_type: TeamType",
+        "type_info": {
+          "Custom": {
+            "name": "org.team_type",
+            "kind": {
+              "Enum": ["org", "group", "team", "squad"]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "lead_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "member_count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid", "Text"]
+    },
+    "nullable": [false, false, false, true, true, false, false, null]
+  },
+  "hash": "9ab749e97ca1a7f74656cbc23f900a948d5447e9dada5cda6f82488f79fb8f58"
+}

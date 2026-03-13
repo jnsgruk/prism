@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT gt.id, gt.source_id, gt.github_org, gt.github_team_id, gt.slug, gt.name, gt.description,\n                   (SELECT COUNT(*) FROM org.github_team_members WHERE github_team_id = gt.id) AS \"member_count!\",\n                   (SELECT COUNT(*) FROM org.github_team_repos WHERE github_team_id = gt.id) AS \"repo_count!\"\n            FROM org.github_teams gt\n            JOIN org.team_github_team_mappings m ON m.github_team_id = gt.id\n            WHERE m.team_id = $1\n            ORDER BY gt.github_org, gt.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_org",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "member_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "repo_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid"]
+    },
+    "nullable": [false, false, false, false, false, false, true, null, null]
+  },
+  "hash": "2254b2a0938f45e16da89b6922ae15021b8948cbd31365bddebd7214b5220bb6"
+}

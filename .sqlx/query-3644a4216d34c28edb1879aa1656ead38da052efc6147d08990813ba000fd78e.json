@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.github_teams (source_id, github_org, github_team_id, slug, name, description, last_synced_at)\n            VALUES ($1, $2, $3, $4, $5, $6, now())\n            ON CONFLICT (source_id, github_org, slug) DO UPDATE\n            SET github_team_id = EXCLUDED.github_team_id,\n                name = EXCLUDED.name,\n                description = EXCLUDED.description,\n                last_synced_at = now()\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Int8", "Text", "Text", "Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "3644a4216d34c28edb1879aa1656ead38da052efc6147d08990813ba000fd78e"
+}

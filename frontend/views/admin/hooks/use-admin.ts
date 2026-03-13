@@ -94,7 +94,6 @@ export const useCreateTeam = (): UseMutationResult<
     orgName: string;
     parentTeamId?: string;
     leadId?: string;
-    githubTeamSlug?: string;
   }
 > => {
   const queryClient = useQueryClient();
@@ -109,7 +108,7 @@ export const useCreateTeam = (): UseMutationResult<
 export const useUpdateTeam = (): UseMutationResult<
   UpdateTeamResponse,
   Error,
-  { teamId: string; name?: string; parentTeamId?: string; leadId?: string; githubTeamSlug?: string }
+  { teamId: string; name?: string; parentTeamId?: string; leadId?: string }
 > => {
   const queryClient = useQueryClient();
   return useMutation({

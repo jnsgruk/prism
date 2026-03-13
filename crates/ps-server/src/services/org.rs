@@ -81,7 +81,6 @@ fn team_to_proto(t: TeamWithCount) -> Team {
         org_name: t.org_name,
         parent_team_id: t.parent_team_id.map(|id| id.to_string()),
         lead_id: t.lead_id.map(|id| id.to_string()),
-        github_team_slug: t.github_team_slug,
         member_count: t.member_count,
         team_type: team_type_to_proto(t.team_type),
         total_member_count: 0,
@@ -251,14 +250,7 @@ impl OrgService for OrgServiceImpl {
         let team = self
             .repos
             .org
-            .create_team(
-                &req.name,
-                &req.org_name,
-                team_type,
-                parent_id,
-                lead_id,
-                req.github_team_slug.as_deref(),
-            )
+            .create_team(&req.name, &req.org_name, team_type, parent_id, lead_id)
             .await
             .map_err(db_err)?;
 
@@ -292,13 +284,7 @@ impl OrgService for OrgServiceImpl {
         let team = self
             .repos
             .org
-            .update_team(
-                id,
-                req.name.as_deref(),
-                parent_id,
-                lead_id,
-                req.github_team_slug.as_deref(),
-            )
+            .update_team(id, req.name.as_deref(), parent_id, lead_id)
             .await
             .map_err(db_err)?;
 

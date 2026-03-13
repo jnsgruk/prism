@@ -43,13 +43,11 @@ export const EditTeamDialog = ({
   const [name, setName] = useState(team.name);
   const [leadId, setLeadId] = useState(team.leadId ?? "");
   const [parentTeamId, setParentTeamId] = useState(team.parentTeamId ?? "");
-  const [githubTeamSlug, setGithubTeamSlug] = useState(team.githubTeamSlug ?? "");
 
   useEffect(() => {
     setName(team.name);
     setLeadId(team.leadId ?? "");
     setParentTeamId(team.parentTeamId ?? "");
-    setGithubTeamSlug(team.githubTeamSlug ?? "");
   }, [team]);
 
   const handleSubmit = (e: React.FormEvent): void => {
@@ -60,8 +58,6 @@ export const EditTeamDialog = ({
         name: name !== team.name ? name : undefined,
         leadId: leadId && leadId !== team.leadId ? leadId : undefined,
         parentTeamId: parentTeamId && parentTeamId !== team.parentTeamId ? parentTeamId : undefined,
-        githubTeamSlug:
-          githubTeamSlug && githubTeamSlug !== team.githubTeamSlug ? githubTeamSlug : undefined,
       },
       {
         onSuccess: () => {
@@ -130,16 +126,6 @@ export const EditTeamDialog = ({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="github-slug">GitHub Team Slug</Label>
-              <Input
-                id="github-slug"
-                value={githubTeamSlug}
-                onChange={(e) => setGithubTeamSlug(e.target.value)}
-                placeholder="e.g. my-team"
-              />
             </div>
 
             {updateTeam.isError && (

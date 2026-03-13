@@ -49,14 +49,12 @@ export const AddTeamDialog = ({
   const [teamType, setTeamType] = useState(String(TeamType.TEAM));
   const [leadId, setLeadId] = useState("");
   const [parentTeamId, setParentTeamId] = useState("");
-  const [githubTeamSlug, setGithubTeamSlug] = useState("");
 
   const reset = (): void => {
     setName("");
     setTeamType(String(TeamType.TEAM));
     setLeadId("");
     setParentTeamId("");
-    setGithubTeamSlug("");
   };
 
   const handleSubmit = (e: React.FormEvent): void => {
@@ -68,7 +66,6 @@ export const AddTeamDialog = ({
         orgName: "Canonical",
         leadId: leadId || undefined,
         parentTeamId: parentTeamId || undefined,
-        githubTeamSlug: githubTeamSlug || undefined,
       },
       {
         onSuccess: () => {
@@ -152,16 +149,6 @@ export const AddTeamDialog = ({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="new-github-slug">GitHub Team Slug</Label>
-              <Input
-                id="new-github-slug"
-                value={githubTeamSlug}
-                onChange={(e) => setGithubTeamSlug(e.target.value)}
-                placeholder="e.g. my-team"
-              />
             </div>
 
             {createTeam.isError && (

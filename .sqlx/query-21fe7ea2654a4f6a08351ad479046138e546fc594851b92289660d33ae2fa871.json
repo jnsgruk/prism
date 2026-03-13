@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE org.teams\n            SET name = COALESCE($2, name),\n                parent_team_id = COALESCE($3, parent_team_id),\n                lead_id = COALESCE($4, lead_id)\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "21fe7ea2654a4f6a08351ad479046138e546fc594851b92289660d33ae2fa871"
+}

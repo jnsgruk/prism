@@ -33,7 +33,7 @@ message Team {
   string org_name = 3;
   optional string parent_team_id = 4;
   optional string lead_id = 5;
-  optional string github_team_slug = 6;
+  reserved 6; // was github_team_slug, replaced by team_github_team_mappings
   int32 member_count = 7;
   TeamType team_type = 8;
   int32 total_member_count = 9;
@@ -86,7 +86,7 @@ message CreateTeamRequest {
   TeamType team_type = 2;
   optional string parent_team_id = 3;
   optional string lead_id = 4;
-  optional string github_team_slug = 5;
+  reserved 5; // was github_team_slug
   string org_name = 6;
 }
 
@@ -99,7 +99,7 @@ message UpdateTeamRequest {
   optional string name = 2;
   optional string parent_team_id = 3;
   optional string lead_id = 4;
-  optional string github_team_slug = 5;
+  reserved 5; // was github_team_slug
 }
 
 message UpdateTeamResponse {

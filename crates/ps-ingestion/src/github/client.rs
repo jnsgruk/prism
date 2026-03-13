@@ -5,7 +5,7 @@ use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue, LINK, USER_AGENT};
 use time::OffsetDateTime;
 use tracing::{debug, warn};
 
-use super::types::{GitHubPr, GitHubRepo, GitHubReview};
+use super::types::{GitHubPr, GitHubRepo, GitHubReview, GitHubTeam, GitHubTeamRepo, GitHubUser};
 
 /// Result of a paginated API call: items, optional next page, rate limit info.
 pub struct PageResult<T> {
@@ -190,6 +190,163 @@ impl GitHubClient {
             count = items.len(),
             ?next_page,
             "fetched org repos"
+        );
+
+        Ok(PageResult {
+            items,
+            next_page,
+            rate_limit,
+            etag: None,
+            not_modified: false,
+        })
+    }
+
+    /// List teams for a GitHub organisation.
+    pub async fn list_org_teams(
+        &self,
+        org: &str,
+        page: u32,
+    ) -> Result<PageResult<GitHubTeam>, GitHubError> {
+        let url = format!(
+            "{}/orgs/{org}/teams?per_page=100&page={page}",
+            self.base_url,
+        );
+
+        let resp = self
+            .http
+            .get(&url)
+            .headers(self.default_headers())
+            .send()
+            .await
+            .map_err(GitHubError::Http)?;
+
+        let rate_limit = parse_rate_limit(resp.headers());
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(GitHubError::Api { status, body });
+        }
+
+        let next_page = resp
+            .headers()
+            .get(LINK)
+            .and_then(|v| v.to_str().ok())
+            .and_then(parse_next_page);
+        let items: Vec<GitHubTeam> = resp.json().await.map_err(GitHubError::Http)?;
+
+        debug!(
+            org,
+            page,
+            count = items.len(),
+            ?next_page,
+            "fetched org teams"
+        );
+
+        Ok(PageResult {
+            items,
+            next_page,
+            rate_limit,
+            etag: None,
+            not_modified: false,
+        })
+    }
+
+    /// List members of a GitHub team.
+    pub async fn list_team_members(
+        &self,
+        org: &str,
+        team_slug: &str,
+        page: u32,
+    ) -> Result<PageResult<GitHubUser>, GitHubError> {
+        let url = format!(
+            "{}/orgs/{org}/teams/{team_slug}/members?per_page=100&page={page}",
+            self.base_url,
+        );
+
+        let resp = self
+            .http
+            .get(&url)
+            .headers(self.default_headers())
+            .send()
+            .await
+            .map_err(GitHubError::Http)?;
+
+        let rate_limit = parse_rate_limit(resp.headers());
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(GitHubError::Api { status, body });
+        }
+
+        let next_page = resp
+            .headers()
+            .get(LINK)
+            .and_then(|v| v.to_str().ok())
+            .and_then(parse_next_page);
+        let items: Vec<GitHubUser> = resp.json().await.map_err(GitHubError::Http)?;
+
+        debug!(
+            org,
+            team_slug,
+            page,
+            count = items.len(),
+            ?next_page,
+            "fetched team members"
+        );
+
+        Ok(PageResult {
+            items,
+            next_page,
+            rate_limit,
+            etag: None,
+            not_modified: false,
+        })
+    }
+
+    /// List repositories accessible to a GitHub team.
+    pub async fn list_team_repos(
+        &self,
+        org: &str,
+        team_slug: &str,
+        page: u32,
+    ) -> Result<PageResult<GitHubTeamRepo>, GitHubError> {
+        let url = format!(
+            "{}/orgs/{org}/teams/{team_slug}/repos?per_page=100&page={page}",
+            self.base_url,
+        );
+
+        let resp = self
+            .http
+            .get(&url)
+            .headers(self.default_headers())
+            .send()
+            .await
+            .map_err(GitHubError::Http)?;
+
+        let rate_limit = parse_rate_limit(resp.headers());
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(GitHubError::Api { status, body });
+        }
+
+        let next_page = resp
+            .headers()
+            .get(LINK)
+            .and_then(|v| v.to_str().ok())
+            .and_then(parse_next_page);
+        let items: Vec<GitHubTeamRepo> = resp.json().await.map_err(GitHubError::Http)?;
+
+        debug!(
+            org,
+            team_slug,
+            page,
+            count = items.len(),
+            ?next_page,
+            "fetched team repos"
         );
 
         Ok(PageResult {

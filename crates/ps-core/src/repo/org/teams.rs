@@ -15,7 +15,6 @@ impl OrgRepo {
         let rows = sqlx::query!(
             r#"
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
-                   t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
                    lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
@@ -45,7 +44,6 @@ impl OrgRepo {
                 parent_team_id: t.parent_team_id,
                 lead_id: t.lead_id,
                 lead_name: t.lead_name,
-                github_team_slug: t.github_team_slug,
                 team_type: t.team_type,
                 member_count: t.member_count,
             })
@@ -57,7 +55,6 @@ impl OrgRepo {
         let row = sqlx::query!(
             r#"
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
-                   t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
                    lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
@@ -82,7 +79,6 @@ impl OrgRepo {
             parent_team_id: t.parent_team_id,
             lead_id: t.lead_id,
             lead_name: t.lead_name,
-            github_team_slug: t.github_team_slug,
             team_type: t.team_type,
             member_count: t.member_count,
         }))
@@ -93,7 +89,6 @@ impl OrgRepo {
         let rows = sqlx::query!(
             r#"
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
-                   t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
                    lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
@@ -119,7 +114,6 @@ impl OrgRepo {
                 parent_team_id: t.parent_team_id,
                 lead_id: t.lead_id,
                 lead_name: t.lead_name,
-                github_team_slug: t.github_team_slug,
                 team_type: t.team_type,
                 member_count: t.member_count,
             })
@@ -134,13 +128,12 @@ impl OrgRepo {
         team_type: TeamType,
         parent_team_id: Option<Uuid>,
         lead_id: Option<Uuid>,
-        github_team_slug: Option<&str>,
     ) -> Result<TeamWithCount, Error> {
         let id = Uuid::now_v7();
         sqlx::query!(
             r#"
-            INSERT INTO org.teams (id, name, org_name, team_type, parent_team_id, lead_id, github_team_slug)
-            VALUES ($1, $2, $3, $4::org.team_type, $5, $6, $7)
+            INSERT INTO org.teams (id, name, org_name, team_type, parent_team_id, lead_id)
+            VALUES ($1, $2, $3, $4::org.team_type, $5, $6)
             "#,
             id,
             name,
@@ -148,7 +141,6 @@ impl OrgRepo {
             team_type as TeamType,
             parent_team_id,
             lead_id,
-            github_team_slug,
         )
         .execute(&self.pool)
         .await
@@ -166,22 +158,19 @@ impl OrgRepo {
         name: Option<&str>,
         parent_team_id: Option<Uuid>,
         lead_id: Option<Uuid>,
-        github_team_slug: Option<&str>,
     ) -> Result<TeamWithCount, Error> {
         sqlx::query!(
             r#"
             UPDATE org.teams
             SET name = COALESCE($2, name),
                 parent_team_id = COALESCE($3, parent_team_id),
-                lead_id = COALESCE($4, lead_id),
-                github_team_slug = COALESCE($5, github_team_slug)
+                lead_id = COALESCE($4, lead_id)
             WHERE id = $1
             "#,
             id,
             name,
             parent_team_id,
             lead_id,
-            github_team_slug,
         )
         .execute(&self.pool)
         .await

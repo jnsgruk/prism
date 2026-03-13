@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM org.team_github_team_mappings WHERE team_id = $1 AND github_team_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Uuid"]
+    },
+    "nullable": []
+  },
+  "hash": "49fa3d3e9dd42771479006070e709684ff27939b7b1cb21031957455d507f183"
+}

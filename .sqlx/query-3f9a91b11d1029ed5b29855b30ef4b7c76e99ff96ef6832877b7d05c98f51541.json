@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS \"lead_name?\",\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            WHERE t.id = $1\n            GROUP BY t.id, lp.name\n            ",
+  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS \"lead_name?\",\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            WHERE t.id = $1\n            GROUP BY t.id, lp.name\n            ",
   "describe": {
     "columns": [
       {
@@ -30,11 +30,6 @@
       },
       {
         "ordinal": 5,
-        "name": "github_team_slug",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 6,
         "name": "team_type: TeamType",
         "type_info": {
           "Custom": {
@@ -46,12 +41,12 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "lead_name?",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "member_count!",
         "type_info": "Int4"
       }
@@ -59,7 +54,7 @@
     "parameters": {
       "Left": ["Uuid"]
     },
-    "nullable": [false, false, false, true, true, true, false, false, null]
+    "nullable": [false, false, false, true, true, false, false, null]
   },
-  "hash": "d51a034abeba63f59452fca49f886045d453e135cf20cb3569523d46a75dfeb5"
+  "hash": "3f9a91b11d1029ed5b29855b30ef4b7c76e99ff96ef6832877b7d05c98f51541"
 }

@@ -67,3 +67,20 @@ pub struct GitHubRepo {
 pub struct GitHubRepoOwner {
     pub login: String,
 }
+
+/// A GitHub team as returned by the org teams endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubTeam {
+    pub id: i64,
+    pub slug: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+/// A GitHub repository as returned by the team repos endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubTeamRepo {
+    pub name: String,
+    pub owner: GitHubRepoOwner,
+    pub archived: Option<bool>,
+}

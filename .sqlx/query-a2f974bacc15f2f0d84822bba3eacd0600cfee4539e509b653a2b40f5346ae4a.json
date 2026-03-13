@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                gt.id AS github_team_id,\n                gt.name AS github_team_name,\n                gt.github_org,\n                gt.slug AS github_team_slug,\n                t.id AS prism_team_id,\n                t.name AS prism_team_name,\n                COUNT(*)::bigint AS \"overlap_count!\",\n                COUNT(*)::float / NULLIF(gt_total.total, 0)::float AS \"github_coverage!\",\n                COUNT(*)::float / NULLIF(pt_total.total, 0)::float AS \"prism_coverage!\"\n            FROM org.github_team_members gtm\n            JOIN org.platform_identities pi\n                ON pi.platform = 'github' AND pi.platform_username = gtm.github_username\n            JOIN org.team_memberships tm\n                ON tm.person_id = pi.person_id AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            JOIN org.teams t ON t.id = tm.team_id\n            JOIN org.github_teams gt ON gt.id = gtm.github_team_id\n            CROSS JOIN LATERAL (\n                SELECT COUNT(*)::bigint AS total FROM org.github_team_members WHERE github_team_id = gt.id\n            ) gt_total\n            CROSS JOIN LATERAL (\n                SELECT COUNT(*)::bigint AS total FROM org.team_memberships\n                WHERE team_id = t.id AND (end_date IS NULL OR end_date > CURRENT_DATE)\n            ) pt_total\n            -- Exclude already-mapped and dismissed pairs\n            WHERE NOT EXISTS (\n                SELECT 1 FROM org.team_github_team_mappings m\n                WHERE m.team_id = t.id AND m.github_team_id = gt.id\n            )\n            AND NOT EXISTS (\n                SELECT 1 FROM org.dismissed_github_team_suggestions d\n                WHERE d.team_id = t.id AND d.github_team_id = gt.id\n            )\n            GROUP BY gt.id, gt.name, gt.github_org, gt.slug, t.id, t.name, gt_total.total, pt_total.total\n            HAVING COUNT(*) > 0\n            ORDER BY COUNT(*)::float / NULLIF(gt_total.total, 0)::float DESC NULLS LAST\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "github_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "github_team_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_org",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_team_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "prism_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "prism_team_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "overlap_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "github_coverage!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "prism_coverage!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [false, false, false, false, false, false, null, null, null]
+  },
+  "hash": "a2f974bacc15f2f0d84822bba3eacd0600cfee4539e509b653a2b40f5346ae4a"
+}
