@@ -45,7 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key);
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
-    let ingestion_service = IngestionServiceImpl::new(repos.clone(), restate_url);
+    let restate_admin_url =
+        std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
+    let ingestion_service =
+        IngestionServiceImpl::new(repos.clone(), restate_url, restate_admin_url);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter

@@ -3,9 +3,9 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { MethodKind } from "@bufbuild/protobuf";
-
 import {
+  CancelRunRequest,
+  CancelRunResponse,
   GetStatusRequest,
   GetStatusResponse,
   ListRunsRequest,
@@ -15,6 +15,7 @@ import {
   TriggerRunRequest,
   TriggerRunResponse,
 } from "./ingestion_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service prism.v1.IngestionService
@@ -56,6 +57,15 @@ export const IngestionService = {
       name: "TriggerBackfill",
       I: TriggerBackfillRequest,
       O: TriggerBackfillResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.IngestionService.CancelRun
+     */
+    cancelRun: {
+      name: "CancelRun",
+      I: CancelRunRequest,
+      O: CancelRunResponse,
       kind: MethodKind.Unary,
     },
   },

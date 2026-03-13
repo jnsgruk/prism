@@ -294,6 +294,85 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Store the Restate invocation ID for a running ingestion.
+    pub async fn set_current_invocation_id(
+        &self,
+        source_name: &str,
+        invocation_id: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            INSERT INTO activity.ingestion_watermarks (source_name, current_invocation_id)
+            VALUES ($1, $2)
+            ON CONFLICT (source_name)
+            DO UPDATE SET current_invocation_id = $2
+            "#,
+            source_name,
+            invocation_id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get the current Restate invocation ID for a source.
+    pub async fn get_current_invocation_id(
+        &self,
+        source_name: &str,
+    ) -> Result<Option<String>, Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT current_invocation_id
+            FROM activity.ingestion_watermarks
+            WHERE source_name = $1
+            "#,
+            source_name,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?
+        .ok_or(Error::Database("source not found".to_string()))
+    }
+
+    /// Clear the current invocation ID (on completion or cancellation).
+    pub async fn clear_current_invocation_id(&self, source_name: &str) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_watermarks
+            SET current_invocation_id = NULL
+            WHERE source_name = $1
+            "#,
+            source_name,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Cancel all active (incomplete) runs for a source and clear the invocation ID.
+    pub async fn cancel_active_runs(&self, source_name: &str) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET completed_at = now(), status = 'cancelled', error_message = 'Cancelled by user'
+            WHERE source_name = $1
+              AND completed_at IS NULL
+            "#,
+            source_name,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        self.clear_current_invocation_id(source_name).await?;
+
+        Ok(())
+    }
+
     /// Get the status of all enabled sources (cross-schema join with
     /// `config.source_configs`).
     pub async fn get_source_statuses(&self) -> Result<Vec<SourceStatusRow>, Error> {

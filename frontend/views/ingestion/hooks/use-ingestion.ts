@@ -3,6 +3,7 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
+  CancelRunResponse,
   GetStatusResponse,
   IngestionRun,
   SourceStatus,
@@ -69,6 +70,18 @@ export const useTriggerBackfill = (): UseMutationResult<
   return useMutation({
     mutationFn: (req: { sourceName: string; sinceDate: string }) =>
       ingestionClient.triggerBackfill(req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
+      queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });
+    },
+  });
+};
+
+export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, string> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (sourceName: string) => ingestionClient.cancelRun({ sourceName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ingestionKeys.status() });
       queryClient.invalidateQueries({ queryKey: ingestionKeys.runs() });

@@ -3,8 +3,6 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { MethodKind } from "@bufbuild/protobuf";
-
 import {
   GetTeamRequest,
   GetTeamResponse,
@@ -15,6 +13,7 @@ import {
   ListTeamsRequest,
   ListTeamsResponse,
 } from "./org_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service prism.v1.OrgService

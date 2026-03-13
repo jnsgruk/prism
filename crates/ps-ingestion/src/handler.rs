@@ -308,13 +308,20 @@ impl IngestionHandlerImpl {
         items_collected: i32,
     ) {
         let repos = self.repos.clone();
+        let sn = source_name.to_string();
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
+                let sn = sn.clone();
                 async move {
                     repos
                         .activity
                         .complete_run(run_id, items_collected)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    repos
+                        .activity
+                        .clear_current_invocation_id(&sn)
                         .await
                         .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                     Ok(Json::from(()))
@@ -337,14 +344,21 @@ impl IngestionHandlerImpl {
     ) {
         let repos = self.repos.clone();
         let err = error_msg.to_string();
+        let sn = source_name.to_string();
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
                 let err = err.clone();
+                let sn = sn.clone();
                 async move {
                     repos
                         .activity
                         .fail_run(run_id, &err)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    repos
+                        .activity
+                        .clear_current_invocation_id(&sn)
                         .await
                         .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                     Ok(Json::from(()))

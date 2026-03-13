@@ -2,17 +2,17 @@
 // @generated from file prism/v1/ingestion.proto (package prism.v1, syntax proto3)
 /* eslint-disable */
 
-import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file prism/v1/ingestion.proto.
  */
 export const file_prism_v1_ingestion: GenFile /*@__PURE__*/ = fileDesc(
-  "ChhwcmlzbS92MS9pbmdlc3Rpb24ucHJvdG8SCHByaXNtLnYxIuoCCgxTb3VyY2VTdGF0dXMSDAoEbmFtZRgBIAEoCRITCgtzb3VyY2VfdHlwZRgCIAEoCRIkCgVzdGF0ZRgDIAEoDjIVLnByaXNtLnYxLlNvdXJjZVN0YXRlEjEKCGxhc3RfcnVuGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBEjEKCG5leHRfcnVuGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRJCCg9yYXRlX2xpbWl0X2luZm8YByADKAsyKS5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5GjQKElJhdGVMaW1pdEluZm9FbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQgsKCV9sYXN0X3J1bkILCglfbmV4dF9ydW4ioAIKDEluZ2VzdGlvblJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESDgoGc3RhdHVzGAUgASgJEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRIaCg1lcnJvcl9tZXNzYWdlGAcgASgJSAGIAQESIAoYcmF0ZV9saW1pdF93YWl0c19zZWNvbmRzGAggASgFQg8KDV9jb21wbGV0ZWRfYXRCEAoOX2Vycm9yX21lc3NhZ2UiEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgdzb3VyY2VzGAEgAygLMhYucHJpc20udjEuU291cmNlU3RhdHVzIjsKD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBQg4KDF9zb3VyY2VfbmFtZSI4ChBMaXN0UnVuc1Jlc3BvbnNlEiQKBHJ1bnMYASADKAsyFi5wcmlzbS52MS5Jbmdlc3Rpb25SdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSqRAQoLU291cmNlU3RhdGUSHAoYU09VUkNFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFQoRU09VUkNFX1NUQVRFX0lETEUQARIbChdTT1VSQ0VfU1RBVEVfQ09MTEVDVElORxACEhgKFFNPVVJDRV9TVEFURV9XQUlUSU5HEAMSFgoSU09VUkNFX1NUQVRFX0VSUk9SEAQyvAIKEEluZ2VzdGlvblNlcnZpY2USRAoJR2V0U3RhdHVzEhoucHJpc20udjEuR2V0U3RhdHVzUmVxdWVzdBobLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkEKCExpc3RSdW5zEhkucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GhoucHJpc20udjEuTGlzdFJ1bnNSZXNwb25zZRJHCgpUcmlnZ2VyUnVuEhsucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaHC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USVgoPVHJpZ2dlckJhY2tmaWxsEiAucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVxdWVzdBohLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlYgZwcm90bzM",
+  "ChhwcmlzbS92MS9pbmdlc3Rpb24ucHJvdG8SCHByaXNtLnYxIuoCCgxTb3VyY2VTdGF0dXMSDAoEbmFtZRgBIAEoCRITCgtzb3VyY2VfdHlwZRgCIAEoCRIkCgVzdGF0ZRgDIAEoDjIVLnByaXNtLnYxLlNvdXJjZVN0YXRlEjEKCGxhc3RfcnVuGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBEjEKCG5leHRfcnVuGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRJCCg9yYXRlX2xpbWl0X2luZm8YByADKAsyKS5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5GjQKElJhdGVMaW1pdEluZm9FbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQgsKCV9sYXN0X3J1bkILCglfbmV4dF9ydW4ioAIKDEluZ2VzdGlvblJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESDgoGc3RhdHVzGAUgASgJEhcKD2l0ZW1zX2NvbGxlY3RlZBgGIAEoBRIaCg1lcnJvcl9tZXNzYWdlGAcgASgJSAGIAQESIAoYcmF0ZV9saW1pdF93YWl0c19zZWNvbmRzGAggASgFQg8KDV9jb21wbGV0ZWRfYXRCEAoOX2Vycm9yX21lc3NhZ2UiEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgdzb3VyY2VzGAEgAygLMhYucHJpc20udjEuU291cmNlU3RhdHVzIjsKD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBQg4KDF9zb3VyY2VfbmFtZSI4ChBMaXN0UnVuc1Jlc3BvbnNlEiQKBHJ1bnMYASADKAsyFi5wcmlzbS52MS5Jbmdlc3Rpb25SdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSInChBDYW5jZWxSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhMKEUNhbmNlbFJ1blJlc3BvbnNlKpEBCgtTb3VyY2VTdGF0ZRIcChhTT1VSQ0VfU1RBVEVfVU5TUEVDSUZJRUQQABIVChFTT1VSQ0VfU1RBVEVfSURMRRABEhsKF1NPVVJDRV9TVEFURV9DT0xMRUNUSU5HEAISGAoUU09VUkNFX1NUQVRFX1dBSVRJTkcQAxIWChJTT1VSQ0VfU1RBVEVfRVJST1IQBDKCAwoQSW5nZXN0aW9uU2VydmljZRJECglHZXRTdGF0dXMSGi5wcmlzbS52MS5HZXRTdGF0dXNSZXF1ZXN0GhsucHJpc20udjEuR2V0U3RhdHVzUmVzcG9uc2USQQoITGlzdFJ1bnMSGS5wcmlzbS52MS5MaXN0UnVuc1JlcXVlc3QaGi5wcmlzbS52MS5MaXN0UnVuc1Jlc3BvbnNlEkcKClRyaWdnZXJSdW4SGy5wcmlzbS52MS5UcmlnZ2VyUnVuUmVxdWVzdBocLnByaXNtLnYxLlRyaWdnZXJSdW5SZXNwb25zZRJWCg9UcmlnZ2VyQmFja2ZpbGwSIC5wcmlzbS52MS5UcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0GiEucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2USRAoJQ2FuY2VsUnVuEhoucHJpc20udjEuQ2FuY2VsUnVuUmVxdWVzdBobLnByaXNtLnYxLkNhbmNlbFJ1blJlc3BvbnNlYgZwcm90bzM",
   [file_google_protobuf_timestamp],
 );
 
@@ -258,6 +258,39 @@ export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> 
   messageDesc(file_prism_v1_ingestion, 9);
 
 /**
+ * @generated from message prism.v1.CancelRunRequest
+ */
+export type CancelRunRequest = Message<"prism.v1.CancelRunRequest"> & {
+  /**
+   * @generated from field: string source_name = 1;
+   */
+  sourceName: string;
+};
+
+/**
+ * Describes the message prism.v1.CancelRunRequest.
+ * Use `create(CancelRunRequestSchema)` to create a new message.
+ */
+export const CancelRunRequestSchema: GenMessage<CancelRunRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  10,
+);
+
+/**
+ * @generated from message prism.v1.CancelRunResponse
+ */
+export type CancelRunResponse = Message<"prism.v1.CancelRunResponse"> & {};
+
+/**
+ * Describes the message prism.v1.CancelRunResponse.
+ * Use `create(CancelRunResponseSchema)` to create a new message.
+ */
+export const CancelRunResponseSchema: GenMessage<CancelRunResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_ingestion,
+  11,
+);
+
+/**
  * @generated from enum prism.v1.SourceState
  */
 export enum SourceState {
@@ -330,5 +363,13 @@ export const IngestionService: GenService<{
     methodKind: "unary";
     input: typeof TriggerBackfillRequestSchema;
     output: typeof TriggerBackfillResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.IngestionService.CancelRun
+   */
+  cancelRun: {
+    methodKind: "unary";
+    input: typeof CancelRunRequestSchema;
+    output: typeof CancelRunResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_ingestion, 0);

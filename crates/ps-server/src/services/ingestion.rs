@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use ps_core::repo::Repos;
 use ps_proto::prism::v1::ingestion_service_server::IngestionService;
 use ps_proto::prism::v1::{
-    GetStatusRequest, GetStatusResponse, IngestionRun, ListRunsRequest, ListRunsResponse,
-    SourceState, SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse, TriggerRunRequest,
-    TriggerRunResponse,
+    CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, IngestionRun,
+    ListRunsRequest, ListRunsResponse, SourceState, SourceStatus, TriggerBackfillRequest,
+    TriggerBackfillResponse, TriggerRunRequest, TriggerRunResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::info;
@@ -15,16 +15,46 @@ use super::common::{db_err, require_auth, to_timestamp};
 pub struct IngestionServiceImpl {
     repos: Repos,
     restate_url: String,
+    restate_admin_url: String,
     http_client: reqwest::Client,
 }
 
 impl IngestionServiceImpl {
-    pub fn new(repos: Repos, restate_url: String) -> Self {
+    pub fn new(repos: Repos, restate_url: String, restate_admin_url: String) -> Self {
         Self {
             repos,
             restate_url,
+            restate_admin_url,
             http_client: reqwest::Client::new(),
         }
+    }
+
+    /// Send a fire-and-forget request to Restate and return the invocation ID.
+    async fn send_to_restate(
+        &self,
+        url: &str,
+        body: Option<&serde_json::Value>,
+    ) -> Result<String, Status> {
+        let mut req = self.http_client.post(url);
+        if let Some(body) = body {
+            req = req.header("Content-Type", "application/json").json(body);
+        }
+
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
+
+        let resp_body: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| Status::internal(format!("failed to parse Restate response: {e}")))?;
+
+        resp_body
+            .get("invocationId")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .ok_or_else(|| Status::internal("Restate response missing invocationId"))
     }
 }
 
@@ -125,13 +155,16 @@ impl IngestionService for IngestionServiceImpl {
             self.restate_url, req.source_name,
         );
 
-        self.http_client
-            .post(&url)
-            .send()
-            .await
-            .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
+        let invocation_id = self.send_to_restate(&url, None).await?;
 
-        info!(source = %req.source_name, "triggered ingestion run via Restate");
+        // Store the invocation ID for cancellation
+        self.repos
+            .activity
+            .set_current_invocation_id(&req.source_name, &invocation_id)
+            .await
+            .map_err(db_err)?;
+
+        info!(source = %req.source_name, %invocation_id, "triggered ingestion run via Restate");
 
         Ok(Response::new(TriggerRunResponse {}))
     }
@@ -165,17 +198,70 @@ impl IngestionService for IngestionServiceImpl {
         );
         let body = serde_json::json!(req.since_date);
 
-        self.http_client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
+        let invocation_id = self.send_to_restate(&url, Some(&body)).await?;
 
-        info!(source = %req.source_name, since = %req.since_date, "triggered backfill via Restate");
+        // Store the invocation ID for cancellation
+        self.repos
+            .activity
+            .set_current_invocation_id(&req.source_name, &invocation_id)
+            .await
+            .map_err(db_err)?;
+
+        info!(source = %req.source_name, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
 
         Ok(Response::new(TriggerBackfillResponse {}))
+    }
+
+    async fn cancel_run(
+        &self,
+        request: Request<CancelRunRequest>,
+    ) -> Result<Response<CancelRunResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.source_name.is_empty() {
+            return Err(Status::invalid_argument("source_name is required"));
+        }
+
+        // Get the current invocation ID
+        let invocation_id = self
+            .repos
+            .activity
+            .get_current_invocation_id(&req.source_name)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("no active invocation found for this source"))?;
+
+        // Cancel the Restate invocation via admin API
+        let url = format!(
+            "{}/restate/invocations/{}",
+            self.restate_admin_url, invocation_id,
+        );
+
+        let resp = self
+            .http_client
+            .delete(&url)
+            .send()
+            .await
+            .map_err(|e| Status::unavailable(format!("failed to reach Restate admin: {e}")))?;
+
+        if !resp.status().is_success() {
+            let status_code = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            info!(source = %req.source_name, %status_code, %body, "Restate cancel response");
+            // Don't fail — the invocation may have already completed
+        }
+
+        // Mark active runs as cancelled in the database
+        self.repos
+            .activity
+            .cancel_active_runs(&req.source_name)
+            .await
+            .map_err(db_err)?;
+
+        info!(source = %req.source_name, %invocation_id, "cancelled ingestion run");
+
+        Ok(Response::new(CancelRunResponse {}))
     }
 }
 

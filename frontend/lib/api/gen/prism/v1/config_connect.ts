@@ -3,8 +3,6 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { MethodKind } from "@bufbuild/protobuf";
-
 import {
   CreateSourceRequest,
   CreateSourceResponse,
@@ -21,6 +19,7 @@ import {
   UpdateSourceRequest,
   UpdateSourceResponse,
 } from "./config_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service prism.v1.ConfigService

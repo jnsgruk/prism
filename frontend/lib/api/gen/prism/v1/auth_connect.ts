@@ -3,8 +3,6 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { MethodKind } from "@bufbuild/protobuf";
-
 import {
   CompleteSetupRequest,
   CompleteSetupResponse,
@@ -21,6 +19,7 @@ import {
   RestoreBackupRequest,
   RestoreBackupResponse,
 } from "./auth_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service prism.v1.AuthService

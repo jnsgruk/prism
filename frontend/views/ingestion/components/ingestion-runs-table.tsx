@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, Ban, CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import type { IngestionRun } from "@ps/api/gen/prism/v1/ingestion_pb";
@@ -38,6 +38,7 @@ const statusConfig: Record<string, StatusStyle> = {
     icon: <CheckCircle2 className="size-3" />,
   },
   failed: { label: "Failed", variant: "destructive", icon: <AlertCircle className="size-3" /> },
+  cancelled: { label: "Cancelled", variant: "secondary", icon: <Ban className="size-3" /> },
   running: defaultStatus,
 };
 

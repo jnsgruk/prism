@@ -3,8 +3,6 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { MethodKind } from "@bufbuild/protobuf";
-
 import {
   CompareTeamsRequest,
   CompareTeamsResponse,
@@ -13,6 +11,7 @@ import {
   ListPeriodsRequest,
   ListPeriodsResponse,
 } from "./metrics_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service prism.v1.MetricsService

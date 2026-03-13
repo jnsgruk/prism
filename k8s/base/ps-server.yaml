@@ -41,6 +41,10 @@ spec:
                   key: PS_SECRET_KEY
             - name: PORT
               value: "8080"
+            - name: RESTATE_URL
+              value: http://restate:8080
+            - name: RESTATE_ADMIN_URL
+              value: http://restate:9070
             - name: RUST_LOG
               value: info
           readinessProbe:

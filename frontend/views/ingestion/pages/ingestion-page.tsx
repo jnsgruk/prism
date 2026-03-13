@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { Activity, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { SourceState } from "@ps/api/gen/prism/v1/ingestion_pb";
 
@@ -8,14 +8,27 @@ import { IngestionRunsTable } from "@/views/ingestion/components/ingestion-runs-
 import { SourceStatusCard } from "@/views/ingestion/components/source-status-card";
 import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
 
+const POLL_INTERVAL_BURST = 1_000;
 const POLL_INTERVAL_ACTIVE = 3_000;
 const POLL_INTERVAL_IDLE = 30_000;
+const BURST_DURATION = 10_000;
 
 const IngestionPage = (): React.ReactElement => {
   const [selectedSource, setSelectedSource] = useState<string | undefined>();
+  const [burstUntil, setBurstUntil] = useState(0);
+  const burstTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const triggerBurst = useCallback(() => {
+    setBurstUntil(Date.now() + BURST_DURATION);
+    clearTimeout(burstTimerRef.current);
+    burstTimerRef.current = setTimeout(() => setBurstUntil(0), BURST_DURATION);
+  }, []);
+
+  const isBursting = burstUntil > Date.now();
 
   const { data: sources, isLoading: sourcesLoading } = useIngestionStatus({
     refetchInterval: (query) => {
+      if (isBursting) return POLL_INTERVAL_BURST;
       const data = query.state.data?.sources;
       const hasActive = data?.some(
         (s) => s.state === SourceState.COLLECTING || s.state === SourceState.WAITING,
@@ -26,8 +39,12 @@ const IngestionPage = (): React.ReactElement => {
 
   const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
 
+  let runsInterval = POLL_INTERVAL_IDLE;
+  if (isBursting) runsInterval = POLL_INTERVAL_BURST;
+  else if (hasActiveRun) runsInterval = POLL_INTERVAL_ACTIVE;
+
   const { data: runs, isLoading: runsLoading } = useListRuns(selectedSource, {
-    refetchInterval: hasActiveRun ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE,
+    refetchInterval: runsInterval,
   });
 
   if (sourcesLoading) {
@@ -64,7 +81,7 @@ const IngestionPage = (): React.ReactElement => {
       <div className="flex-1 space-y-6 p-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sources.map((source) => (
-            <SourceStatusCard key={source.name} source={source} />
+            <SourceStatusCard key={source.name} source={source} onAction={triggerBurst} />
           ))}
         </div>
 

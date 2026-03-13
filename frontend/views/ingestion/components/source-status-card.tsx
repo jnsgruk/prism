@@ -1,7 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2, Clock, Loader2, Pause, Play, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Pause,
+  Play,
+  RotateCcw,
+  Square,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,7 +18,7 @@ import type { SourceStatus } from "@ps/api/gen/prism/v1/ingestion_pb";
 import { SourceState } from "@ps/api/gen/prism/v1/ingestion_pb";
 import { cn } from "@ps/cn";
 
-import { useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
+import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { BackfillDialog } from "./backfill-dialog";
 
 const stateConfig: Record<
@@ -67,15 +76,36 @@ const formatRelativeTime = (ts?: { seconds: bigint }): string => {
   return `${String(diffDays)}d ago`;
 };
 
-export const SourceStatusCard = ({ source }: { source: SourceStatus }): React.ReactElement => {
+export const SourceStatusCard = ({
+  source,
+  onAction,
+}: {
+  source: SourceStatus;
+  onAction?: () => void;
+}): React.ReactElement => {
   const triggerRun = useTriggerRun();
+  const cancelRun = useCancelRun();
   const [showBackfill, setShowBackfill] = useState(false);
   const config = stateConfig[source.state] ?? stateConfig[SourceState.UNSPECIFIED];
+  const isCollecting = source.state === SourceState.COLLECTING;
 
   const handleTriggerRun = (): void => {
     triggerRun.mutate(source.name, {
-      onSuccess: () => toast.success(`Run triggered for ${source.name}`),
+      onSuccess: () => {
+        toast.success(`Run triggered for ${source.name}`);
+        onAction?.();
+      },
       onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to trigger run"),
+    });
+  };
+
+  const handleCancelRun = (): void => {
+    cancelRun.mutate(source.name, {
+      onSuccess: () => {
+        toast.success(`Cancelled run for ${source.name}`);
+        onAction?.();
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel run"),
     });
   };
 
@@ -122,30 +152,48 @@ export const SourceStatusCard = ({ source }: { source: SourceStatus }): React.Re
             )}
 
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTriggerRun}
-                disabled={triggerRun.isPending || source.state === SourceState.COLLECTING}
-                className="flex-1"
-              >
-                {triggerRun.isPending ? (
-                  <Loader2 className="mr-1 size-3 animate-spin" />
-                ) : (
-                  <Play className="mr-1 size-3" />
-                )}
-                Run Now
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowBackfill(true)}
-                disabled={source.state === SourceState.COLLECTING}
-                className="flex-1"
-              >
-                <RotateCcw className="mr-1 size-3" />
-                Backfill
-              </Button>
+              {isCollecting ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleCancelRun}
+                  disabled={cancelRun.isPending}
+                  className="flex-1"
+                >
+                  {cancelRun.isPending ? (
+                    <Loader2 className="mr-1 size-3 animate-spin" />
+                  ) : (
+                    <Square className="mr-1 size-3" />
+                  )}
+                  Cancel
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTriggerRun}
+                    disabled={triggerRun.isPending}
+                    className="flex-1"
+                  >
+                    {triggerRun.isPending ? (
+                      <Loader2 className="mr-1 size-3 animate-spin" />
+                    ) : (
+                      <Play className="mr-1 size-3" />
+                    )}
+                    Run Now
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowBackfill(true)}
+                    className="flex-1"
+                  >
+                    <RotateCcw className="mr-1 size-3" />
+                    Backfill
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
