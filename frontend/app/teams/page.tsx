@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -52,15 +52,15 @@ const TeamDetailPanel = ({
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-center justify-between">
-        <div className="min-w-0">
-          <CardTitle className="truncate">{team.name}</CardTitle>
-          <p className="truncate text-sm text-muted-foreground">{team.orgName}</p>
-        </div>
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
-          <X className="size-4" />
-          <span className="sr-only">Close</span>
-        </Button>
+      <CardHeader>
+        <CardTitle className="truncate">{team.name}</CardTitle>
+        <p className="truncate text-sm text-muted-foreground">{team.orgName}</p>
+        <CardAction>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="size-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         <h3 className="mb-3 text-sm font-medium">Members ({members.length})</h3>
