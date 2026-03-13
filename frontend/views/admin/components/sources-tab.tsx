@@ -3,13 +3,21 @@ import { AlertCircle, Plug } from "lucide-react";
 
 import { useListSources } from "@ps/hooks/use-config";
 
+import { CreateSourceDialog } from "./create-source-dialog";
 import { SourceRow } from "./source-row";
 
 export const SourcesTab = (): React.ReactElement => {
   const { data: sources, isLoading, error } = useListSources();
 
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Configure data sources and their credentials.
+        </p>
+        <CreateSourceDialog />
+      </div>
+
       {isLoading && <p className="text-sm text-muted-foreground">Loading sources...</p>}
 
       {error && (

@@ -1,26 +1,16 @@
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Key, Plug, Users } from "lucide-react";
+import { Key, Plug, Settings, Users } from "lucide-react";
 
 import { ApiTokensTab } from "@/views/admin/components/api-tokens-tab";
-import { CreateSourceDialog } from "@/views/admin/components/create-source-dialog";
-import { ResetDataDialog } from "@/views/admin/components/reset-data-dialog";
 import { SourcesTab } from "@/views/admin/components/sources-tab";
+import { SystemTab } from "@/views/admin/components/system-tab";
 import { TeamsTab } from "@/views/admin/components/teams-tab";
 
 const AdminPage = (): React.ReactElement => {
   return (
     <>
-      <PageHeader
-        title="Admin"
-        description="Manage sources, teams, and platform settings"
-        actions={
-          <div className="flex items-center gap-2">
-            <ResetDataDialog />
-            <CreateSourceDialog />
-          </div>
-        }
-      />
+      <PageHeader title="Admin" description="Manage sources, teams, and platform settings" />
       <div className="flex-1 p-6">
         <Tabs defaultValue="sources">
           <TabsList>
@@ -36,6 +26,10 @@ const AdminPage = (): React.ReactElement => {
               <Key className="size-4" />
               API Tokens
             </TabsTrigger>
+            <TabsTrigger value="system">
+              <Settings className="size-4" />
+              System
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="sources">
             <SourcesTab />
@@ -45,6 +39,9 @@ const AdminPage = (): React.ReactElement => {
           </TabsContent>
           <TabsContent value="tokens">
             <ApiTokensTab />
+          </TabsContent>
+          <TabsContent value="system">
+            <SystemTab />
           </TabsContent>
         </Tabs>
       </div>
