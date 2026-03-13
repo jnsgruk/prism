@@ -24,17 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Key,
-  Loader2,
-  Plug,
-  Plus,
-  Settings2,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Key, Loader2, Plug, Plus, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import {
@@ -310,7 +302,20 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => testConnection.mutate(source.id)}
+            onClick={() =>
+              testConnection.mutate(source.id, {
+                onSuccess: (data) => {
+                  if (data.success) {
+                    toast.success("Connection successful");
+                  } else {
+                    toast.error(data.errorMessage || "Connection failed");
+                  }
+                },
+                onError: (err) => {
+                  toast.error(err instanceof Error ? err.message : "Test failed");
+                },
+              })
+            }
             disabled={testConnection.isPending}
             title="Test connection"
           >
@@ -333,37 +338,6 @@ const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => 
           </Button>
         </div>
       </div>
-
-      {testConnection.isSuccess && (
-        <div
-          className={cn(
-            "mx-4 -mt-1 mb-1 rounded-b border border-t-0 px-4 py-2",
-            testConnection.data.success
-              ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950"
-              : "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
-          )}
-        >
-          {testConnection.data.success ? (
-            <p className="flex items-center gap-1 text-sm text-green-700 dark:text-green-300">
-              <CheckCircle2 className="size-4" /> Connection successful
-            </p>
-          ) : (
-            <p className="flex items-center gap-1 text-sm text-red-700 dark:text-red-300">
-              <AlertCircle className="size-4" />{" "}
-              {testConnection.data.errorMessage || "Connection failed"}
-            </p>
-          )}
-        </div>
-      )}
-
-      {testConnection.isError && (
-        <div className="mx-4 -mt-1 mb-1 rounded-b border border-t-0 border-red-200 bg-red-50 px-4 py-2 dark:border-red-900 dark:bg-red-950">
-          <p className="flex items-center gap-1 text-sm text-red-700 dark:text-red-300">
-            <AlertCircle className="size-4" />{" "}
-            {testConnection.error instanceof Error ? testConnection.error.message : "Test failed"}
-          </p>
-        </div>
-      )}
 
       <SetSecretDialog source={source} open={showSecret} onOpenChange={setShowSecret} />
     </>
