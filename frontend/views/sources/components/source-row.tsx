@@ -9,13 +9,13 @@ import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/u
 import { cn } from "@ps/cn";
 
 import { SOURCE_TYPES } from "@/views/sources/lib/source-types";
-import { SetSecretDialog } from "./set-secret-dialog";
+import { EditSourceDialog } from "./edit-source-dialog";
 
 export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {
   const updateSource = useUpdateSource();
   const deleteSource = useDeleteSource();
   const testConnection = useTestConnection();
-  const [showSecret, setShowSecret] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
@@ -74,8 +74,8 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => setShowSecret(true)}
-            title="Set secret"
+            onClick={() => setShowEdit(true)}
+            title="Edit settings"
           >
             <Settings2 className="size-4" />
           </Button>
@@ -120,7 +120,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
         </div>
       </div>
 
-      <SetSecretDialog source={source} open={showSecret} onOpenChange={setShowSecret} />
+      <EditSourceDialog source={source} open={showEdit} onOpenChange={setShowEdit} />
     </>
   );
 };
