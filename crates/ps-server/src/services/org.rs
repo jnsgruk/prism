@@ -649,7 +649,7 @@ fn derive_team_assignment(
     depth: u32,
     has_reports: bool,
     group: Option<&String>,
-    _manager_name: Option<&String>,
+    manager_name: Option<&String>,
 ) -> (Option<String>, Option<TeamType>) {
     match (depth, has_reports) {
         // VP / group leader or depth-2 IC — assign to group
@@ -658,8 +658,19 @@ fn derive_team_assignment(
         (2, true) => (Some(format!("{name}'s Team")), Some(TeamType::Team)),
         // Depth 3+ with reports — squad leader
         (_, true) => (Some(format!("{name}'s Squad")), Some(TeamType::Squad)),
-        // Depth 3+ without reports — IC, will be assigned to their manager's team/squad
-        // by the import logic via manager_name matching
+        // Depth 3+ IC — assign to their manager's team/squad
+        (d, false) if d >= 3 => manager_name.map_or_else(
+            || (group.cloned(), Some(TeamType::Group)),
+            |mgr| {
+                if d == 3 {
+                    // Manager is depth 2 → team
+                    (Some(format!("{mgr}'s Team")), Some(TeamType::Team))
+                } else {
+                    // Manager is depth 3+ → squad
+                    (Some(format!("{mgr}'s Squad")), Some(TeamType::Squad))
+                }
+            },
+        ),
         _ => (None, None),
     }
 }

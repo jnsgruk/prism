@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS lead_name,\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            GROUP BY t.id, lp.name\n            ORDER BY t.name\n            ",
+  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   lp.name AS \"lead_name?\",\n                   COUNT(mp.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people mp ON mp.id = tm.person_id AND mp.active = true\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            WHERE t.id = $1\n            GROUP BY t.id, lp.name\n            ",
   "describe": {
     "columns": [
       {
@@ -47,7 +47,7 @@
       },
       {
         "ordinal": 7,
-        "name": "lead_name",
+        "name": "lead_name?",
         "type_info": "Text"
       },
       {
@@ -57,9 +57,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": ["Uuid"]
     },
     "nullable": [false, false, false, true, true, true, false, false, null]
   },
-  "hash": "d4a39c879d477bc8947cf091efd668dbab01d2bcd3b6ae35b580ceeb5367417c"
+  "hash": "d51a034abeba63f59452fca49f886045d453e135cf20cb3569523d46a75dfeb5"
 }

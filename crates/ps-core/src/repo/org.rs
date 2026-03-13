@@ -99,7 +99,7 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   lp.name AS lead_name,
+                   lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
@@ -126,7 +126,7 @@ impl OrgRepo {
                 org_name: t.org_name,
                 parent_team_id: t.parent_team_id,
                 lead_id: t.lead_id,
-                lead_name: Some(t.lead_name),
+                lead_name: t.lead_name,
                 github_team_slug: t.github_team_slug,
                 team_type: t.team_type,
                 member_count: t.member_count,
@@ -141,7 +141,7 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   lp.name AS lead_name,
+                   lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
@@ -163,7 +163,7 @@ impl OrgRepo {
             org_name: t.org_name,
             parent_team_id: t.parent_team_id,
             lead_id: t.lead_id,
-            lead_name: Some(t.lead_name),
+            lead_name: t.lead_name,
             github_team_slug: t.github_team_slug,
             team_type: t.team_type,
             member_count: t.member_count,
@@ -712,7 +712,7 @@ impl OrgRepo {
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
                    t.team_type AS "team_type: TeamType",
-                   lp.name AS lead_name,
+                   lp.name AS "lead_name?",
                    COUNT(mp.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
@@ -735,7 +735,7 @@ impl OrgRepo {
                 org_name: t.org_name,
                 parent_team_id: t.parent_team_id,
                 lead_id: t.lead_id,
-                lead_name: Some(t.lead_name),
+                lead_name: t.lead_name,
                 github_team_slug: t.github_team_slug,
                 team_type: t.team_type,
                 member_count: t.member_count,
