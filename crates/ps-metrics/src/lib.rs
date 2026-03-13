@@ -1,8 +1,18 @@
+use std::cmp::Ordering;
+
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionMetricRow, SnapshotInput};
 use time::Date;
 use tracing::info;
 use uuid::Uuid;
+
+/// Review turnaround distribution: average + percentiles.
+pub struct ReviewTurnaround {
+    pub avg: f32,
+    pub p75: f32,
+    pub p90: f32,
+    pub p99: f32,
+}
 
 /// Compute and store metrics for a single team and period.
 ///
@@ -22,7 +32,18 @@ pub async fn compute_team_snapshot(
         .await?;
 
     let throughput = compute_throughput(&contributions);
-    let avg_review_turnaround = compute_review_turnaround(&contributions);
+    let review = compute_review_turnaround(&contributions);
+
+    let raw_metrics = review.as_ref().map_or_else(
+        || serde_json::json!({}),
+        |r| {
+            serde_json::json!({
+                "review_turnaround_p75_hours": r.p75,
+                "review_turnaround_p90_hours": r.p90,
+                "review_turnaround_p99_hours": r.p99,
+            })
+        },
+    );
 
     repos
         .metrics
@@ -33,7 +54,8 @@ pub async fn compute_team_snapshot(
             period_end,
             period_type: period_type.to_owned(),
             throughput,
-            avg_review_turnaround_hours: avg_review_turnaround,
+            avg_review_turnaround_hours: review.as_ref().map(|r| r.avg),
+            raw_metrics,
         })
         .await?;
 
@@ -43,7 +65,7 @@ pub async fn compute_team_snapshot(
         %period_end,
         period_type,
         throughput,
-        avg_review_turnaround_hours = ?avg_review_turnaround,
+        avg_review_turnaround_hours = ?review.as_ref().map(|r| r.avg),
         "computed team snapshot"
     );
 
@@ -78,13 +100,13 @@ fn compute_throughput(contributions: &[ContributionMetricRow]) -> i32 {
         .count() as i32
 }
 
-/// Average hours from PR creation to first review.
+/// Hours from PR creation to first review: average + percentiles.
 ///
 /// For each PR, finds the earliest `pr_review` with a matching `pr_platform_id`
 /// in the metadata and computes the time delta. Returns `None` if no
 /// PR-review pairs exist.
 #[allow(clippy::cast_precision_loss)] // review turnaround doesn't need sub-second precision
-fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<f32> {
+fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<ReviewTurnaround> {
     // Collect reviews indexed by their parent PR platform_id
     let reviews: Vec<(&str, time::OffsetDateTime)> = contributions
         .iter()
@@ -106,16 +128,6 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
         .iter()
         .filter(|c| c.contribution_type == "pull_request")
     {
-        // Build the platform_id that reviews reference
-        // Reviews store pr_platform_id in metadata matching the PR's contribution platform_id
-        // We need the PR's metadata to find its platform_id — but we don't have it in this struct.
-        // Instead, reviews reference via pr_platform_id. We need to match by checking all reviews
-        // whose pr_platform_id matches any of our PRs.
-        //
-        // Since we don't have platform_id on ContributionMetricRow (it's not needed for metrics),
-        // we use an alternative approach: match reviews to PRs by person_id + time proximity,
-        // OR we can compute from the pr's metrics.review_hours if available.
-
         // Try the stored review_hours metric first (set during ingestion)
         if let Some(review_hours) = pr
             .metrics
@@ -128,7 +140,6 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
         }
 
         // Fallback: compute from first review time minus PR creation
-        // Find the earliest review that was created after this PR
         if let Some(earliest_review) = reviews
             .iter()
             .filter(|(_, review_time)| *review_time >= pr.created_at)
@@ -146,8 +157,26 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
         return None;
     }
 
-    let sum: f32 = turnaround_hours.iter().sum();
-    Some(sum / turnaround_hours.len() as f32)
+    turnaround_hours.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+
+    let avg = turnaround_hours.iter().sum::<f32>() / turnaround_hours.len() as f32;
+    let p75 = percentile(&turnaround_hours, 75.0);
+    let p90 = percentile(&turnaround_hours, 90.0);
+    let p99 = percentile(&turnaround_hours, 99.0);
+
+    Some(ReviewTurnaround { avg, p75, p90, p99 })
+}
+
+/// Nearest-rank percentile on a pre-sorted slice.
+fn percentile(sorted: &[f32], p: f32) -> f32 {
+    if sorted.is_empty() {
+        return 0.0;
+    }
+    let idx = ((p / 100.0) * (sorted.len() as f32 - 1.0)).ceil() as usize;
+    sorted
+        .get(idx.min(sorted.len() - 1))
+        .copied()
+        .unwrap_or(0.0)
 }
 
 /// Determine period boundaries for a given date and period type.
@@ -274,6 +303,27 @@ mod tests {
     fn test_review_turnaround_none_without_reviews() {
         let contributions = vec![make_contribution("pull_request", "merged")];
         assert!(compute_review_turnaround(&contributions).is_none());
+    }
+
+    #[test]
+    fn test_percentile_basic() {
+        // 10 values: 1..=10
+        let data: Vec<f32> = (1..=10).map(|i| i as f32).collect();
+        assert!((percentile(&data, 75.0) - 8.0).abs() < f32::EPSILON);
+        assert!((percentile(&data, 90.0) - 10.0).abs() < f32::EPSILON);
+        assert!((percentile(&data, 99.0) - 10.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_percentile_single() {
+        let data = vec![5.0];
+        assert!((percentile(&data, 75.0) - 5.0).abs() < f32::EPSILON);
+        assert!((percentile(&data, 99.0) - 5.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_percentile_empty() {
+        assert!((percentile(&[], 75.0)).abs() < f32::EPSILON);
     }
 
     fn make_contribution(contribution_type: &str, state: &str) -> ContributionMetricRow {

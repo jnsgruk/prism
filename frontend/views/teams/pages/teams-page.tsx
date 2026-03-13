@@ -35,7 +35,7 @@ import {
   useGetTeamTree,
 } from "@/views/teams/hooks/use-teams";
 
-type SortField = "name" | "throughput" | "review" | "members";
+type SortField = "name" | "throughput" | "reviewP75" | "members";
 type SortDir = "asc" | "desc";
 
 const TeamsPage = (): React.ReactElement => {
@@ -110,8 +110,8 @@ const TeamsPage = (): React.ReactElement => {
           return dir * a.teamName.localeCompare(b.teamName);
         case "throughput":
           return dir * (a.throughput - b.throughput);
-        case "review":
-          return dir * (a.avgReviewTurnaroundHours - b.avgReviewTurnaroundHours);
+        case "reviewP75":
+          return dir * (a.reviewTurnaroundP75Hours - b.reviewTurnaroundP75Hours);
         case "members":
           return dir * (a.memberCount - b.memberCount);
         default:
@@ -126,7 +126,7 @@ const TeamsPage = (): React.ReactElement => {
       sortedMetrics.map((m) => ({
         name: m.teamName,
         throughput: m.throughput,
-        avgReviewHours: Math.round(m.avgReviewTurnaroundHours * 10) / 10,
+        reviewP75Hours: Math.round(m.reviewTurnaroundP75Hours * 10) / 10,
       })),
     [sortedMetrics],
   );
@@ -207,12 +207,12 @@ const TeamsPage = (): React.ReactElement => {
                         Merged PRs
                       </SortableHeader>
                       <SortableHeader
-                        field="review"
+                        field="reviewP75"
                         current={sortField}
                         dir={sortDir}
                         onSort={toggleSort}
                       >
-                        Avg Review (hrs)
+                        Review P75 (hrs)
                       </SortableHeader>
                       <SortableHeader
                         field="members"
@@ -274,8 +274,8 @@ const TeamsPage = (): React.ReactElement => {
                       radius={[4, 4, 0, 0]}
                     />
                     <Bar
-                      dataKey="avgReviewHours"
-                      name="Avg Review (hrs)"
+                      dataKey="reviewP75Hours"
+                      name="Review P75 (hrs)"
                       fill="hsl(var(--muted-foreground))"
                       radius={[4, 4, 0, 0]}
                     />
@@ -405,8 +405,8 @@ const MetricsRow = ({
       <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>{metrics.throughput}</Badge>
     </TableCell>
     <TableCell>
-      {metrics.avgReviewTurnaroundHours > 0
-        ? `${metrics.avgReviewTurnaroundHours.toFixed(1)}h`
+      {metrics.reviewTurnaroundP75Hours > 0
+        ? `${metrics.reviewTurnaroundP75Hours.toFixed(1)}h`
         : "\u2014"}
     </TableCell>
     <TableCell>{metrics.memberCount}</TableCell>

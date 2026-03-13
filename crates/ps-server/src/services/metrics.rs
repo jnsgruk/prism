@@ -55,6 +55,31 @@ fn format_date(d: Date) -> String {
     d.format(DATE_FMT).unwrap_or_else(|_| d.to_string())
 }
 
+fn json_f32(v: &serde_json::Value, key: &str) -> f32 {
+    v.get(key)
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0) as f32
+}
+
+fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics {
+    TeamMetrics {
+        team_id: s.team_id.to_string(),
+        team_name: s.team_name,
+        period: Some(Period {
+            r#type: period_type_to_proto(&s.period_type).into(),
+            start: format_date(s.period_start),
+            end: format_date(s.period_end),
+        }),
+        throughput: s.throughput.unwrap_or(0),
+        avg_review_turnaround_hours: s.avg_review_turnaround_hours.unwrap_or(0.0),
+        member_count: s.member_count,
+        review_turnaround_p75_hours: json_f32(&s.raw_metrics, "review_turnaround_p75_hours"),
+        review_turnaround_p90_hours: json_f32(&s.raw_metrics, "review_turnaround_p90_hours"),
+        review_turnaround_p99_hours: json_f32(&s.raw_metrics, "review_turnaround_p99_hours"),
+        raw_metrics: HashMap::default(),
+    }
+}
+
 #[tonic::async_trait]
 impl MetricsService for MetricsServiceImpl {
     async fn get_team_metrics(
@@ -84,19 +109,7 @@ impl MetricsService for MetricsServiceImpl {
             .map_err(db_err)?;
 
         let metrics = if let Some(s) = snapshot {
-            TeamMetrics {
-                team_id: s.team_id.to_string(),
-                team_name: s.team_name,
-                period: Some(Period {
-                    r#type: period_type_to_proto(&s.period_type).into(),
-                    start: format_date(s.period_start),
-                    end: format_date(s.period_end),
-                }),
-                throughput: s.throughput.unwrap_or(0),
-                avg_review_turnaround_hours: s.avg_review_turnaround_hours.unwrap_or(0.0),
-                member_count: s.member_count,
-                raw_metrics: HashMap::default(),
-            }
+            snapshot_to_proto(s)
         } else {
             // No snapshot exists — compute on the fly
             let period_end = parse_date(&period.end)?;
@@ -121,19 +134,7 @@ impl MetricsService for MetricsServiceImpl {
                 .map_err(db_err)?;
 
             if let Some(s) = snapshot {
-                TeamMetrics {
-                    team_id: s.team_id.to_string(),
-                    team_name: s.team_name,
-                    period: Some(Period {
-                        r#type: period_type_to_proto(&s.period_type).into(),
-                        start: format_date(s.period_start),
-                        end: format_date(s.period_end),
-                    }),
-                    throughput: s.throughput.unwrap_or(0),
-                    avg_review_turnaround_hours: s.avg_review_turnaround_hours.unwrap_or(0.0),
-                    member_count: s.member_count,
-                    raw_metrics: HashMap::default(),
-                }
+                snapshot_to_proto(s)
             } else {
                 // Team exists but has no data yet — return zeros
                 let team = self
@@ -151,6 +152,9 @@ impl MetricsService for MetricsServiceImpl {
                     throughput: 0,
                     avg_review_turnaround_hours: 0.0,
                     member_count: team.member_count,
+                    review_turnaround_p75_hours: 0.0,
+                    review_turnaround_p90_hours: 0.0,
+                    review_turnaround_p99_hours: 0.0,
                     raw_metrics: HashMap::default(),
                 }
             }
@@ -211,22 +215,7 @@ impl MetricsService for MetricsServiceImpl {
             .map_err(db_err)?;
 
         // Include teams with no data as zeros
-        let mut metrics: Vec<TeamMetrics> = snapshots
-            .into_iter()
-            .map(|s| TeamMetrics {
-                team_id: s.team_id.to_string(),
-                team_name: s.team_name,
-                period: Some(Period {
-                    r#type: period_type_to_proto(&s.period_type).into(),
-                    start: format_date(s.period_start),
-                    end: format_date(s.period_end),
-                }),
-                throughput: s.throughput.unwrap_or(0),
-                avg_review_turnaround_hours: s.avg_review_turnaround_hours.unwrap_or(0.0),
-                member_count: s.member_count,
-                raw_metrics: HashMap::default(),
-            })
-            .collect();
+        let mut metrics: Vec<TeamMetrics> = snapshots.into_iter().map(snapshot_to_proto).collect();
 
         // Add zero entries for teams that had no snapshots
         let found_ids: std::collections::HashSet<String> =
@@ -243,6 +232,9 @@ impl MetricsService for MetricsServiceImpl {
                     throughput: 0,
                     avg_review_turnaround_hours: 0.0,
                     member_count: team.member_count,
+                    review_turnaround_p75_hours: 0.0,
+                    review_turnaround_p90_hours: 0.0,
+                    review_turnaround_p99_hours: 0.0,
                     raw_metrics: HashMap::default(),
                 });
             }

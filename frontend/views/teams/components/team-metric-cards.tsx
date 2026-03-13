@@ -7,10 +7,12 @@ const MetricCard = ({
   label,
   value,
   icon: Icon,
+  secondary,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
+  secondary?: string;
 }): React.ReactElement => (
   <Card>
     <CardContent className="flex items-center gap-3 p-4">
@@ -20,10 +22,13 @@ const MetricCard = ({
       <div>
         <p className="text-2xl font-semibold leading-none">{value}</p>
         <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+        {secondary && <p className="mt-0.5 text-[10px] text-muted-foreground/70">{secondary}</p>}
       </div>
     </CardContent>
   </Card>
 );
+
+const formatHours = (h: number): string => (h > 0 ? `${h.toFixed(1)}h` : "\u2014");
 
 export const TeamMetricCards = ({
   metrics,
@@ -33,15 +38,18 @@ export const TeamMetricCards = ({
   memberCount: number;
 }): React.ReactElement => {
   const throughput = metrics?.throughput ?? 0;
-  const avgReview = metrics?.avgReviewTurnaroundHours ?? 0;
+  const p75 = metrics?.reviewTurnaroundP75Hours ?? 0;
+  const p90 = metrics?.reviewTurnaroundP90Hours ?? 0;
+  const p99 = metrics?.reviewTurnaroundP99Hours ?? 0;
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <MetricCard icon={GitPullRequest} label="Merged PRs" value={String(throughput)} />
       <MetricCard
         icon={Clock}
-        label="Avg Review (hrs)"
-        value={avgReview > 0 ? avgReview.toFixed(1) : "\u2014"}
+        label="Review Turnaround (P75)"
+        value={formatHours(p75)}
+        secondary={p75 > 0 ? `P90 ${formatHours(p90)} · P99 ${formatHours(p99)}` : undefined}
       />
       <MetricCard icon={Users} label="Members" value={String(memberCount)} />
       <MetricCard

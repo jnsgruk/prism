@@ -20,6 +20,7 @@ pub struct TeamSnapshotRow {
     pub period_type: String,
     pub throughput: Option<i32>,
     pub avg_review_turnaround_hours: Option<f32>,
+    pub raw_metrics: serde_json::Value,
 }
 
 /// Raw contribution data needed for metrics computation.
@@ -59,7 +60,8 @@ impl MetricsRepo {
                     JOIN team_tree tt ON tm.team_id = tt.id
                     WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE) AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
-                   ts.throughput, ts.avg_review_turnaround_hours
+                   ts.throughput, ts.avg_review_turnaround_hours,
+                   ts.raw_metrics AS "raw_metrics!"
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
             WHERE ts.team_id = $1
@@ -84,6 +86,7 @@ impl MetricsRepo {
             period_type: r.period_type,
             throughput: r.throughput,
             avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+            raw_metrics: r.raw_metrics,
         }))
     }
 
@@ -99,7 +102,8 @@ impl MetricsRepo {
             SELECT ts.id, ts.team_id, t.name AS team_name,
                    mc.count AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
-                   ts.throughput, ts.avg_review_turnaround_hours
+                   ts.throughput, ts.avg_review_turnaround_hours,
+                   ts.raw_metrics AS "raw_metrics!"
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
             CROSS JOIN LATERAL (
@@ -139,6 +143,7 @@ impl MetricsRepo {
                 period_type: r.period_type,
                 throughput: r.throughput,
                 avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+                raw_metrics: r.raw_metrics,
             })
             .collect())
     }
@@ -175,18 +180,20 @@ impl MetricsRepo {
         let period_type = &snap.period_type;
         let throughput = snap.throughput;
         let avg_review_turnaround_hours = snap.avg_review_turnaround_hours;
+        let raw_metrics = &snap.raw_metrics;
         sqlx::query!(
             r#"
             INSERT INTO metrics.team_snapshots (
                 id, team_id, period_start, period_end, period_type,
-                throughput, avg_review_turnaround_hours, computed_at
+                throughput, avg_review_turnaround_hours, raw_metrics, computed_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
             ON CONFLICT (team_id, period_start, period_type)
             DO UPDATE SET
                 period_end = EXCLUDED.period_end,
                 throughput = EXCLUDED.throughput,
                 avg_review_turnaround_hours = EXCLUDED.avg_review_turnaround_hours,
+                raw_metrics = EXCLUDED.raw_metrics,
                 computed_at = now()
             "#,
             id,
@@ -196,6 +203,7 @@ impl MetricsRepo {
             period_type,
             throughput,
             avg_review_turnaround_hours,
+            raw_metrics,
         )
         .execute(&self.pool)
         .await
@@ -272,4 +280,5 @@ pub struct SnapshotInput {
     pub period_type: String,
     pub throughput: i32,
     pub avg_review_turnaround_hours: Option<f32>,
+    pub raw_metrics: serde_json::Value,
 }

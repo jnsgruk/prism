@@ -29,6 +29,9 @@ message TeamMetrics {
   float avg_review_turnaround_hours = 5;
   int32 member_count = 6;
   map<string, string> raw_metrics = 7;
+  float review_turnaround_p75_hours = 8;
+  float review_turnaround_p90_hours = 9;
+  float review_turnaround_p99_hours = 10;
 }
 
 message GetTeamMetricsRequest {
