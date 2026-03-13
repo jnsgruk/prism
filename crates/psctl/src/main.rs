@@ -68,6 +68,8 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env before clap parses args so env vars are available
+    let _ = dotenvy::dotenv();
     let cli = Cli::parse();
     let (channel, auth) = client::connect(&cli.server, cli.token.as_ref())?;
 
