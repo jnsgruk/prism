@@ -68,7 +68,7 @@ pub struct FetchResult {
 #[async_trait]
 pub trait Source: Send + Sync {
     /// Human-readable name for logging and UI display.
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Determine what work needs to be done based on configuration and the
     /// current watermark.

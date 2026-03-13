@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO activity.ingestion_watermarks (\n            source_name, watermark_value, last_successful_run, last_attempt, items_collected_last_run\n        )\n        VALUES ($1, $2, now(), now(), $3)\n        ON CONFLICT (source_name)\n        DO UPDATE SET\n            watermark_value = $2,\n            last_successful_run = now(),\n            last_attempt = now(),\n            last_error = NULL,\n            items_collected_last_run = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "8d5adbf20de8b84c2ad23c51efc280e64c5a20c85e40335307e2b36a2590843a"
+}

@@ -36,6 +36,10 @@ pub struct GitHubClient {
 }
 
 impl GitHubClient {
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     pub fn new(http: reqwest::Client, base_url: &str, token: &str) -> Self {
         Self {
             http,
