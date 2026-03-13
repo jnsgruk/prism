@@ -15,6 +15,7 @@ import {
 } from "@/views/teams/hooks/use-teams";
 
 import { GithubTeamPickerDialog } from "./github-team-picker-dialog";
+import { TeamMappingSuggestions } from "./team-mapping-suggestions";
 
 export const TeamDetailPanel = ({
   teamId,
@@ -102,6 +103,8 @@ export const TeamDetailPanel = ({
         </div>
 
         <Separator />
+
+        <TeamMappingSuggestions teamId={teamId} />
 
         {/* GitHub teams section */}
         <div>
