@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                sc.name,\n                sc.source_type,\n                iw.watermark_value as \"watermark_value?\",\n                iw.last_successful_run,\n                iw.last_attempt,\n                iw.last_error,\n                iw.items_collected_last_run,\n                EXISTS(\n                    SELECT 1 FROM activity.ingestion_runs ir\n                    WHERE ir.source_name = sc.name\n                      AND ir.completed_at IS NULL\n                ) as \"has_active_run!\"\n            FROM config.source_configs sc\n            LEFT JOIN activity.ingestion_watermarks iw\n                ON sc.name = iw.source_name\n            WHERE sc.enabled = true\n            ORDER BY sc.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "watermark_value?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_successful_run",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_attempt",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "items_collected_last_run",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "has_active_run!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [false, false, false, true, true, true, true, null]
+  },
+  "hash": "3508067679d80ca02db8a61224875b85222caeb0238837cd136c04dadde3ca76"
+}

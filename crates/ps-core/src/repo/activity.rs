@@ -31,6 +31,8 @@ pub struct SourceStatusRow {
     pub last_attempt: Option<OffsetDateTime>,
     pub last_error: Option<String>,
     pub items_collected_last_run: Option<i32>,
+    /// Whether this source has a currently running ingestion (no `completed_at`).
+    pub has_active_run: bool,
 }
 
 impl ActivityRepo {
@@ -274,6 +276,24 @@ impl ActivityRepo {
             .collect())
     }
 
+    /// Update the progress of a running ingestion (items collected so far).
+    pub async fn update_run_progress(&self, id: Uuid, items_collected: i32) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET items_collected = $2
+            WHERE id = $1
+            "#,
+            id,
+            items_collected,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
     /// Get the status of all enabled sources (cross-schema join with
     /// `config.source_configs`).
     pub async fn get_source_statuses(&self) -> Result<Vec<SourceStatusRow>, Error> {
@@ -286,7 +306,12 @@ impl ActivityRepo {
                 iw.last_successful_run,
                 iw.last_attempt,
                 iw.last_error,
-                iw.items_collected_last_run
+                iw.items_collected_last_run,
+                EXISTS(
+                    SELECT 1 FROM activity.ingestion_runs ir
+                    WHERE ir.source_name = sc.name
+                      AND ir.completed_at IS NULL
+                ) as "has_active_run!"
             FROM config.source_configs sc
             LEFT JOIN activity.ingestion_watermarks iw
                 ON sc.name = iw.source_name
@@ -308,6 +333,7 @@ impl ActivityRepo {
                 last_attempt: r.last_attempt,
                 last_error: r.last_error,
                 items_collected_last_run: r.items_collected_last_run,
+                has_active_run: r.has_active_run,
             })
             .collect())
     }

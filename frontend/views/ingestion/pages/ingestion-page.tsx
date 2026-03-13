@@ -8,7 +8,7 @@ import { IngestionRunsTable } from "@/views/ingestion/components/ingestion-runs-
 import { SourceStatusCard } from "@/views/ingestion/components/source-status-card";
 import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
 
-const POLL_INTERVAL_ACTIVE = 5_000;
+const POLL_INTERVAL_ACTIVE = 3_000;
 const POLL_INTERVAL_IDLE = 30_000;
 
 const IngestionPage = (): React.ReactElement => {
@@ -24,7 +24,11 @@ const IngestionPage = (): React.ReactElement => {
     },
   });
 
-  const { data: runs, isLoading: runsLoading } = useListRuns(selectedSource);
+  const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
+
+  const { data: runs, isLoading: runsLoading } = useListRuns(selectedSource, {
+    refetchInterval: hasActiveRun ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE,
+  });
 
   if (sourcesLoading) {
     return (

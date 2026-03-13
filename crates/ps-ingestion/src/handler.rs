@@ -2,7 +2,7 @@ use ps_core::ingestion::IngestionContext;
 use ps_core::models::SourceConfig;
 use ps_core::repo::Repos;
 use restate_sdk::prelude::*;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::registry;
@@ -124,6 +124,13 @@ impl IngestionHandlerImpl {
             plan.watermark = Some(wm.clone());
         }
 
+        info!(
+            source = source_name,
+            repos = plan.repos.len(),
+            watermark = ?plan.watermark,
+            "ingestion plan ready"
+        );
+
         if plan.repos.is_empty() {
             info!(source = source_name, "no repos to ingest");
             self.complete_run(ctx, run_id, source_name, 0).await;
@@ -219,6 +226,23 @@ impl IngestionHandlerImpl {
                     .into_inner();
 
                 total_items += stored;
+
+                info!(
+                    source = source_name,
+                    batch_stored = stored,
+                    total_items,
+                    "stored batch"
+                );
+
+                // Update progress on the run record (best-effort, outside Restate journal)
+                if let Err(e) = self
+                    .repos
+                    .activity
+                    .update_run_progress(run_id, total_items)
+                    .await
+                {
+                    warn!(source = source_name, "failed to update run progress: {e}");
+                }
             }
 
             // Check if we're done

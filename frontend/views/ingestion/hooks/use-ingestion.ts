@@ -36,11 +36,15 @@ export const useIngestionStatus = (options?: {
     refetchInterval: options?.refetchInterval,
   });
 
-export const useListRuns = (sourceName?: string): UseQueryResult<IngestionRun[], Error> =>
+export const useListRuns = (
+  sourceName?: string,
+  options?: { refetchInterval?: number | false },
+): UseQueryResult<IngestionRun[], Error> =>
   useQuery({
     queryKey: ingestionKeys.runs(sourceName),
     queryFn: () => ingestionClient.listRuns({ sourceName }),
     select: (data): IngestionRun[] => data.runs,
+    refetchInterval: options?.refetchInterval,
   });
 
 export const useTriggerRun = (): UseMutationResult<TriggerRunResponse, Error, string> => {

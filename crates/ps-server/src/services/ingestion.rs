@@ -46,7 +46,11 @@ impl IngestionService for IngestionServiceImpl {
         let statuses = sources
             .into_iter()
             .map(|s| {
-                let state = derive_state(s.last_successful_run, s.last_error.as_deref());
+                let state = derive_state(
+                    s.has_active_run,
+                    s.last_successful_run,
+                    s.last_error.as_deref(),
+                );
 
                 SourceStatus {
                     name: s.name,
@@ -175,11 +179,15 @@ impl IngestionService for IngestionServiceImpl {
     }
 }
 
-/// Derive the current source state from watermark data.
+/// Derive the current source state from run data and watermarks.
 fn derive_state(
+    has_active_run: bool,
     last_successful_run: Option<time::OffsetDateTime>,
     last_error: Option<&str>,
 ) -> SourceState {
+    if has_active_run {
+        return SourceState::Collecting;
+    }
     match (last_successful_run, last_error) {
         (_, Some(_)) => SourceState::Error,
         (Some(_), None) => SourceState::Idle,
