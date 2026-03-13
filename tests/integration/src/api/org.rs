@@ -12,6 +12,7 @@ define_api_test!(list_teams_empty, |server| async move {
 
     let mut req = Request::new(ListTeamsRequest {
         parent_team_id: None,
+        team_type: None,
     });
     req.metadata_mut().insert(
         "authorization",
@@ -180,6 +181,7 @@ define_api_test!(get_team_returns_members, |server| async move {
     // List teams to get the team ID
     let mut req = Request::new(ListTeamsRequest {
         parent_team_id: None,
+        team_type: None,
     });
     req.metadata_mut().insert(
         "authorization",

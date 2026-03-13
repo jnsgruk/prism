@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   t.team_type AS \"team_type: TeamType\",\n                   p.name AS lead_name,\n                   COUNT(tm.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.people p ON p.id = t.lead_id\n            GROUP BY t.id, p.name\n            ORDER BY t.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "org_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "lead_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "github_team_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "team_type: TeamType",
+        "type_info": {
+          "Custom": {
+            "name": "org.team_type",
+            "kind": {
+              "Enum": ["org", "group", "team", "squad"]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "lead_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "member_count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [false, false, false, true, true, true, false, false, null]
+  },
+  "hash": "29ad7cc68edf30906ced21330a0a360b42f4a03c0efc3ebd94f03d6bfa749cd1"
+}

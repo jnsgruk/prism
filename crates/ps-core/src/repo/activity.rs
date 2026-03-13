@@ -326,7 +326,7 @@ impl ActivityRepo {
         &self,
         source_name: &str,
     ) -> Result<Option<String>, Error> {
-        sqlx::query_scalar!(
+        Ok(sqlx::query_scalar!(
             r#"
             SELECT current_invocation_id
             FROM activity.ingestion_watermarks
@@ -337,7 +337,7 @@ impl ActivityRepo {
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| Error::Database(e.to_string()))?
-        .ok_or(Error::Database("source not found".to_string()))
+        .flatten())
     }
 
     /// Clear the current invocation ID (on completion or cancellation).

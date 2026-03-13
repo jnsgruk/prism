@@ -4,14 +4,22 @@
 // @ts-nocheck
 
 import {
+  CreateTeamRequest,
+  CreateTeamResponse,
+  DeleteTeamRequest,
+  DeleteTeamResponse,
   GetTeamRequest,
   GetTeamResponse,
+  GetTeamTreeRequest,
+  GetTeamTreeResponse,
   ImportDirectoryRequest,
   ImportDirectoryResponse,
   ListPeopleRequest,
   ListPeopleResponse,
   ListTeamsRequest,
   ListTeamsResponse,
+  UpdateTeamRequest,
+  UpdateTeamResponse,
 } from "./org_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
@@ -37,6 +45,42 @@ export const OrgService = {
       name: "GetTeam",
       I: GetTeamRequest,
       O: GetTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.GetTeamTree
+     */
+    getTeamTree: {
+      name: "GetTeamTree",
+      I: GetTeamTreeRequest,
+      O: GetTeamTreeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.CreateTeam
+     */
+    createTeam: {
+      name: "CreateTeam",
+      I: CreateTeamRequest,
+      O: CreateTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.UpdateTeam
+     */
+    updateTeam: {
+      name: "UpdateTeam",
+      I: UpdateTeamRequest,
+      O: UpdateTeamResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.OrgService.DeleteTeam
+     */
+    deleteTeam: {
+      name: "DeleteTeam",
+      I: DeleteTeamRequest,
+      O: DeleteTeamResponse,
       kind: MethodKind.Unary,
     },
     /**

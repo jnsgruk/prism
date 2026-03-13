@@ -57,7 +57,7 @@ pub async fn compute_all_snapshots(
     period_end: Date,
     period_type: &str,
 ) -> Result<i32, ps_core::Error> {
-    let teams = repos.org.list_teams(None).await?;
+    let teams = repos.org.list_teams(None, None).await?;
     let mut computed = 0;
 
     for team in &teams {

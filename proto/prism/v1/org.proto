@@ -5,8 +5,20 @@ package prism.v1;
 service OrgService {
   rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
   rpc GetTeam(GetTeamRequest) returns (GetTeamResponse);
+  rpc GetTeamTree(GetTeamTreeRequest) returns (GetTeamTreeResponse);
+  rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse);
+  rpc UpdateTeam(UpdateTeamRequest) returns (UpdateTeamResponse);
+  rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
   rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse);
   rpc ImportDirectory(ImportDirectoryRequest) returns (ImportDirectoryResponse);
+}
+
+enum TeamType {
+  TEAM_TYPE_UNSPECIFIED = 0;
+  TEAM_TYPE_ORG = 1;
+  TEAM_TYPE_GROUP = 2;
+  TEAM_TYPE_TEAM = 3;
+  TEAM_TYPE_SQUAD = 4;
 }
 
 message Team {
@@ -17,6 +29,10 @@ message Team {
   optional string lead_id = 5;
   optional string github_team_slug = 6;
   int32 member_count = 7;
+  TeamType team_type = 8;
+  int32 total_member_count = 9;
+  repeated Team children = 10;
+  optional string lead_name = 11;
 }
 
 message Person {
@@ -34,6 +50,7 @@ message PlatformIdentity {
 
 message ListTeamsRequest {
   optional string parent_team_id = 1;
+  optional TeamType team_type = 2;
 }
 
 message ListTeamsResponse {
@@ -48,6 +65,43 @@ message GetTeamResponse {
   Team team = 1;
   repeated Person members = 2;
 }
+
+message GetTeamTreeRequest {}
+
+message GetTeamTreeResponse {
+  repeated Team roots = 1;
+}
+
+message CreateTeamRequest {
+  string name = 1;
+  TeamType team_type = 2;
+  optional string parent_team_id = 3;
+  optional string lead_id = 4;
+  optional string github_team_slug = 5;
+  string org_name = 6;
+}
+
+message CreateTeamResponse {
+  Team team = 1;
+}
+
+message UpdateTeamRequest {
+  string team_id = 1;
+  optional string name = 2;
+  optional string parent_team_id = 3;
+  optional string lead_id = 4;
+  optional string github_team_slug = 5;
+}
+
+message UpdateTeamResponse {
+  Team team = 1;
+}
+
+message DeleteTeamRequest {
+  string team_id = 1;
+}
+
+message DeleteTeamResponse {}
 
 message ListPeopleRequest {}
 

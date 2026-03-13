@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,\n                   t.github_team_slug,\n                   COUNT(tm.id)::int AS \"member_count!\"\n            FROM org.teams t\n            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            WHERE t.id = $1\n            GROUP BY t.id\n            ",
+  "query": "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug,\n                      team_type AS \"team_type: TeamType\", created_at\n               FROM org.teams",
   "describe": {
     "columns": [
       {
@@ -35,14 +35,26 @@
       },
       {
         "ordinal": 6,
-        "name": "member_count!",
-        "type_info": "Int4"
+        "name": "team_type: TeamType",
+        "type_info": {
+          "Custom": {
+            "name": "org.team_type",
+            "kind": {
+              "Enum": ["org", "group", "team", "squad"]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": ["Uuid"]
+      "Left": []
     },
-    "nullable": [false, false, false, true, true, true, null]
+    "nullable": [false, false, false, true, true, true, false, false]
   },
-  "hash": "cbd2788f6d8f36356ad2cc2fd557de39bddfd7b4ab3b1ea8dd5cdf30a90225f3"
+  "hash": "084004e6d161f70642329b18b2f01b215c80e71d33cc63b7817b00266d713395"
 }

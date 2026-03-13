@@ -2,15 +2,15 @@
 // @generated from file prism/v1/org.proto (package prism.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file prism/v1/org.proto.
  */
 export const file_prism_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxIs4BCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgGIAEoCUgCiAEBEhQKDG1lbWJlcl9jb3VudBgHIAEoBUIRCg9fcGFyZW50X3RlYW1faWRCCgoIX2xlYWRfaWRCEwoRX2dpdGh1Yl90ZWFtX3NsdWcijgEKBlBlcnNvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhIKBWVtYWlsGAMgASgJSACIAQESEgoFbGV2ZWwYBCABKAlIAYgBARIuCgppZGVudGl0aWVzGAUgAygLMhoucHJpc20udjEuUGxhdGZvcm1JZGVudGl0eUIICgZfZW1haWxCCAoGX2xldmVsIjYKEFBsYXRmb3JtSWRlbnRpdHkSEAoIcGxhdGZvcm0YASABKAkSEAoIdXNlcm5hbWUYAiABKAkiQgoQTGlzdFRlYW1zUmVxdWVzdBIbCg5wYXJlbnRfdGVhbV9pZBgBIAEoCUgAiAEBQhEKD19wYXJlbnRfdGVhbV9pZCIyChFMaXN0VGVhbXNSZXNwb25zZRIdCgV0ZWFtcxgBIAMoCzIOLnByaXNtLnYxLlRlYW0iIQoOR2V0VGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCSJSCg9HZXRUZWFtUmVzcG9uc2USHAoEdGVhbRgBIAEoCzIOLnByaXNtLnYxLlRlYW0SIQoHbWVtYmVycxgCIAMoCzIQLnByaXNtLnYxLlBlcnNvbiITChFMaXN0UGVvcGxlUmVxdWVzdCI2ChJMaXN0UGVvcGxlUmVzcG9uc2USIAoGcGVvcGxlGAEgAygLMhAucHJpc20udjEuUGVyc29uIi4KFkltcG9ydERpcmVjdG9yeVJlcXVlc3QSFAoMZmlsZV9jb250ZW50GAEgASgMInYKF0ltcG9ydERpcmVjdG9yeVJlc3BvbnNlEhcKD3Blb3BsZV9pbXBvcnRlZBgBIAEoBRIVCg10ZWFtc19jcmVhdGVkGAIgASgFEhkKEWlkZW50aXRpZXNfbWFwcGVkGAMgASgFEhAKCHdhcm5pbmdzGAQgAygJMrMCCgpPcmdTZXJ2aWNlEkQKCUxpc3RUZWFtcxIaLnByaXNtLnYxLkxpc3RUZWFtc1JlcXVlc3QaGy5wcmlzbS52MS5MaXN0VGVhbXNSZXNwb25zZRI+CgdHZXRUZWFtEhgucHJpc20udjEuR2V0VGVhbVJlcXVlc3QaGS5wcmlzbS52MS5HZXRUZWFtUmVzcG9uc2USRwoKTGlzdFBlb3BsZRIbLnByaXNtLnYxLkxpc3RQZW9wbGVSZXF1ZXN0GhwucHJpc20udjEuTGlzdFBlb3BsZVJlc3BvbnNlElYKD0ltcG9ydERpcmVjdG9yeRIgLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlcXVlc3QaIS5wcmlzbS52MS5JbXBvcnREaXJlY3RvcnlSZXNwb25zZWIGcHJvdG8z",
+  "ChJwcmlzbS92MS9vcmcucHJvdG8SCHByaXNtLnYxItkCCgRUZWFtEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIb3JnX25hbWUYAyABKAkSGwoOcGFyZW50X3RlYW1faWQYBCABKAlIAIgBARIUCgdsZWFkX2lkGAUgASgJSAGIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgGIAEoCUgCiAEBEhQKDG1lbWJlcl9jb3VudBgHIAEoBRIlCgl0ZWFtX3R5cGUYCCABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIaChJ0b3RhbF9tZW1iZXJfY291bnQYCSABKAUSIAoIY2hpbGRyZW4YCiADKAsyDi5wcmlzbS52MS5UZWFtEhYKCWxlYWRfbmFtZRgLIAEoCUgDiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1Z0IMCgpfbGVhZF9uYW1lIo4BCgZQZXJzb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgVlbWFpbBgDIAEoCUgAiAEBEhIKBWxldmVsGAQgASgJSAGIAQESLgoKaWRlbnRpdGllcxgFIAMoCzIaLnByaXNtLnYxLlBsYXRmb3JtSWRlbnRpdHlCCAoGX2VtYWlsQggKBl9sZXZlbCI2ChBQbGF0Zm9ybUlkZW50aXR5EhAKCHBsYXRmb3JtGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJInwKEExpc3RUZWFtc1JlcXVlc3QSGwoOcGFyZW50X3RlYW1faWQYASABKAlIAIgBARIqCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZUgBiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIMCgpfdGVhbV90eXBlIjIKEUxpc3RUZWFtc1Jlc3BvbnNlEh0KBXRlYW1zGAEgAygLMg4ucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIlIKD0dldFRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbRIhCgdtZW1iZXJzGAIgAygLMhAucHJpc20udjEuUGVyc29uIhQKEkdldFRlYW1UcmVlUmVxdWVzdCI0ChNHZXRUZWFtVHJlZVJlc3BvbnNlEh0KBXJvb3RzGAEgAygLMg4ucHJpc20udjEuVGVhbSLgAQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIlCgl0ZWFtX3R5cGUYAiABKA4yEi5wcmlzbS52MS5UZWFtVHlwZRIbCg5wYXJlbnRfdGVhbV9pZBgDIAEoCUgAiAEBEhQKB2xlYWRfaWQYBCABKAlIAYgBARIdChBnaXRodWJfdGVhbV9zbHVnGAUgASgJSAKIAQESEAoIb3JnX25hbWUYBiABKAlCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkQhMKEV9naXRodWJfdGVhbV9zbHVnIjIKEkNyZWF0ZVRlYW1SZXNwb25zZRIcCgR0ZWFtGAEgASgLMg4ucHJpc20udjEuVGVhbSLGAQoRVXBkYXRlVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESGwoOcGFyZW50X3RlYW1faWQYAyABKAlIAYgBARIUCgdsZWFkX2lkGAQgASgJSAKIAQESHQoQZ2l0aHViX3RlYW1fc2x1ZxgFIAEoCUgDiAEBQgcKBV9uYW1lQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEITChFfZ2l0aHViX3RlYW1fc2x1ZyIyChJVcGRhdGVUZWFtUmVzcG9uc2USHAoEdGVhbRgBIAEoCzIOLnByaXNtLnYxLlRlYW0iJAoRRGVsZXRlVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCSIUChJEZWxldGVUZWFtUmVzcG9uc2UiEwoRTGlzdFBlb3BsZVJlcXVlc3QiNgoSTGlzdFBlb3BsZVJlc3BvbnNlEiAKBnBlb3BsZRgBIAMoCzIQLnByaXNtLnYxLlBlcnNvbiIuChZJbXBvcnREaXJlY3RvcnlSZXF1ZXN0EhQKDGZpbGVfY29udGVudBgBIAEoDCJ2ChdJbXBvcnREaXJlY3RvcnlSZXNwb25zZRIXCg9wZW9wbGVfaW1wb3J0ZWQYASABKAUSFQoNdGVhbXNfY3JlYXRlZBgCIAEoBRIZChFpZGVudGl0aWVzX21hcHBlZBgDIAEoBRIQCgh3YXJuaW5ncxgEIAMoCSp2CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABIRCg1URUFNX1RZUEVfT1JHEAESEwoPVEVBTV9UWVBFX0dST1VQEAISEgoOVEVBTV9UWVBFX1RFQU0QAxITCg9URUFNX1RZUEVfU1FVQUQQBDLaBAoKT3JnU2VydmljZRJECglMaXN0VGVhbXMSGi5wcmlzbS52MS5MaXN0VGVhbXNSZXF1ZXN0GhsucHJpc20udjEuTGlzdFRlYW1zUmVzcG9uc2USPgoHR2V0VGVhbRIYLnByaXNtLnYxLkdldFRlYW1SZXF1ZXN0GhkucHJpc20udjEuR2V0VGVhbVJlc3BvbnNlEkoKC0dldFRlYW1UcmVlEhwucHJpc20udjEuR2V0VGVhbVRyZWVSZXF1ZXN0Gh0ucHJpc20udjEuR2V0VGVhbVRyZWVSZXNwb25zZRJHCgpDcmVhdGVUZWFtEhsucHJpc20udjEuQ3JlYXRlVGVhbVJlcXVlc3QaHC5wcmlzbS52MS5DcmVhdGVUZWFtUmVzcG9uc2USRwoKVXBkYXRlVGVhbRIbLnByaXNtLnYxLlVwZGF0ZVRlYW1SZXF1ZXN0GhwucHJpc20udjEuVXBkYXRlVGVhbVJlc3BvbnNlEkcKCkRlbGV0ZVRlYW0SGy5wcmlzbS52MS5EZWxldGVUZWFtUmVxdWVzdBocLnByaXNtLnYxLkRlbGV0ZVRlYW1SZXNwb25zZRJHCgpMaXN0UGVvcGxlEhsucHJpc20udjEuTGlzdFBlb3BsZVJlcXVlc3QaHC5wcmlzbS52MS5MaXN0UGVvcGxlUmVzcG9uc2USVgoPSW1wb3J0RGlyZWN0b3J5EiAucHJpc20udjEuSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBohLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlc3BvbnNlYgZwcm90bzM",
 );
 
 /**
@@ -51,6 +51,26 @@ export type Team = Message<"prism.v1.Team"> & {
    * @generated from field: int32 member_count = 7;
    */
   memberCount: number;
+
+  /**
+   * @generated from field: prism.v1.TeamType team_type = 8;
+   */
+  teamType: TeamType;
+
+  /**
+   * @generated from field: int32 total_member_count = 9;
+   */
+  totalMemberCount: number;
+
+  /**
+   * @generated from field: repeated prism.v1.Team children = 10;
+   */
+  children: Team[];
+
+  /**
+   * @generated from field: optional string lead_name = 11;
+   */
+  leadName?: string;
 };
 
 /**
@@ -127,6 +147,11 @@ export type ListTeamsRequest = Message<"prism.v1.ListTeamsRequest"> & {
    * @generated from field: optional string parent_team_id = 1;
    */
   parentTeamId?: string;
+
+  /**
+   * @generated from field: optional prism.v1.TeamType team_type = 2;
+   */
+  teamType?: TeamType;
 };
 
 /**
@@ -201,6 +226,193 @@ export const GetTeamResponseSchema: GenMessage<GetTeamResponse> /*@__PURE__*/ = 
 );
 
 /**
+ * @generated from message prism.v1.GetTeamTreeRequest
+ */
+export type GetTeamTreeRequest = Message<"prism.v1.GetTeamTreeRequest"> & {};
+
+/**
+ * Describes the message prism.v1.GetTeamTreeRequest.
+ * Use `create(GetTeamTreeRequestSchema)` to create a new message.
+ */
+export const GetTeamTreeRequestSchema: GenMessage<GetTeamTreeRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  7,
+);
+
+/**
+ * @generated from message prism.v1.GetTeamTreeResponse
+ */
+export type GetTeamTreeResponse = Message<"prism.v1.GetTeamTreeResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.Team roots = 1;
+   */
+  roots: Team[];
+};
+
+/**
+ * Describes the message prism.v1.GetTeamTreeResponse.
+ * Use `create(GetTeamTreeResponseSchema)` to create a new message.
+ */
+export const GetTeamTreeResponseSchema: GenMessage<GetTeamTreeResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  8,
+);
+
+/**
+ * @generated from message prism.v1.CreateTeamRequest
+ */
+export type CreateTeamRequest = Message<"prism.v1.CreateTeamRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: prism.v1.TeamType team_type = 2;
+   */
+  teamType: TeamType;
+
+  /**
+   * @generated from field: optional string parent_team_id = 3;
+   */
+  parentTeamId?: string;
+
+  /**
+   * @generated from field: optional string lead_id = 4;
+   */
+  leadId?: string;
+
+  /**
+   * @generated from field: optional string github_team_slug = 5;
+   */
+  githubTeamSlug?: string;
+
+  /**
+   * @generated from field: string org_name = 6;
+   */
+  orgName: string;
+};
+
+/**
+ * Describes the message prism.v1.CreateTeamRequest.
+ * Use `create(CreateTeamRequestSchema)` to create a new message.
+ */
+export const CreateTeamRequestSchema: GenMessage<CreateTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  9,
+);
+
+/**
+ * @generated from message prism.v1.CreateTeamResponse
+ */
+export type CreateTeamResponse = Message<"prism.v1.CreateTeamResponse"> & {
+  /**
+   * @generated from field: prism.v1.Team team = 1;
+   */
+  team?: Team;
+};
+
+/**
+ * Describes the message prism.v1.CreateTeamResponse.
+ * Use `create(CreateTeamResponseSchema)` to create a new message.
+ */
+export const CreateTeamResponseSchema: GenMessage<CreateTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  10,
+);
+
+/**
+ * @generated from message prism.v1.UpdateTeamRequest
+ */
+export type UpdateTeamRequest = Message<"prism.v1.UpdateTeamRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * @generated from field: optional string parent_team_id = 3;
+   */
+  parentTeamId?: string;
+
+  /**
+   * @generated from field: optional string lead_id = 4;
+   */
+  leadId?: string;
+
+  /**
+   * @generated from field: optional string github_team_slug = 5;
+   */
+  githubTeamSlug?: string;
+};
+
+/**
+ * Describes the message prism.v1.UpdateTeamRequest.
+ * Use `create(UpdateTeamRequestSchema)` to create a new message.
+ */
+export const UpdateTeamRequestSchema: GenMessage<UpdateTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  11,
+);
+
+/**
+ * @generated from message prism.v1.UpdateTeamResponse
+ */
+export type UpdateTeamResponse = Message<"prism.v1.UpdateTeamResponse"> & {
+  /**
+   * @generated from field: prism.v1.Team team = 1;
+   */
+  team?: Team;
+};
+
+/**
+ * Describes the message prism.v1.UpdateTeamResponse.
+ * Use `create(UpdateTeamResponseSchema)` to create a new message.
+ */
+export const UpdateTeamResponseSchema: GenMessage<UpdateTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  12,
+);
+
+/**
+ * @generated from message prism.v1.DeleteTeamRequest
+ */
+export type DeleteTeamRequest = Message<"prism.v1.DeleteTeamRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+};
+
+/**
+ * Describes the message prism.v1.DeleteTeamRequest.
+ * Use `create(DeleteTeamRequestSchema)` to create a new message.
+ */
+export const DeleteTeamRequestSchema: GenMessage<DeleteTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  13,
+);
+
+/**
+ * @generated from message prism.v1.DeleteTeamResponse
+ */
+export type DeleteTeamResponse = Message<"prism.v1.DeleteTeamResponse"> & {};
+
+/**
+ * Describes the message prism.v1.DeleteTeamResponse.
+ * Use `create(DeleteTeamResponseSchema)` to create a new message.
+ */
+export const DeleteTeamResponseSchema: GenMessage<DeleteTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_org,
+  14,
+);
+
+/**
  * @generated from message prism.v1.ListPeopleRequest
  */
 export type ListPeopleRequest = Message<"prism.v1.ListPeopleRequest"> & {};
@@ -211,7 +423,7 @@ export type ListPeopleRequest = Message<"prism.v1.ListPeopleRequest"> & {};
  */
 export const ListPeopleRequestSchema: GenMessage<ListPeopleRequest> /*@__PURE__*/ = messageDesc(
   file_prism_v1_org,
-  7,
+  15,
 );
 
 /**
@@ -230,7 +442,7 @@ export type ListPeopleResponse = Message<"prism.v1.ListPeopleResponse"> & {
  */
 export const ListPeopleResponseSchema: GenMessage<ListPeopleResponse> /*@__PURE__*/ = messageDesc(
   file_prism_v1_org,
-  8,
+  16,
 );
 
 /**
@@ -248,7 +460,7 @@ export type ImportDirectoryRequest = Message<"prism.v1.ImportDirectoryRequest"> 
  * Use `create(ImportDirectoryRequestSchema)` to create a new message.
  */
 export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_org, 9);
+  messageDesc(file_prism_v1_org, 17);
 
 /**
  * @generated from message prism.v1.ImportDirectoryResponse
@@ -280,7 +492,42 @@ export type ImportDirectoryResponse = Message<"prism.v1.ImportDirectoryResponse"
  * Use `create(ImportDirectoryResponseSchema)` to create a new message.
  */
 export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_org, 10);
+  messageDesc(file_prism_v1_org, 18);
+
+/**
+ * @generated from enum prism.v1.TeamType
+ */
+export enum TeamType {
+  /**
+   * @generated from enum value: TEAM_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_TYPE_ORG = 1;
+   */
+  ORG = 1,
+
+  /**
+   * @generated from enum value: TEAM_TYPE_GROUP = 2;
+   */
+  GROUP = 2,
+
+  /**
+   * @generated from enum value: TEAM_TYPE_TEAM = 3;
+   */
+  TEAM = 3,
+
+  /**
+   * @generated from enum value: TEAM_TYPE_SQUAD = 4;
+   */
+  SQUAD = 4,
+}
+
+/**
+ * Describes the enum prism.v1.TeamType.
+ */
+export const TeamTypeSchema: GenEnum<TeamType> /*@__PURE__*/ = enumDesc(file_prism_v1_org, 0);
 
 /**
  * @generated from service prism.v1.OrgService
@@ -301,6 +548,38 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamRequestSchema;
     output: typeof GetTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.GetTeamTree
+   */
+  getTeamTree: {
+    methodKind: "unary";
+    input: typeof GetTeamTreeRequestSchema;
+    output: typeof GetTeamTreeResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.CreateTeam
+   */
+  createTeam: {
+    methodKind: "unary";
+    input: typeof CreateTeamRequestSchema;
+    output: typeof CreateTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.UpdateTeam
+   */
+  updateTeam: {
+    methodKind: "unary";
+    input: typeof UpdateTeamRequestSchema;
+    output: typeof UpdateTeamResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.OrgService.DeleteTeam
+   */
+  deleteTeam: {
+    methodKind: "unary";
+    input: typeof DeleteTeamRequestSchema;
+    output: typeof DeleteTeamResponseSchema;
   };
   /**
    * @generated from rpc prism.v1.OrgService.ListPeople

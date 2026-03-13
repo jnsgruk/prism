@@ -1,4 +1,4 @@
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 
 /// A person extracted from the Canonical staff directory HTML.
 pub struct DirectoryPerson {
@@ -9,6 +9,26 @@ pub struct DirectoryPerson {
     pub mattermost_username: Option<String>,
     pub group: Option<String>,
     pub title: Option<String>,
+    /// Manager name extracted from the `--manager` meta list item.
+    pub manager_name: Option<String>,
+    /// Number of `<ol>` ancestors this entry is nested within (1 = top-level).
+    pub depth: u32,
+}
+
+/// Count how many `<ol>` ancestors an element has, starting from the
+/// first `<ol>` with class `p-list` (the directory root list).
+fn ol_depth(el: &ElementRef<'_>) -> u32 {
+    let mut depth: u32 = 0;
+    let mut node = el.parent();
+    while let Some(parent) = node {
+        if let Some(element) = parent.value().as_element()
+            && element.name() == "ol"
+        {
+            depth += 1;
+        }
+        node = parent.parent();
+    }
+    depth
 }
 
 /// Parse a Canonical staff directory HTML page and extract people.
@@ -16,6 +36,9 @@ pub struct DirectoryPerson {
 /// Expects the standard directory layout with `.p-media-object` entries
 /// containing name, email, GitHub, and Launchpad fields.
 /// Entries missing any required field (name, email, GitHub, Launchpad) are skipped.
+///
+/// Also extracts the `<ol>` nesting depth and manager name for each person,
+/// which enables building the team hierarchy from the reporting tree.
 pub fn parse_directory_html(html: &str) -> Vec<DirectoryPerson> {
     let document = Html::parse_document(html);
 
@@ -68,6 +91,13 @@ pub fn parse_directory_html(html: &str) -> Vec<DirectoryPerson> {
                 .map(|p| p.text().collect::<String>().trim().to_string())
                 .filter(|s| !s.is_empty());
 
+            let manager_name = el
+                .select(&sel.manager_link)
+                .next()
+                .map(|a| a.text().collect::<String>().trim().to_string());
+
+            let depth = ol_depth(&el);
+
             Some(DirectoryPerson {
                 display_name: name,
                 email,
@@ -76,6 +106,8 @@ pub fn parse_directory_html(html: &str) -> Vec<DirectoryPerson> {
                 mattermost_username: mattermost,
                 group,
                 title,
+                manager_name,
+                depth,
             })
         })
         .collect()
@@ -91,6 +123,7 @@ struct Selectors {
     mattermost_link: Selector,
     group_link: Selector,
     content_p: Selector,
+    manager_link: Selector,
 }
 
 impl Selectors {
@@ -110,6 +143,10 @@ impl Selectors {
                 .unwrap(),
             group_link: Selector::parse(".p-media-object__content a[href^=\"/groups/\"]").unwrap(),
             content_p: Selector::parse("p.p-media-object__content").unwrap(),
+            manager_link: Selector::parse(
+                ".p-media-object__meta-list-item--manager a[href^=\"/people/\"]",
+            )
+            .unwrap(),
         }
     }
 }
@@ -149,6 +186,9 @@ mod tests {
           <li class="p-media-object__meta-list-item--github">
             Github: <a href="https://github.com/jnsgruk">jnsgruk</a>
           </li>
+          <li class="p-media-object__meta-list-item--manager">
+            Manager: <a href="/people/Mark Shuttleworth">Mark Shuttleworth</a>
+          </li>
         </ul>
       </div>
     </div>
@@ -163,7 +203,7 @@ mod tests {
           <p class="p-media-object__content">Engineering Manager (Manager)</p>
           <p class="p-media-object__content">
             <strong>Group:</strong>
-            <a href="/groups/Ubuntu Engineering">Ubuntu Engineering</a>
+            <a href="/groups/Charm Engineering">Charm Engineering</a>
           </p>
           <ul class="p-media-object__meta-list">
             <li class="p-media-object__meta-list-item--email">
@@ -178,10 +218,43 @@ mod tests {
             <li class="p-media-object__meta-list-item--github">
               Github: <a href="https://github.com/benhoyt">benhoyt</a>
             </li>
+            <li class="p-media-object__meta-list-item--manager">
+              Manager: <a href="/people/Jon Seager">Jon Seager</a>
+            </li>
           </ul>
         </div>
       </div>
     </li>
+    <ol type="1">
+      <li>
+        <div class="p-media-object">
+          <div class="p-media-object__details">
+            <h2 class="p-media-object__title">
+              <a href="/people/alice">Alice Smith</a>
+            </h2>
+            <p class="p-media-object__content">Software Engineer I (Profession I)</p>
+            <p class="p-media-object__content">
+              <strong>Group:</strong>
+              <a href="/groups/Charm Engineering">Charm Engineering</a>
+            </p>
+            <ul class="p-media-object__meta-list">
+              <li class="p-media-object__meta-list-item--email">
+                Email: <a href="mailto:alice@canonical.com">alice@canonical.com</a>
+              </li>
+              <li class="p-media-object__meta-list-item--launchpad">
+                Launchpad: <a href="https://launchpad.net/~alice">alice</a>
+              </li>
+              <li class="p-media-object__meta-list-item--github">
+                Github: <a href="https://github.com/alice">alice</a>
+              </li>
+              <li class="p-media-object__meta-list-item--manager">
+                Manager: <a href="/people/Ben Hoyt">Ben Hoyt</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </li>
+    </ol>
   </ol>
 </ol>
 </body>
@@ -192,7 +265,7 @@ mod tests {
     #[test]
     fn parses_people_from_html() {
         let people = parse_directory_html(&sample_html());
-        assert_eq!(people.len(), 2);
+        assert_eq!(people.len(), 3);
 
         assert_eq!(people[0].display_name, "Jon Seager");
         assert_eq!(people[0].email, "jon.seager@canonical.com");
@@ -204,12 +277,20 @@ mod tests {
             people[0].title.as_deref(),
             Some("VP Engineering, Charm Engineering (VP)")
         );
+        assert_eq!(people[0].manager_name.as_deref(), Some("Mark Shuttleworth"));
+        assert_eq!(people[0].depth, 1);
 
         assert_eq!(people[1].display_name, "Ben Hoyt");
         assert_eq!(people[1].email, "ben.hoyt@canonical.com");
         assert_eq!(people[1].github_username, "benhoyt");
         assert_eq!(people[1].launchpad_username, "benhoyt");
-        assert_eq!(people[1].group.as_deref(), Some("Ubuntu Engineering"));
+        assert_eq!(people[1].group.as_deref(), Some("Charm Engineering"));
+        assert_eq!(people[1].manager_name.as_deref(), Some("Jon Seager"));
+        assert_eq!(people[1].depth, 2);
+
+        assert_eq!(people[2].display_name, "Alice Smith");
+        assert_eq!(people[2].depth, 3);
+        assert_eq!(people[2].manager_name.as_deref(), Some("Ben Hoyt"));
     }
 
     #[test]
@@ -253,5 +334,7 @@ mod tests {
         assert!(people[0].mattermost_username.is_none());
         assert!(people[0].group.is_none());
         assert!(people[0].title.is_none());
+        assert!(people[0].manager_name.is_none());
+        assert_eq!(people[0].depth, 0);
     }
 }

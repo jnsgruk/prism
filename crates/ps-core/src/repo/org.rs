@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::Error;
+use crate::models::TeamType;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -18,7 +19,9 @@ pub struct TeamWithCount {
     pub org_name: String,
     pub parent_team_id: Option<Uuid>,
     pub lead_id: Option<Uuid>,
+    pub lead_name: Option<String>,
     pub github_team_slug: Option<String>,
+    pub team_type: TeamType,
     pub member_count: i32,
 }
 
@@ -44,8 +47,15 @@ pub struct ImportRecord {
     pub level: Option<String>,
     pub directory_id: Option<String>,
     pub team: Option<String>,
+    pub team_type: Option<TeamType>,
     pub org: Option<String>,
     pub identities: Vec<ImportIdentity>,
+    /// Manager name (from directory HTML --manager field).
+    pub manager_name: Option<String>,
+    /// Nesting depth in the directory HTML (1 = VP, 2 = director/manager, etc.).
+    pub depth: Option<u32>,
+    /// Whether this person has direct reports in the directory tree.
+    pub has_reports: bool,
 }
 
 /// A platform identity within an import record.
@@ -71,24 +81,31 @@ impl OrgRepo {
         &self.pool
     }
 
-    /// List teams with active member counts, optionally filtered by parent.
+    /// List teams with active member counts, optionally filtered by parent and/or type.
     pub async fn list_teams(
         &self,
         parent_filter: Option<Uuid>,
+        type_filter: Option<TeamType>,
     ) -> Result<Vec<TeamWithCount>, Error> {
+        let type_str = type_filter.map(|t: TeamType| t.to_string());
         let rows = sqlx::query!(
             r#"
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
+                   t.team_type AS "team_type: TeamType",
+                   p.name AS lead_name,
                    COUNT(tm.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
                 AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.people p ON p.id = t.lead_id
             WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)
-            GROUP BY t.id
+              AND ($2::text IS NULL OR t.team_type::text = $2)
+            GROUP BY t.id, p.name
             ORDER BY t.name
             "#,
             parent_filter,
+            type_str,
         )
         .fetch_all(&self.pool)
         .await
@@ -102,7 +119,9 @@ impl OrgRepo {
                 org_name: t.org_name,
                 parent_team_id: t.parent_team_id,
                 lead_id: t.lead_id,
+                lead_name: Some(t.lead_name),
                 github_team_slug: t.github_team_slug,
+                team_type: t.team_type,
                 member_count: t.member_count,
             })
             .collect())
@@ -114,12 +133,15 @@ impl OrgRepo {
             r#"
             SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
                    t.github_team_slug,
+                   t.team_type AS "team_type: TeamType",
+                   p.name AS lead_name,
                    COUNT(tm.id)::int AS "member_count!"
             FROM org.teams t
             LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
                 AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.people p ON p.id = t.lead_id
             WHERE t.id = $1
-            GROUP BY t.id
+            GROUP BY t.id, p.name
             "#,
             id,
         )
@@ -133,7 +155,9 @@ impl OrgRepo {
             org_name: t.org_name,
             parent_team_id: t.parent_team_id,
             lead_id: t.lead_id,
+            lead_name: Some(t.lead_name),
             github_team_slug: t.github_team_slug,
+            team_type: t.team_type,
             member_count: t.member_count,
         }))
     }
@@ -385,14 +409,16 @@ impl OrgRepo {
                     id
                 } else {
                     let new_id = Uuid::now_v7();
+                    let tt = record.team_type.unwrap_or(TeamType::Group);
                     sqlx::query!(
                         r#"
-                        INSERT INTO org.teams (id, name, org_name)
-                        VALUES ($1, $2, $3)
+                        INSERT INTO org.teams (id, name, org_name, team_type)
+                        VALUES ($1, $2, $3, $4::org.team_type)
                         "#,
                         new_id,
                         team_name,
                         org_name,
+                        tt as TeamType,
                     )
                     .execute(&mut *tx)
                     .await
@@ -501,6 +527,153 @@ impl OrgRepo {
         })
     }
 
+    /// Get all teams (flat list) for building a tree in memory.
+    pub async fn get_all_teams(&self) -> Result<Vec<TeamWithCount>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
+                   t.github_team_slug,
+                   t.team_type AS "team_type: TeamType",
+                   p.name AS lead_name,
+                   COUNT(tm.id)::int AS "member_count!"
+            FROM org.teams t
+            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
+                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+            LEFT JOIN org.people p ON p.id = t.lead_id
+            GROUP BY t.id, p.name
+            ORDER BY t.name
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|t| TeamWithCount {
+                id: t.id,
+                name: t.name,
+                org_name: t.org_name,
+                parent_team_id: t.parent_team_id,
+                lead_id: t.lead_id,
+                lead_name: Some(t.lead_name),
+                github_team_slug: t.github_team_slug,
+                team_type: t.team_type,
+                member_count: t.member_count,
+            })
+            .collect())
+    }
+
+    /// Create a new team.
+    pub async fn create_team(
+        &self,
+        name: &str,
+        org_name: &str,
+        team_type: TeamType,
+        parent_team_id: Option<Uuid>,
+        lead_id: Option<Uuid>,
+        github_team_slug: Option<&str>,
+    ) -> Result<TeamWithCount, Error> {
+        let id = Uuid::now_v7();
+        sqlx::query!(
+            r#"
+            INSERT INTO org.teams (id, name, org_name, team_type, parent_team_id, lead_id, github_team_slug)
+            VALUES ($1, $2, $3, $4::org.team_type, $5, $6, $7)
+            "#,
+            id,
+            name,
+            org_name,
+            team_type as TeamType,
+            parent_team_id,
+            lead_id,
+            github_team_slug,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        self.get_team(id)
+            .await?
+            .ok_or_else(|| Error::Database("failed to read back created team".to_owned()))
+    }
+
+    /// Update an existing team.
+    pub async fn update_team(
+        &self,
+        id: Uuid,
+        name: Option<&str>,
+        parent_team_id: Option<Uuid>,
+        lead_id: Option<Uuid>,
+        github_team_slug: Option<&str>,
+    ) -> Result<TeamWithCount, Error> {
+        sqlx::query!(
+            r#"
+            UPDATE org.teams
+            SET name = COALESCE($2, name),
+                parent_team_id = COALESCE($3, parent_team_id),
+                lead_id = COALESCE($4, lead_id),
+                github_team_slug = COALESCE($5, github_team_slug)
+            WHERE id = $1
+            "#,
+            id,
+            name,
+            parent_team_id,
+            lead_id,
+            github_team_slug,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        self.get_team(id)
+            .await?
+            .ok_or_else(|| Error::Database("team not found after update".to_owned()))
+    }
+
+    /// Delete a team. Fails if it has children or active members.
+    pub async fn delete_team(&self, id: Uuid) -> Result<(), Error> {
+        let has_children = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM org.teams WHERE parent_team_id = $1) AS "exists!""#,
+            id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        if has_children {
+            return Err(Error::Validation(
+                "cannot delete team with child teams — remove or reparent children first"
+                    .to_owned(),
+            ));
+        }
+
+        let has_members = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM org.team_memberships
+                WHERE team_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
+            ) AS "exists!"
+            "#,
+            id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        if has_members {
+            return Err(Error::Validation(
+                "cannot delete team with active members — reassign members first".to_owned(),
+            ));
+        }
+
+        sqlx::query!("DELETE FROM org.teams WHERE id = $1", id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
     /// Count people (for backup manifest).
     pub async fn count_people(&self) -> Result<i64, Error> {
         sqlx::query_scalar!("SELECT COUNT(*) FROM org.people")
@@ -547,7 +720,9 @@ impl OrgRepo {
     /// Export all teams as JSON rows (for backup).
     pub async fn export_teams(&self) -> Result<Vec<serde_json::Value>, Error> {
         let teams = sqlx::query!(
-            "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug, created_at FROM org.teams"
+            r#"SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug,
+                      team_type AS "team_type: TeamType", created_at
+               FROM org.teams"#
         )
         .fetch_all(&self.pool)
         .await
@@ -563,6 +738,7 @@ impl OrgRepo {
                     "parent_team_id": t.parent_team_id,
                     "lead_id": t.lead_id,
                     "github_team_slug": t.github_team_slug,
+                    "team_type": t.team_type.to_string(),
                     "created_at": t.created_at.to_string(),
                 })
             })
