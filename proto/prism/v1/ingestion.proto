@@ -10,6 +10,7 @@ service IngestionService {
   rpc TriggerRun(TriggerRunRequest) returns (TriggerRunResponse);
   rpc TriggerBackfill(TriggerBackfillRequest) returns (TriggerBackfillResponse);
   rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+  rpc TriggerTeamSync(TriggerTeamSyncRequest) returns (TriggerTeamSyncResponse);
 }
 
 enum SourceState {
@@ -73,3 +74,9 @@ message CancelRunRequest {
 }
 
 message CancelRunResponse {}
+
+message TriggerTeamSyncRequest {
+  string source_name = 1;
+}
+
+message TriggerTeamSyncResponse {}

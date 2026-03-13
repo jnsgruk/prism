@@ -2,6 +2,7 @@ use ps_ingestion::handlers::SharedState;
 use ps_ingestion::handlers::github_ingestion::{
     GithubIngestionHandler, GithubIngestionHandlerImpl,
 };
+use ps_ingestion::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -39,6 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ingestion = GithubIngestionHandlerImpl {
         state: state.clone(),
     };
+    let team_sync = GithubTeamSyncHandlerImpl {
+        state: state.clone(),
+    };
 
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
@@ -66,9 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!(%restate_addr, "starting Restate endpoint");
     let restate_server = tokio::spawn(async move {
-        HttpServer::new(Endpoint::builder().bind(ingestion.serve()).build())
-            .listen_and_serve(restate_addr)
-            .await;
+        HttpServer::new(
+            Endpoint::builder()
+                .bind(ingestion.serve())
+                .bind(team_sync.serve())
+                .build(),
+        )
+        .listen_and_serve(restate_addr)
+        .await;
     });
 
     // Register with Restate admin (best-effort, retries on startup)

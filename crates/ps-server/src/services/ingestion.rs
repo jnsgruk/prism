@@ -6,7 +6,8 @@ use ps_proto::prism::v1::ingestion_service_server::IngestionService;
 use ps_proto::prism::v1::{
     CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, IngestionRun,
     ListRunsRequest, ListRunsResponse, SourceState, SourceStatus, TriggerBackfillRequest,
-    TriggerBackfillResponse, TriggerRunRequest, TriggerRunResponse,
+    TriggerBackfillResponse, TriggerRunRequest, TriggerRunResponse, TriggerTeamSyncRequest,
+    TriggerTeamSyncResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
@@ -433,6 +434,38 @@ impl IngestionService for IngestionServiceImpl {
         info!(source = %req.source_name, cancelled = ?ids_to_cancel, "cancelled ingestion run");
 
         Ok(Response::new(CancelRunResponse {}))
+    }
+
+    async fn trigger_team_sync(
+        &self,
+        request: Request<TriggerTeamSyncRequest>,
+    ) -> Result<Response<TriggerTeamSyncResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.source_name.is_empty() {
+            return Err(Status::invalid_argument("source_name is required"));
+        }
+
+        // Verify source exists and is enabled
+        self.repos
+            .config
+            .get_enabled_source_by_name(&req.source_name)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+
+        // Fire-and-forget send to Restate ingress
+        let url = format!(
+            "{}/GithubTeamSyncHandler/{}/sync_teams/send",
+            self.restate_url, req.source_name,
+        );
+
+        let invocation_id = self.send_to_restate(&url, None).await?;
+
+        info!(source = %req.source_name, %invocation_id, "triggered team sync via Restate");
+
+        Ok(Response::new(TriggerTeamSyncResponse {}))
     }
 }
 

@@ -14,6 +14,8 @@ import {
   TriggerBackfillResponse,
   TriggerRunRequest,
   TriggerRunResponse,
+  TriggerTeamSyncRequest,
+  TriggerTeamSyncResponse,
 } from "./ingestion_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
@@ -66,6 +68,15 @@ export const IngestionService = {
       name: "CancelRun",
       I: CancelRunRequest,
       O: CancelRunResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.IngestionService.TriggerTeamSync
+     */
+    triggerTeamSync: {
+      name: "TriggerTeamSync",
+      I: TriggerTeamSyncRequest,
+      O: TriggerTeamSyncResponse,
       kind: MethodKind.Unary,
     },
   },
