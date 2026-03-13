@@ -66,7 +66,7 @@ Core platform with GitHub as the single source, basic metrics, and team views.
   Next.js project, Connect client generation, layout, component library setup
 - [x] **W4 — Org Context, Directory Import & Source Configuration**
   People, teams, platform identities, and data source configuration — via API and UI
-- [ ] **W5 — GitHub Ingestion**
+- [x] **W5 — GitHub Ingestion**
   Source adapter, Restate workflow, watermark tracking, identity resolution
 - [ ] **W6a — Ingestion Status UI**
   Ingestion status page, manual trigger/backfill buttons, run history
