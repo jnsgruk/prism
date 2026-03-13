@@ -1,5 +1,5 @@
 use ps_core::ingestion::RepoTarget;
-use sqlx::PgPool;
+use ps_core::repo::org::OrgRepo;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -15,7 +15,7 @@ use super::client::GitHubClient;
 pub async fn discover_repos(
     client: &GitHubClient,
     orgs: &[String],
-    pool: &PgPool,
+    org_repo: &OrgRepo,
     exclude_archived: bool,
     exclude_repos: &[String],
 ) -> Result<Vec<RepoTarget>, ps_core::Error> {
@@ -45,25 +45,9 @@ pub async fn discover_repos(
                 let default_branch = repo.default_branch.as_deref();
                 let language = repo.language.as_deref();
 
-                // Upsert into org.repositories
-                sqlx::query!(
-                    r#"
-                    INSERT INTO org.repositories (id, github_org, github_repo, default_branch, primary_language)
-                    VALUES ($1, $2, $3, $4, $5)
-                    ON CONFLICT (github_org, github_repo)
-                    DO UPDATE SET
-                        default_branch = COALESCE(EXCLUDED.default_branch, org.repositories.default_branch),
-                        primary_language = COALESCE(EXCLUDED.primary_language, org.repositories.primary_language)
-                    "#,
-                    Uuid::now_v7(),
-                    owner,
-                    repo_name,
-                    default_branch,
-                    language,
-                )
-                .execute(pool)
-                .await
-                .map_err(|e| ps_core::Error::Database(e.to_string()))?;
+                org_repo
+                    .upsert_repository(Uuid::now_v7(), owner, repo_name, default_branch, language)
+                    .await?;
 
                 targets.push(RepoTarget {
                     owner: owner.clone(),

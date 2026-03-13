@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.repositories (id, github_org, github_repo, default_branch, primary_language)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT (github_org, github_repo)\n            DO UPDATE SET\n                default_branch = COALESCE(EXCLUDED.default_branch, org.repositories.default_branch),\n                primary_language = COALESCE(EXCLUDED.primary_language, org.repositories.primary_language)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Uuid", "Text", "Text", "Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "e7611c72828d9ce119265dafafd27036e669d2051070dafb8bed0bc88ba6b704"
+}

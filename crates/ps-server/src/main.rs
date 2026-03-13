@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let auth_service = AuthServiceImpl::new(pool.clone());
     let admin_service = AdminServiceImpl::new(repos.clone());
-    let org_service = OrgServiceImpl::new(pool.clone());
+    let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key);
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
     let ingestion_service = IngestionServiceImpl::new(repos, restate_url);

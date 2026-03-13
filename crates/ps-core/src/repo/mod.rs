@@ -1,7 +1,7 @@
-mod activity;
+pub mod activity;
 mod auth;
-mod config;
-mod org;
+pub mod config;
+pub mod org;
 
 pub use activity::ActivityRepo;
 pub use auth::AuthRepo;

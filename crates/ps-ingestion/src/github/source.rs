@@ -8,7 +8,6 @@ use uuid::Uuid;
 
 use super::client::{GitHubClient, ListPullsParams};
 use super::etag;
-use super::identity;
 use super::repos;
 
 /// GitHub source adapter implementing the [`Source`] trait.
@@ -104,7 +103,7 @@ async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Err
     let discovered_repos = repos::discover_repos(
         &client,
         &orgs,
-        ctx.repos.org.pool(),
+        &ctx.repos.org,
         exclude_archived,
         &exclude_repos,
     )
@@ -368,9 +367,11 @@ async fn store_batch_impl(
         .into_iter()
         .collect();
 
-    let person_map = identity::batch_resolve_person_ids(ctx.repos.org.pool(), &usernames)
-        .await
-        .map_err(|e| ps_core::Error::Database(e.to_string()))?;
+    let person_map = ctx
+        .repos
+        .org
+        .batch_resolve_person_ids("github", &usernames)
+        .await?;
 
     let mut stored = 0usize;
     for item in items {

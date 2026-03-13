@@ -47,18 +47,8 @@ impl AdminService for AdminServiceImpl {
             // Gather table counts and write backup
             let source_count = repos.config.count_sources().await.map_err(db_err)?;
 
-            // org and auth counts — will move to OrgRepo/AuthRepo in T4/T5
-            let people_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.people")
-                .fetch_one(repos.org.pool())
-                .await
-                .map_err(db_err)?
-                .unwrap_or(0);
-
-            let team_count = sqlx::query_scalar!("SELECT COUNT(*) FROM org.teams")
-                .fetch_one(repos.org.pool())
-                .await
-                .map_err(db_err)?
-                .unwrap_or(0);
+            let people_count = repos.org.count_people().await.map_err(db_err)?;
+            let team_count = repos.org.count_teams().await.map_err(db_err)?;
 
             let user_count = sqlx::query_scalar!("SELECT COUNT(*) FROM auth.users")
                 .fetch_one(repos.auth.pool())
@@ -92,55 +82,11 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("source_configs", &source_rows)
                 .map_err(backup_err)?;
 
-            // Export people (will move to OrgRepo in T4)
-            let people = sqlx::query!(
-                "SELECT id, name, email, level, directory_id, created_at, updated_at FROM org.people"
-            )
-            .fetch_all(repos.org.pool())
-            .await
-            .map_err(db_err)?;
-
-            let people_rows: Vec<serde_json::Value> = people
-                .iter()
-                .map(|p| {
-                    serde_json::json!({
-                        "id": p.id,
-                        "name": p.name,
-                        "email": p.email,
-                        "level": p.level,
-                        "directory_id": p.directory_id,
-                        "created_at": p.created_at.to_string(),
-                        "updated_at": p.updated_at.to_string(),
-                    })
-                })
-                .collect();
-
+            let people_rows = repos.org.export_people().await.map_err(db_err)?;
             writer.write_table("people", &people_rows)
                 .map_err(backup_err)?;
 
-            // Export teams (will move to OrgRepo in T4)
-            let teams = sqlx::query!(
-                "SELECT id, name, org_name, parent_team_id, lead_id, github_team_slug, created_at FROM org.teams"
-            )
-            .fetch_all(repos.org.pool())
-            .await
-            .map_err(db_err)?;
-
-            let team_rows: Vec<serde_json::Value> = teams
-                .iter()
-                .map(|t| {
-                    serde_json::json!({
-                        "id": t.id,
-                        "name": t.name,
-                        "org_name": t.org_name,
-                        "parent_team_id": t.parent_team_id,
-                        "lead_id": t.lead_id,
-                        "github_team_slug": t.github_team_slug,
-                        "created_at": t.created_at.to_string(),
-                    })
-                })
-                .collect();
-
+            let team_rows = repos.org.export_teams().await.map_err(db_err)?;
             writer.write_table("teams", &team_rows)
                 .map_err(backup_err)?;
 

@@ -38,7 +38,7 @@ impl TestServer {
 
         let auth_service = AuthServiceImpl::new(pool.clone());
         let admin_service = AdminServiceImpl::new(repos.clone());
-        let org_service = OrgServiceImpl::new(pool.clone());
+        let org_service = OrgServiceImpl::new(repos.clone());
         let config_service = ConfigServiceImpl::new(repos.clone(), test_secret_key());
         // IngestionService uses a dummy Restate URL — trigger tests will get
         // connection-refused, which is expected (we test the gRPC layer, not Restate).

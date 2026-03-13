@@ -1,3 +1,5 @@
+use ps_core::repo::Repos;
+use ps_core::repo::org::{IdentityRow, PersonRow};
 use ps_proto::prism::v1::org_service_server::OrgService;
 use ps_proto::prism::v1::{
     GetTeamRequest, GetTeamResponse, ImportDirectoryRequest, ImportDirectoryResponse,
@@ -5,7 +7,6 @@ use ps_proto::prism::v1::{
     PlatformIdentity, Team,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
@@ -13,21 +14,6 @@ use uuid::Uuid;
 use crate::directory::parse_directory_html;
 
 use super::common::{db_err, require_auth};
-
-/// A person row from the database (shared between `get_team` and `list_people`).
-struct PersonRow {
-    id: Uuid,
-    name: String,
-    email: Option<String>,
-    level: Option<String>,
-}
-
-/// An identity row from the database.
-struct IdentityRow {
-    person_id: Uuid,
-    platform: String,
-    platform_username: String,
-}
 
 /// Build `Person` proto messages from person rows + their platform identities.
 fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Person> {
@@ -55,12 +41,12 @@ fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Perso
 }
 
 pub struct OrgServiceImpl {
-    pool: PgPool,
+    repos: Repos,
 }
 
 impl OrgServiceImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(repos: Repos) -> Self {
+        Self { repos }
     }
 }
 
@@ -80,24 +66,12 @@ impl OrgService for OrgServiceImpl {
             .transpose()
             .map_err(|_| Status::invalid_argument("invalid parent_team_id"))?;
 
-        // Use a single query with optional parent filter
-        let teams = sqlx::query!(
-            r#"
-            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
-                   t.github_team_slug,
-                   COUNT(tm.id)::int AS "member_count!"
-            FROM org.teams t
-            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
-                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            WHERE ($1::uuid IS NULL OR t.parent_team_id = $1)
-            GROUP BY t.id
-            ORDER BY t.name
-            "#,
-            parent_filter,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let teams = self
+            .repos
+            .org
+            .list_teams(parent_filter)
+            .await
+            .map_err(db_err)?;
 
         let teams = teams
             .into_iter()
@@ -127,72 +101,29 @@ impl OrgService for OrgServiceImpl {
             .parse()
             .map_err(|_| Status::invalid_argument("invalid team_id"))?;
 
-        let team = sqlx::query!(
-            r#"
-            SELECT t.id, t.name, t.org_name, t.parent_team_id, t.lead_id,
-                   t.github_team_slug,
-                   COUNT(tm.id)::int AS "member_count!"
-            FROM org.teams t
-            LEFT JOIN org.team_memberships tm ON tm.team_id = t.id
-                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            WHERE t.id = $1
-            GROUP BY t.id
-            "#,
-            team_id,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("team not found"))?;
+        let team = self
+            .repos
+            .org
+            .get_team(team_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("team not found"))?;
 
-        // Fetch active members with their identities
-        let members_rows = sqlx::query!(
-            r#"
-            SELECT p.id, p.name, p.email, p.level
-            FROM org.people p
-            JOIN org.team_memberships tm ON tm.person_id = p.id
-            WHERE tm.team_id = $1
-              AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            ORDER BY p.name
-            "#,
-            team_id,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let member_people = self
+            .repos
+            .org
+            .get_team_members(team_id)
+            .await
+            .map_err(db_err)?;
 
-        let person_ids: Vec<Uuid> = members_rows.iter().map(|r| r.id).collect();
+        let person_ids: Vec<Uuid> = member_people.iter().map(|r| r.id).collect();
 
-        let identity_rows = sqlx::query!(
-            r#"
-            SELECT person_id, platform, platform_username
-            FROM org.platform_identities
-            WHERE person_id = ANY($1)
-            "#,
-            &person_ids,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
-
-        let identities: Vec<IdentityRow> = identity_rows
-            .into_iter()
-            .map(|i| IdentityRow {
-                person_id: i.person_id,
-                platform: i.platform,
-                platform_username: i.platform_username,
-            })
-            .collect();
-
-        let member_people: Vec<PersonRow> = members_rows
-            .into_iter()
-            .map(|p| PersonRow {
-                id: p.id,
-                name: p.name,
-                email: p.email,
-                level: p.level,
-            })
-            .collect();
+        let identities = self
+            .repos
+            .org
+            .get_identities_for_people(&person_ids)
+            .await
+            .map_err(db_err)?;
 
         let members = build_people(member_people, &identities);
 
@@ -218,51 +149,18 @@ impl OrgService for OrgServiceImpl {
     ) -> Result<Response<ListPeopleResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let people_rows = sqlx::query!(
-            r#"
-            SELECT id, name, email, level
-            FROM org.people
-            ORDER BY name
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let people_rows = self.repos.org.list_people().await.map_err(db_err)?;
 
         let person_ids: Vec<Uuid> = people_rows.iter().map(|r| r.id).collect();
 
-        let identity_rows = sqlx::query!(
-            r#"
-            SELECT person_id, platform, platform_username
-            FROM org.platform_identities
-            WHERE person_id = ANY($1)
-            "#,
-            &person_ids,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let identities = self
+            .repos
+            .org
+            .get_identities_for_people(&person_ids)
+            .await
+            .map_err(db_err)?;
 
-        let identities: Vec<IdentityRow> = identity_rows
-            .into_iter()
-            .map(|i| IdentityRow {
-                person_id: i.person_id,
-                platform: i.platform,
-                platform_username: i.platform_username,
-            })
-            .collect();
-
-        let person_rows: Vec<PersonRow> = people_rows
-            .into_iter()
-            .map(|p| PersonRow {
-                id: p.id,
-                name: p.name,
-                email: p.email,
-                level: p.level,
-            })
-            .collect();
-
-        let people = build_people(person_rows, &identities);
+        let people = build_people(people_rows, &identities);
 
         Ok(Response::new(ListPeopleResponse { people }))
     }
@@ -279,225 +177,46 @@ impl OrgService for OrgServiceImpl {
 
         let records = parse_file_content(&content)?;
 
-        let mut people_imported = 0i32;
-        let mut teams_created = 0i32;
-        let mut identities_mapped = 0i32;
-        let mut warnings = Vec::new();
+        let import_records: Vec<ps_core::repo::org::ImportRecord> = records
+            .into_iter()
+            .map(|r| ps_core::repo::org::ImportRecord {
+                name: r.name,
+                email: r.email,
+                level: r.level,
+                directory_id: r.directory_id,
+                team: r.team,
+                org: r.org,
+                identities: r
+                    .identities
+                    .into_iter()
+                    .map(|i| ps_core::repo::org::ImportIdentity {
+                        platform: i.platform,
+                        username: i.username,
+                    })
+                    .collect(),
+            })
+            .collect();
 
-        let mut tx = self.pool.begin().await.map_err(db_err)?;
-
-        for record in &records {
-            if record.name.is_empty() {
-                warnings.push(format!(
-                    "skipping record with empty name (directory_id: {:?})",
-                    record.directory_id
-                ));
-                continue;
-            }
-
-            let person_id = Uuid::now_v7();
-
-            // Upsert person by directory_id if present, otherwise insert
-            let resolved_id = if let Some(dir_id) = &record.directory_id {
-                let existing = sqlx::query_scalar!(
-                    "SELECT id FROM org.people WHERE directory_id = $1",
-                    dir_id,
-                )
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db_err)?;
-
-                if let Some(existing_id) = existing {
-                    sqlx::query!(
-                        r#"
-                        UPDATE org.people
-                        SET name = $1, email = $2, level = $3, updated_at = now()
-                        WHERE id = $4
-                        "#,
-                        record.name,
-                        record.email,
-                        record.level,
-                        existing_id,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-
-                    existing_id
-                } else {
-                    sqlx::query!(
-                        r#"
-                        INSERT INTO org.people (id, name, email, level, directory_id)
-                        VALUES ($1, $2, $3, $4, $5)
-                        "#,
-                        person_id,
-                        record.name,
-                        record.email,
-                        record.level,
-                        dir_id,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-
-                    people_imported += 1;
-                    person_id
-                }
-            } else {
-                sqlx::query!(
-                    r#"
-                    INSERT INTO org.people (id, name, email, level)
-                    VALUES ($1, $2, $3, $4)
-                    "#,
-                    person_id,
-                    record.name,
-                    record.email,
-                    record.level,
-                )
-                .execute(&mut *tx)
-                .await
-                .map_err(db_err)?;
-
-                people_imported += 1;
-                person_id
-            };
-
-            // Create team if specified and doesn't exist
-            if let Some(team_name) = &record.team {
-                let org_name = record.org.as_deref().unwrap_or("default");
-
-                let team_id = sqlx::query_scalar!(
-                    "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
-                    team_name,
-                    org_name,
-                )
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db_err)?;
-
-                let team_id = if let Some(id) = team_id {
-                    id
-                } else {
-                    let new_id = Uuid::now_v7();
-                    sqlx::query!(
-                        r#"
-                        INSERT INTO org.teams (id, name, org_name)
-                        VALUES ($1, $2, $3)
-                        "#,
-                        new_id,
-                        team_name,
-                        org_name,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-
-                    teams_created += 1;
-                    new_id
-                };
-
-                // Create membership if not already active
-                let has_membership = sqlx::query_scalar!(
-                    r#"
-                    SELECT EXISTS(
-                        SELECT 1 FROM org.team_memberships
-                        WHERE person_id = $1 AND team_id = $2
-                          AND (end_date IS NULL OR end_date > CURRENT_DATE)
-                    ) AS "exists!"
-                    "#,
-                    resolved_id,
-                    team_id,
-                )
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(db_err)?;
-
-                if !has_membership {
-                    let membership_id = Uuid::now_v7();
-                    sqlx::query!(
-                        r#"
-                        INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
-                        VALUES ($1, $2, $3, CURRENT_DATE)
-                        "#,
-                        membership_id,
-                        resolved_id,
-                        team_id,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-                }
-            }
-
-            // Map platform identities
-            for identity in &record.identities {
-                if identity.platform.is_empty() || identity.username.is_empty() {
-                    warnings.push(format!("skipping empty identity for {}", record.name));
-                    continue;
-                }
-
-                let existing = sqlx::query_scalar!(
-                    r#"
-                    SELECT id FROM org.platform_identities
-                    WHERE platform = $1 AND platform_username = $2
-                    "#,
-                    identity.platform,
-                    identity.username,
-                )
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db_err)?;
-
-                if existing.is_some() {
-                    sqlx::query!(
-                        r#"
-                        UPDATE org.platform_identities
-                        SET person_id = $1
-                        WHERE platform = $2 AND platform_username = $3
-                        "#,
-                        resolved_id,
-                        identity.platform,
-                        identity.username,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-                } else {
-                    let identity_id = Uuid::now_v7();
-                    sqlx::query!(
-                        r#"
-                        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-                        VALUES ($1, $2, $3, $4)
-                        "#,
-                        identity_id,
-                        resolved_id,
-                        identity.platform,
-                        identity.username,
-                    )
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(db_err)?;
-
-                    identities_mapped += 1;
-                }
-            }
-        }
-
-        tx.commit().await.map_err(db_err)?;
+        let result = self
+            .repos
+            .org
+            .import_records(&import_records)
+            .await
+            .map_err(db_err)?;
 
         info!(
-            people_imported,
-            teams_created,
-            identities_mapped,
-            warnings = warnings.len(),
+            people_imported = result.people_imported,
+            teams_created = result.teams_created,
+            identities_mapped = result.identities_mapped,
+            warnings = result.warnings.len(),
             "directory import complete"
         );
 
         Ok(Response::new(ImportDirectoryResponse {
-            people_imported,
-            teams_created,
-            identities_mapped,
-            warnings,
+            people_imported: result.people_imported,
+            teams_created: result.teams_created,
+            identities_mapped: result.identities_mapped,
+            warnings: result.warnings,
         }))
     }
 }
