@@ -45,6 +45,7 @@ const IngestionPage = (): React.ReactElement => {
 
   const { data: runs, isLoading: runsLoading } = useListRuns(selectedSource, {
     refetchInterval: runsInterval,
+    handlerName: "GithubIngestionHandler",
   });
 
   if (sourcesLoading) {
