@@ -54,6 +54,7 @@ export const useCreateSource = (): UseMutationResult<
     }) => configClient.createSource(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });
+      queryClient.invalidateQueries({ queryKey: ["ingestion", "status"] });
     },
   });
 };
@@ -86,6 +87,7 @@ export const useDeleteSource = (): UseMutationResult<DeleteSourceResponse, Error
     mutationFn: (sourceId: string) => configClient.deleteSource({ sourceId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });
+      queryClient.invalidateQueries({ queryKey: ["ingestion", "status"] });
     },
   });
 };

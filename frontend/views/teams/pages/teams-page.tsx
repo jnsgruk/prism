@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -10,42 +11,85 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, ArrowUpDown } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
+import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
+import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
 import {
   buildPeriod,
   defaultPeriodKey,
   PeriodSelector,
 } from "@/views/teams/components/period-selector";
-import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
-import { TeamTree } from "@/views/teams/components/team-tree";
-import { useGetTeamTree, useListTeams } from "@/views/teams/hooks/use-teams";
+import { TeamSelector } from "@/views/teams/components/team-selector";
+import {
+  findTeam,
+  teamTypeBadgeVariant,
+  teamTypeLabel,
+  useGetTeam,
+  useGetTeamTree,
+} from "@/views/teams/hooks/use-teams";
 
 type SortField = "name" | "throughput" | "review" | "members";
 type SortDir = "asc" | "desc";
 
 const TeamsPage = (): React.ReactElement => {
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [periodKey, setPeriodKey] = useState(defaultPeriodKey);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedTeamId = searchParams.get("team");
+  const periodKey = searchParams.get("period") ?? defaultPeriodKey;
+
+  const setSelectedTeamId = (id: string): void => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("team", id);
+      return next;
+    });
+  };
+
+  const setPeriodKey = (key: string): void => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("period", key);
+      return next;
+    });
+  };
+
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
   const { data: tree, isLoading: treeLoading, error: treeError } = useGetTeamTree();
-  const { data: teams } = useListTeams();
 
-  const teamIds = useMemo(() => teams?.map((t) => t.id) ?? [], [teams]);
+  const roots = useMemo(() => tree?.roots ?? [], [tree]);
+
+  // Default to first root if no team selected
+  const effectiveTeamId = selectedTeamId ?? roots[0]?.id ?? "";
+  const selectedTeam = useMemo(
+    () => (effectiveTeamId ? findTeam(roots, effectiveTeamId) : undefined),
+    [roots, effectiveTeamId],
+  );
+
+  // Fetch children metrics
+  const childIds = useMemo(() => selectedTeam?.children.map((c) => c.id) ?? [], [selectedTeam]);
   const {
-    data: metrics,
+    data: childMetrics,
     isLoading: metricsLoading,
     error: metricsError,
-  } = useCompareTeams(teamIds, period);
+  } = useCompareTeams(childIds, period);
+
+  // Also fetch the selected team's own metrics for the summary cards
+  const teamIdArray = useMemo(() => (effectiveTeamId ? [effectiveTeamId] : []), [effectiveTeamId]);
+  const { data: parentMetrics } = useCompareTeams(teamIdArray, period);
+  const currentMetrics = parentMetrics?.[0];
+
+  // Fetch members for the selected team
+  const { data: teamDetail } = useGetTeam(effectiveTeamId);
 
   const toggleSort = (field: SortField): void => {
     if (sortField === field) {
@@ -57,8 +101,8 @@ const TeamsPage = (): React.ReactElement => {
   };
 
   const sortedMetrics = useMemo(() => {
-    if (!metrics) return [];
-    const sorted = [...metrics];
+    if (!childMetrics) return [];
+    const sorted = [...childMetrics];
     const dir = sortDir === "asc" ? 1 : -1;
     sorted.sort((a, b) => {
       switch (sortField) {
@@ -75,7 +119,7 @@ const TeamsPage = (): React.ReactElement => {
       }
     });
     return sorted;
-  }, [metrics, sortField, sortDir]);
+  }, [childMetrics, sortField, sortDir]);
 
   const chartData = useMemo(
     () =>
@@ -90,11 +134,28 @@ const TeamsPage = (): React.ReactElement => {
   const isLoading = treeLoading || metricsLoading;
   const error = treeError ?? metricsError;
 
+  const [membersOpen, setMembersOpen] = useState(false);
+  const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
+  const members = teamDetail?.members ?? [];
+
   return (
     <>
       <PageHeader title="Teams" description="Organisation hierarchy and team performance" />
-      <div className="flex-1 space-y-6 p-6">
-        <PeriodSelector value={periodKey} onChange={setPeriodKey} />
+      <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
+        {/* Navigation bar: breadcrumb, selector, period */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            {effectiveTeamId && roots.length > 0 && (
+              <TeamBreadcrumb
+                roots={roots}
+                selectedTeamId={effectiveTeamId}
+                onSelect={setSelectedTeamId}
+              />
+            )}
+            <TeamSelector roots={roots} selectedTeam={selectedTeam} onSelect={setSelectedTeamId} />
+          </div>
+          <PeriodSelector value={periodKey} onChange={setPeriodKey} />
+        </div>
 
         {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
 
@@ -105,33 +166,82 @@ const TeamsPage = (): React.ReactElement => {
           </Alert>
         )}
 
-        {/* Tree + detail panel */}
-        {tree && (
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="lg:col-span-3">
-              <TeamTree
-                roots={tree.roots}
-                selectedTeamId={selectedTeamId}
-                onSelect={setSelectedTeamId}
-              />
-            </div>
-
-            <div className="lg:col-span-2">
-              {selectedTeamId ? (
-                <TeamDetailPanel teamId={selectedTeamId} onClose={() => setSelectedTeamId(null)} />
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed p-12">
-                  <p className="text-sm text-muted-foreground">
-                    Select a team to view its members.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Metric summary cards */}
+        {selectedTeam && (
+          <TeamMetricCards
+            metrics={currentMetrics}
+            memberCount={
+              selectedTeam.totalMemberCount > 0
+                ? selectedTeam.totalMemberCount
+                : selectedTeam.memberCount
+            }
+          />
         )}
 
+        {/* Child teams comparison table */}
         {sortedMetrics.length > 0 && (
           <>
+            <Card>
+              <CardContent className="overflow-x-auto p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHeader
+                        field="name"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Team
+                      </SortableHeader>
+                      <TableHead className="w-20">Type</TableHead>
+                      <SortableHeader
+                        field="throughput"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Merged PRs
+                      </SortableHeader>
+                      <SortableHeader
+                        field="review"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Avg Review (hrs)
+                      </SortableHeader>
+                      <SortableHeader
+                        field="members"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Members
+                      </SortableHeader>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedMetrics.map((m) => {
+                      const childTeam = selectedTeam?.children.find((c) => c.id === m.teamId);
+                      return (
+                        <MetricsRow
+                          key={m.teamId}
+                          metrics={m}
+                          teamType={childTeam ? teamTypeLabel(childTeam.teamType) : undefined}
+                          teamTypeBadge={
+                            childTeam ? teamTypeBadgeVariant(childTeam.teamType) : undefined
+                          }
+                          hasChildren={(childTeam?.children.length ?? 0) > 0}
+                          onSelect={() => setSelectedTeamId(m.teamId)}
+                        />
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>PR Throughput by Team</CardTitle>
@@ -170,60 +280,67 @@ const TeamsPage = (): React.ReactElement => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <SortableHeader
-                        field="name"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Team
-                      </SortableHeader>
-                      <SortableHeader
-                        field="throughput"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Merged PRs
-                      </SortableHeader>
-                      <SortableHeader
-                        field="review"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Avg Review (hrs)
-                      </SortableHeader>
-                      <SortableHeader
-                        field="members"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Members
-                      </SortableHeader>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedMetrics.map((m) => (
-                      <MetricsRow
-                        key={m.teamId}
-                        metrics={m}
-                        isSelected={selectedTeamId === m.teamId}
-                        onSelect={() => setSelectedTeamId(m.teamId)}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
           </>
+        )}
+
+        {/* No children message for leaf teams */}
+        {selectedTeam && !hasChildren && !isLoading && sortedMetrics.length === 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">
+                This is a leaf team with no sub-teams. Member details are shown below.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Collapsible members section */}
+        {selectedTeam && members.length > 0 && (
+          <Collapsible open={!hasChildren || membersOpen} onOpenChange={setMembersOpen}>
+            <Card>
+              <CardHeader className="cursor-pointer" onClick={() => setMembersOpen(!membersOpen)}>
+                <CollapsibleTrigger
+                  render={
+                    <button type="button" className="flex w-full items-center gap-2 text-left" />
+                  }
+                >
+                  {hasChildren && membersOpen && <ChevronDown className="size-4" />}
+                  {hasChildren && !membersOpen && <ChevronRight className="size-4" />}
+                  <CardTitle>Members ({members.length})</CardTitle>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Users className="size-3" />
+                    {selectedTeam.name}
+                  </span>
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {members.map((person) => (
+                      <div
+                        key={person.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded border px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{person.name}</p>
+                          {person.email && (
+                            <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {person.identities.map((id) => (
+                            <Badge key={`${id.platform}-${id.username}`} variant="secondary">
+                              {id.platform}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         )}
       </div>
     </>
@@ -256,15 +373,31 @@ const SortableHeader = ({
 
 const MetricsRow = ({
   metrics,
-  isSelected,
+  teamType,
+  teamTypeBadge,
+  hasChildren,
   onSelect,
 }: {
   metrics: TeamMetrics;
-  isSelected: boolean;
+  teamType: string | undefined;
+  teamTypeBadge: "default" | "secondary" | "outline" | "destructive" | undefined;
+  hasChildren: boolean;
   onSelect: () => void;
 }): React.ReactElement => (
-  <TableRow className={`cursor-pointer ${isSelected ? "bg-muted/50" : ""}`} onClick={onSelect}>
-    <TableCell className="font-medium">{metrics.teamName}</TableCell>
+  <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onSelect}>
+    <TableCell className="font-medium">
+      <span className="flex items-center gap-2">
+        {metrics.teamName}
+        {hasChildren && <ChevronRight className="size-3 text-muted-foreground" />}
+      </span>
+    </TableCell>
+    <TableCell>
+      {teamType && teamTypeBadge && (
+        <Badge variant={teamTypeBadge} className="text-[10px]">
+          {teamType}
+        </Badge>
+      )}
+    </TableCell>
     <TableCell>
       <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>{metrics.throughput}</Badge>
     </TableCell>

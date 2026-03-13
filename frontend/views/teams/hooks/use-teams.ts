@@ -77,6 +77,35 @@ export const usePaginatedPeople = (
     placeholderData: keepPreviousData,
   });
 
+/** Flatten a team tree into a list with depth info. */
+export interface FlatTeam {
+  team: Team;
+  depth: number;
+}
+
+export const flattenTree = (roots: Team[], depth = 0): FlatTeam[] =>
+  roots.flatMap((team) => [{ team, depth }, ...flattenTree(team.children, depth + 1)]);
+
+/** Find a team by ID in a tree. */
+export const findTeam = (roots: Team[], id: string): Team | undefined => {
+  for (const root of roots) {
+    if (root.id === id) return root;
+    const found = findTeam(root.children, id);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+/** Get ancestor chain from root to the team with the given ID (inclusive). */
+export const getAncestors = (roots: Team[], id: string): Team[] => {
+  for (const root of roots) {
+    if (root.id === id) return [root];
+    const path = getAncestors(root.children, id);
+    if (path.length > 0) return [root, ...path];
+  }
+  return [];
+};
+
 /** Human-readable label for a TeamType enum value. */
 export const teamTypeLabel = (t: TeamType): string => {
   switch (t) {

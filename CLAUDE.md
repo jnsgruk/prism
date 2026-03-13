@@ -118,6 +118,8 @@ The `Repos` struct bundles all four repos and is constructed once from a `PgPool
 
 Vite + React Router SPA + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts. Production container serves static files via Caddy.
 
+**No horizontal overflow.** All page content must stay within the viewport width — no horizontal scrollbars on the page. Use `min-w-0` on flex children, `overflow-hidden` on content wrappers, and `overflow-x-auto` on wide elements like tables so they scroll internally rather than pushing the page wider. The `SidebarInset` component already applies `min-w-0 overflow-hidden`; individual pages must ensure their content respects this constraint.
+
 **shadcn/ui is the standard UI component library.** Always use components from `@/components/ui/` (Dialog, Button, Card, Input, Label, Select, Tabs, Badge, Table, Alert, Separator, DropdownMenu) rather than hand-rolling UI with raw Tailwind. The underlying primitives come from `@base-ui/react`, not Radix. To add new shadcn components: `bunx shadcn@latest add <component-name>`. Components use `@ps/cn` for the `cn` helper.
 
 ## Frontend State & Validation
