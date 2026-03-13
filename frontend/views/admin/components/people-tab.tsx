@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -28,8 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, UserMinus, UserPlus, UserX, UserCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { Person, Team } from "@ps/api/gen/prism/v1/org_pb";
 
@@ -53,8 +53,7 @@ export const PeopleTab = (): React.ReactElement => {
   const { data: tree } = useGetTeamTree();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
-  const [assigningPerson, setAssigningPerson] = useState<Person | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
 
@@ -101,7 +100,7 @@ export const PeopleTab = (): React.ReactElement => {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Search people..."
           value={search}
@@ -137,49 +136,48 @@ export const PeopleTab = (): React.ReactElement => {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Level</TableHead>
             <TableHead>Team</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">
+              <TableCell colSpan={2} className="text-center text-muted-foreground">
                 {search ? "No people match your search." : "No people found."}
               </TableCell>
             </TableRow>
           )}
           {filtered.map((person) => (
-            <PersonRow
+            <TableRow
               key={person.id}
-              person={person}
-              onEdit={() => setEditingPerson(person)}
-              onAssign={() => setAssigningPerson(person)}
-            />
+              className="cursor-pointer"
+              onClick={() => setSelectedPerson(person)}
+            >
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{person.name}</span>
+                  {!person.active && <Badge variant="destructive">Inactive</Badge>}
+                </div>
+              </TableCell>
+              <TableCell>
+                {person.teamName ? (
+                  <Badge variant="secondary">{person.teamName}</Badge>
+                ) : (
+                  <span className="text-muted-foreground">&mdash;</span>
+                )}
+              </TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      {editingPerson && (
-        <EditPersonDialog
-          person={editingPerson}
-          open={!!editingPerson}
-          onOpenChange={(open) => {
-            if (!open) setEditingPerson(null);
-          }}
-        />
-      )}
-
-      {assigningPerson && (
-        <AssignTeamDialog
-          person={assigningPerson}
+      {selectedPerson && (
+        <PersonDetailDialog
+          person={selectedPerson}
           teams={allTeams}
-          open={!!assigningPerson}
+          open={!!selectedPerson}
           onOpenChange={(open) => {
-            if (!open) setAssigningPerson(null);
+            if (!open) setSelectedPerson(null);
           }}
         />
       )}
@@ -187,115 +185,88 @@ export const PeopleTab = (): React.ReactElement => {
   );
 };
 
-const PersonRow = ({
+const PersonDetailDialog = ({
   person,
-  onEdit,
-  onAssign,
-}: {
-  person: Person;
-  onEdit: () => void;
-  onAssign: () => void;
-}): React.ReactElement => {
-  const deactivate = useDeactivatePerson();
-  const reactivate = useReactivatePerson();
-  const removeFromTeam = useRemovePersonFromTeam();
-
-  return (
-    <TableRow>
-      <TableCell className="font-medium">{person.name}</TableCell>
-      <TableCell className="text-muted-foreground">{person.email ?? "\u2014"}</TableCell>
-      <TableCell className="text-muted-foreground">{person.level ?? "\u2014"}</TableCell>
-      <TableCell>
-        {person.teamName ? (
-          <Badge variant="secondary">{person.teamName}</Badge>
-        ) : (
-          <span className="text-muted-foreground">\u2014</span>
-        )}
-      </TableCell>
-      <TableCell>
-        <Badge variant={person.active ? "outline" : "destructive"}>
-          {person.active ? "Active" : "Inactive"}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" title="Edit person" onClick={onEdit}>
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" title="Assign to team" onClick={onAssign}>
-            <UserPlus className="size-3.5" />
-          </Button>
-          {person.teamId && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Remove from team"
-              onClick={() => removeFromTeam.mutate({ personId: person.id, teamId: person.teamId! })}
-            >
-              <UserMinus className="size-3.5" />
-            </Button>
-          )}
-          {person.active ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Deactivate"
-              className="hover:text-destructive"
-              onClick={() => deactivate.mutate(person.id)}
-            >
-              <UserX className="size-3.5" />
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Reactivate"
-              onClick={() => reactivate.mutate(person.id)}
-            >
-              <UserCheck className="size-3.5" />
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-};
-
-const EditPersonDialog = ({
-  person,
+  teams,
   open,
   onOpenChange,
 }: {
   person: Person;
+  teams: Team[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
   const updatePerson = useUpdatePerson();
+  const deactivate = useDeactivatePerson();
+  const reactivate = useReactivatePerson();
+  const assign = useAssignPersonToTeam();
+  const removeFromTeam = useRemovePersonFromTeam();
+
   const [name, setName] = useState(person.name);
   const [email, setEmail] = useState(person.email ?? "");
   const [level, setLevel] = useState(person.level ?? "");
+  const [teamId, setTeamId] = useState(person.teamId ?? "");
+
+  useEffect(() => {
+    setName(person.name);
+    setEmail(person.email ?? "");
+    setLevel(person.level ?? "");
+    setTeamId(person.teamId ?? "");
+  }, [person]);
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    updatePerson.mutate(
-      {
+
+    // Update person fields if changed.
+    const nameChanged = name !== person.name;
+    const emailChanged = email !== (person.email ?? "");
+    const levelChanged = level !== (person.level ?? "");
+    if (nameChanged || emailChanged || levelChanged) {
+      updatePerson.mutate({
         personId: person.id,
-        name: name !== person.name ? name : undefined,
-        email: email && email !== (person.email ?? "") ? email : undefined,
-        level: level && level !== (person.level ?? "") ? level : undefined,
-      },
-      { onSuccess: () => onOpenChange(false) },
-    );
+        name: nameChanged ? name : undefined,
+        email: emailChanged ? email : undefined,
+        level: levelChanged ? level : undefined,
+      });
+    }
+
+    // Update team assignment if changed.
+    const teamChanged = teamId !== (person.teamId ?? "");
+    if (teamChanged) {
+      if (person.teamId) {
+        removeFromTeam.mutate({ personId: person.id, teamId: person.teamId });
+      }
+      if (teamId) {
+        assign.mutate({ personId: person.id, teamId });
+      }
+    }
+
+    onOpenChange(false);
   };
+
+  const handleToggleActive = (): void => {
+    if (person.active) {
+      deactivate.mutate(person.id, { onSuccess: () => onOpenChange(false) });
+    } else {
+      reactivate.mutate(person.id, { onSuccess: () => onOpenChange(false) });
+    }
+  };
+
+  const isPending = updatePerson.isPending || assign.isPending || removeFromTeam.isPending;
+  const mutationError = updatePerson.error ?? assign.error ?? removeFromTeam.error;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit Person</DialogTitle>
-            <DialogDescription>Update details for {person.name}.</DialogDescription>
+            <DialogTitle>{person.name}</DialogTitle>
+            <DialogDescription>
+              Edit details, team assignment, and status.
+              {!person.active && " This person is currently inactive."}
+            </DialogDescription>
           </DialogHeader>
+
           <div className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="person-name">Name</Label>
@@ -319,59 +290,16 @@ const EditPersonDialog = ({
               <Label htmlFor="person-level">Level / Title</Label>
               <Input id="person-level" value={level} onChange={(e) => setLevel(e.target.value)} />
             </div>
-            {updatePerson.isError && (
-              <Alert variant="destructive">{updatePerson.error.message}</Alert>
-            )}
-          </div>
-          <DialogFooter className="mt-4">
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button type="submit" disabled={updatePerson.isPending || !name.trim()}>
-              {updatePerson.isPending ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
-const AssignTeamDialog = ({
-  person,
-  teams,
-  open,
-  onOpenChange,
-}: {
-  person: Person;
-  teams: Team[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}): React.ReactElement => {
-  const assign = useAssignPersonToTeam();
-  const [teamId, setTeamId] = useState("");
+            <Separator />
 
-  const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
-    if (!teamId) return;
-    assign.mutate({ personId: person.id, teamId }, { onSuccess: () => onOpenChange(false) });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Assign to Team</DialogTitle>
-            <DialogDescription>
-              Choose a team for {person.name}.
-              {person.teamName && ` Currently on "${person.teamName}".`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="assign-team">Team</Label>
+              <Label htmlFor="person-team">Team</Label>
               <Select value={teamId} onValueChange={(v) => v !== null && setTeamId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a team..." />
+                  <SelectValue placeholder="No team">
+                    {teams.find((t) => t.id === teamId)?.name ?? "No team"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((t) => (
@@ -382,12 +310,60 @@ const AssignTeamDialog = ({
                 </SelectContent>
               </Select>
             </div>
-            {assign.isError && <Alert variant="destructive">{assign.error.message}</Alert>}
+
+            {person.identities.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Platform Identities</Label>
+                  <div className="space-y-1">
+                    {person.identities.map((id) => (
+                      <div
+                        key={`${id.platform}-${id.username}`}
+                        className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
+                      >
+                        <span className="font-medium capitalize">{id.platform}</span>
+                        <span className="text-muted-foreground">{id.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{person.active ? "Deactivate" : "Reactivate"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {person.active
+                    ? "Remove this person from active reporting."
+                    : "Restore this person to active status."}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={person.active ? "destructive" : "outline"}
+                size="sm"
+                onClick={handleToggleActive}
+                disabled={deactivate.isPending || reactivate.isPending}
+              >
+                {person.active ? "Deactivate" : "Reactivate"}
+              </Button>
+            </div>
+
+            {mutationError && (
+              <Alert variant="destructive">
+                {mutationError instanceof Error ? mutationError.message : "An error occurred"}
+              </Alert>
+            )}
           </div>
+
           <DialogFooter className="mt-4">
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button type="submit" disabled={assign.isPending || !teamId}>
-              {assign.isPending ? "Assigning..." : "Assign"}
+            <Button type="submit" disabled={isPending || !name.trim()}>
+              {isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
