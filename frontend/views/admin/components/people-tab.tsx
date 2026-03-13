@@ -73,7 +73,7 @@ export const PeopleTab = (): React.ReactElement => {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageTokens, setPageTokens] = useState<string[]>([""]);
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
