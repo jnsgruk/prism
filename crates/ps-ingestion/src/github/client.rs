@@ -294,6 +294,8 @@ pub enum GitHubError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_parse_next_page() {
@@ -311,5 +313,227 @@ mod tests {
     fn test_parse_next_page_with_other_params() {
         let link = r#"<https://api.github.com/repos/org/repo/pulls?state=all&per_page=100&page=3>; rel="next""#;
         assert_eq!(parse_next_page(link), Some(3));
+    }
+
+    #[tokio::test]
+    async fn test_list_pulls_basic() {
+        let mock_server = MockServer::start().await;
+
+        let body = serde_json::json!([{
+            "number": 42,
+            "title": "Add feature",
+            "state": "open",
+            "user": { "login": "alice", "id": 1 },
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-02T00:00:00Z",
+            "html_url": "https://github.com/org/repo/pull/42",
+            "additions": 10,
+            "deletions": 5,
+            "changed_files": 3
+        }]);
+
+        Mock::given(method("GET"))
+            .and(path("/repos/org/repo/pulls"))
+            .and(header("authorization", "Bearer test-token"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(&body)
+                    .append_header("x-ratelimit-remaining", "99")
+                    .append_header("x-ratelimit-limit", "100")
+                    .append_header("x-ratelimit-reset", "1700000000"),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = GitHubClient::new(reqwest::Client::new(), &mock_server.uri(), "test-token");
+
+        let result = client
+            .list_pulls(&ListPullsParams {
+                owner: "org",
+                repo: "repo",
+                state: "all",
+                page: 1,
+                per_page: 100,
+                since: None,
+                if_none_match: None,
+            })
+            .await
+            .expect("list_pulls");
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].number, 42);
+        assert_eq!(result.items[0].title, "Add feature");
+        assert_eq!(result.rate_limit.remaining, 99);
+        assert!(!result.not_modified);
+    }
+
+    #[tokio::test]
+    async fn test_list_pulls_304_not_modified() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/repos/org/repo/pulls"))
+            .and(header("if-none-match", "\"abc123\""))
+            .respond_with(
+                ResponseTemplate::new(304)
+                    .append_header("x-ratelimit-remaining", "50")
+                    .append_header("x-ratelimit-limit", "100")
+                    .append_header("x-ratelimit-reset", "1700000000"),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = GitHubClient::new(reqwest::Client::new(), &mock_server.uri(), "test-token");
+
+        let result = client
+            .list_pulls(&ListPullsParams {
+                owner: "org",
+                repo: "repo",
+                state: "all",
+                page: 1,
+                per_page: 100,
+                since: None,
+                if_none_match: Some("\"abc123\""),
+            })
+            .await
+            .expect("list_pulls");
+
+        assert!(result.not_modified);
+        assert!(result.items.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_pulls_pagination() {
+        let mock_server = MockServer::start().await;
+
+        let body = serde_json::json!([{
+            "number": 1,
+            "title": "PR 1",
+            "state": "open",
+            "user": { "login": "bob", "id": 2 },
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-02T00:00:00Z",
+            "html_url": "https://github.com/org/repo/pull/1",
+            "additions": 1,
+            "deletions": 0,
+            "changed_files": 1
+        }]);
+
+        let link_header = format!(
+            "<{}/repos/org/repo/pulls?page=2>; rel=\"next\"",
+            mock_server.uri()
+        );
+
+        Mock::given(method("GET"))
+            .and(path("/repos/org/repo/pulls"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(&body)
+                    .append_header("link", &link_header)
+                    .append_header("x-ratelimit-remaining", "98")
+                    .append_header("x-ratelimit-limit", "100")
+                    .append_header("x-ratelimit-reset", "1700000000"),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = GitHubClient::new(reqwest::Client::new(), &mock_server.uri(), "test-token");
+
+        let result = client
+            .list_pulls(&ListPullsParams {
+                owner: "org",
+                repo: "repo",
+                state: "all",
+                page: 1,
+                per_page: 100,
+                since: None,
+                if_none_match: None,
+            })
+            .await
+            .expect("list_pulls");
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.next_page, Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_list_reviews() {
+        let mock_server = MockServer::start().await;
+
+        let body = serde_json::json!([
+            {
+                "id": 100,
+                "user": { "login": "reviewer", "id": 3 },
+                "state": "APPROVED",
+                "submitted_at": "2024-01-05T00:00:00Z",
+                "body": "LGTM"
+            },
+            {
+                "id": 101,
+                "user": { "login": "reviewer2", "id": 4 },
+                "state": "CHANGES_REQUESTED",
+                "submitted_at": "2024-01-04T00:00:00Z",
+                "body": "Needs changes"
+            }
+        ]);
+
+        Mock::given(method("GET"))
+            .and(path("/repos/org/repo/pulls/42/reviews"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&body))
+            .mount(&mock_server)
+            .await;
+
+        let client = GitHubClient::new(reqwest::Client::new(), &mock_server.uri(), "test-token");
+
+        let reviews = client
+            .list_reviews("org", "repo", 42)
+            .await
+            .expect("list_reviews");
+
+        assert_eq!(reviews.len(), 2);
+        assert_eq!(reviews[0].state, "APPROVED");
+        assert_eq!(reviews[1].state, "CHANGES_REQUESTED");
+    }
+
+    #[tokio::test]
+    async fn test_list_org_repos() {
+        let mock_server = MockServer::start().await;
+
+        let body = serde_json::json!([
+            {
+                "id": 1000,
+                "name": "repo-a",
+                "full_name": "org/repo-a",
+                "owner": { "login": "org" },
+                "html_url": "https://github.com/org/repo-a",
+                "description": "A repo",
+                "archived": false,
+                "fork": false,
+                "default_branch": "main"
+            }
+        ]);
+
+        Mock::given(method("GET"))
+            .and(path("/orgs/org/repos"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(&body)
+                    .append_header("x-ratelimit-remaining", "95")
+                    .append_header("x-ratelimit-limit", "100")
+                    .append_header("x-ratelimit-reset", "1700000000"),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = GitHubClient::new(reqwest::Client::new(), &mock_server.uri(), "test-token");
+
+        let result = client
+            .list_org_repos("org", 1, 100)
+            .await
+            .expect("list_org_repos");
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].name, "repo-a");
+        assert_eq!(result.items[0].archived, Some(false));
     }
 }
