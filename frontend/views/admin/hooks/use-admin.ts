@@ -12,6 +12,8 @@ import type {
   CreateTeamResponse,
   DeleteTeamResponse,
   ImportDirectoryResponse,
+  Person,
+  UpdatePersonResponse,
   UpdateTeamResponse,
 } from "@ps/api/gen/prism/v1/org_pb";
 import { OrgService, TeamType } from "@ps/api/gen/prism/v1/org_pb";
@@ -127,3 +129,80 @@ export const useDeleteTeam = (): UseMutationResult<DeleteTeamResponse, Error, st
     },
   });
 };
+
+export const useUpdatePerson = (): UseMutationResult<
+  UpdatePersonResponse,
+  Error,
+  { personId: string; name?: string; email?: string; level?: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input) => orgClient.updatePerson(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useDeactivatePerson = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (personId: string) => {
+      await orgClient.deactivatePerson({ personId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useReactivatePerson = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (personId: string) => {
+      await orgClient.reactivatePerson({ personId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useAssignPersonToTeam = (): UseMutationResult<
+  void,
+  Error,
+  { personId: string; teamId: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ personId, teamId }) => {
+      await orgClient.assignPersonToTeam({ personId, teamId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useRemovePersonFromTeam = (): UseMutationResult<
+  void,
+  Error,
+  { personId: string; teamId: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ personId, teamId }) => {
+      await orgClient.removePersonFromTeam({ personId, teamId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useListUnassignedPeople = (): UseQueryResult<Person[], Error> =>
+  useQuery({
+    queryKey: [...orgKeys.all, "unassigned"] as const,
+    queryFn: () => orgClient.listUnassignedPeople({}),
+    select: (data): Person[] => data.people,
+  });
