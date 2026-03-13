@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, ArrowUpDown, Users } from "lucide-react";
+import { AlertCircle, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -22,7 +22,8 @@ import { useCompareTeams } from "@/lib/hooks/use-metrics";
 import { ImportDirectoryDialog } from "@/views/teams/components/import-directory-dialog";
 import { PeriodSelector } from "@/views/teams/components/period-selector";
 import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
-import { useListTeams } from "@/views/teams/hooks/use-teams";
+import { TeamTree } from "@/views/teams/components/team-tree";
+import { useGetTeamTree, useListTeams } from "@/views/teams/hooks/use-teams";
 
 type SortField = "name" | "throughput" | "review" | "members";
 type SortDir = "asc" | "desc";
@@ -44,7 +45,8 @@ const TeamsPage = (): React.ReactElement => {
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const { data: teams, isLoading: teamsLoading, error: teamsError } = useListTeams();
+  const { data: tree, isLoading: treeLoading, error: treeError } = useGetTeamTree();
+  const { data: teams } = useListTeams();
 
   const teamIds = useMemo(() => teams?.map((t) => t.id) ?? [], [teams]);
   const {
@@ -93,14 +95,14 @@ const TeamsPage = (): React.ReactElement => {
     [sortedMetrics],
   );
 
-  const isLoading = teamsLoading || metricsLoading;
-  const error = teamsError ?? metricsError;
+  const isLoading = treeLoading || metricsLoading;
+  const error = treeError ?? metricsError;
 
   return (
     <>
       <PageHeader
         title="Teams"
-        description="Compare team performance across PR throughput and review turnaround"
+        description="Organisation hierarchy and team performance"
         actions={
           <div className="flex items-center gap-3">
             <PeriodSelector value={period} onChange={setPeriod} />
@@ -109,26 +111,42 @@ const TeamsPage = (): React.ReactElement => {
         }
       />
       <div className="flex-1 space-y-6 p-6">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading metrics...</p>}
+        {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
 
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            Failed to load team metrics.
+            Failed to load team data.
           </Alert>
         )}
 
-        {teams && teams.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
-            <Users className="mb-3 size-10 text-muted-foreground" />
-            <p className="mb-1 font-medium">No teams yet</p>
-            <p className="text-sm text-muted-foreground">Import a directory file to get started.</p>
+        {/* Tree + detail panel */}
+        {tree && (
+          <div className="grid gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <TeamTree
+                roots={tree.roots}
+                selectedTeamId={selectedTeamId}
+                onSelect={setSelectedTeamId}
+              />
+            </div>
+
+            <div className="lg:col-span-2">
+              {selectedTeamId ? (
+                <TeamDetailPanel teamId={selectedTeamId} onClose={() => setSelectedTeamId(null)} />
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed p-12">
+                  <p className="text-sm text-muted-foreground">
+                    Select a team to view its members.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {sortedMetrics.length > 0 && (
           <>
-            {/* Bar chart comparing throughput */}
             <Card>
               <CardHeader>
                 <CardTitle>PR Throughput by Team</CardTitle>
@@ -168,78 +186,58 @@ const TeamsPage = (): React.ReactElement => {
               </CardContent>
             </Card>
 
-            {/* Comparison table + detail panel */}
-            <div className="grid gap-6 lg:grid-cols-5">
-              <div className="lg:col-span-3">
-                <Card>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <SortableHeader
-                            field="name"
-                            current={sortField}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          >
-                            Team
-                          </SortableHeader>
-                          <SortableHeader
-                            field="throughput"
-                            current={sortField}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          >
-                            Merged PRs
-                          </SortableHeader>
-                          <SortableHeader
-                            field="review"
-                            current={sortField}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          >
-                            Avg Review (hrs)
-                          </SortableHeader>
-                          <SortableHeader
-                            field="members"
-                            current={sortField}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          >
-                            Members
-                          </SortableHeader>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedMetrics.map((m) => (
-                          <MetricsRow
-                            key={m.teamId}
-                            metrics={m}
-                            isSelected={selectedTeamId === m.teamId}
-                            onSelect={() => setSelectedTeamId(m.teamId)}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="lg:col-span-2">
-                {selectedTeamId ? (
-                  <TeamDetailPanel
-                    teamId={selectedTeamId}
-                    onClose={() => setSelectedTeamId(null)}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed p-12">
-                    <p className="text-sm text-muted-foreground">
-                      Select a team to view its members.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHeader
+                        field="name"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Team
+                      </SortableHeader>
+                      <SortableHeader
+                        field="throughput"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Merged PRs
+                      </SortableHeader>
+                      <SortableHeader
+                        field="review"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Avg Review (hrs)
+                      </SortableHeader>
+                      <SortableHeader
+                        field="members"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Members
+                      </SortableHeader>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedMetrics.map((m) => (
+                      <MetricsRow
+                        key={m.teamId}
+                        metrics={m}
+                        isSelected={selectedTeamId === m.teamId}
+                        onSelect={() => setSelectedTeamId(m.teamId)}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>

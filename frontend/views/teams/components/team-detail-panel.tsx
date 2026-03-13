@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X } from "lucide-react";
 
-import { useGetTeam } from "@/views/teams/hooks/use-teams";
+import { teamTypeBadgeVariant, teamTypeLabel, useGetTeam } from "@/views/teams/hooks/use-teams";
 
 export const TeamDetailPanel = ({
   teamId,
@@ -40,8 +40,15 @@ export const TeamDetailPanel = ({
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="truncate">{team.name}</CardTitle>
-        <p className="truncate text-sm text-muted-foreground">{team.orgName}</p>
+        <div className="flex items-center gap-2">
+          <CardTitle className="truncate">{team.name}</CardTitle>
+          <Badge variant={teamTypeBadgeVariant(team.teamType)}>
+            {teamTypeLabel(team.teamType)}
+          </Badge>
+        </div>
+        {team.leadName && (
+          <p className="truncate text-sm text-muted-foreground">Lead: {team.leadName}</p>
+        )}
         <CardAction>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="size-4" />
