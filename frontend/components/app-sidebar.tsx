@@ -19,7 +19,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Activity, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
@@ -52,6 +52,7 @@ const UserInitials = ({ name }: { name: string }): React.ReactElement => {
 
 export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const logout = useLogout();
 
   const isActive = (href: string): boolean => {
@@ -132,7 +133,9 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                   Admin
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout.mutate()}>
+                <DropdownMenuItem
+                  onClick={() => logout.mutate(undefined, { onSettled: () => navigate("/login") })}
+                >
                   <LogOut className="mr-2 size-4" />
                   Log out
                 </DropdownMenuItem>
