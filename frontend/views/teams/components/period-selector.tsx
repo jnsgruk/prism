@@ -1,110 +1,113 @@
 import { create } from "@bufbuild/protobuf";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
 import { PeriodSchema, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
 
-const PERIOD_TYPE_LABELS: Record<number, string> = {
-  [PeriodType.WEEK]: "Week",
-  [PeriodType.MONTH]: "Month",
-  [PeriodType.QUARTER]: "Quarter",
-};
-
-/** Build default periods: current + previous for each period type. */
-const buildDefaultPeriods = (): Period[] => {
-  const now = new Date();
-  const periods: Period[] = [];
-
-  // Weeks (current + last 3)
-  for (let i = 0; i < 4; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i * 7);
-    const day = d.getDay();
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - ((day + 6) % 7));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    periods.push(
-      create(PeriodSchema, {
-        type: PeriodType.WEEK,
-        start: fmt(monday),
-        end: fmt(sunday),
-      }),
-    );
-  }
-
-  // Months (current + last 3)
-  for (let i = 0; i < 4; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    periods.push(
-      create(PeriodSchema, {
-        type: PeriodType.MONTH,
-        start: fmt(d),
-        end: fmt(end),
-      }),
-    );
-  }
-
-  // Quarters (current + last 1)
-  for (let i = 0; i < 2; i++) {
-    const qMonth = Math.floor(now.getMonth() / 3) * 3 - i * 3;
-    const d = new Date(now.getFullYear(), qMonth, 1);
-    const end = new Date(d.getFullYear(), d.getMonth() + 3, 0);
-    periods.push(
-      create(PeriodSchema, {
-        type: PeriodType.QUARTER,
-        start: fmt(d),
-        end: fmt(end),
-      }),
-    );
-  }
-
-  return periods;
-};
-
 const fmt = (d: Date): string => d.toISOString().slice(0, 10);
 
-const formatPeriodLabel = (p: Period): string => {
-  const typeLabel = PERIOD_TYPE_LABELS[p.type] ?? "Period";
-  return `${typeLabel}: ${p.start} — ${p.end}`;
+type PeriodPreset = {
+  key: string;
+  label: string;
+  build: () => Period;
 };
 
-const periodToKey = (p: Period): string => `${p.type}-${p.start}`;
+const presets: PeriodPreset[] = [
+  {
+    key: "1w",
+    label: "Last week",
+    build: () => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      return create(PeriodSchema, { type: PeriodType.WEEK, start: fmt(start), end: fmt(now) });
+    },
+  },
+  {
+    key: "2w",
+    label: "Last two weeks",
+    build: () => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - 14);
+      return create(PeriodSchema, { type: PeriodType.WEEK, start: fmt(start), end: fmt(now) });
+    },
+  },
+  {
+    key: "1m",
+    label: "Last month",
+    build: () => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setMonth(now.getMonth() - 1);
+      return create(PeriodSchema, { type: PeriodType.MONTH, start: fmt(start), end: fmt(now) });
+    },
+  },
+  {
+    key: "1q",
+    label: "Last quarter",
+    build: () => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setMonth(now.getMonth() - 3);
+      return create(PeriodSchema, {
+        type: PeriodType.QUARTER,
+        start: fmt(start),
+        end: fmt(now),
+      });
+    },
+  },
+  {
+    key: "1y",
+    label: "Last year",
+    build: () => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setFullYear(now.getFullYear() - 1);
+      return create(PeriodSchema, {
+        type: PeriodType.QUARTER,
+        start: fmt(start),
+        end: fmt(now),
+      });
+    },
+  },
+  {
+    key: "all",
+    label: "All time",
+    build: () =>
+      create(PeriodSchema, {
+        type: PeriodType.QUARTER,
+        start: "2000-01-01",
+        end: fmt(new Date()),
+      }),
+  },
+];
+
+export const defaultPeriodKey = "1m";
+
+export const buildPeriod = (key: string): Period => {
+  const preset = presets.find((p) => p.key === key);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- presets[2] is "1m", always present
+  return preset ? preset.build() : presets[2]!.build();
+};
 
 export const PeriodSelector = ({
   value,
   onChange,
 }: {
-  value: Period;
-  onChange: (period: Period) => void;
-}): React.ReactElement => {
-  const periods = buildDefaultPeriods();
-  const currentKey = periodToKey(value);
-
-  return (
-    <Select
-      value={currentKey}
-      onValueChange={(key) => {
-        const selected = periods.find((p) => periodToKey(p) === key);
-        if (selected) onChange(selected);
-      }}
-    >
-      <SelectTrigger className="w-[280px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {periods.map((p) => (
-          <SelectItem key={periodToKey(p)} value={periodToKey(p)}>
-            {formatPeriodLabel(p)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
+  value: string;
+  onChange: (key: string) => void;
+}): React.ReactElement => (
+  <ToggleGroup
+    value={[value]}
+    onValueChange={(values) => {
+      const selected = values[0];
+      if (selected) onChange(selected);
+    }}
+  >
+    {presets.map((p) => (
+      <ToggleGroupItem key={p.key} value={p.key}>
+        {p.label}
+      </ToggleGroupItem>
+    ))}
+  </ToggleGroup>
+);

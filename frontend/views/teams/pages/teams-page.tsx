@@ -1,4 +1,3 @@
-import { create } from "@bufbuild/protobuf";
 import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +14,14 @@ import { AlertCircle, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import type { Period, TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-import { PeriodSchema, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
-import { PeriodSelector } from "@/views/teams/components/period-selector";
+import {
+  buildPeriod,
+  defaultPeriodKey,
+  PeriodSelector,
+} from "@/views/teams/components/period-selector";
 import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
 import { TeamTree } from "@/views/teams/components/team-tree";
 import { useGetTeamTree, useListTeams } from "@/views/teams/hooks/use-teams";
@@ -27,22 +29,13 @@ import { useGetTeamTree, useListTeams } from "@/views/teams/hooks/use-teams";
 type SortField = "name" | "throughput" | "review" | "members";
 type SortDir = "asc" | "desc";
 
-const defaultPeriod = (): Period => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return create(PeriodSchema, {
-    type: PeriodType.MONTH,
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
-  });
-};
-
 const TeamsPage = (): React.ReactElement => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<Period>(defaultPeriod);
+  const [periodKey, setPeriodKey] = useState(defaultPeriodKey);
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
   const { data: tree, isLoading: treeLoading, error: treeError } = useGetTeamTree();
   const { data: teams } = useListTeams();
@@ -99,12 +92,10 @@ const TeamsPage = (): React.ReactElement => {
 
   return (
     <>
-      <PageHeader
-        title="Teams"
-        description="Organisation hierarchy and team performance"
-        actions={<PeriodSelector value={period} onChange={setPeriod} />}
-      />
+      <PageHeader title="Teams" description="Organisation hierarchy and team performance" />
       <div className="flex-1 space-y-6 p-6">
+        <PeriodSelector value={periodKey} onChange={setPeriodKey} />
+
         {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
 
         {error && (
