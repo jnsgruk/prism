@@ -489,51 +489,51 @@ All handlers register under the same deployment URL, so Restate discovers all of
 ## Implementation Order
 
 ### Step 0: Rename IngestionHandler → GithubIngestionHandler
-- [ ] Rename trait + impl in `crates/ps-ingestion/src/handler.rs`
-- [ ] Update Restate ingress URLs in `crates/ps-server/src/services/ingestion.rs`
-- [ ] Update registration in `crates/ps-ingestion/src/main.rs`
-- [ ] Verify existing invocation cancellation still works with new name
+- [x] Rename trait + impl in `crates/ps-ingestion/src/handler.rs`
+- [x] Update Restate ingress URLs in `crates/ps-server/src/services/ingestion.rs`
+- [x] Update registration in `crates/ps-ingestion/src/main.rs`
+- [x] Verify existing invocation cancellation still works with new name
 
 ### Step 1: Migration + GitHub client methods
-- [ ] Write migration for `org.github_teams`, `org.github_team_members`, `org.github_team_repos`, `org.team_github_team_mappings`
-- [ ] Add `list_org_teams`, `list_team_members`, `list_team_repos` to `GitHubClient`
-- [ ] Add `GitHubTeam`, `GitHubTeamRepo` types
-- [ ] Add repo methods for the new tables in `OrgRepo`
-- [ ] `cargo sqlx prepare --workspace`
+- [x] Write migration for `org.github_teams`, `org.github_team_members`, `org.github_team_repos`, `org.team_github_team_mappings`
+- [x] Add `list_org_teams`, `list_team_members`, `list_team_repos` to `GitHubClient`
+- [x] Add `GitHubTeam`, `GitHubTeamRepo` types
+- [x] Add repo methods for the new tables in `OrgRepo`
+- [x] `cargo sqlx prepare --workspace`
 
 ### Step 1b: Suggestion infrastructure
-- [ ] Add `org.dismissed_github_team_suggestions` to the migration
-- [ ] Add repo method to compute overlap between GitHub teams and Prism teams
-- [ ] Add repo method to store/query dismissed suggestions
+- [x] Add `org.dismissed_github_team_suggestions` to the migration
+- [x] Add repo method to compute overlap between GitHub teams and Prism teams
+- [x] Add repo method to store/query dismissed suggestions
 
 ### Step 2: Team sync workflow
-- [ ] Implement `GithubTeamSyncHandler` Restate virtual object
-- [ ] Register it alongside `IngestionHandler` in ingestion `main.rs`
-- [ ] Add `TriggerTeamSync` RPC to ingestion service
-- [ ] Trigger team sync on source create/update
-- [ ] Add proto definitions for team sync triggering
+- [x] Implement `GithubTeamSyncHandler` Restate virtual object
+- [x] Register it alongside `IngestionHandler` in ingestion `main.rs`
+- [x] Add `TriggerTeamSync` RPC to ingestion service
+- [x] Trigger team sync on source create/update
+- [x] Add proto definitions for team sync triggering
 
 ### Step 3: Team assignment UI
-- [ ] Add proto messages and RPCs for GitHub team listing/assignment
-- [ ] Implement `OrgService` handlers for the new RPCs
-- [ ] `buf generate`
-- [ ] Build frontend GitHub team picker component
-- [ ] Integrate into team detail view, replacing `github_team_slug` text field
-- [ ] Build "Suggested Mappings" UI with apply/dismiss actions
-- [ ] Add proto RPCs for fetching suggestions and dismissing them
-- [ ] Write migration to drop `github_team_slug` column from `org.teams` (migrate any existing values into mappings first)
+- [x] Add proto messages and RPCs for GitHub team listing/assignment
+- [x] Implement `OrgService` handlers for the new RPCs
+- [x] `buf generate`
+- [x] Build frontend GitHub team picker component
+- [x] Integrate into team detail view, replacing `github_team_slug` text field
+- [x] Build "Suggested Mappings" UI with apply/dismiss actions
+- [x] Add proto RPCs for fetching suggestions and dismissing them
+- [x] Write migration to drop `github_team_slug` column from `org.teams` (migrate any existing values into mappings first)
 
 ### Step 4: Scoped ingestion
-- [ ] Modify `plan()` to compute repo scope from team mappings
-- [ ] Add `OrgRepo::get_mapped_github_team_repos(source_id)` query
-- [ ] Test with no mappings (full fetch) and with mappings (scoped fetch)
-- [ ] Consider logging/metrics for scope reduction (e.g. "fetching 12/187 repos based on team mappings")
+- [x] Modify `plan()` to compute repo scope from team mappings
+- [x] Add `OrgRepo::get_mapped_github_team_repos(source_id)` query
+- [x] Test with no mappings (full fetch) and with mappings (scoped fetch)
+- [x] Consider logging/metrics for scope reduction (e.g. "fetching 12/187 repos based on team mappings")
 
 ### Step 5: Polish
-- [ ] Auto-trigger team sync when GitHub source is first created
+- [x] Auto-trigger team sync when GitHub source is first created
 - [ ] Schedule periodic team sync (daily by default)
 - [ ] Consider auto-creating platform identities from GitHub team members
-- [ ] Update source setup UI to mention `read:org` scope requirement
+- [x] Update source setup UI to mention `read:org` scope requirement
 - [ ] Documentation / README updates
 
 ## Scope Notes
