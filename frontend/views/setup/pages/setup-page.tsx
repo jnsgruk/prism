@@ -42,7 +42,7 @@ const SetupPage = (): React.ReactElement | null => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="mx-auto mb-3">
+        <div className="mb-3 flex justify-center">
           <PrismLogo size={48} />
         </div>
         <p className="text-sm text-muted-foreground">Engineering Insights Platform</p>
