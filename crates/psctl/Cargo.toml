@@ -10,7 +10,9 @@ workspace = true
 [dependencies]
 ps-proto = { path = "../ps-proto" }
 tokio.workspace = true
+tokio-stream.workspace = true
 clap.workspace = true
 tonic.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
+prost-types.workspace = true
+time.workspace = true
+anyhow.workspace = true

@@ -1,0 +1,46 @@
+use time::OffsetDateTime;
+
+pub fn timestamp(ts: Option<&prost_types::Timestamp>) -> String {
+    let Some(ts) = ts else {
+        return "—".to_string();
+    };
+    let Ok(dt) = OffsetDateTime::from_unix_timestamp(ts.seconds) else {
+        return "invalid".to_string();
+    };
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+        dt.year(),
+        dt.month() as u8,
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second(),
+    )
+}
+
+pub fn duration_between(
+    start: Option<&prost_types::Timestamp>,
+    end: Option<&prost_types::Timestamp>,
+) -> String {
+    let (Some(start), Some(end)) = (start, end) else {
+        return "—".to_string();
+    };
+    let secs = end.seconds - start.seconds;
+    if secs < 60 {
+        format!("{secs}s")
+    } else if secs < 3600 {
+        format!("{}m {}s", secs / 60, secs % 60)
+    } else {
+        format!("{}h {}m", secs / 3600, (secs % 3600) / 60)
+    }
+}
+
+pub fn source_state(state: i32) -> &'static str {
+    match state {
+        1 => "idle",
+        2 => "collecting",
+        3 => "waiting",
+        4 => "error",
+        _ => "unknown",
+    }
+}

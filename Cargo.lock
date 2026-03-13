@@ -2314,12 +2314,14 @@ dependencies = [
 name = "psctl"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
+ "prost-types",
  "ps-proto",
+ "time",
  "tokio",
+ "tokio-stream",
  "tonic",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
