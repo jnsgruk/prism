@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
 
+import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
 import { TeamTree } from "@/views/teams/components/team-tree";
 import { useGetTeamTree } from "@/views/teams/hooks/use-teams";
 import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
@@ -44,32 +45,42 @@ export const TeamsTab = (): React.ReactElement => {
       {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
 
       {tree && (
-        <TeamTree
-          roots={tree.roots}
-          selectedTeamId={selectedTeamId}
-          onSelect={setSelectedTeamId}
-          renderActions={(team) => (
-            <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Edit team"
-                onClick={() => setEditingTeam(team)}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Delete team"
-                className="hover:text-destructive"
-                onClick={() => handleDelete(team)}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TeamTree
+            roots={tree.roots}
+            selectedTeamId={selectedTeamId}
+            onSelect={setSelectedTeamId}
+            renderActions={(team) => (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Edit team"
+                  onClick={() => setEditingTeam(team)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Delete team"
+                  className="hover:text-destructive"
+                  onClick={() => handleDelete(team)}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </>
+            )}
+          />
+
+          {selectedTeamId ? (
+            <TeamDetailPanel teamId={selectedTeamId} onClose={() => setSelectedTeamId(null)} />
+          ) : (
+            <div className="flex items-center justify-center rounded-lg border border-dashed p-8 text-sm text-muted-foreground">
+              Select a team to view details and link GitHub teams.
+            </div>
           )}
-        />
+        </div>
       )}
 
       <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
