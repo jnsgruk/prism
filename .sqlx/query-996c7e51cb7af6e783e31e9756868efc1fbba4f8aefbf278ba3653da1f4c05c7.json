@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT id FROM org.platform_identities\n                    WHERE platform = $1 AND platform_username = $2\n                    ",
+  "query": "\n            SELECT id FROM org.platform_identities\n            WHERE platform = $1 AND platform_username = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -14,5 +14,5 @@
     },
     "nullable": [false]
   },
-  "hash": "5d98701c290eb1e9b4908edcf25dd30df71535e78211eff40d1d8d0c1e236f7f"
+  "hash": "996c7e51cb7af6e783e31e9756868efc1fbba4f8aefbf278ba3653da1f4c05c7"
 }
