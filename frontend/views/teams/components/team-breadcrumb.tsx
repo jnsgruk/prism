@@ -22,7 +22,9 @@ export const TeamBreadcrumb = ({
   onSelect: (teamId: string) => void;
 }): React.ReactElement | null => {
   const ancestors = getAncestors(roots, selectedTeamId);
-  if (ancestors.length === 0) return null;
+  // Only show breadcrumbs when nested — a single ancestor is the root itself,
+  // which the team selector already displays.
+  if (ancestors.length <= 1) return null;
 
   return (
     <Breadcrumb>

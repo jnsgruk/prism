@@ -140,21 +140,24 @@ const TeamsPage = (): React.ReactElement => {
 
   return (
     <>
-      <PageHeader title="Teams" description="Organisation hierarchy and team performance" />
+      <PageHeader
+        title="Teams"
+        description="Organisation hierarchy and team performance"
+        actions={
+          <TeamSelector roots={roots} selectedTeam={selectedTeam} onSelect={setSelectedTeamId} />
+        }
+      />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
-        {/* Navigation bar: breadcrumb, selector, period */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-            {effectiveTeamId && roots.length > 0 && (
-              <TeamBreadcrumb
-                roots={roots}
-                selectedTeamId={effectiveTeamId}
-                onSelect={setSelectedTeamId}
-              />
-            )}
-            <TeamSelector roots={roots} selectedTeam={selectedTeam} onSelect={setSelectedTeamId} />
-          </div>
+        {/* Navigation: period selector, breadcrumbs (when nested) */}
+        <div className="space-y-3">
           <PeriodSelector value={periodKey} onChange={setPeriodKey} />
+          {effectiveTeamId && roots.length > 0 && (
+            <TeamBreadcrumb
+              roots={roots}
+              selectedTeamId={effectiveTeamId}
+              onSelect={setSelectedTeamId}
+            />
+          )}
         </div>
 
         {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}

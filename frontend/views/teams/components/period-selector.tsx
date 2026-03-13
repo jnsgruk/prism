@@ -98,7 +98,7 @@ export const PeriodSelector = ({
   onChange: (key: string) => void;
 }): React.ReactElement => (
   <ToggleGroup
-    className="h-8 rounded-lg bg-muted p-[3px] text-muted-foreground"
+    className="h-8 w-full rounded-lg bg-muted p-[3px] text-muted-foreground"
     value={[value]}
     onValueChange={(values) => {
       const selected = values[0];
