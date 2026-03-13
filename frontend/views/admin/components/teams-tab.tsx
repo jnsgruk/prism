@@ -21,7 +21,7 @@ export const TeamsTab = (): React.ReactElement => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Manage your organisation hierarchy. Import a directory or create teams manually.

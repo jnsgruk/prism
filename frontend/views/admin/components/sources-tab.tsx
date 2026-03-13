@@ -10,7 +10,7 @@ export const SourcesTab = (): React.ReactElement => {
   const { data: sources, isLoading, error } = useListSources();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Configure data sources and their credentials.

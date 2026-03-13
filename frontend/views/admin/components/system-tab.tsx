@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { ResetDataDialog } from "./reset-data-dialog";
 
 export const SystemTab = (): React.ReactElement => (
-  <div className="space-y-6">
+  <div className="space-y-6 pt-4">
     <p className="text-sm text-muted-foreground">
       System-wide settings and destructive operations.
     </p>
