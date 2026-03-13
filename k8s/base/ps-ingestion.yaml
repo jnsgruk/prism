@@ -6,8 +6,12 @@ spec:
   selector:
     app: ps-ingestion
   ports:
-    - port: 9080
+    - name: health
+      port: 9080
       targetPort: 9080
+    - name: restate
+      port: 9081
+      targetPort: 9081
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,6 +32,7 @@ spec:
           image: prism/ps-ingestion
           ports:
             - containerPort: 9080
+            - containerPort: 9081
           env:
             - name: DATABASE_URL
               valueFrom:
