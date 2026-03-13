@@ -310,6 +310,10 @@ impl OrgRepo {
         let mut identities_mapped = 0i32;
         let mut warnings = Vec::new();
 
+        // Track mappings for second pass (hierarchy wiring).
+        let mut person_name_to_id: HashMap<String, Uuid> = HashMap::new();
+        let mut team_name_to_id: HashMap<String, Uuid> = HashMap::new();
+
         let mut tx = self
             .pool
             .begin()
@@ -392,6 +396,9 @@ impl OrgRepo {
                 person_id
             };
 
+            // Track person name → id for hierarchy wiring
+            person_name_to_id.insert(record.name.clone(), resolved_id);
+
             // Create team if specified and doesn't exist
             if let Some(team_name) = &record.team {
                 let org_name = record.org.as_deref().unwrap_or("default");
@@ -427,6 +434,9 @@ impl OrgRepo {
                     teams_created += 1;
                     new_id
                 };
+
+                // Track team name → id for hierarchy wiring
+                team_name_to_id.insert(team_name.clone(), team_id);
 
                 // Create membership if not already active
                 let has_membership = sqlx::query_scalar!(
@@ -511,6 +521,66 @@ impl OrgRepo {
                     .map_err(|e| Error::Database(e.to_string()))?;
 
                     identities_mapped += 1;
+                }
+            }
+        }
+
+        // Second pass: wire up team hierarchy (lead_id, parent_team_id).
+        for record in records {
+            let Some(team_name) = &record.team else {
+                continue;
+            };
+            let Some(&team_id) = team_name_to_id.get(team_name) else {
+                continue;
+            };
+
+            // Set lead_id: if this person has reports, they lead their team.
+            if record.has_reports
+                && let Some(&person_id) = person_name_to_id.get(&record.name)
+            {
+                sqlx::query!(
+                    "UPDATE org.teams SET lead_id = $1 WHERE id = $2 AND lead_id IS NULL",
+                    person_id,
+                    team_id,
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| Error::Database(e.to_string()))?;
+            }
+
+            // Set parent_team_id: look up the manager's team as the parent.
+            if let Some(manager_name) = &record.manager_name {
+                // Find the team the manager leads (the manager's name appears in
+                // a team name like "X's Team" or "X's Squad", or the manager is
+                // assigned to a group).
+                let parent_team_name = format!("{manager_name}'s Team");
+                let parent_id = team_name_to_id
+                    .get(&parent_team_name)
+                    .or_else(|| {
+                        let squad_name = format!("{manager_name}'s Squad");
+                        team_name_to_id.get(&squad_name)
+                    })
+                    .or_else(|| {
+                        // Manager might be at group level — find which group
+                        // the manager belongs to.
+                        records
+                            .iter()
+                            .find(|r| r.name == *manager_name)
+                            .and_then(|r| r.team.as_ref())
+                            .and_then(|t| team_name_to_id.get(t))
+                    });
+
+                if let Some(&parent_id) = parent_id
+                    && parent_id != team_id
+                {
+                    sqlx::query!(
+                            "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2 AND parent_team_id IS NULL",
+                            parent_id,
+                            team_id,
+                        )
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| Error::Database(e.to_string()))?;
                 }
             }
         }
