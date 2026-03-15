@@ -62,7 +62,7 @@ const SuggestionRow = ({
   };
 
   return (
-    <div className="space-y-1.5 rounded border px-3 py-2">
+    <div className="space-y-1 rounded border px-3 py-2">
       <div className="flex items-center gap-2">
         <GitBranch className="size-4 shrink-0 text-muted-foreground" />
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{suggestion.githubTeamName}</p>
@@ -87,18 +87,16 @@ const SuggestionRow = ({
           <X className="size-3.5" />
         </Button>
       </div>
-      <div className="flex items-center gap-2 pl-6">
-        <span className="truncate text-xs text-muted-foreground">
-          {suggestion.githubOrg}/{suggestion.githubTeamSlug}
-        </span>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Badge variant="outline" className="text-xs">
-            {Number(suggestion.overlapCount)} shared
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            {formatPct(suggestion.prismCoverage)} team
-          </Badge>
-        </span>
+      <p className="truncate pl-6 text-xs text-muted-foreground">
+        {suggestion.githubOrg}/{suggestion.githubTeamSlug}
+      </p>
+      <div className="flex items-center gap-1.5 pl-6">
+        <Badge variant="outline" className="text-xs">
+          {Number(suggestion.overlapCount)} shared
+        </Badge>
+        <Badge variant="outline" className="text-xs">
+          {formatPct(suggestion.prismCoverage)} team
+        </Badge>
       </div>
     </div>
   );
@@ -126,9 +124,9 @@ export const TeamMappingSuggestions = ({
 
   const suggestions = useMemo(
     () =>
-      (allSuggestions?.filter((s) => s.prismTeamId === teamId) ?? []).toSorted(
-        (a, b) => b.prismCoverage - a.prismCoverage,
-      ),
+      (
+        allSuggestions?.filter((s) => s.prismTeamId === teamId && s.prismCoverage >= 0.5) ?? []
+      ).toSorted((a, b) => b.prismCoverage - a.prismCoverage),
     [allSuggestions, teamId],
   );
 

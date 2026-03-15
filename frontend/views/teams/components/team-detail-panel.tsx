@@ -37,7 +37,7 @@ export const TeamDetailPanel = ({ teamId }: { teamId: string }): React.ReactElem
   const { team, members } = data;
 
   return (
-    <div className="space-y-6 px-4 pb-6">
+    <div className="space-y-6 px-4 pt-2 pb-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
