@@ -99,8 +99,6 @@ export const TeamDetailPanel = ({ teamId }: { teamId: string }): React.ReactElem
         )}
       </div>
 
-      <Separator />
-
       <TeamMappingSuggestions teamId={teamId} />
 
       <Separator />
