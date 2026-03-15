@@ -1,3 +1,6 @@
+import { useCallback } from "react";
+import { useSearchParams } from "react-router";
+
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cog, Key, Plug, Settings, UserCog, Users } from "lucide-react";
@@ -9,12 +12,35 @@ import { SourcesTab } from "@/views/admin/components/sources-tab";
 import { SystemTab } from "@/views/admin/components/system-tab";
 import { TeamsTab } from "@/views/admin/components/teams-tab";
 
+const VALID_TABS = new Set(["sources", "teams", "people", "tokens", "handlers", "system"]);
+const DEFAULT_TAB = "sources";
+
 const AdminPage = (): React.ReactElement => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : DEFAULT_TAB;
+
+  const setTab = useCallback(
+    (value: string | number | null) => {
+      if (typeof value !== "string") return;
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value === DEFAULT_TAB) next.delete("tab");
+          else next.set("tab", value);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   return (
     <>
       <PageHeader title="Admin" description="Manage sources, teams, and platform settings" />
       <div className="flex-1 p-6">
-        <Tabs defaultValue="sources">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="sources">
               <Plug className="size-4" />
