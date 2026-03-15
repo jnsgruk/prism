@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::SharedState;
 use crate::github::client::GitHubClient;
+use crate::github::types::GitHubTeam;
 
 pub struct GithubTeamSyncHandlerImpl {
     pub state: SharedState,
@@ -21,33 +22,59 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
         let source_name = ctx.key().to_string();
         info!(source = %source_name, "starting GitHub team sync");
 
-        // Create run record (generate ID inside side effect to survive replays)
-        let repos = self.state.repos.clone();
-        let sn = source_name.clone();
-        let run_id: Uuid = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let sn = sn.clone();
-                async move {
-                    let id = Uuid::now_v7();
-                    repos
-                        .activity
-                        .create_run(id, &sn, "GithubTeamSyncHandler", "sync_teams")
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(id.to_string()))
-                }
-            })
-            .name("create_run")
-            .await?
-            .into_inner()
-            .parse()
-            .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))?;
+        let config = self.load_config(&ctx, &source_name).await?;
+        let run_id = self.create_run(&ctx, &source_name).await?;
+        let token = self.decrypt_token(&ctx, config.id).await?;
 
-        // Step 1: Load source config
+        let orgs = parse_orgs(&config);
+        if orgs.is_empty() {
+            self.fail_run(
+                &ctx,
+                run_id,
+                &source_name,
+                "no orgs configured for this source",
+            )
+            .await;
+            return Err(TerminalError::new("no orgs configured for this source"));
+        }
+
+        let base_url = config
+            .settings
+            .get("base_url")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("https://api.github.com");
+
+        let client = GitHubClient::new(self.state.http_client.clone(), base_url, &token);
+
+        let mut total_teams = 0i32;
+        for org in &orgs {
+            match self.sync_org(&ctx, &client, config.id, org).await {
+                Ok(count) => total_teams += count,
+                Err(e) => {
+                    self.fail_run(&ctx, run_id, &source_name, &e.to_string())
+                        .await;
+                    return Err(e);
+                }
+            }
+        }
+
+        self.complete_run(&ctx, run_id, &source_name, total_teams)
+            .await;
+
+        info!(source = %source_name, total_teams, "GitHub team sync complete");
+        Ok(())
+    }
+}
+
+impl GithubTeamSyncHandlerImpl {
+    async fn load_config(
+        &self,
+        ctx: &ObjectContext<'_>,
+        source_name: &str,
+    ) -> Result<SourceConfig, TerminalError> {
         let repos = self.state.repos.clone();
-        let name = source_name.clone();
-        let config: SourceConfig = ctx
+        let name = source_name.to_string();
+        Ok(ctx
             .run(|| {
                 let repos = repos.clone();
                 let name = name.clone();
@@ -65,13 +92,44 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             })
             .name("load_config")
             .await?
-            .into_inner();
+            .into_inner())
+    }
 
-        // Step 2: Decrypt token
+    async fn create_run(
+        &self,
+        ctx: &ObjectContext<'_>,
+        source_name: &str,
+    ) -> Result<Uuid, TerminalError> {
         let repos = self.state.repos.clone();
-        let source_id = config.id;
+        let sn = source_name.to_string();
+        ctx.run(|| {
+            let repos = repos.clone();
+            let sn = sn.clone();
+            async move {
+                let id = Uuid::now_v7();
+                repos
+                    .activity
+                    .create_run(id, &sn, "GithubTeamSyncHandler", "sync_teams")
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                Ok(Json::from(id.to_string()))
+            }
+        })
+        .name("create_run")
+        .await?
+        .into_inner()
+        .parse()
+        .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
+    }
+
+    async fn decrypt_token(
+        &self,
+        ctx: &ObjectContext<'_>,
+        source_id: Uuid,
+    ) -> Result<String, TerminalError> {
+        let repos = self.state.repos.clone();
         let sk = self.state.secret_key;
-        let token: String = ctx
+        Ok(ctx
             .run(|| {
                 let repos = repos.clone();
                 async move {
@@ -93,57 +151,9 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             })
             .name("decrypt_token")
             .await?
-            .into_inner();
-
-        // Step 3: Parse orgs from settings
-        let orgs: Vec<String> = config
-            .settings
-            .get("orgs")
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
-            .unwrap_or_default();
-
-        if orgs.is_empty() {
-            self.fail_run(
-                &ctx,
-                run_id,
-                &source_name,
-                "no orgs configured for this source",
-            )
-            .await;
-            return Err(TerminalError::new("no orgs configured for this source"));
-        }
-
-        let base_url = config
-            .settings
-            .get("base_url")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("https://api.github.com");
-
-        let client = GitHubClient::new(self.state.http_client.clone(), base_url, &token);
-
-        // Step 4: For each org, discover teams → members → repos
-        let mut total_teams = 0i32;
-        for org in &orgs {
-            match self.sync_org(&ctx, &client, source_id, org).await {
-                Ok(count) => total_teams += count,
-                Err(e) => {
-                    self.fail_run(&ctx, run_id, &source_name, &e.to_string())
-                        .await;
-                    return Err(e);
-                }
-            }
-        }
-
-        // Complete run
-        self.complete_run(&ctx, run_id, &source_name, total_teams)
-            .await;
-
-        info!(source = %source_name, total_teams, "GitHub team sync complete");
-        Ok(())
+            .into_inner())
     }
-}
 
-impl GithubTeamSyncHandlerImpl {
     async fn complete_run(
         &self,
         ctx: &ObjectContext<'_>,
@@ -211,10 +221,51 @@ impl GithubTeamSyncHandlerImpl {
         &self,
         ctx: &ObjectContext<'_>,
         client: &GitHubClient,
-        source_id: uuid::Uuid,
+        source_id: Uuid,
         org: &str,
     ) -> Result<i32, TerminalError> {
-        // Discover all teams in the org (paginated)
+        let all_teams = self.discover_teams(client, org).await?;
+
+        info!(org, team_count = all_teams.len(), "discovered GitHub teams");
+
+        let mut synced_slugs = Vec::with_capacity(all_teams.len());
+
+        for team in &all_teams {
+            synced_slugs.push(team.slug.clone());
+
+            let members = fetch_all_members(client, org, &team.slug).await?;
+            let team_repos = fetch_all_repos(client, org, &team.slug).await?;
+
+            info!(
+                org,
+                team = %team.slug,
+                members = members.len(),
+                repos = team_repos.len(),
+                "fetched team details"
+            );
+
+            self.store_team(ctx, source_id, org, team, &members, &team_repos)
+                .await?;
+        }
+
+        let removed = self
+            .remove_stale_teams(ctx, source_id, org, &synced_slugs)
+            .await?;
+
+        if removed > 0 {
+            info!(org, removed, "removed stale GitHub teams");
+        }
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        Ok(all_teams.len() as i32)
+    }
+
+    /// Discover all teams in a GitHub org (paginated).
+    async fn discover_teams(
+        &self,
+        client: &GitHubClient,
+        org: &str,
+    ) -> Result<Vec<GitHubTeam>, TerminalError> {
         let mut all_teams = Vec::new();
         let mut page = 1u32;
 
@@ -232,84 +283,88 @@ impl GithubTeamSyncHandlerImpl {
             }
         }
 
-        info!(org, team_count = all_teams.len(), "discovered GitHub teams");
+        Ok(all_teams)
+    }
 
-        let mut synced_slugs = Vec::with_capacity(all_teams.len());
+    /// Store a team and its members/repos as a durable side effect.
+    async fn store_team(
+        &self,
+        ctx: &ObjectContext<'_>,
+        source_id: Uuid,
+        org: &str,
+        team: &GitHubTeam,
+        members: &[String],
+        team_repos: &[(String, String)],
+    ) -> Result<(), TerminalError> {
+        let repos = self.state.repos.clone();
+        let slug = team.slug.clone();
+        let name = team.name.clone();
+        let description = team.description.clone();
+        let team_id = team.id;
+        let org_owned = org.to_string();
+        let members = members.to_vec();
+        let team_repos = team_repos.to_vec();
 
-        for team in &all_teams {
-            synced_slugs.push(team.slug.clone());
+        ctx.run(|| {
+            let repos = repos.clone();
+            let org = org_owned.clone();
+            let slug = slug.clone();
+            let name = name.clone();
+            let description = description.clone();
+            let members = members.clone();
+            let team_repos = team_repos.clone();
+            async move {
+                let db_id = repos
+                    .org
+                    .upsert_github_team(
+                        source_id,
+                        &org,
+                        team_id,
+                        &slug,
+                        &name,
+                        description.as_deref(),
+                    )
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
 
-            // Fetch members (all pages)
-            let members = fetch_all_members(client, org, &team.slug).await?;
+                repos
+                    .org
+                    .replace_github_team_members(db_id, &members)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
 
-            // Fetch repos (all pages, skip archived)
-            let team_repos = fetch_all_repos(client, org, &team.slug).await?;
+                repos
+                    .org
+                    .replace_github_team_repos(db_id, &team_repos)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
 
-            info!(
-                org,
-                team = %team.slug,
-                members = members.len(),
-                repos = team_repos.len(),
-                "fetched team details"
-            );
+                Ok(Json::from(()))
+            }
+        })
+        .name(format!("store_team_{slug}"))
+        .await?;
 
-            // Store team + members + repos as a durable side effect
-            let repos = self.state.repos.clone();
-            let team_id = team.id;
-            let slug = team.slug.clone();
-            let name = team.name.clone();
-            let description = team.description.clone();
-            let org_owned = org.to_string();
+        Ok(())
+    }
 
-            ctx.run(|| {
-                let repos = repos.clone();
-                let org = org_owned.clone();
-                let slug = slug.clone();
-                let name = name.clone();
-                let description = description.clone();
-                let members = members.clone();
-                let team_repos = team_repos.clone();
-                async move {
-                    let db_id = repos
-                        .org
-                        .upsert_github_team(
-                            source_id,
-                            &org,
-                            team_id,
-                            &slug,
-                            &name,
-                            description.as_deref(),
-                        )
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
-                    repos
-                        .org
-                        .replace_github_team_members(db_id, &members)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
-                    repos
-                        .org
-                        .replace_github_team_repos(db_id, &team_repos)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
-                    Ok(Json::from(()))
-                }
-            })
-            .name(format!("store_team_{slug}"))
-            .await?;
-        }
-
-        // Remove teams that no longer exist in GitHub
+    /// Remove teams that no longer exist in GitHub.
+    async fn remove_stale_teams(
+        &self,
+        ctx: &ObjectContext<'_>,
+        source_id: Uuid,
+        org: &str,
+        synced_slugs: &[String],
+    ) -> Result<u64, TerminalError> {
         let repos = self.state.repos.clone();
         let org_owned = org.to_string();
-        let removed: u64 = ctx
+        let slugs = synced_slugs.to_vec();
+
+        Ok(ctx
             .run(|| {
                 let repos = repos.clone();
                 let org = org_owned.clone();
-                let slugs = synced_slugs.clone();
+                let slugs = slugs.clone();
                 async move {
                     let count = repos
                         .org
@@ -321,15 +376,17 @@ impl GithubTeamSyncHandlerImpl {
             })
             .name("remove_stale_teams")
             .await?
-            .into_inner();
-
-        if removed > 0 {
-            info!(org, removed, "removed stale GitHub teams");
-        }
-
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        Ok(all_teams.len() as i32)
+            .into_inner())
     }
+}
+
+/// Parse the `orgs` array from source settings.
+fn parse_orgs(config: &SourceConfig) -> Vec<String> {
+    config
+        .settings
+        .get("orgs")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default()
 }
 
 /// Fetch all members of a team across all pages.
