@@ -51,41 +51,6 @@ export const TeamDetailPanel = ({ teamId }: { teamId: string }): React.ReactElem
         )}
       </div>
 
-      {/* Members section */}
-      <div>
-        <h3 className="mb-3 text-sm font-medium">Members ({members.length})</h3>
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No members in this team.</p>
-        ) : (
-          <div className="space-y-2">
-            {members.map((person) => (
-              <div
-                key={person.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded border px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{person.name}</p>
-                  {person.email && (
-                    <p className="truncate text-xs text-muted-foreground">{person.email}</p>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {person.identities.map((id) => (
-                    <Badge key={`${id.platform}-${id.username}`} variant="secondary">
-                      {id.platform}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <Separator />
-
-      <TeamMappingSuggestions teamId={teamId} />
-
       {/* GitHub teams section */}
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -127,6 +92,43 @@ export const TeamDetailPanel = ({ teamId }: { teamId: string }): React.ReactElem
                     <X className="size-3" />
                     <span className="sr-only">Unlink</span>
                   </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      <TeamMappingSuggestions teamId={teamId} />
+
+      <Separator />
+
+      {/* Members section */}
+      <div>
+        <h3 className="mb-3 text-sm font-medium">Members ({members.length})</h3>
+        {members.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No members in this team.</p>
+        ) : (
+          <div className="space-y-2">
+            {members.map((person) => (
+              <div
+                key={person.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{person.name}</p>
+                  {person.email && (
+                    <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {person.identities.map((id) => (
+                    <Badge key={`${id.platform}-${id.username}`} variant="secondary">
+                      {id.platform}
+                    </Badge>
+                  ))}
                 </div>
               </div>
             ))}

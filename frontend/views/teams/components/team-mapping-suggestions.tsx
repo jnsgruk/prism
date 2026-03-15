@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, GitBranch, Lightbulb, X } from "lucide-react";
-import { useMemo } from "react";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check, ChevronDown, ChevronRight, GitBranch, Lightbulb, X } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import type { TeamMappingSuggestion } from "@ps/api/gen/prism/v1/org_pb";
@@ -12,6 +12,22 @@ import {
   useDismissTeamMappingSuggestion,
 } from "@/views/admin/hooks/use-admin";
 import { useGetTeamMappingSuggestions } from "@/views/teams/hooks/use-teams";
+
+const STORAGE_KEY = "prism:suggestions-collapsed";
+
+const getCollapsedTeams = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    // ignore
+  }
+  return new Set();
+};
+
+const setCollapsedTeams = (ids: Set<string>): void => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+};
 
 const formatPct = (v: number): string => `${Math.round(v * 100)}%`;
 
@@ -97,6 +113,19 @@ export const TeamMappingSuggestions = ({
   teamId: string;
 }): React.ReactElement | null => {
   const { data: allSuggestions } = useGetTeamMappingSuggestions();
+  const [collapsedIds, setCollapsedIds] = useState(getCollapsedTeams);
+
+  const isCollapsed = collapsedIds.has(teamId);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      setCollapsedTeams(next);
+      return next;
+    });
+  }, [teamId]);
 
   const suggestions = useMemo(
     () =>
@@ -111,21 +140,31 @@ export const TeamMappingSuggestions = ({
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle
+          className="flex cursor-pointer items-center gap-2 text-sm"
+          onClick={toggleCollapsed}
+        >
           <Lightbulb className="size-4 text-amber-600" />
           Suggested Mappings ({suggestions.length})
         </CardTitle>
+        <CardAction>
+          <Button variant="ghost" size="icon-sm" onClick={toggleCollapsed}>
+            {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+          </Button>
+        </CardAction>
       </CardHeader>
-      <CardContent>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Based on member overlap between GitHub teams and this Prism team.
-        </p>
-        <div className="space-y-2">
-          {suggestions.map((s) => (
-            <SuggestionRow key={s.githubTeamId} suggestion={s} teamId={teamId} />
-          ))}
-        </div>
-      </CardContent>
+      {!isCollapsed && (
+        <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Based on member overlap between GitHub teams and this Prism team.
+          </p>
+          <div className="space-y-2">
+            {suggestions.map((s) => (
+              <SuggestionRow key={s.githubTeamId} suggestion={s} teamId={teamId} />
+            ))}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
