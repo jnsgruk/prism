@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, GitBranch, Lightbulb, X } from "lucide-react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 import type { TeamMappingSuggestion } from "@ps/api/gen/prism/v1/org_pb";
@@ -97,7 +98,13 @@ export const TeamMappingSuggestions = ({
 }): React.ReactElement | null => {
   const { data: allSuggestions } = useGetTeamMappingSuggestions();
 
-  const suggestions = allSuggestions?.filter((s) => s.prismTeamId === teamId) ?? [];
+  const suggestions = useMemo(
+    () =>
+      (allSuggestions?.filter((s) => s.prismTeamId === teamId) ?? []).toSorted(
+        (a, b) => b.prismCoverage - a.prismCoverage,
+      ),
+    [allSuggestions, teamId],
+  );
 
   if (suggestions.length === 0) return null;
 

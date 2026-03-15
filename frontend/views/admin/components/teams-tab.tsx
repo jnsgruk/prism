@@ -1,5 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
@@ -45,43 +52,31 @@ export const TeamsTab = (): React.ReactElement => {
       {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
 
       {tree && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TeamTree
-            roots={tree.roots}
-            selectedTeamId={selectedTeamId}
-            onSelect={setSelectedTeamId}
-            renderActions={(team) => (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Edit team"
-                  onClick={() => setEditingTeam(team)}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Delete team"
-                  className="hover:text-destructive"
-                  onClick={() => handleDelete(team)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </>
-            )}
-          />
-
-          {selectedTeamId ? (
-            <TeamDetailPanel teamId={selectedTeamId} onClose={() => setSelectedTeamId(null)} />
-          ) : (
-            <div className="flex items-center justify-center rounded-lg border border-dashed p-8 text-sm text-muted-foreground">
-              Select a team to view details and link GitHub teams.
-            </div>
-          )}
-        </div>
+        <TeamTree
+          roots={tree.roots}
+          selectedTeamId={selectedTeamId}
+          onSelect={setSelectedTeamId}
+          onEdit={setEditingTeam}
+          onDelete={handleDelete}
+        />
       )}
+
+      <Sheet
+        open={!!selectedTeamId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTeamId(null);
+        }}
+      >
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Team Details</SheetTitle>
+            <SheetDescription>
+              View and manage team details, members, and GitHub team mappings.
+            </SheetDescription>
+          </SheetHeader>
+          {selectedTeamId && <TeamDetailPanel teamId={selectedTeamId} />}
+        </SheetContent>
+      </Sheet>
 
       <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
 
