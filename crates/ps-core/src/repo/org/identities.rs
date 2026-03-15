@@ -35,9 +35,9 @@ impl OrgRepo {
 
     /// Batch-resolve platform usernames to person IDs.
     ///
-    /// For any username that doesn't have an existing platform identity, a new
-    /// person + identity record is auto-created so that contributions can always
-    /// be attributed.
+    /// Returns mappings only for usernames that already have a platform identity
+    /// configured in the system. Unknown usernames are silently skipped — only
+    /// people defined in the app's configuration are tracked.
     pub async fn batch_resolve_person_ids(
         &self,
         platform: &str,
@@ -61,45 +61,10 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        let mut map: HashMap<String, Uuid> = rows
+        let map: HashMap<String, Uuid> = rows
             .into_iter()
             .map(|r| (r.platform_username, r.person_id))
             .collect();
-
-        // Auto-create people + identities for unknown usernames
-        let missing: Vec<&String> = usernames.iter().filter(|u| !map.contains_key(*u)).collect();
-        for username in missing {
-            let person_id = Uuid::now_v7();
-            let identity_id = Uuid::now_v7();
-            sqlx::query!(
-                r#"
-                INSERT INTO org.people (id, name, active)
-                VALUES ($1, $2, true)
-                "#,
-                person_id,
-                username,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
-
-            sqlx::query!(
-                r#"
-                INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (platform, platform_username) DO NOTHING
-                "#,
-                identity_id,
-                person_id,
-                platform,
-                username,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
-
-            map.insert(username.clone(), person_id);
-        }
 
         Ok(map)
     }

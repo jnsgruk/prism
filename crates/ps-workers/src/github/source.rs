@@ -405,16 +405,24 @@ async fn store_batch_impl(
         .await?;
 
     let mut stored = 0usize;
+    let mut skipped = 0usize;
     for item in items {
-        let person_id = person_map.get(&item.platform_username).copied();
+        let Some(person_id) = person_map.get(&item.platform_username).copied() else {
+            skipped += 1;
+            continue;
+        };
         let id = Uuid::now_v7();
 
         ctx.repos
             .activity
-            .upsert_contribution(id, person_id, item)
+            .upsert_contribution(id, Some(person_id), item)
             .await?;
 
         stored += 1;
+    }
+
+    if skipped > 0 {
+        debug!(skipped, "skipped contributions for unconfigured users");
     }
 
     debug!(stored, "stored batch");
