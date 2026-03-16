@@ -2270,6 +2270,8 @@ dependencies = [
  "ps-core",
  "ps-metrics",
  "ps-proto",
+ "rand 0.9.2",
+ "regex",
  "reqwest",
  "scraper",
  "serde",

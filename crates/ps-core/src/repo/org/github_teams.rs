@@ -154,7 +154,7 @@ impl OrgRepo {
         search: Option<&str>,
         github_org: Option<&str>,
     ) -> Result<Vec<GitHubTeamRow>, Error> {
-        let search_pattern = search.map(|s| format!("%{s}%"));
+        let search_pattern = search.map(|s| format!("%{}%", super::super::escape_like(s)));
         let rows = sqlx::query!(
             r#"
             SELECT gt.id, gt.source_id, gt.github_org, gt.github_team_id, gt.slug, gt.name, gt.description,

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use ps_core::repo::Repos;
 use ps_core::repo::activity::SourceStatusRow;
@@ -10,10 +11,28 @@ use ps_proto::prism::v1::{
     TriggerHandlerRequest, TriggerHandlerResponse, TriggerRunRequest, TriggerRunResponse,
     TriggerTeamSyncRequest, TriggerTeamSyncResponse,
 };
+use regex::Regex;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
 use super::common::{db_err, require_auth, to_timestamp};
+
+/// Only allow safe identifiers in Restate SQL queries (no parameterised query support).
+static SAFE_IDENTIFIER: LazyLock<Regex> = LazyLock::new(|| {
+    // SAFETY: This is a compile-time-valid regex pattern
+    #[allow(clippy::expect_used)]
+    Regex::new(r"^[a-zA-Z0-9_.:-]+$").expect("valid regex")
+});
+
+#[allow(clippy::result_large_err)]
+fn validate_restate_identifier(s: &str) -> Result<&str, Status> {
+    if s.is_empty() || !SAFE_IDENTIFIER.is_match(s) {
+        return Err(Status::invalid_argument(format!(
+            "invalid identifier for Restate query: {s:?}"
+        )));
+    }
+    Ok(s)
+}
 
 pub struct HandlersServiceImpl {
     repos: Repos,
@@ -36,8 +55,12 @@ impl HandlersServiceImpl {
     /// Returns `true` if the invocation is actively running/suspended, `false`
     /// if it has completed, been cancelled, or doesn't exist.
     async fn is_invocation_alive(&self, invocation_id: &str) -> bool {
+        let Ok(invocation_id) = validate_restate_identifier(invocation_id) else {
+            warn!(%invocation_id, "invalid invocation ID format, treating as not alive");
+            return false;
+        };
         let url = format!("{}/query", self.restate_admin_url);
-        let query = format!("SELECT status FROM sys_invocation WHERE id = '{invocation_id}'",);
+        let query = format!("SELECT status FROM sys_invocation WHERE id = '{invocation_id}'");
 
         let resp = match self
             .http_client
@@ -126,6 +149,10 @@ impl HandlersServiceImpl {
     /// Query Restate admin SQL API for active invocations on the given virtual object.
     /// Returns `None` if the query fails (best-effort).
     async fn query_active_invocations(&self, source_name: &str) -> Option<Vec<String>> {
+        let Ok(source_name) = validate_restate_identifier(source_name) else {
+            warn!(%source_name, "invalid source name format for Restate query");
+            return None;
+        };
         let url = format!("{}/query", self.restate_admin_url);
         let query = format!(
             "SELECT id FROM sys_invocation \

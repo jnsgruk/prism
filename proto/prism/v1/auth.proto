@@ -73,4 +73,5 @@ message RestoreBackupResponse {
   string session_token = 1;
   google.protobuf.Timestamp expires_at = 2;
   map<string, int32> tables_restored = 3;
+  string generated_password = 4;
 }

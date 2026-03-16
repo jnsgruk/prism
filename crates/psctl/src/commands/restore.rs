@@ -36,7 +36,7 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
     if !preview.table_counts.is_empty() {
         println!("  Tables:");
         let mut tables: Vec<_> = preview.table_counts.iter().collect();
-        tables.sort_by_key(|(k, _)| (*k).clone());
+        tables.sort_by(|(a, _), (b, _)| a.cmp(b));
         for (table, count) in &tables {
             println!("    {table}: {count} rows");
         }
@@ -49,7 +49,7 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
     if !preview.watermarks.is_empty() {
         println!("  Watermarks:");
         let mut marks: Vec<_> = preview.watermarks.iter().collect();
-        marks.sort_by_key(|(k, _)| (*k).clone());
+        marks.sort_by(|(a, _), (b, _)| a.cmp(b));
         for (source, watermark) in &marks {
             println!("    {source}: {watermark}");
         }
@@ -78,12 +78,19 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
         .into_inner();
 
     println!("Restore complete.");
-    println!("  Session token: {}", response.session_token);
+    if !response.generated_password.is_empty() {
+        eprintln!(
+            "  Generated admin password (change immediately): {}",
+            response.generated_password
+        );
+    }
+    // Print session token to stderr to avoid capture in redirected output
+    eprintln!("  Session token (sensitive): {}", response.session_token);
 
     if !response.tables_restored.is_empty() {
         println!("  Tables restored:");
         let mut tables: Vec<_> = response.tables_restored.iter().collect();
-        tables.sort_by_key(|(k, _)| (*k).clone());
+        tables.sort_by(|(a, _), (b, _)| a.cmp(b));
         for (table, count) in &tables {
             println!("    {table}: {count} rows");
         }

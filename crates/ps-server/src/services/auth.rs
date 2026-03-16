@@ -10,6 +10,8 @@ use ps_proto::prism::v1::{
     LogoutResponse, PreviewBackupRequest, PreviewBackupResponse, RestoreBackupRequest,
     RestoreBackupResponse,
 };
+use rand::Rng;
+use rand::distr::Alphanumeric;
 use time::OffsetDateTime;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
@@ -251,8 +253,13 @@ impl AuthService for AuthServiceImpl {
         // implemented when we have concrete table schemas to import into.
         let tables_restored: HashMap<String, i32> = manifest.table_counts;
 
-        // Create admin user for the restored instance
-        let password_hash = hash_password("changeme")
+        // Create admin user for the restored instance with a random password
+        let generated_password: String = rand::rng()
+            .sample_iter(&Alphanumeric)
+            .take(24)
+            .map(char::from)
+            .collect();
+        let password_hash = hash_password(&generated_password)
             .map_err(|e| Status::internal(format!("password hashing failed: {e}")))?;
 
         let user_id = Uuid::now_v7();
@@ -291,6 +298,7 @@ impl AuthService for AuthServiceImpl {
             session_token: raw_token,
             expires_at: Some(timestamp),
             tables_restored,
+            generated_password,
         }))
     }
 }

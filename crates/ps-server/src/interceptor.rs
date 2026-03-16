@@ -138,6 +138,9 @@ where
 
             let Some(token) = token else {
                 warn!(path, "rejected request: missing authorization header");
+                // Forward without AuthContext — require_auth() in handlers will
+                // reject with proper gRPC framing. We cannot construct a typed
+                // gRPC error response here due to the generic ResBody constraint.
                 return inner.call(req).await;
             };
 
@@ -147,9 +150,8 @@ where
                     inner.call(req).await
                 }
                 Err(_status) => {
-                    // Let the request through without AuthContext — individual
-                    // service handlers call require_auth() and will return the
-                    // appropriate gRPC error with correct framing.
+                    // Forward without AuthContext — require_auth() in handlers
+                    // will return the appropriate gRPC error with correct framing.
                     inner.call(req).await
                 }
             }

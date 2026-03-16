@@ -311,6 +311,8 @@ impl MetricsRepo {
         page_size: i32,
         offset: i32,
     ) -> Result<(Vec<ContributionDetailRow>, i64), Error> {
+        let escaped_search = search.map(super::escape_like);
+        let search = escaped_search.as_deref();
         let rows = sqlx::query!(
             r#"
             WITH RECURSIVE team_tree AS (

@@ -16,7 +16,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use super::common::{backup_err, db_err, require_auth, to_timestamp};
+use super::common::{backup_err, db_err, require_admin, require_auth, to_timestamp};
 
 pub struct AdminServiceImpl {
     repos: Repos,
@@ -37,7 +37,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         request: Request<CreateBackupRequest>,
     ) -> Result<Response<Self::CreateBackupStream>, Status> {
-        let _ctx = require_auth(&request)?;
+        let _ctx = require_admin(&request)?;
 
         let repos = self.repos.clone();
 
@@ -110,7 +110,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         request: Request<CreateApiTokenRequest>,
     ) -> Result<Response<CreateApiTokenResponse>, Status> {
-        let _ctx = require_auth(&request)?;
+        let _ctx = require_admin(&request)?;
         let req = request.into_inner();
 
         if req.name.is_empty() {
@@ -204,7 +204,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         request: Request<ResetDataRequest>,
     ) -> Result<Response<ResetDataResponse>, Status> {
-        let ctx = require_auth(&request)?;
+        let ctx = require_admin(&request)?;
         let req = request.into_inner();
 
         if !req.confirm {

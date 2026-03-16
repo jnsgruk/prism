@@ -14,6 +14,14 @@ pub use pagination::{PageCursor, PageRequest, PageResponse, SortDir, SortParams}
 
 use sqlx::PgPool;
 
+/// Escape `LIKE`/`ILIKE` wildcard characters in user-supplied search terms.
+///
+/// `%` and `_` are wildcards in `LIKE` patterns — this escapes them so they
+/// match literally. Call before wrapping a search term with `%..%`.
+pub fn escape_like(input: &str) -> String {
+    input.replace('%', "\\%").replace('_', "\\_")
+}
+
 /// Bundle of all repositories, constructed from a single `PgPool`.
 ///
 /// Services and handlers take this instead of raw `PgPool`.
