@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE activity.contributions c\n                SET person_id = pi.person_id\n                FROM org.platform_identities pi\n                WHERE c.platform = 'jira'\n                  AND c.person_id IS NULL\n                  AND pi.platform = 'jira'\n                  AND pi.platform_user_id = c.metadata->>'assignee_account_id'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8f1f6aec3faa662fe278aef555c7d1ed856fcc7e89f48db445bddd1de655260b"
+}
