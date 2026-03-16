@@ -825,8 +825,8 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-1.14: Connection timeout for ps-migrate
 - [ ] WS-2.1: Bulk upsert contributions
 - [ ] WS-2.2: Batch org import
-- [ ] WS-2.3: Batch list_sources secret status
-- [ ] WS-2.4: Batch GitHub team member/repo sync
+- [x] WS-2.3: Batch list_sources secret status
+- [x] WS-2.4: Batch GitHub team member/repo sync
 - [ ] WS-2.5: Batch repository upserts
 - [ ] WS-2.6: Decrypt token once per run
 - [x] WS-3.1: Role enum
@@ -842,7 +842,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-4.2: Parallelize reconcile_stale_runs
 - [x] WS-4.3: Parallelize compare_teams
 - [x] WS-4.4: Parallelize GitHub team sync members+repos
-- [ ] WS-4.5: Parallelize count+data queries
+- [x] WS-4.5: Parallelize count+data queries
 - [x] WS-4.6: Parallelize admin count queries
 - [x] WS-4.7: Parallelize handler cancellation
 - [ ] WS-5.1: Split source.rs
@@ -869,7 +869,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-6.6: Replace runtime sqlx::query in reset_all
 - [x] WS-7.1: build_people HashMap
 - [ ] WS-7.2: Stream backup in psctl
-- [ ] WS-7.3: Build headers once per client
+- [x] WS-7.3: Build headers once per client
 - [ ] WS-7.4: HashSet lookup without allocation
 - [ ] WS-7.5: Lighter query for team IDs
 - [ ] WS-7.6: compare_team_snapshots CTE optimization
