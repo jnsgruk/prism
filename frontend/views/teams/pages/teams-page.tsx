@@ -3,21 +3,8 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  GitPullRequest,
-  Users,
-} from "lucide-react";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertCircle, ChevronDown, ChevronRight, Clock, GitPullRequest, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

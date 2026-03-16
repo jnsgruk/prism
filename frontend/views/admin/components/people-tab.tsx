@@ -262,9 +262,7 @@ const PersonDetailDialog = ({
     const teamChanged = teamId !== (person.teamId ?? "");
     if (teamChanged) {
       if (person.teamId) {
-        mutations.push(
-          removeFromTeam.mutateAsync({ personId: person.id, teamId: person.teamId }),
-        );
+        mutations.push(removeFromTeam.mutateAsync({ personId: person.id, teamId: person.teamId }));
       }
       if (teamId) {
         mutations.push(assign.mutateAsync({ personId: person.id, teamId }));

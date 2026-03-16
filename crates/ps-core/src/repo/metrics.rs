@@ -103,25 +103,29 @@ impl MetricsRepo {
         let period_type_str = period_type.as_str();
         let rows = sqlx::query!(
             r#"
+            WITH RECURSIVE team_tree AS (
+                SELECT id, id AS root_id FROM org.teams WHERE id = ANY($1)
+                UNION ALL
+                SELECT ch.id, tt.root_id
+                FROM org.teams ch
+                JOIN team_tree tt ON ch.parent_team_id = tt.id
+            ),
+            member_counts AS (
+                SELECT tt.root_id AS team_id,
+                       COUNT(DISTINCT tm.person_id)::int AS count
+                FROM team_tree tt
+                JOIN org.team_memberships tm ON tm.team_id = tt.id
+                WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE
+                GROUP BY tt.root_id
+            )
             SELECT ts.id, ts.team_id, t.name AS team_name,
-                   mc.count AS "member_count!",
+                   COALESCE(mc.count, 0) AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
                    ts.throughput, ts.avg_review_turnaround_hours,
                    ts.raw_metrics AS "raw_metrics!"
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
-            CROSS JOIN LATERAL (
-                WITH RECURSIVE team_tree AS (
-                    SELECT t.id
-                    UNION ALL
-                    SELECT ch.id FROM org.teams ch
-                    JOIN team_tree tt ON ch.parent_team_id = tt.id
-                )
-                SELECT COUNT(DISTINCT tm.person_id)::int AS count
-                FROM org.team_memberships tm
-                JOIN team_tree tt ON tm.team_id = tt.id
-                WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE
-            ) mc
+            LEFT JOIN member_counts mc ON mc.team_id = ts.team_id
             WHERE ts.team_id = ANY($1)
               AND ts.period_start = $2
               AND ts.period_type = $3

@@ -17,6 +17,45 @@ pub struct IngestionContext {
     pub token: Option<String>,
 }
 
+/// Known metric fields for a contribution. Stored as JSONB in the database.
+///
+/// Uses `#[serde(default)]` on all fields for forward compatibility — new fields
+/// can be added without breaking existing serialized data.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ContributionMetrics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub additions: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deletions: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changed_files: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_count: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub draft: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_hours: Option<f64>,
+}
+
+/// Known metadata fields for a contribution. Stored as JSONB in the database.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ContributionMetadata {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub labels: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pr_number: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pr_platform_id: Option<String>,
+}
+
 /// A single contribution to upsert into `activity.contributions`.
 ///
 /// The `platform_username` field is used for identity resolution:

@@ -1,6 +1,8 @@
 use std::fmt::Write as _;
 
-use ps_core::ingestion::{ContributionInput, FetchResult, IngestionContext};
+use ps_core::ingestion::{
+    ContributionInput, ContributionMetadata, ContributionMetrics, FetchResult, IngestionContext,
+};
 use ps_core::models::{ContributionState, ContributionType, Platform};
 use tracing::{info, warn};
 
@@ -380,19 +382,28 @@ fn search_pr_to_contributions(
         created_at: parse_datetime(created_at_str)?,
         updated_at: Some(parse_datetime(updated_at_str)?),
         closed_at: pr.closed_at.as_deref().map(parse_datetime).transpose()?,
-        metrics: serde_json::json!({
-            "additions": pr.additions,
-            "deletions": pr.deletions,
-            "changed_files": pr.changed_files,
-            "review_count": review_count,
-            "draft": pr.is_draft.unwrap_or(false),
-        }),
-        metadata: serde_json::json!({
-            "repo": format!("{owner}/{repo}"),
-            "head_ref": pr.head_ref_name,
-            "base_ref": pr.base_ref_name,
-            "labels": labels,
-        }),
+        #[allow(clippy::cast_possible_wrap)]
+        metrics: serde_json::to_value(ContributionMetrics {
+            additions: pr.additions.map(|v| v as i32),
+            deletions: pr.deletions.map(|v| v as i32),
+            changed_files: pr.changed_files.map(|v| v as i32),
+            review_count: Some(review_count as i32),
+            draft: Some(pr.is_draft.unwrap_or(false)),
+            ..Default::default()
+        })
+        .unwrap_or_default(),
+        metadata: serde_json::to_value(ContributionMetadata {
+            repo: Some(format!("{owner}/{repo}")),
+            head_ref: pr.head_ref_name.clone(),
+            base_ref: pr.base_ref_name.clone(),
+            labels: if labels.is_empty() {
+                None
+            } else {
+                Some(labels.into_iter().map(String::from).collect())
+            },
+            ..Default::default()
+        })
+        .unwrap_or_default(),
         content: None,
         state_history: Some(serde_json::Value::Array(state_history)),
     });
@@ -423,14 +434,18 @@ fn search_pr_to_contributions(
                 created_at: submitted_at.unwrap_or(parse_datetime(created_at_str)?),
                 updated_at: submitted_at,
                 closed_at: None,
-                metrics: serde_json::json!({
-                    "review_state": review.state,
-                }),
-                metadata: serde_json::json!({
-                    "repo": format!("{owner}/{repo}"),
-                    "pr_number": number,
-                    "pr_platform_id": format!("{owner}/{repo}/pull/{number}"),
-                }),
+                metrics: serde_json::to_value(ContributionMetrics {
+                    review_state: Some(review.state.clone()),
+                    ..Default::default()
+                })
+                .unwrap_or_default(),
+                metadata: serde_json::to_value(ContributionMetadata {
+                    repo: Some(format!("{owner}/{repo}")),
+                    pr_number: Some(number),
+                    pr_platform_id: Some(format!("{owner}/{repo}/pull/{number}")),
+                    ..Default::default()
+                })
+                .unwrap_or_default(),
                 content: review.body.clone(),
                 state_history: None,
             });

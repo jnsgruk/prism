@@ -39,7 +39,8 @@ export const AppShell = ({
   const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
 
   const needsSetup = !isPublicRoute && !setupLoading && !userLoading && setupComplete === false;
-  const needsLogin = !isPublicRoute && !setupLoading && !userLoading && !needsSetup && (userError || !user);
+  const needsLogin =
+    !isPublicRoute && !setupLoading && !userLoading && !needsSetup && (userError || !user);
 
   useEffect(() => {
     if (needsSetup) navigate("/setup", { replace: true });
