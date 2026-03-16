@@ -147,6 +147,7 @@ impl OrgRepo {
         let mut warnings = Vec::new();
 
         // Collect matched records for batch upsert
+        let mut ids = Vec::new();
         let mut person_ids = Vec::new();
         let mut platforms = Vec::new();
         let mut usernames = Vec::new();
@@ -155,6 +156,7 @@ impl OrgRepo {
         for record in records {
             let email_lower = record.email.to_lowercase();
             if let Some(&person_id) = email_to_person.get(&email_lower) {
+                ids.push(Uuid::now_v7());
                 person_ids.push(person_id);
                 platforms.push("jira".to_string());
                 usernames.push(record.email.clone());
@@ -173,13 +175,14 @@ impl OrgRepo {
         if !person_ids.is_empty() {
             sqlx::query!(
                 r#"
-                INSERT INTO org.platform_identities (person_id, platform, platform_username, platform_user_id)
-                SELECT * FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[])
+                INSERT INTO org.platform_identities (id, person_id, platform, platform_username, platform_user_id)
+                SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[])
                 ON CONFLICT (platform, platform_username)
                 DO UPDATE SET
                     platform_user_id = EXCLUDED.platform_user_id,
                     person_id = EXCLUDED.person_id
                 "#,
+                &ids,
                 &person_ids,
                 &platforms,
                 &usernames,
