@@ -4,24 +4,28 @@ Phase 2 adds two new data sources (Jira, Discourse), introduces flow and DORA me
 
 **Exit criteria:** Multiple data sources feeding metrics. Individual and team views with flow metrics across GitHub, Jira, and Discourse.
 
-**Code structure:** All new code follows feature-first organisation per [18-code-structure.md](./18-code-structure.md). New source adapters go in `ps-ingestion/src/sources/<platform>/`. New frontend features go in `frontend/views/<feature>/` with colocated components, hooks, and pages. New metrics UI goes in `views/metrics/`. Hooks with a single consumer stay feature-local; lift to `lib/hooks/` only when a second feature needs them.
+**Code structure:** All new code follows feature-first organisation per [18-code-structure.md](./18-code-structure.md). New source adapters go in `crates/ps-workers/src/sources/<platform>/` (following the existing GitHub pattern in `ps-workers/src/github/`). New frontend features go in `frontend/views/<feature>/` with colocated components, hooks, and pages. New metrics UI goes in `views/metrics/`. Hooks with a single consumer stay feature-local; lift to `lib/hooks/` only when a second feature needs them.
 
 ## Assumptions (Phase 1 complete)
 
 - Rust workspace, Vite + React Router app, PostgreSQL, proto definitions, and buf pipeline are operational
-- `Source` trait, Restate orchestration, watermark tracking, and rate limit handling are proven with GitHub
+- `Source` trait (in `ps-core/src/ingestion.rs`), Restate orchestration, watermark tracking, and rate limit handling are proven with GitHub
+- GitHub source uses GraphQL with cursor-based pagination and a two-phase approach (TeamRepos + MemberSearch) — see [29-targeted-ingestion-and-visibility.md](./29-targeted-ingestion-and-visibility.md)
 - Org context (people, teams, directory import, platform identities) is populated and queryable
-- `activity.contributions` table with upsert-on-`(platform, platform_id)` is working
-- `ContributionData` enum exists with `PullRequest` and `CodeReview` variants
-- Team comparison view, ingestion status page, and basic PR metrics are live
+- `activity.contributions` table with upsert-on-`(platform, platform_id)` is working; `metrics` and `metadata` fields are JSONB (`serde_json::Value`)
+- `ContributionType` enum has `PullRequest` and `PrReview` variants; `Platform` enum has `Github`, `Launchpad`, `Mattermost` — new variants for Jira/Discourse will be added as part of Phase 2 shared groundwork
+- Team comparison view with contribution drill-down, ingestion status page, and basic PR metrics are live
 - Identity resolution stores unresolved contributions with `person_id = NULL`
-- `metrics.team_snapshots` and `metrics.snapshot_sources` tables exist and are populated for GitHub data
+- `metrics.team_snapshots` table exists with flow metric columns pre-defined (cycle time, WIP, flow efficiency, lead time, review depth) and is populated for GitHub data
+- Handler run tracking (`activity.ingestion_runs` with `handler_name`, `handler_method`, `progress` JSONB) is in place for multi-handler visibility (migrations 0010, 0011)
+- `ConfigService.SetSecret` and `ConfigService.TestConnection` RPCs are implemented
+- `MetricsService.GetTeamMetrics` and `MetricsService.ListTeamContributions` RPCs are implemented
 
 ---
 
 ## Workstreams
 
-Phase 2 breaks into four workstreams. Two are source implementations that can proceed in parallel once the shared groundwork (new `ContributionData` variants, proto messages) is in place. The metrics and frontend workstreams depend on at least one new source landing before they can be fully integrated.
+Phase 2 breaks into four workstreams. Two are source implementations that can proceed in parallel once the shared groundwork (new `Platform`/`ContributionType` enum variants, typed metrics structs, proto messages, new DB tables) is in place. The metrics and frontend workstreams depend on at least one new source landing before they can be fully integrated.
 
 | # | Workstream | Dependencies | Estimated effort |
 |---|-----------|-------------|-----------------|
@@ -36,7 +40,7 @@ Phase 1 established the [change radar](./03-data-ingestion-strategy.md#change-ra
 
 | Source | Radar mechanism | ETag support | Notes |
 |--------|----------------|-------------|-------|
-| **GitHub** (Phase 1) | Events API (`/orgs/{org}/events`) | Yes — `If-None-Match` on all requests, 304s are free | Gold standard; radar + ETags together |
+| **GitHub** (Phase 1) | GraphQL cursor-based with watermark | Yes — `If-None-Match` on REST requests, 304s are free | Two-phase: TeamRepos + MemberSearch |
 | **Jira Cloud** | JQL `updated >=` with `fields=key,updated,status` | Partial — useful on individual issue detail fetches | JQL radar is the primary optimisation; ETags are supplementary |
 | **Discourse** | `GET /latest.json` with `bumped_at` comparison | No documented support | Radar is lightweight and effective on its own |
 
@@ -45,7 +49,8 @@ The `activity.etag_cache` table and the `Source` trait's support for conditional
 ### Suggested sequencing
 
 ```
-Week 1–2:  Shared groundwork (proto, DB migrations, ContributionData variants)
+Week 1–2:  Shared groundwork (Platform/ContributionType enum variants, typed metrics structs,
+           snapshot_sources + individual_profiles migrations, proto messages)
            W1, W2 start in parallel
 Week 3–4:  W1, W2 continue; W3 starts (GitHub flow metrics first)
 Week 5–6:  W3 integrates Jira data; W4 starts
@@ -58,8 +63,8 @@ Week 7–8:  Integration, polish, identity resolution cleanup
 
 ### Deliverables
 
-1. **`crates/ps-ingestion/src/sources/jira.rs`** — `Source` trait implementation
-2. **`JiraTicket` variant** added to `ContributionData` enum in `ps-core`
+1. **`crates/ps-workers/src/sources/jira/`** — `Source` trait implementation (following existing `github/` pattern)
+2. **`Jira` variant** added to `Platform` enum; **`JiraTicket` variant** added to `ContributionType` enum; typed `JiraTicketMetrics` struct in `ps-core`
 3. **Jira source config** entries in `config.source_configs`
 4. **State transition tracking** for Jira ticket lifecycle
 5. **Ingestion status** visible in existing UI
@@ -160,8 +165,8 @@ Jira Cloud supports conditional requests (`If-None-Match` / `ETag`), but since t
 
 ### Deliverables
 
-1. **`crates/ps-ingestion/src/sources/discourse.rs`** — `Source` trait implementation
-2. **`DiscoursePost` and `DiscourseTopic` variants** added to `ContributionData` enum
+1. **`crates/ps-workers/src/sources/discourse/`** — `Source` trait implementation (following existing `github/` pattern)
+2. **`Discourse` variant** added to `Platform` enum; **`DiscoursePost` and `DiscourseTopic` variants** added to `ContributionType` enum; typed metrics structs in `ps-core`
 3. **Multiple source configs** — one per Discourse instance
 4. **Ingestion status** per instance in existing UI
 5. **Admin UI: Discourse source form** — source-specific form component for creating/editing Discourse sources. Fields: base URL, category filter (multi-select), minimum post threshold. Credentials (API key, API username) via `SetSecret` through password-style inputs. "Test Connection" button validates the Discourse instance URL and credentials via `ConfigService.TestConnection`. The form supports adding multiple Discourse instances, each as a separate source config row.
@@ -279,9 +284,9 @@ Discourse does not document ETag support on its JSON endpoints. The `/latest.jso
 
 1. **Flow metric computations** in `ps-metrics` — cycle time, WIP, throughput trends
 2. **DORA lead time proxy** computation from PR and Jira data
-3. **Expanded `metrics.team_snapshots`** with cross-source flow data
-4. **Expanded `metrics.individual_profiles`** with multi-source activity summaries
-5. **`metrics.snapshot_sources`** populated for all new contribution types
+3. **Populate `metrics.team_snapshots`** flow columns (cycle time, WIP, flow efficiency, lead time) with cross-source data — columns already exist from Phase 1 schema
+4. **New `metrics.individual_profiles` table** with multi-source activity summaries (migration required — table does not yet exist)
+5. **New `metrics.snapshot_sources` link table** mapping snapshots to contributing `contribution_id` values (migration required — table does not yet exist). Populated for all source types during metric computation
 6. **Updated `/teams` comparison page** — add new columns for flow metrics (avg cycle time, WIP, throughput, lead time proxy) alongside existing Phase 1 PR metrics. Each metric cell links to the underlying contributions for traceability. Add source badges showing which platforms are feeding each team's data.
 7. **Team detail page at `/teams/[teamId]`** — dedicated page for a single team showing: flow metric trends over time (Tremor charts), contribution breakdown by source, team member list with per-person summary stats, and links to individual profiles. This page is the bridge between the team comparison view and individual profiles — without it, users cannot drill down from high-level team metrics to understand what's driving them.
 
@@ -325,7 +330,7 @@ Cycle time and WIP require the Jira changelog data, which is why W3 depends on W
 
 ### Traceability
 
-Every metric in `metrics.team_snapshots` and `metrics.individual_profiles` must be auditable back to the source contributions. The `metrics.snapshot_sources` link table (defined in Phase 1) tracks which `contribution_id` values fed into each snapshot. This is populated during metric computation for all source types, not just GitHub.
+Every metric in `metrics.team_snapshots` and `metrics.individual_profiles` must be auditable back to the source contributions. The `metrics.snapshot_sources` link table (created as part of Phase 2 shared groundwork — see Migrations section) tracks which `contribution_id` values fed into each snapshot. This is populated during metric computation for all source types, not just GitHub.
 
 ---
 
@@ -372,13 +377,16 @@ Phase 2 does not introduce new schemas — it adds data to the existing `activit
 
 ### Migrations
 
+Phase 1 ends at migration `0011_add_run_progress.sql`. Phase 2 migrations continue the sequence:
+
 | Migration | Description |
 |-----------|-------------|
-| `00XX_add_jira_contribution_indexes.sql` | Optional partial indexes for Jira-specific JSONB queries if needed |
-| `00XX_add_discourse_contribution_indexes.sql` | Optional partial indexes for Discourse-specific JSONB queries if needed |
-| `00XX_add_individual_profile_columns.sql` | Expand `metrics.individual_profiles.activity_summary` structure if Phase 1 schema is insufficient |
+| `0012_create_snapshot_sources.sql` | **New table** `metrics.snapshot_sources` — link table mapping `snapshot_id` (FK to `team_snapshots`) and `contribution_id` (FK to `contributions`). Required for traceability. |
+| `0013_create_individual_profiles.sql` | **New table** `metrics.individual_profiles` — per-person period snapshots with `activity_summary` JSONB and `peer_comparison` JSONB. |
+| `00XX_add_jira_contribution_indexes.sql` | Optional partial indexes for Jira-specific queries (e.g. WIP by state) |
+| `00XX_add_discourse_contribution_indexes.sql` | Optional partial indexes for Discourse-specific queries (e.g. per-instance metrics) |
 
-The `activity.contributions` table itself needs no structural changes — new source types use the existing `platform`, `contribution_type`, `metrics` JSONB, and `metadata` JSONB columns. This is the payoff of the [single-table-with-typed-Rust-layer decision](./08-open-questions.md) (question 2).
+The `activity.contributions` table itself needs no structural changes — new source types use the existing `platform`, `contribution_type`, `metrics` JSONB, and `metadata` JSONB columns. This is the payoff of the [single-table-with-typed-Rust-layer decision](./08-open-questions.md) (question 2). The `metrics.team_snapshots` table already has flow metric columns (cycle time, WIP, flow efficiency, lead time, review depth) from Phase 1 — Phase 2 populates them with cross-source data.
 
 ### New index considerations
 
@@ -410,24 +418,22 @@ One `activity.ingestion_watermarks` row per new source name (e.g. `jira-canonica
 
 ### New service methods
 
-Add to the existing `PrismService` (or split into sub-services if it grows unwieldy):
+`MetricsService.GetTeamMetrics` and `MetricsService.ListTeamContributions` already exist from Phase 1. The following new RPCs are needed:
 
 ```protobuf
-// Individual profile queries
+// Individual profile queries — add to MetricsService or OrgService
 rpc GetIndividualProfile(GetIndividualProfileRequest)
     returns (IndividualProfileResponse);
 
 rpc ListPersonContributions(ListPersonContributionsRequest)
     returns (ListPersonContributionsResponse);
 
-// Flow metrics
+// Flow metrics — add to MetricsService
 rpc GetFlowMetrics(GetFlowMetricsRequest)
     returns (FlowMetricsResponse);
-
-// Expanded team metrics (adds flow data to Phase 1 response)
-rpc GetTeamMetrics(GetTeamMetricsRequest)
-    returns (TeamMetricsResponse);  // Extended with flow fields
 ```
+
+Phase 2 also extends the existing `GetTeamMetrics` response to include flow metric fields (cycle time, WIP, flow efficiency, lead time) that are already defined in the `metrics.team_snapshots` schema but not yet populated or exposed via the proto response.
 
 ### New messages
 
@@ -494,21 +500,27 @@ message Contribution {
 
 ---
 
-## New ContributionData Variants
+## Typed Metrics Layer (New in Phase 2)
 
-Added to the existing enum in `ps-core`:
+Phase 1 stores `metrics` and `metadata` as raw `serde_json::Value` (JSONB) on the `Contribution` struct. Per the [single-table-with-typed-Rust-layer decision](./08-open-questions.md) (question 2), Phase 2 introduces typed Rust structs that serialize to/from this JSONB, providing compile-time safety while keeping the database schema flexible.
+
+This is a **new enum** created in Phase 2 shared groundwork, not an expansion of an existing one:
 
 ```rust
+/// Typed metrics layer over the JSONB `metrics` column.
+/// Serializes to/from serde_json::Value for DB storage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 enum ContributionData {
-    PullRequest(PullRequestMetrics),      // Phase 1
-    CodeReview(CodeReviewMetrics),        // Phase 1
-    JiraTicket(JiraTicketMetrics),        // Phase 2
-    DiscoursePost(DiscoursePostMetrics),  // Phase 2
-    DiscourseTopic(DiscourseTopicMetrics),// Phase 2
+    PullRequest(PullRequestMetrics),      // Phase 2 groundwork (formalises existing JSONB shape)
+    PrReview(PrReviewMetrics),            // Phase 2 groundwork (formalises existing JSONB shape)
+    JiraTicket(JiraTicketMetrics),        // Phase 2 — W1
+    DiscoursePost(DiscoursePostMetrics),  // Phase 2 — W2
+    DiscourseTopic(DiscourseTopicMetrics),// Phase 2 — W2
 }
 ```
 
-Each new variant has a typed struct. Examples:
+Each variant has a typed struct. The `PullRequest` and `PrReview` variants formalise the JSONB shapes already produced by the GitHub source. New variants:
 
 ```rust
 struct JiraTicketMetrics {
@@ -577,7 +589,6 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 | **Jira API rate limits** are stricter than GitHub | Slow initial backfill | Adaptive throttling; JQL radar minimises calls to changed issues only; ETag conditional requests on detail fetches; configure reasonable project scope; backfill at lower priority |
 | **Jira custom field IDs** vary between instances | Story points and other fields may not map correctly | Make field IDs configurable in `settings`; validate during first ingestion run; surface warnings in admin UI |
 | **Discourse API pagination** is inconsistent across versions | Missing data or duplicate ingestion | Test against actual target instances; `/latest.json` radar reduces pagination exposure; defensive deduplication via `UNIQUE (platform, platform_id)` |
-| **Mailing list archives may have gaps** | Missing months or corrupted archives | Log and skip missing archives; do not treat 404 as fatal; track which months were successfully ingested |
 | **Identity resolution across 3+ platforms** becomes unwieldy | Growing pool of unresolved contributions | Surface unresolved identity counts prominently in admin UI; provide bulk-mapping tools |
 | **Cycle time requires clean Jira workflows** | Teams with non-standard workflows produce garbage metrics | Document expected status category mappings; allow per-project overrides; show "insufficient data" rather than misleading numbers |
 | **Individual profiles may be perceived as surveillance** | Team resistance to adoption | Frame as self-service and peer context, not management ranking; make profiles visible to the person and their manager only (access control is a Phase 2 concern to resolve) |
