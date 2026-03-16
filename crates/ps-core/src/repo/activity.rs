@@ -86,7 +86,7 @@ impl ActivityRepo {
             "#,
             id,
             person_id,
-            item.platform.as_str(),
+            &*item.platform.as_cow(),
             item.contribution_type.as_str(),
             item.platform_id,
             item.title,

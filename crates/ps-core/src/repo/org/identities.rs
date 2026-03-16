@@ -41,14 +41,14 @@ impl OrgRepo {
     /// people defined in the app's configuration are tracked.
     pub async fn batch_resolve_person_ids(
         &self,
-        platform: Platform,
+        platform: &Platform,
         usernames: &[String],
     ) -> Result<HashMap<String, Uuid>, Error> {
         if usernames.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let platform_str = platform.as_str();
+        let platform_str = platform.to_string();
         let rows = sqlx::query!(
             r#"
             SELECT platform_username, person_id

@@ -173,7 +173,7 @@ pub struct ContributionKey {
 impl ContributionInput {
     pub fn key(&self) -> ContributionKey {
         ContributionKey {
-            platform: self.platform,
+            platform: self.platform.clone(),
             platform_id: self.platform_id.clone(),
         }
     }

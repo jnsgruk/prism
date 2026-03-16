@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
@@ -12,33 +13,85 @@ use sqlx::{Decode, Encode, Postgres, Type};
 // ---------------------------------------------------------------------------
 
 /// The external platform a piece of data originates from, or that a platform
-/// identity is linked to.  Also used as the source-config "source type" since
-/// there is currently a 1:1 mapping.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// identity is linked to.
+///
+/// Most platforms have a fixed string representation (`github`, `jira`, etc.).
+/// Discourse is instance-qualified: `discourse-{instance}` (e.g.
+/// `discourse-ubuntu`, `discourse-snapcraft`) because each Discourse
+/// installation is a separate source with its own credentials, watermarks,
+/// and identity namespace.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Platform {
     Github,
     Launchpad,
     Mattermost,
+    Jira,
+    /// Instance-qualified Discourse platform.  The `String` is the instance
+    /// suffix (e.g. `"ubuntu"` for `"discourse-ubuntu"`).
+    #[serde(
+        serialize_with = "serialize_discourse",
+        deserialize_with = "deserialize_discourse",
+        untagged
+    )]
+    Discourse(String),
+}
+
+fn serialize_discourse<S: serde::Serializer>(
+    instance: &String,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&format!("discourse-{instance}"))
+}
+
+fn deserialize_discourse<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<String, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.strip_prefix("discourse-")
+        .map(String::from)
+        .ok_or_else(|| serde::de::Error::custom(format!("expected discourse-* prefix: {s}")))
 }
 
 impl fmt::Display for Platform {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        match self {
+            Self::Discourse(instance) => write!(f, "discourse-{instance}"),
+            other => f.write_str(other.static_str()),
+        }
     }
 }
 
 impl Platform {
-    pub fn as_str(self) -> &'static str {
+    /// Return a `Cow` for the platform string.  Fixed variants borrow a
+    /// `'static` str; `Discourse` allocates.
+    pub fn as_cow(&self) -> Cow<'static, str> {
+        match self {
+            Self::Discourse(instance) => Cow::Owned(format!("discourse-{instance}")),
+            other => Cow::Borrowed(other.static_str()),
+        }
+    }
+
+    /// String slice for fixed variants only.  Panics on `Discourse` — use
+    /// [`as_cow`](Self::as_cow) or [`Display`] when the variant may be
+    /// Discourse.
+    fn static_str(&self) -> &'static str {
         match self {
             Self::Github => "github",
             Self::Launchpad => "launchpad",
             Self::Mattermost => "mattermost",
+            Self::Jira => "jira",
+            Self::Discourse(_) => panic!("use as_cow() for Discourse"),
         }
     }
 
     pub fn from_str_opt(s: &str) -> Option<Self> {
         s.parse().ok()
+    }
+
+    /// Returns `true` if this platform is any Discourse instance.
+    pub fn is_discourse(&self) -> bool {
+        matches!(self, Self::Discourse(_))
     }
 }
 
@@ -49,8 +102,46 @@ impl FromStr for Platform {
             "github" => Ok(Self::Github),
             "launchpad" => Ok(Self::Launchpad),
             "mattermost" => Ok(Self::Mattermost),
-            _ => Err(format!("invalid Platform: {s}")),
+            "jira" => Ok(Self::Jira),
+            other => {
+                if let Some(instance) = other.strip_prefix("discourse-") {
+                    if instance.is_empty() {
+                        return Err("discourse instance name cannot be empty".into());
+                    }
+                    Ok(Self::Discourse(instance.to_owned()))
+                } else {
+                    Err(format!("invalid Platform: {s}"))
+                }
+            }
         }
+    }
+}
+
+// Manual sqlx implementation for Platform (can't use the macro because
+// Discourse carries a dynamic string).
+
+impl Type<Postgres> for Platform {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_name("TEXT")
+    }
+
+    fn compatible(ty: &PgTypeInfo) -> bool {
+        <&str as Type<Postgres>>::compatible(ty)
+    }
+}
+
+impl Encode<'_, Postgres> for Platform {
+    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
+        let s = self.to_string();
+        <String as Encode<Postgres>>::encode(s, buf)
+    }
+}
+
+impl Decode<'_, Postgres> for Platform {
+    fn decode(value: PgValueRef<'_>) -> Result<Self, BoxDynError> {
+        let s = <&str as Decode<Postgres>>::decode(value)?;
+        s.parse::<Platform>()
+            .map_err(|e| -> BoxDynError { e.into() })
     }
 }
 
@@ -64,6 +155,9 @@ impl FromStr for Platform {
 pub enum ContributionType {
     PullRequest,
     PrReview,
+    JiraTicket,
+    DiscoursePost,
+    DiscourseTopic,
 }
 
 impl fmt::Display for ContributionType {
@@ -77,6 +171,9 @@ impl ContributionType {
         match self {
             Self::PullRequest => "pull_request",
             Self::PrReview => "pr_review",
+            Self::JiraTicket => "jira_ticket",
+            Self::DiscoursePost => "discourse_post",
+            Self::DiscourseTopic => "discourse_topic",
         }
     }
 }
@@ -87,6 +184,9 @@ impl FromStr for ContributionType {
         match s {
             "pull_request" => Ok(Self::PullRequest),
             "pr_review" => Ok(Self::PrReview),
+            "jira_ticket" => Ok(Self::JiraTicket),
+            "discourse_post" => Ok(Self::DiscoursePost),
+            "discourse_topic" => Ok(Self::DiscourseTopic),
             _ => Err(format!("invalid ContributionType: {s}")),
         }
     }
@@ -96,18 +196,22 @@ impl FromStr for ContributionType {
 // ContributionState
 // ---------------------------------------------------------------------------
 
-/// The state of a contribution (PR or review).
+/// The state of a contribution.
 ///
 /// PR states are normalised to lowercase (`open`, `closed`, `merged`).
 /// Review states come from the GitHub API (`APPROVED`, etc.) and are stored
 /// in their original casing for compatibility.
+/// Jira adds `in_progress` for tickets actively being worked on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ContributionState {
-    // PR states
+    // Shared states
     Open,
     Closed,
+    // PR states
     Merged,
+    // Jira states
+    InProgress,
     // Review states (GitHub API casing preserved via Display/sqlx)
     Approved,
     ChangesRequested,
@@ -128,6 +232,7 @@ impl ContributionState {
             Self::Open => "open",
             Self::Closed => "closed",
             Self::Merged => "merged",
+            Self::InProgress => "in_progress",
             Self::Approved => "APPROVED",
             Self::ChangesRequested => "CHANGES_REQUESTED",
             Self::Commented => "COMMENTED",
@@ -148,6 +253,7 @@ impl FromStr for ContributionState {
             "open" => Ok(Self::Open),
             "closed" => Ok(Self::Closed),
             "merged" => Ok(Self::Merged),
+            "in_progress" => Ok(Self::InProgress),
             "APPROVED" => Ok(Self::Approved),
             "CHANGES_REQUESTED" => Ok(Self::ChangesRequested),
             "COMMENTED" => Ok(Self::Commented),
@@ -279,7 +385,7 @@ macro_rules! impl_sqlx_text {
     };
 }
 
-impl_sqlx_text!(Platform, |s: &str| s.parse().ok());
+// Platform has manual sqlx implementation above (Discourse carries dynamic data).
 impl_sqlx_text!(ContributionType, |s: &str| s.parse().ok());
 impl_sqlx_text!(ContributionState, |s: &str| s.parse().ok());
 impl_sqlx_text!(IngestionStatus, |s: &str| s.parse().ok());

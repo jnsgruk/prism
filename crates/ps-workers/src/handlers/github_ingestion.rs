@@ -52,7 +52,7 @@ impl GithubIngestionHandlerImpl {
     ) -> Result<(), TerminalError> {
         let config = self.load_config(ctx, source_name).await?;
 
-        let source = registry::create_source(config.source_type).ok_or_else(|| {
+        let source = registry::create_source(&config.source_type).ok_or_else(|| {
             TerminalError::new(format!("unsupported source type: {}", config.source_type))
         })?;
 
@@ -238,6 +238,7 @@ impl GithubIngestionHandlerImpl {
                 match item.contribution_type {
                     ContributionType::PullRequest => prs_fetched += 1,
                     ContributionType::PrReview => reviews_fetched += 1,
+                    _ => {}
                 }
             }
 
@@ -316,7 +317,7 @@ impl GithubIngestionHandlerImpl {
         let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let cur = cursor.to_string();
-        let source_type = config.source_type;
+        let source_type = config.source_type.clone();
 
         Ok(ctx
             .run(|| {
@@ -324,8 +325,9 @@ impl GithubIngestionHandlerImpl {
                 let http = http.clone();
                 let cfg = cfg.clone();
                 let cur = cur.clone();
+                let source_type = source_type.clone();
                 async move {
-                    let src = registry::create_source(source_type)
+                    let src = registry::create_source(&source_type)
                         .ok_or_else(|| TerminalError::new("source unavailable"))?;
                     let ic = IngestionContext {
                         repos,
@@ -364,7 +366,7 @@ impl GithubIngestionHandlerImpl {
         let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let items = items.to_vec();
-        let source_type = config.source_type;
+        let source_type = config.source_type.clone();
 
         Ok(ctx
             .run(|| {
@@ -372,8 +374,9 @@ impl GithubIngestionHandlerImpl {
                 let http = http.clone();
                 let cfg = cfg.clone();
                 let items = items.clone();
+                let source_type = source_type.clone();
                 async move {
-                    let src = registry::create_source(source_type)
+                    let src = registry::create_source(&source_type)
                         .ok_or_else(|| TerminalError::new("source unavailable"))?;
                     let ic = IngestionContext {
                         repos,
@@ -409,15 +412,16 @@ impl GithubIngestionHandlerImpl {
         let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let wm = cursor.to_string();
-        let source_type = config.source_type;
+        let source_type = config.source_type.clone();
 
         ctx.run(|| {
             let repos = repos.clone();
             let http = http.clone();
             let cfg = cfg.clone();
             let wm = wm.clone();
+            let source_type = source_type.clone();
             async move {
-                let src = registry::create_source(source_type)
+                let src = registry::create_source(&source_type)
                     .ok_or_else(|| TerminalError::new("source unavailable"))?;
                 let ic = IngestionContext {
                     repos,

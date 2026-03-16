@@ -22,7 +22,7 @@ pub(super) async fn store_batch_impl(
     let person_map = ctx
         .repos
         .org
-        .batch_resolve_person_ids(Platform::Github, &usernames)
+        .batch_resolve_person_ids(&Platform::Github, &usernames)
         .await?;
 
     // Filter to items with resolved identities, collect for bulk upsert.
