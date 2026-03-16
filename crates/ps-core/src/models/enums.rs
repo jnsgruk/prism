@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use sqlx::encode::IsNull;
@@ -37,11 +38,18 @@ impl Platform {
     }
 
     pub fn from_str_opt(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl FromStr for Platform {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "github" => Some(Self::Github),
-            "launchpad" => Some(Self::Launchpad),
-            "mattermost" => Some(Self::Mattermost),
-            _ => None,
+            "github" => Ok(Self::Github),
+            "launchpad" => Ok(Self::Launchpad),
+            "mattermost" => Ok(Self::Mattermost),
+            _ => Err(format!("invalid Platform: {s}")),
         }
     }
 }
@@ -69,6 +77,17 @@ impl ContributionType {
         match self {
             Self::PullRequest => "pull_request",
             Self::PrReview => "pr_review",
+        }
+    }
+}
+
+impl FromStr for ContributionType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pull_request" => Ok(Self::PullRequest),
+            "pr_review" => Ok(Self::PrReview),
+            _ => Err(format!("invalid ContributionType: {s}")),
         }
     }
 }
@@ -118,16 +137,23 @@ impl ContributionState {
     }
 
     pub fn from_str_opt(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl FromStr for ContributionState {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "open" => Some(Self::Open),
-            "closed" => Some(Self::Closed),
-            "merged" => Some(Self::Merged),
-            "APPROVED" => Some(Self::Approved),
-            "CHANGES_REQUESTED" => Some(Self::ChangesRequested),
-            "COMMENTED" => Some(Self::Commented),
-            "PENDING" => Some(Self::Pending),
-            "DISMISSED" => Some(Self::Dismissed),
-            _ => None,
+            "open" => Ok(Self::Open),
+            "closed" => Ok(Self::Closed),
+            "merged" => Ok(Self::Merged),
+            "APPROVED" => Ok(Self::Approved),
+            "CHANGES_REQUESTED" => Ok(Self::ChangesRequested),
+            "COMMENTED" => Ok(Self::Commented),
+            "PENDING" => Ok(Self::Pending),
+            "DISMISSED" => Ok(Self::Dismissed),
+            _ => Err(format!("invalid ContributionState: {s}")),
         }
     }
 }
@@ -163,6 +189,19 @@ impl IngestionStatus {
     }
 }
 
+impl FromStr for IngestionStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "running" => Ok(Self::Running),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("invalid IngestionStatus: {s}")),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // PeriodType
 // ---------------------------------------------------------------------------
@@ -192,11 +231,18 @@ impl PeriodType {
     }
 
     pub fn from_str_opt(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl FromStr for PeriodType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "week" => Some(Self::Week),
-            "month" => Some(Self::Month),
-            "quarter" => Some(Self::Quarter),
-            _ => None,
+            "week" => Ok(Self::Week),
+            "month" => Ok(Self::Month),
+            "quarter" => Ok(Self::Quarter),
+            _ => Err(format!("invalid PeriodType: {s}")),
         }
     }
 }
@@ -233,26 +279,8 @@ macro_rules! impl_sqlx_text {
     };
 }
 
-impl_sqlx_text!(Platform, Platform::from_str_opt);
-impl_sqlx_text!(ContributionState, ContributionState::from_str_opt);
-impl_sqlx_text!(PeriodType, PeriodType::from_str_opt);
-
-// ContributionType and IngestionStatus use the same Display strings as their
-// as_str(), so we can parse via a simple closure.
-impl_sqlx_text!(ContributionType, |s: &str| {
-    match s {
-        "pull_request" => Some(ContributionType::PullRequest),
-        "pr_review" => Some(ContributionType::PrReview),
-        _ => None,
-    }
-});
-
-impl_sqlx_text!(IngestionStatus, |s: &str| {
-    match s {
-        "running" => Some(IngestionStatus::Running),
-        "completed" => Some(IngestionStatus::Completed),
-        "failed" => Some(IngestionStatus::Failed),
-        "cancelled" => Some(IngestionStatus::Cancelled),
-        _ => None,
-    }
-});
+impl_sqlx_text!(Platform, |s: &str| s.parse().ok());
+impl_sqlx_text!(ContributionType, |s: &str| s.parse().ok());
+impl_sqlx_text!(ContributionState, |s: &str| s.parse().ok());
+impl_sqlx_text!(IngestionStatus, |s: &str| s.parse().ok());
+impl_sqlx_text!(PeriodType, |s: &str| s.parse().ok());
