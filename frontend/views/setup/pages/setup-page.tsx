@@ -3,11 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 
 import { PrismLogo } from "@/components/prism-logo";
 import { useCompleteSetup, useSetupStatus } from "@ps/hooks/use-auth";
+
+const setupSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  displayName: z.string().min(1, "Display name is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 const SetupPage = (): React.ReactElement | null => {
   const navigate = useNavigate();
@@ -19,24 +26,28 @@ const SetupPage = (): React.ReactElement | null => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  if (statusLoading) return null;
+  useEffect(() => {
+    if (!statusLoading && setupComplete) {
+      navigate("/login", { replace: true });
+    }
+  }, [statusLoading, setupComplete, navigate]);
 
-  if (setupComplete) {
-    navigate("/login", { replace: true });
-    return null;
-  }
+  if (statusLoading || setupComplete) return null;
 
   const handleSetup = (e: React.FormEvent): void => {
     e.preventDefault();
     setError("");
 
-    completeSetup.mutate(
-      { username, displayName, password },
-      {
-        onSuccess: () => navigate("/", { replace: true }),
-        onError: (err) => setError(err.message),
-      },
-    );
+    const result = setupSchema.safeParse({ username, displayName, password });
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+
+    completeSetup.mutate(result.data, {
+      onSuccess: () => navigate("/", { replace: true }),
+      onError: (err) => setError(err.message),
+    });
   };
 
   return (
