@@ -817,12 +817,12 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-1.6: Stop leaking DB errors
 - [x] WS-1.7: Escape LIKE wildcards
 - [x] WS-1.8: Session token to stderr
-- [ ] WS-1.9: Backup file permissions
-- [ ] WS-1.10: URL encoding in REST client
-- [ ] WS-1.11: GraphQL username sanitization
+- [x] WS-1.9: Backup file permissions
+- [x] WS-1.10: URL encoding in REST client
+- [x] WS-1.11: GraphQL username sanitization
 - [ ] WS-1.12: Zeroize secret key material
 - [ ] WS-1.13: Backup input validation
-- [ ] WS-1.14: Connection timeout for ps-migrate
+- [x] WS-1.14: Connection timeout for ps-migrate
 - [ ] WS-2.1: Bulk upsert contributions
 - [ ] WS-2.2: Batch org import
 - [ ] WS-2.3: Batch list_sources secret status
@@ -831,13 +831,13 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [ ] WS-2.6: Decrypt token once per run
 - [ ] WS-3.1: Role enum
 - [ ] WS-3.2: Repo row types → enums
-- [ ] WS-3.3: FromStr for domain enums
+- [x] WS-3.3: FromStr for domain enums
 - [ ] WS-3.4: Error::Database structured variant
-- [ ] WS-3.5: SourceState enum in psctl
+- [x] WS-3.5: SourceState enum in psctl
 - [ ] WS-3.6: Typed ContributionInput.metrics/metadata
 - [x] WS-3.7: BTreeMap for BackupManifest
 - [x] WS-3.8: Remove no-op parse in password.rs
-- [ ] WS-3.9: Consistent impl_sqlx_text! usage
+- [x] WS-3.9: Consistent impl_sqlx_text! usage
 - [ ] WS-4.1: Parallelize compute_all_snapshots
 - [ ] WS-4.2: Parallelize reconcile_stale_runs
 - [ ] WS-4.3: Parallelize compare_teams
@@ -850,21 +850,21 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-5.3: Extract session creation helper
 - [ ] WS-5.4: Extract handler boilerplate
 - [ ] WS-5.5: Extract IngestionContext construction
-- [ ] WS-5.6: Deduplicate TeamWithCount mapping
-- [ ] WS-5.7: Deduplicate GitHubTeamRow mapping
+- [x] WS-5.6: Deduplicate TeamWithCount mapping
+- [x] WS-5.7: Deduplicate GitHubTeamRow mapping
 - [ ] WS-5.8: Extract JSON-to-prost conversion
 - [x] WS-5.9: Deduplicate Timestamp construction
 - [ ] WS-5.10: Extract REST client generic helper
 - [ ] WS-5.11: Extract psctl client constructor
-- [ ] WS-5.12: list_team_contributions params struct
-- [ ] WS-5.13: Replace build_progress_json with struct
-- [ ] WS-5.14: Derive handler list from single source
+- [x] WS-5.12: list_team_contributions params struct
+- [x] WS-5.13: Replace build_progress_json with struct
+- [x] WS-5.14: Derive handler list from single source
 - [ ] WS-5.15: Deduplicate psctl chunking logic
 - [ ] WS-5.16: Enum conversion boilerplate
 - [x] WS-6.1: Fix review-turnaround bug
-- [ ] WS-6.2: Remove dead orgs code
-- [ ] WS-6.3: Remove redundant create_source call
-- [ ] WS-6.4: Remove unnecessary JSON Value round-trip
+- [x] WS-6.2: Remove dead orgs code
+- [x] WS-6.3: Remove redundant create_source call
+- [x] WS-6.4: Remove unnecessary JSON Value round-trip
 - [x] WS-6.5: Minor idiom fixes (batch)
 - [x] WS-6.6: Replace runtime sqlx::query in reset_all
 - [x] WS-7.1: build_people HashMap
