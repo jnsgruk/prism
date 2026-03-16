@@ -56,10 +56,14 @@ frontend/
 ├── main.tsx          # React root — BrowserRouter, Providers, render
 ├── index.html        # SPA entry point
 ├── globals.css       # Tailwind + shadcn theme variables
-├── views/            # Feature modules (sources, teams, dashboard, login, etc.)
-│   ├── sources/      #   components/, hooks/, lib/, pages/
-│   └── teams/        #   components/, hooks/, pages/
-├── components/       # Service-level: app-shell, page-header, ui/ (shadcn)
+├── views/            # Feature modules
+│   ├── admin/        #   components/, hooks/, lib/, pages/
+│   ├── dashboard/    #   pages/
+│   ├── ingestion/    #   components/, hooks/, pages/
+│   ├── teams/        #   components/, hooks/, pages/
+│   ├── login/        #   pages/
+│   └── setup/        #   pages/
+├── components/       # Service-level: app-shell, page-header, data-table/, ui/ (shadcn)
 └── lib/              # Service plumbing: api/, hooks/ (shared), session, providers
 ```
 
@@ -70,6 +74,7 @@ crates/
 ├── ps-core/          # Domain types, traits, error types, shared logic
 │   └── src/
 │       ├── repo/     # Repository layer — ALL database access lives here
+│       ├── models/   # Domain models: config, contribution, enums, ingestion, person, team
 │       ├── auth/     # Password hashing, token generation, session management
 │       ├── crypto.rs # AES-256-GCM encryption for source credentials
 │       └── backup.rs # Export/import logic
@@ -93,8 +98,9 @@ All database access is centralized in the repository layer. Each repo maps to on
 | `ConfigRepo`   | `config`   | Source configs, encrypted secrets                      |
 | `OrgRepo`      | `org`      | People, teams, platform identities, repositories       |
 | `ActivityRepo` | `activity` | Contributions, watermarks, ingestion runs, ETag cache  |
+| `MetricsRepo`  | `metrics`  | Pre-computed team/individual snapshots, contribution queries |
 
-The `Repos` struct bundles all four repos and is constructed once from a `PgPool`, then cloned into each service and the ingestion handler.
+The `Repos` struct bundles all repos and is constructed once from a `PgPool`, then cloned into each service and the ingestion handler.
 
 **Layering rules:**
 
@@ -116,7 +122,7 @@ The `Repos` struct bundles all four repos and is constructed once from a `PgPool
 
 ### Frontend
 
-Vite + React Router SPA + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Tremor for charts. Production container serves static files via Caddy.
+Vite + React Router SPA + React + shadcn/ui (built on `@base-ui/react` primitives) + TypeScript (strict mode, type-checked with typescript-go). Bun as runtime/package manager. Connect clients generated from proto definitions. React Query for server state. Recharts for charts. Production container serves static files via Caddy.
 
 **No horizontal overflow.** All page content must stay within the viewport width — no horizontal scrollbars on the page. Use `min-w-0` on flex children, `overflow-hidden` on content wrappers, and `overflow-x-auto` on wide elements like tables so they scroll internally rather than pushing the page wider. The `SidebarInset` component already applies `min-w-0 overflow-hidden`; individual pages must ensure their content respects this constraint.
 
@@ -153,6 +159,125 @@ Zod is installed. Use it for **runtime validation at system boundaries** — pla
 - **Simple required-field checks** — HTML5 `required` attribute is sufficient for basic presence checks.
 - **Internal function arguments** — TypeScript types are enough within the app boundary.
 
+## Frontend UI Conventions
+
+### Tables — DataTable Component
+
+All tables use the shared `DataTable` component (`components/data-table/`) built on TanStack React Table v8. Always use it rather than building tables from raw `<Table>` primitives.
+
+- **Manual sorting** (`manualSorting: true`) — sorting is server-driven via gRPC `sort_field`/`sort_ascending` parameters
+- **Pagination** via `DataTablePagination` — shows "1–10 of 47" (en-dash), page size selector (10/25/50/100), chevron navigation
+- **Empty state** — "No results." centered across full table width
+- **Overflow** — wrap in `<div className="overflow-x-auto rounded-md border">` so wide tables scroll internally
+- **Sortable column headers** — use `ArrowUpDown` icon button; active sort shows directional arrow
+- Filters reset page index to 0 when changed
+
+### Date & Time Formatting
+
+- **24-hour clock only** — never use 12-hour format or AM/PM
+- **Short format** for timestamps: `toLocaleDateString(undefined, { month: "short", day: "numeric" })` + `toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })` → "Mar 16 14:30"
+- **Relative time** for recent events: "5m ago", "2h ago", "1d ago" — fall back to full date for older items
+- **ISO 8601** (`YYYY-MM-DD`) for period selectors and API values
+
+### Number Formatting
+
+- **Whole numbers**: `String(n)` or `.toLocaleString()` for large values (comma separators)
+- **Decimals with unit**: `.toFixed(1)` + suffix — e.g., `"2.5h"`, `"1.2d"`
+- **Percentages**: `Math.round(percent)` + `%`
+- **Tabular alignment**: `className="tabular-nums"` on numeric columns
+- **No data**: em-dash `"—"` (not "N/A" or "0")
+
+### Icons — Lucide React
+
+Lucide React is the only icon library. Sizing conventions:
+
+| Context | Class | Size |
+| --- | --- | --- |
+| Buttons, table cells | `size-4` | 16px |
+| Small badges, inline | `size-3` or `size-3.5` | 12–14px |
+| Section headings | `size-6` | 24px |
+| Empty state illustrations | `size-10` | 40px |
+| Spinner | `Loader2` + `animate-spin` | context-dependent |
+
+Secondary icons use `text-muted-foreground`, primary use `text-foreground`.
+
+### Empty States
+
+Centered layout with dashed border for empty lists/pages:
+
+```
+<div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
+  <Icon className="size-10 text-muted-foreground" />
+  <p className="mb-1 font-medium">Title</p>
+  <p className="text-sm text-muted-foreground">Description</p>
+</div>
+```
+
+### Loading States
+
+- **Full-page**: centered `<Loader2 className="size-6 animate-spin text-muted-foreground" />`
+- **Skeletons**: `<Skeleton className="h-10 w-full" />` for list items
+- **Buttons**: inline `<Loader2 className="mr-1.5 size-3.5 animate-spin" />` with "Saving..." text, button disabled
+
+### Toasts — Sonner
+
+All user-facing success/error feedback uses Sonner: `toast.success("Created")`, `toast.error("Failed")`. Fire in mutation `onSuccess`/`onError` callbacks. Extract error messages with `err instanceof Error ? err.message : "Default"`.
+
+### Badge Conventions
+
+Status badges map to shadcn variants — no custom Tailwind colors:
+
+| State | Variant |
+| --- | --- |
+| Active, merged, approved | `default` |
+| Counts, secondary info | `secondary` |
+| Error, closed, inactive | `destructive` |
+| Neutral, open | `outline` |
+
+State text is `text-[10px] uppercase`. Include icon with `className="gap-1"` when badge has an icon.
+
+### Search & Filter Patterns
+
+- **Search input**: `<Input>` with `Search` icon (size-3.5) absolutely positioned left, `pl-8` padding. Debounced 300ms via `useRef` + `setTimeout`.
+- **Filter toggles**: `Button` group — `variant="default"` for active, `variant="outline"` for inactive. Grouped in `flex items-center gap-1`.
+- **Select dropdowns** for categorical filters (type, state).
+
+### Dialogs & Forms
+
+- **Dialog structure**: `DialogHeader` (title + description) → form body → `DialogFooter` (Cancel + primary action)
+- **Multi-step dialogs**: step state in parent, `ArrowLeft` back button in header, separate header per step
+- **Scrollable content**: `max-h-[60vh] overflow-y-auto` for long form bodies
+- **Field layout**: `space-y-4` between fields, `space-y-2` between label and input
+- **Validation**: HTML5 `required` for simple presence; Zod + react-hook-form for complex rules
+- **Submit buttons**: `type="submit"`, `disabled={isPending}`, loading text "Saving..."/"Creating..."
+- **Errors**: `Alert variant="destructive"` above the footer
+
+### Page Layout
+
+- **PageHeader**: fixed `h-14` bar with `SidebarTrigger | Separator | Title + Description | Actions`
+- **Content area**: `<div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">`
+- **Metric grids**: `grid grid-cols-2 lg:grid-cols-4 gap-4` for stat cards
+- **Section spacing**: `space-y-6` between top-level sections, `space-y-3` or `space-y-4` within cards
+
+### Collapsible Sections
+
+Use shadcn `Collapsible` for expandable content within cards. Card header is the clickable trigger with `ChevronDown`/`ChevronRight` icon. Show count badge next to the section title: `<Badge variant="secondary" className="ml-1">{count}</Badge>`.
+
+### Links & Navigation
+
+- **Internal**: React Router `<Link>` component, wrapped in Button via `render={<Link to="/path" />}`
+- **External**: `<a href={url} target="_blank" rel="noopener noreferrer">` with `ExternalLink` icon (size-3)
+- **URL state**: `useSearchParams()` for filter/pagination state that should survive navigation
+- **Back**: `ArrowLeft` icon button with `onClick={() => history.back()}`
+
+### Charts — Recharts
+
+- **Responsive**: `<ResponsiveContainer width="100%" height={300}>`
+- **Grid**: `<CartesianGrid strokeDasharray="3 3" className="stroke-border" />`
+- **Axes**: `tick={{ fontSize: 12 }} className="fill-muted-foreground"`
+- **Bars**: `radius={[4, 4, 0, 0]}` for rounded tops
+- **Colors**: use HSL CSS variables — `hsl(var(--primary))`, `hsl(var(--popover))` for tooltip background
+
 ## Key Conventions
 
 ### sqlx — Type-Safe Queries Only
@@ -177,9 +302,40 @@ Proto files live in `proto/prism/v1/`. After changes:
 2. `buf generate` (produces Rust types in `crates/ps-proto/src/gen/`, TypeScript clients in `frontend/lib/api/gen/`)
 3. Rebuild both backend and frontend
 
+### Domain Enums — Strong Typing with TEXT Storage
+
+Domain concepts (platform, contribution type, state, ingestion status, period type, role) use Rust enums stored as `TEXT` in PostgreSQL. The `impl_sqlx_text!` macro bridges sqlx encode/decode. No Postgres custom type migrations needed — the Rust compiler enforces valid values.
+
+- Use domain enums (`Platform`, `ContributionType`, `ContributionState`, `IngestionStatus`, `PeriodType`, `Role`) everywhere — never string literals like `"github"` or `"merged"`
+- Implement `FromStr` / `Display` via the macro, use `.parse::<Platform>()` idiomatically
+- Enums live in `ps-core/src/models/enums.rs`
+
+### Security Conventions
+
+- **Fail-closed auth** — missing auth header must return an error, never silently forward. Non-public RPCs without auth are rejected by the interceptor.
+- **Admin role enforcement** — privileged operations (reset, backup, token management) must call `require_admin()`.
+- **Error masking** — log full database errors server-side with `tracing`, return generic "internal error" to gRPC clients. Never expose DB error details.
+- **LIKE pattern escaping** — always escape `%` and `_` in user-supplied search terms before passing to SQL `LIKE`/`ILIKE`.
+- **Input validation** — validate external identifiers (Restate SQL identifiers: `^[a-zA-Z0-9_-]+$`, GitHub usernames, URLs) before interpolation.
+- **Secret material** — never decrypt secrets inside Restate `ctx.run()` (the journal persists side-effect results, defeating at-rest encryption). Decrypt outside, pass through context. Use `Zeroizing` wrapper for key material.
+
+### Performance Conventions
+
+- **Batch writes with `UNNEST`** — for bulk upserts (people, contributions, identities, teams), use `UNNEST` arrays in a single query instead of per-row INSERT loops.
+- **`tokio::try_join!`** — use for independent async operations (e.g., count + data queries, parallel team computations).
+- **`futures::stream::buffer_unordered(N)`** — for capped concurrent work over collections.
+- **File size limit** — split files exceeding ~500 lines into modules. God-files hurt readability and review.
+- **Params structs** — when a function takes >5 parameters, bundle into a struct instead of suppressing `clippy::too_many_arguments`.
+
 ### Ingestion
 
 Sources implement a common `Source` trait. Orchestrated by Restate virtual objects (one per source). Each step (plan, fetch, store, advance) is a named `ctx.run()` side effect. Rate limit backoff uses durable `ctx.sleep()`. Watermarks stored in PostgreSQL.
+
+**Scheduling:** Recurring ingestion uses Restate's durable delayed self-invocation (`ctx.object_client().method().send_with_delay()`), not external cron daemons. Cron expressions stored per-source, evaluated in UTC.
+
+**GitHub two-phase ingestion:** (1) Team repos — fetch PRs/reviews for repos from team sync data. (2) Member search — discover cross-repo contributions by team members via GraphQL search API. Falls back to full org discovery when no teams are configured.
+
+**GraphQL over REST** for N+1-prone queries (PRs + reviews inline, member search). REST for infrequent operations like team sync.
 
 ## Testing Strategy
 
@@ -213,6 +369,7 @@ Test custom hooks, data transformations, interactive components. Don't test shad
 3. **Connect client changes** — frontend transport auto-discovers services. New service hooks go in `lib/hooks/` if shared, or in `views/<feature>/hooks/` if feature-local.
 4. **Auth interceptor** — all RPCs require authentication except: `GetSetupStatus`, `CompleteSetup`, `PreviewBackup`, `RestoreBackup`, `Login`. Adding new public RPCs requires updating the interceptor allow-list.
 5. **Encrypted secrets** — `config.secrets` values are encrypted at rest. The `GetSource` RPC never returns secret values — only a boolean indicating whether each secret is set.
+6. **Restate journal and secrets** — never decrypt secret material inside a `ctx.run()` closure. Restate journals side-effect results for replay, so decrypted tokens would be persisted in plaintext in the Restate journal.
 
 ## Code Style
 
@@ -222,6 +379,9 @@ Test custom hooks, data transformations, interactive components. Don't test shad
 - Extract closures >10 lines into named functions
 - DRY 3+ similar blocks into helpers
 - Use `tracing` for logging, never `println!`/`eprintln!`
+- Use structured tracing fields: `tracing::info!(repo = %name, count = items.len(), "fetched items")` — not bare string interpolation
+- Use domain enums, never string literals for platform/status/type values
+- Implement `From`/`Into` for mechanical enum conversions between domain and proto types
 
 ### TypeScript
 
