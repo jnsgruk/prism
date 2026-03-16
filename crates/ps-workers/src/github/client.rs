@@ -51,7 +51,7 @@ fn validate_path_segment(segment: &str, label: &str) -> Result<(), GitHubError> 
 pub struct GitHubClient {
     http: reqwest::Client,
     base_url: String,
-    token: String,
+    headers: HeaderMap,
 }
 
 impl GitHubClient {
@@ -60,10 +60,23 @@ impl GitHubClient {
     }
 
     pub fn new(http: reqwest::Client, base_url: &str, token: &str) -> Self {
+        let mut headers = HeaderMap::new();
+        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {token}")) {
+            headers.insert(AUTHORIZATION, val);
+        }
+        headers.insert(USER_AGENT, HeaderValue::from_static("prism-ingestion/0.1"));
+        headers.insert(
+            "Accept",
+            HeaderValue::from_static("application/vnd.github+json"),
+        );
+        headers.insert(
+            "X-GitHub-Api-Version",
+            HeaderValue::from_static("2022-11-28"),
+        );
         Self {
             http,
             base_url: base_url.trim_end_matches('/').to_string(),
-            token: token.to_string(),
+            headers,
         }
     }
 
@@ -394,20 +407,7 @@ impl GitHubClient {
     }
 
     fn default_headers(&self) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", self.token)) {
-            headers.insert(AUTHORIZATION, val);
-        }
-        headers.insert(USER_AGENT, HeaderValue::from_static("prism-ingestion/0.1"));
-        headers.insert(
-            "Accept",
-            HeaderValue::from_static("application/vnd.github+json"),
-        );
-        headers.insert(
-            "X-GitHub-Api-Version",
-            HeaderValue::from_static("2022-11-28"),
-        );
-        headers
+        self.headers.clone()
     }
 }
 

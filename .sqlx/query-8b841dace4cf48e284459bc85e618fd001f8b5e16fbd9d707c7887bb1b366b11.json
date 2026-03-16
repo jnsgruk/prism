@@ -12,7 +12,12 @@
           "Custom": {
             "name": "org.team_type",
             "kind": {
-              "Enum": ["org", "group", "team", "squad"]
+              "Enum": [
+                "org",
+                "group",
+                "team",
+                "squad"
+              ]
             }
           }
         },

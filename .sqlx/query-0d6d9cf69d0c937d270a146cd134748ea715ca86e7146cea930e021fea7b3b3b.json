@@ -35,7 +35,12 @@
           "Custom": {
             "name": "org.team_type",
             "kind": {
-              "Enum": ["org", "group", "team", "squad"]
+              "Enum": [
+                "org",
+                "group",
+                "team",
+                "squad"
+              ]
             }
           }
         }
@@ -54,7 +59,16 @@
     "parameters": {
       "Left": []
     },
-    "nullable": [false, false, false, true, true, false, false, null]
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null
+    ]
   },
   "hash": "0d6d9cf69d0c937d270a146cd134748ea715ca86e7146cea930e021fea7b3b3b"
 }

@@ -4,7 +4,10 @@
   "describe": {
     "columns": [],
     "parameters": {
-      "Left": ["Text", "Text"]
+      "Left": [
+        "Text",
+        "Text"
+      ]
     },
     "nullable": []
   },

@@ -82,7 +82,7 @@ impl OrgRepo {
         Ok(id)
     }
 
-    /// Replace all members for a GitHub team (delete + insert).
+    /// Replace all members for a GitHub team (delete + batch insert).
     pub async fn replace_github_team_members(
         &self,
         github_team_id: Uuid,
@@ -98,14 +98,14 @@ impl OrgRepo {
         .await
         .map_err(Error::from)?;
 
-        for username in usernames {
+        if !usernames.is_empty() {
             sqlx::query!(
                 r#"
                 INSERT INTO org.github_team_members (github_team_id, github_username, last_synced_at)
-                VALUES ($1, $2, now())
+                SELECT $1, unnest($2::text[]), now()
                 "#,
                 github_team_id,
-                username,
+                usernames,
             )
             .execute(&mut *tx)
             .await
@@ -117,7 +117,7 @@ impl OrgRepo {
         Ok(())
     }
 
-    /// Replace all repos for a GitHub team (delete + insert).
+    /// Replace all repos for a GitHub team (delete + batch insert).
     pub async fn replace_github_team_repos(
         &self,
         github_team_id: Uuid,
@@ -133,15 +133,17 @@ impl OrgRepo {
         .await
         .map_err(Error::from)?;
 
-        for (org, repo) in repos {
+        if !repos.is_empty() {
+            let orgs: Vec<&str> = repos.iter().map(|(o, _)| o.as_str()).collect();
+            let repo_names: Vec<&str> = repos.iter().map(|(_, r)| r.as_str()).collect();
             sqlx::query!(
                 r#"
                 INSERT INTO org.github_team_repos (github_team_id, github_org, github_repo, last_synced_at)
-                VALUES ($1, $2, $3, now())
+                SELECT $1, unnest($2::text[]), unnest($3::text[]), now()
                 "#,
                 github_team_id,
-                org,
-                repo,
+                &orgs as &[&str],
+                &repo_names as &[&str],
             )
             .execute(&mut *tx)
             .await

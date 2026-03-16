@@ -131,13 +131,27 @@ impl ConfigService for ConfigServiceImpl {
     ) -> Result<Response<ListSourcesResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let sources = self.repos.config.list_sources().await.map_err(db_err)?;
+        let (sources, all_secrets) = tokio::try_join!(
+            async { self.repos.config.list_sources().await.map_err(db_err) },
+            async {
+                self.repos
+                    .config
+                    .list_all_secret_keys()
+                    .await
+                    .map_err(db_err)
+            },
+        )?;
 
-        let mut result = Vec::with_capacity(sources.len());
-        for s in &sources {
-            let secret_status = fetch_secret_status(&self.repos, s.id).await?;
-            result.push(build_source_proto(s, secret_status));
-        }
+        let result: Vec<_> = sources
+            .iter()
+            .map(|s| {
+                let secret_status: HashMap<String, bool> = all_secrets
+                    .get(&s.id)
+                    .map(|keys| keys.iter().map(|k| (k.clone(), true)).collect())
+                    .unwrap_or_default();
+                build_source_proto(s, secret_status)
+            })
+            .collect();
 
         Ok(Response::new(ListSourcesResponse { sources: result }))
     }

@@ -176,19 +176,19 @@ impl OrgRepo {
              {base_from} {where_sql} ORDER BY {sort_col} {sort_dir}, p.id {sort_dir} {limit_sql}"
         );
 
-        // Execute count.
+        // Execute count + data in parallel.
         let mut cq = sqlx::query_scalar::<_, i64>(&count_sql);
         for val in binds.get(..count_bind_len).unwrap_or(&binds) {
             cq = cq.bind(val);
         }
-        let total_count = cq.fetch_one(&self.pool).await.map_err(Error::from)?;
-
-        // Execute data.
         let mut dq = sqlx::query_as::<_, PeopleQueryRow>(&data_sql);
         for val in &binds {
             dq = dq.bind(val);
         }
-        let rows: Vec<PeopleQueryRow> = dq.fetch_all(&self.pool).await.map_err(Error::from)?;
+        let (total_count, rows): (i64, Vec<PeopleQueryRow>) = tokio::try_join!(
+            async { cq.fetch_one(&self.pool).await.map_err(Error::from) },
+            async { dq.fetch_all(&self.pool).await.map_err(Error::from) },
+        )?;
 
         let sort_col_name = sort.column.clone();
         let items: Vec<PersonRow> = rows.into_iter().map(Into::into).collect();

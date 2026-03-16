@@ -40,9 +40,19 @@
       }
     ],
     "parameters": {
-      "Left": ["Bool"]
+      "Left": [
+        "Bool"
+      ]
     },
-    "nullable": [false, false, true, true, false, false, false]
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
   },
   "hash": "4102d3f60301d73617a77fba59ac65bec8e9d0b2006ab795222f4b23263e2c1b"
 }

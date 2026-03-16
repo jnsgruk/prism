@@ -192,6 +192,24 @@ impl ConfigRepo {
         Ok(result.rows_affected() > 0)
     }
 
+    /// List all secret keys grouped by source ID. Used to avoid N+1 queries
+    /// when listing sources.
+    pub async fn list_all_secret_keys(
+        &self,
+    ) -> Result<std::collections::HashMap<Uuid, Vec<String>>, Error> {
+        let rows =
+            sqlx::query!("SELECT source_id, secret_key FROM config.secrets ORDER BY source_id")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(Error::from)?;
+
+        let mut map = std::collections::HashMap::<Uuid, Vec<String>>::new();
+        for r in rows {
+            map.entry(r.source_id).or_default().push(r.secret_key);
+        }
+        Ok(map)
+    }
+
     /// List the secret keys configured for a source (values are NOT returned).
     pub async fn list_secret_keys(&self, source_id: Uuid) -> Result<Vec<String>, Error> {
         sqlx::query_scalar!(

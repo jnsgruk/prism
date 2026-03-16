@@ -55,9 +55,24 @@
       }
     ],
     "parameters": {
-      "Left": ["Uuid", "Date", "Text"]
+      "Left": [
+        "Uuid",
+        "Date",
+        "Text"
+      ]
     },
-    "nullable": [false, false, false, null, false, false, false, true, true, true]
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
   },
   "hash": "0df7e1ce56b29ee2c0510706d08b3b95dca87f9d9d647b92bdf350aed8369796"
 }

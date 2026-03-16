@@ -70,7 +70,18 @@
       }
     ],
     "parameters": {
-      "Left": ["Uuid", "Date", "Date", "Text", "Text", "Int8", "Int8", "Text", "Text", "Bool"]
+      "Left": [
+        "Uuid",
+        "Date",
+        "Date",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Bool"
+      ]
     },
     "nullable": [
       false,
