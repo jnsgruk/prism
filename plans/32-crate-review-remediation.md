@@ -823,7 +823,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-1.12: Zeroize secret key material
 - [x] WS-1.13: Backup input validation
 - [x] WS-1.14: Connection timeout for ps-migrate
-- [ ] WS-2.1: Bulk upsert contributions
+- [x] WS-2.1: Bulk upsert contributions
 - [ ] WS-2.2: Batch org import
 - [x] WS-2.3: Batch list_sources secret status
 - [x] WS-2.4: Batch GitHub team member/repo sync
@@ -868,7 +868,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-6.5: Minor idiom fixes (batch)
 - [x] WS-6.6: Replace runtime sqlx::query in reset_all
 - [x] WS-7.1: build_people HashMap
-- [ ] WS-7.2: Stream backup in psctl
+- [x] WS-7.2: Stream backup in psctl
 - [x] WS-7.3: Build headers once per client
 - [x] WS-7.4: HashSet lookup without allocation
 - [x] WS-7.5: Lighter query for team IDs

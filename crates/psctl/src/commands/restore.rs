@@ -4,6 +4,7 @@ use anyhow::{Result, bail};
 use ps_proto::prism::v1::{
     PreviewBackupRequest, RestoreBackupRequest, auth_service_client::AuthServiceClient,
 };
+use tokio::io::AsyncReadExt;
 use tonic::transport::Channel;
 
 use crate::client::AuthInterceptor;
@@ -11,17 +12,28 @@ use crate::format;
 
 const CHUNK_SIZE: usize = 64 * 1024;
 
-/// Split binary data into fixed-size chunks, mapping each to a proto message.
-fn chunk_data<T>(data: &[u8], f: impl Fn(Vec<u8>) -> T) -> Vec<T> {
-    data.chunks(CHUNK_SIZE).map(|c| f(c.to_vec())).collect()
+/// Stream a file from disk as gRPC request chunks, avoiding loading the
+/// entire file into memory at once.
+async fn stream_file<T>(file_path: &str, f: impl Fn(Vec<u8>) -> T) -> Result<Vec<T>> {
+    let mut file = tokio::fs::File::open(file_path).await?;
+    let mut chunks = Vec::new();
+    loop {
+        let mut buf = vec![0u8; CHUNK_SIZE];
+        let n = file.read(&mut buf).await?;
+        if n == 0 {
+            break;
+        }
+        buf.truncate(n);
+        chunks.push(f(buf));
+    }
+    Ok(chunks)
 }
 
 pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str) -> Result<()> {
-    let data = tokio::fs::read(file_path).await?;
     let mut client = AuthServiceClient::with_interceptor(channel.clone(), auth.clone());
 
-    // Preview the backup before restoring
-    let chunks = chunk_data(&data, |chunk| PreviewBackupRequest { chunk });
+    // Preview: stream from disk
+    let chunks = stream_file(file_path, |chunk| PreviewBackupRequest { chunk }).await?;
 
     let preview = client
         .preview_backup(tokio_stream::iter(chunks))
@@ -68,8 +80,8 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
         bail!("Restore cancelled.");
     }
 
-    // Stream the restore
-    let chunks = chunk_data(&data, |chunk| RestoreBackupRequest { chunk });
+    // Restore: stream from disk again (don't keep preview data in memory)
+    let chunks = stream_file(file_path, |chunk| RestoreBackupRequest { chunk }).await?;
 
     let response = client
         .restore_backup(tokio_stream::iter(chunks))
