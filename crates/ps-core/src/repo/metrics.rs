@@ -77,7 +77,7 @@ impl MetricsRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|r| TeamSnapshotRow {
             id: r.id,
@@ -133,7 +133,7 @@ impl MetricsRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -163,7 +163,7 @@ impl MetricsRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -213,7 +213,7 @@ impl MetricsRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -253,7 +253,7 @@ impl MetricsRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -380,7 +380,7 @@ impl MetricsRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         let total_count = rows.first().map_or(0, |r| r.total_count);
 

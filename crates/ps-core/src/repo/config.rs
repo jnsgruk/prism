@@ -46,7 +46,7 @@ impl ConfigRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|r| map_source_config!(r)).collect())
     }
@@ -64,7 +64,7 @@ impl ConfigRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|r| map_source_config!(r)))
     }
@@ -85,7 +85,7 @@ impl ConfigRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|r| map_source_config!(r)))
     }
@@ -114,10 +114,12 @@ impl ConfigRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("duplicate key") {
+            if e.as_database_error()
+                .is_some_and(sqlx::error::DatabaseError::is_unique_violation)
+            {
                 Error::Conflict(format!("source '{name}' already exists"))
             } else {
-                Error::Database(e.to_string())
+                Error::from(e)
             }
         })?;
 
@@ -129,7 +131,7 @@ impl ConfigRepo {
         let row = sqlx::query_scalar!("SELECT id FROM config.source_configs WHERE id = $1", id,)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         Ok(row.is_some())
     }
@@ -143,7 +145,7 @@ impl ConfigRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -161,7 +163,7 @@ impl ConfigRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -175,7 +177,7 @@ impl ConfigRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -185,7 +187,7 @@ impl ConfigRepo {
         let result = sqlx::query!("DELETE FROM config.source_configs WHERE id = $1", id)
             .execute(&self.pool)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -198,7 +200,7 @@ impl ConfigRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(Error::from)
     }
 
     /// Get the encrypted value for a specific secret.
@@ -219,7 +221,7 @@ impl ConfigRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(Error::from)
     }
 
     /// Insert or update an encrypted secret.
@@ -244,7 +246,7 @@ impl ConfigRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -255,7 +257,7 @@ impl ConfigRepo {
             .fetch_one(&self.pool)
             .await
             .map(|c| c.unwrap_or(0))
-            .map_err(|e| Error::Database(e.to_string()))
+            .map_err(Error::from)
     }
 
     /// Export all source configurations as JSON rows (for backup).

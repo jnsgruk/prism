@@ -22,7 +22,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -61,7 +61,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         let map: HashMap<String, Uuid> = rows
             .into_iter()

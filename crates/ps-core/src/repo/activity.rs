@@ -102,7 +102,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -119,7 +119,7 @@ impl ActivityRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(Error::from)
     }
 
     /// Upsert the ingestion watermark after a successful run.
@@ -149,7 +149,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -172,7 +172,7 @@ impl ActivityRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(Error::from)
     }
 
     /// Store or update a cached `ETag` for a source + endpoint URL.
@@ -195,7 +195,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -220,7 +220,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -238,7 +238,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -256,7 +256,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -282,7 +282,7 @@ impl ActivityRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -313,7 +313,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -337,7 +337,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -360,7 +360,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -380,7 +380,7 @@ impl ActivityRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?
+        .map_err(Error::from)?
         .flatten())
     }
 
@@ -396,7 +396,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -425,7 +425,7 @@ impl ActivityRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         self.clear_current_invocation_id(source_name).await?;
 
@@ -477,7 +477,7 @@ impl ActivityRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -501,40 +501,34 @@ impl ActivityRepo {
     /// Delete all activity data: contributions, watermarks, runs, etag cache, metric snapshots.
     /// Returns the number of contributions deleted.
     pub async fn reset_all(&self) -> Result<i64, Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         sqlx::query!("DELETE FROM metrics.team_snapshots")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         let contribs = sqlx::query!("DELETE FROM activity.contributions")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         sqlx::query!("DELETE FROM activity.ingestion_runs")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         sqlx::query!("DELETE FROM activity.ingestion_watermarks")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         sqlx::query!("DELETE FROM activity.etag_cache")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(contribs.rows_affected().cast_signed())
     }

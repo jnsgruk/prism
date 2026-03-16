@@ -284,3 +284,39 @@ impl_sqlx_text!(ContributionType, |s: &str| s.parse().ok());
 impl_sqlx_text!(ContributionState, |s: &str| s.parse().ok());
 impl_sqlx_text!(IngestionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(PeriodType, |s: &str| s.parse().ok());
+impl_sqlx_text!(Role, |s: &str| s.parse().ok());
+
+// ---------------------------------------------------------------------------
+// Role
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Role {
+    Admin,
+}
+
+impl Role {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Admin => "admin",
+        }
+    }
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Admin => write!(f, "admin"),
+        }
+    }
+}
+
+impl FromStr for Role {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "admin" => Ok(Self::Admin),
+            _ => Err(format!("invalid Role: {s}")),
+        }
+    }
+}

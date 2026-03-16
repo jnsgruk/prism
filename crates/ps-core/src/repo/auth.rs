@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::models::Role;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,7 +16,7 @@ pub struct SessionWithUser {
     pub user_id: Uuid,
     pub username: String,
     pub display_name: String,
-    pub role: String,
+    pub role: Role,
     pub is_active: bool,
     pub expires_at: Option<OffsetDateTime>,
 }
@@ -50,7 +51,7 @@ impl AuthRepo {
             .fetch_one(&self.pool)
             .await
             .map(|v| v.unwrap_or(false))
-            .map_err(|e| Error::Database(e.to_string()))
+            .map_err(Error::from)
     }
 
     /// Create a new user.
@@ -60,8 +61,9 @@ impl AuthRepo {
         username: &str,
         display_name: &str,
         password_hash: &str,
-        role: &str,
+        role: Role,
     ) -> Result<(), Error> {
+        let role_str = role.to_string();
         sqlx::query!(
             r#"
             INSERT INTO auth.users (id, username, display_name, password_hash, role)
@@ -71,11 +73,11 @@ impl AuthRepo {
             username,
             display_name,
             password_hash,
-            role,
+            role_str,
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -95,7 +97,7 @@ impl AuthRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|r| UserCredentials {
             id: r.id,
@@ -128,7 +130,7 @@ impl AuthRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -138,7 +140,7 @@ impl AuthRepo {
         sqlx::query!("DELETE FROM auth.sessions WHERE id = $1", session_id)
             .execute(&self.pool)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         Ok(())
     }
@@ -160,17 +162,21 @@ impl AuthRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
-        Ok(row.map(|r| SessionWithUser {
-            session_id: r.session_id,
-            user_id: r.user_id,
-            username: r.username,
-            display_name: r.display_name,
-            role: r.role,
-            is_active: r.is_active,
-            expires_at: r.expires_at,
-        }))
+        row.map(|r| -> Result<SessionWithUser, Error> {
+            let role = r.role.parse::<Role>().map_err(Error::Validation)?;
+            Ok(SessionWithUser {
+                session_id: r.session_id,
+                user_id: r.user_id,
+                username: r.username,
+                display_name: r.display_name,
+                role,
+                is_active: r.is_active,
+                expires_at: r.expires_at,
+            })
+        })
+        .transpose()
     }
 
     /// Update `last_active_at` for a session (fire-and-forget).
@@ -181,7 +187,7 @@ impl AuthRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -199,7 +205,7 @@ impl AuthRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -224,7 +230,7 @@ impl AuthRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -235,7 +241,7 @@ impl AuthRepo {
             .fetch_one(&self.pool)
             .await
             .map(|c| c.unwrap_or(0))
-            .map_err(|e| Error::Database(e.to_string()))
+            .map_err(Error::from)
     }
 
     /// Export all users as JSON rows (for backup, without password hashes).
@@ -245,7 +251,7 @@ impl AuthRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(users
             .iter()

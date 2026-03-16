@@ -181,20 +181,14 @@ impl OrgRepo {
         for val in binds.get(..count_bind_len).unwrap_or(&binds) {
             cq = cq.bind(val);
         }
-        let total_count = cq
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let total_count = cq.fetch_one(&self.pool).await.map_err(Error::from)?;
 
         // Execute data.
         let mut dq = sqlx::query_as::<_, PeopleQueryRow>(&data_sql);
         for val in &binds {
             dq = dq.bind(val);
         }
-        let rows: Vec<PeopleQueryRow> = dq
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let rows: Vec<PeopleQueryRow> = dq.fetch_all(&self.pool).await.map_err(Error::from)?;
 
         let sort_col_name = sort.column.clone();
         let items: Vec<PersonRow> = rows.into_iter().map(Into::into).collect();
@@ -233,7 +227,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -265,7 +259,7 @@ impl OrgRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|p| PersonRow {
             id: p.id,
@@ -302,20 +296,16 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         self.get_person(id)
             .await?
-            .ok_or_else(|| Error::Database("person not found after update".to_owned()))
+            .ok_or_else(|| Error::Internal("person not found after update".to_owned()))
     }
 
     /// Deactivate a person: set `active = false` and end all active memberships.
     pub async fn deactivate_person(&self, id: Uuid) -> Result<(), Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         sqlx::query!(
             "UPDATE org.people SET active = false, updated_at = now() WHERE id = $1",
@@ -323,7 +313,7 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         sqlx::query!(
             r#"
@@ -335,11 +325,9 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -352,7 +340,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }

@@ -22,7 +22,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -44,11 +44,7 @@ impl OrgRepo {
     /// historical metrics include their work. Falls back to `CURRENT_DATE` if the
     /// person has no contributions yet.
     pub async fn assign_person_to_team(&self, person_id: Uuid, team_id: Uuid) -> Result<(), Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         // End all current active memberships for this person.
         sqlx::query!(
@@ -61,7 +57,7 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         // Create new membership with start_date = earliest contribution (or today).
         let membership_id = Uuid::now_v7();
@@ -82,11 +78,9 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -109,7 +103,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -131,7 +125,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()

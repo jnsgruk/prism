@@ -2,7 +2,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error: {0}")]
-    Database(String),
+    Database(Box<sqlx::Error>),
 
     #[error("not found: {0}")]
     NotFound(String),
@@ -26,8 +26,20 @@ pub enum Error {
     Internal(String),
 }
 
+impl Error {
+    /// Check whether this error is a database unique-constraint violation.
+    pub fn is_unique_violation(&self) -> bool {
+        if let Self::Database(e) = self
+            && let Some(pg) = e.as_database_error()
+        {
+            return pg.is_unique_violation();
+        }
+        false
+    }
+}
+
 impl From<sqlx::Error> for Error {
     fn from(err: sqlx::Error) -> Self {
-        Self::Database(err.to_string())
+        Self::Database(Box::new(err))
     }
 }

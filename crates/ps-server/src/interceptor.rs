@@ -15,7 +15,7 @@ pub struct AuthContext {
     pub user_id: Uuid,
     pub username: String,
     pub display_name: String,
-    pub role: String,
+    pub role: ps_core::models::Role,
     pub session_id: Uuid,
 }
 

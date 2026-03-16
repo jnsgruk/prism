@@ -49,7 +49,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|t| team_with_count!(t)).collect())
     }
@@ -74,7 +74,7 @@ impl OrgRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(row.map(|t| team_with_count!(t)))
     }
@@ -98,7 +98,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|t| team_with_count!(t)).collect())
     }
@@ -127,11 +127,11 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         self.get_team(id)
             .await?
-            .ok_or_else(|| Error::Database("failed to read back created team".to_owned()))
+            .ok_or_else(|| Error::Internal("failed to read back created team".to_owned()))
     }
 
     /// Update an existing team.
@@ -157,11 +157,11 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         self.get_team(id)
             .await?
-            .ok_or_else(|| Error::Database("team not found after update".to_owned()))
+            .ok_or_else(|| Error::Internal("team not found after update".to_owned()))
     }
 
     /// Delete a team. Fails if it has children or active members.
@@ -172,7 +172,7 @@ impl OrgRepo {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         if has_children {
             return Err(Error::Validation(
@@ -192,7 +192,7 @@ impl OrgRepo {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         if has_members {
             return Err(Error::Validation(
@@ -203,7 +203,7 @@ impl OrgRepo {
         sqlx::query!("DELETE FROM org.teams WHERE id = $1", id)
             .execute(&self.pool)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         Ok(())
     }

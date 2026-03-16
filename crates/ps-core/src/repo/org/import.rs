@@ -39,11 +39,7 @@ impl OrgRepo {
             has_active_membership: HashSet::new(),
         };
 
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         ensure_group_teams(&mut tx, records, &mut state).await?;
         upsert_people_and_teams(&mut tx, records, &mut state).await?;
@@ -53,9 +49,7 @@ impl OrgRepo {
         let stale_people_count = count_stale_people(&mut tx).await?;
         let unassigned_count = count_unassigned_people(&mut tx).await?;
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(ImportResult {
             people_imported: state.people_imported,
@@ -88,7 +82,7 @@ async fn ensure_group_teams(
         )
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         let gid = if let Some(id) = existing {
             id
@@ -106,7 +100,7 @@ async fn ensure_group_teams(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
             state.teams_created += 1;
             new_id
         };
@@ -155,7 +149,7 @@ async fn upsert_person(
             sqlx::query_scalar!("SELECT id FROM org.people WHERE directory_id = $1", dir_id,)
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(|e| Error::Database(e.to_string()))?;
+                .map_err(Error::from)?;
 
         if let Some(existing_id) = existing {
             sqlx::query!(
@@ -172,7 +166,7 @@ async fn upsert_person(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
             state.people_updated += 1;
             Ok(existing_id)
@@ -190,7 +184,7 @@ async fn upsert_person(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
             state.people_imported += 1;
             Ok(person_id)
@@ -208,7 +202,7 @@ async fn upsert_person(
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         state.people_imported += 1;
         Ok(person_id)
@@ -234,7 +228,7 @@ async fn assign_team_if_needed(
     )
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| Error::Database(e.to_string()))?;
+    .map_err(Error::from)?;
 
     if any_membership {
         state.has_active_membership.insert(resolved_id);
@@ -254,7 +248,7 @@ async fn assign_team_if_needed(
     )
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| Error::Database(e.to_string()))?;
+    .map_err(Error::from)?;
 
     let team_id = if let Some(id) = team_id {
         id
@@ -273,7 +267,7 @@ async fn assign_team_if_needed(
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         state.teams_created += 1;
         new_id
@@ -293,7 +287,7 @@ async fn assign_team_if_needed(
     )
     .execute(&mut *tx)
     .await
-    .map_err(|e| Error::Database(e.to_string()))?;
+    .map_err(Error::from)?;
 
     Ok(())
 }
@@ -315,7 +309,7 @@ async fn track_team_name(
         )
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?
+        .map_err(Error::from)?
         {
             state.team_name_to_id.insert(team_name.clone(), tid);
         }
@@ -348,7 +342,7 @@ async fn map_identities(
         )
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         if existing.is_some() {
             sqlx::query!(
@@ -363,7 +357,7 @@ async fn map_identities(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
         } else {
             let identity_id = Uuid::now_v7();
             sqlx::query!(
@@ -378,7 +372,7 @@ async fn map_identities(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
             state.identities_mapped += 1;
         }
@@ -405,7 +399,7 @@ async fn wire_team_leads(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
         }
     }
     Ok(())
@@ -442,7 +436,7 @@ async fn wire_parent_teams(
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
         }
     }
     Ok(())
@@ -484,7 +478,7 @@ async fn resolve_parent(
         sqlx::query_scalar!("SELECT id FROM org.teams WHERE lead_id = $1", mgr_id)
             .fetch_optional(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?
+            .map_err(Error::from)?
     } else {
         None
     };
@@ -523,7 +517,7 @@ async fn count_stale_people(tx: &mut PgConnection) -> Result<i32, Error> {
     )
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| Error::Database(e.to_string()))
+    .map_err(Error::from)
 }
 
 /// Count active people with no active team membership.
@@ -542,5 +536,5 @@ async fn count_unassigned_people(tx: &mut PgConnection) -> Result<i32, Error> {
     )
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| Error::Database(e.to_string()))
+    .map_err(Error::from)
 }

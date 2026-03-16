@@ -77,7 +77,7 @@ impl OrgRepo {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(id)
     }
@@ -88,11 +88,7 @@ impl OrgRepo {
         github_team_id: Uuid,
         usernames: &[String],
     ) -> Result<(), Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         sqlx::query!(
             "DELETE FROM org.github_team_members WHERE github_team_id = $1",
@@ -100,7 +96,7 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         for username in usernames {
             sqlx::query!(
@@ -113,12 +109,10 @@ impl OrgRepo {
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
         }
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -129,11 +123,7 @@ impl OrgRepo {
         github_team_id: Uuid,
         repos: &[(String, String)], // (org, repo)
     ) -> Result<(), Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         sqlx::query!(
             "DELETE FROM org.github_team_repos WHERE github_team_id = $1",
@@ -141,7 +131,7 @@ impl OrgRepo {
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         for (org, repo) in repos {
             sqlx::query!(
@@ -155,12 +145,10 @@ impl OrgRepo {
             )
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
         }
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -187,7 +175,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|r| github_team_row!(r)).collect())
     }
@@ -209,7 +197,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -227,7 +215,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -248,7 +236,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|r| github_team_row!(r)).collect())
     }
@@ -270,7 +258,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -322,7 +310,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
@@ -357,7 +345,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -387,7 +375,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(rows.into_iter().map(|r| r.username).collect())
     }
@@ -410,7 +398,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(result.rows_affected())
     }

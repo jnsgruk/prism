@@ -31,7 +31,7 @@ impl OrgRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(())
     }
@@ -42,7 +42,7 @@ impl OrgRepo {
             .fetch_one(&self.pool)
             .await
             .map(|c| c.unwrap_or(0))
-            .map_err(|e| Error::Database(e.to_string()))
+            .map_err(Error::from)
     }
 
     /// Count teams (for backup manifest).
@@ -51,7 +51,7 @@ impl OrgRepo {
             .fetch_one(&self.pool)
             .await
             .map(|c| c.unwrap_or(0))
-            .map_err(|e| Error::Database(e.to_string()))
+            .map_err(Error::from)
     }
 
     /// Export all people as JSON rows (for backup).
@@ -61,7 +61,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(people
             .iter()
@@ -88,7 +88,7 @@ impl OrgRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))?;
+        .map_err(Error::from)?;
 
         Ok(teams
             .iter()
@@ -109,42 +109,36 @@ impl OrgRepo {
     /// Delete all org data: memberships, identities, people, teams.
     /// Returns (`people_deleted`, `teams_deleted`).
     pub async fn reset_all(&self) -> Result<(i64, i64), Error> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
         // Order matters: children first due to foreign keys.
         sqlx::query!("DELETE FROM org.team_memberships")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         sqlx::query!("DELETE FROM org.platform_identities")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         // Clear lead_id references before deleting people.
         sqlx::query!("UPDATE org.teams SET lead_id = NULL")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         let people = sqlx::query!("DELETE FROM org.people")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
         let teams = sqlx::query!("DELETE FROM org.teams")
             .execute(&mut *tx)
             .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+            .map_err(Error::from)?;
 
-        tx.commit()
-            .await
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tx.commit().await.map_err(Error::from)?;
 
         Ok((
             people.rows_affected().cast_signed(),

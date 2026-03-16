@@ -103,7 +103,7 @@ impl AuthService for AuthServiceImpl {
                 &req.username,
                 &req.display_name,
                 &password_hash,
-                "admin",
+                ps_core::models::Role::Admin,
             )
             .await
             .map_err(|e| Status::internal(format!("failed to create user: {e}")))?;
@@ -169,7 +169,7 @@ impl AuthService for AuthServiceImpl {
             user_id: ctx.user_id.to_string(),
             username: ctx.username,
             display_name: ctx.display_name,
-            role: ctx.role,
+            role: ctx.role.to_string(),
         }))
     }
 
@@ -266,7 +266,13 @@ impl AuthService for AuthServiceImpl {
         let user_id = Uuid::now_v7();
         self.repos
             .auth
-            .create_user(user_id, "admin", "Administrator", &password_hash, "admin")
+            .create_user(
+                user_id,
+                "admin",
+                "Administrator",
+                &password_hash,
+                ps_core::models::Role::Admin,
+            )
             .await
             .map_err(|e| Status::internal(format!("failed to create admin user: {e}")))?;
 

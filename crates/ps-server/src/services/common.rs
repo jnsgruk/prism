@@ -19,7 +19,7 @@ pub fn require_auth<T>(request: &Request<T>) -> Result<AuthContext, Status> {
 #[allow(clippy::result_large_err)]
 pub fn require_admin<T>(request: &Request<T>) -> Result<AuthContext, Status> {
     let ctx = require_auth(request)?;
-    if ctx.role != "admin" {
+    if ctx.role != ps_core::models::Role::Admin {
         return Err(Status::permission_denied("admin role required"));
     }
     Ok(ctx)
