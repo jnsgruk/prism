@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,20 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { AlertCircle, Ban, CheckCircle2, Cog, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 import { useListSources } from "@ps/hooks/use-config";
 
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import {
   useListHandlers,
   useListRuns,
@@ -216,6 +211,69 @@ const HandlerCard = ({ handler }: { handler: HandlerInfo }): React.ReactElement 
   );
 };
 
+const formatFullTimestamp = (ts?: { seconds: bigint }): string => {
+  if (!ts) return "—";
+  return new Date(Number(ts.seconds) * 1000).toLocaleString();
+};
+
+const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
+  {
+    accessorKey: "handlerName",
+    header: "Handler",
+    cell: ({ row }) => <span className="font-medium">{row.original.handlerName}</span>,
+  },
+  {
+    accessorKey: "handlerMethod",
+    header: "Method",
+    cell: ({ row }) => <span className="text-xs">{row.original.handlerMethod}</span>,
+  },
+  {
+    accessorKey: "sourceName",
+    header: "Source",
+    cell: ({ row }) => (
+      <span className="text-xs">
+        {row.original.sourceName === "_system" ? "—" : row.original.sourceName}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "startedAt",
+    header: "Started",
+    cell: ({ row }) => <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>,
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    cell: ({ row }) => (
+      <span className="text-xs">
+        {formatDuration(row.original.startedAt, row.original.completedAt)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "itemsCollected",
+    header: () => <span className="block text-right">Items</span>,
+    cell: ({ row }) => (
+      <span className="block text-right tabular-nums">
+        {row.original.itemsCollected.toLocaleString()}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const cfg = statusConfig[row.original.status] ?? defaultStatus;
+      return (
+        <Badge variant={cfg.variant} className="gap-1">
+          {cfg.icon}
+          {cfg.label}
+        </Badge>
+      );
+    },
+  },
+];
+
 const RunDetailDialog = ({
   run,
   open,
@@ -234,7 +292,9 @@ const RunDetailDialog = ({
           <DialogTitle>
             {run.handlerName}.{run.handlerMethod}
           </DialogTitle>
-          <DialogDescription>Source: {run.sourceName}</DialogDescription>
+          <DialogDescription>
+            {run.sourceName === "_system" ? "Run details" : `Source: ${run.sourceName}`}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-3">
@@ -246,29 +306,27 @@ const RunDetailDialog = ({
               </Badge>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Items</p>
+              <p className="text-xs text-muted-foreground">Items collected</p>
               <p className="font-medium">{run.itemsCollected.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Started</p>
-              <p>
-                {run.startedAt
-                  ? new Date(Number(run.startedAt.seconds) * 1000).toLocaleString()
-                  : "\u2014"}
-              </p>
+              <p>{formatFullTimestamp(run.startedAt)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Completed</p>
-              <p>
-                {run.completedAt
-                  ? new Date(Number(run.completedAt.seconds) * 1000).toLocaleString()
-                  : "\u2014"}
-              </p>
+              <p>{formatFullTimestamp(run.completedAt)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Duration</p>
               <p>{formatDuration(run.startedAt, run.completedAt)}</p>
             </div>
+            {run.rateLimitWaitsSeconds > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Rate limit waits</p>
+                <p>{String(run.rateLimitWaitsSeconds)}s</p>
+              </div>
+            )}
           </div>
           {run.errorMessage && (
             <div>
@@ -284,59 +342,117 @@ const RunDetailDialog = ({
   );
 };
 
-const HandlerRunsTable = ({ runs }: { runs: HandlerRun[] }): React.ReactElement => {
-  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
+type StatusFilter = "all" | "completed" | "failed" | "cancelled" | "running";
 
-  if (runs.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No handler runs recorded yet.
-      </p>
-    );
-  }
+const HandlerRunsTable = ({
+  runs,
+  handlers,
+}: {
+  runs: HandlerRun[];
+  handlers: HandlerInfo[];
+}): React.ReactElement => {
+  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
+  const [handlerFilter, setHandlerFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [pageSize, setPageSize] = useState(25);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [handlerFilter, statusFilter, pageSize]);
+
+  const filteredRuns = useMemo(() => {
+    let result = runs;
+    if (handlerFilter !== "all") {
+      result = result.filter((r) => r.handlerName === handlerFilter);
+    }
+    if (statusFilter !== "all") {
+      result = result.filter((r) => r.status === statusFilter);
+    }
+    return result;
+  }, [runs, handlerFilter, statusFilter]);
+
+  const totalCount = filteredRuns.length;
+  const pageRuns = filteredRuns.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
+
+  const handleNextPage = useCallback(() => {
+    setPageIndex((i) => i + 1);
+  }, []);
+
+  const handlePrevPage = useCallback(() => {
+    setPageIndex((i) => Math.max(0, i - 1));
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+  }, []);
 
   return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Handler</TableHead>
-            <TableHead>Method</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Started</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead className="text-right">Items</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {runs.map((run) => {
-            const runConfig = statusConfig[run.status] ?? defaultStatus;
-            return (
-              <TableRow key={run.id} className="cursor-pointer" onClick={() => setSelectedRun(run)}>
-                <TableCell className="text-xs font-medium">{run.handlerName}</TableCell>
-                <TableCell className="text-xs">{run.handlerMethod}</TableCell>
-                <TableCell className="text-xs">
-                  {run.sourceName === "_system" ? "\u2014" : run.sourceName}
-                </TableCell>
-                <TableCell className="text-xs">{formatTimestamp(run.startedAt)}</TableCell>
-                <TableCell className="text-xs">
-                  {formatDuration(run.startedAt, run.completedAt)}
-                </TableCell>
-                <TableCell className="text-right text-xs">
-                  {run.itemsCollected.toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={runConfig.variant} className="gap-1">
-                    {runConfig.icon}
-                    {runConfig.label}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1">
+          <Button
+            variant={handlerFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setHandlerFilter("all")}
+          >
+            All handlers
+          </Button>
+          {handlers.map((h) => (
+            <Button
+              key={h.name}
+              variant={handlerFilter === h.name ? "default" : "outline"}
+              size="sm"
+              onClick={() => setHandlerFilter(h.name)}
+            >
+              {h.name.replace("Handler", "")}
+            </Button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant={statusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+          >
+            All
+          </Button>
+          <Button
+            variant={statusFilter === "completed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("completed")}
+          >
+            Completed
+          </Button>
+          <Button
+            variant={statusFilter === "failed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("failed")}
+          >
+            Failed
+          </Button>
+          <Button
+            variant={statusFilter === "running" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("running")}
+          >
+            Running
+          </Button>
+        </div>
+      </div>
+
+      <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />
+
+      <DataTablePagination
+        totalCount={totalCount}
+        pageSize={pageSize}
+        pageIndex={pageIndex}
+        hasNextPage={hasNextPage}
+        onPageSizeChange={handlePageSizeChange}
+        onPreviousPage={handlePrevPage}
+        onNextPage={handleNextPage}
+      />
 
       {selectedRun && (
         <RunDetailDialog
@@ -347,18 +463,13 @@ const HandlerRunsTable = ({ runs }: { runs: HandlerRun[] }): React.ReactElement 
           }}
         />
       )}
-    </>
+    </div>
   );
 };
 
 export const HandlersTab = (): React.ReactElement => {
   const { data: handlers, isLoading: handlersLoading, error: handlersError } = useListHandlers();
   const { data: runs } = useListRuns(undefined, { refetchInterval: 5000 });
-  const [handlerFilter, setHandlerFilter] = useState<string | undefined>(undefined);
-
-  const filteredRuns = handlerFilter
-    ? (runs?.filter((r) => r.handlerName === handlerFilter) ?? [])
-    : (runs ?? []);
 
   return (
     <div className="space-y-6 pt-4">
@@ -389,31 +500,10 @@ export const HandlersTab = (): React.ReactElement => {
       {/* Run history */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Run History</CardTitle>
-            <div className="flex gap-1">
-              <Button
-                variant={handlerFilter === undefined ? "default" : "outline"}
-                size="sm"
-                onClick={() => setHandlerFilter(undefined)}
-              >
-                All
-              </Button>
-              {handlers?.map((h) => (
-                <Button
-                  key={h.name}
-                  variant={handlerFilter === h.name ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setHandlerFilter(h.name)}
-                >
-                  {h.name.replace("Handler", "")}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <CardTitle className="text-base">Run History</CardTitle>
         </CardHeader>
         <CardContent>
-          <HandlerRunsTable runs={filteredRuns} />
+          <HandlerRunsTable runs={runs ?? []} handlers={handlers ?? []} />
         </CardContent>
       </Card>
     </div>
