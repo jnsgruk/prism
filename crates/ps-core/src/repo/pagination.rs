@@ -86,8 +86,10 @@ impl<T> PageResponse<T> {
         let len = i64::try_from(items.len()).unwrap_or(i64::MAX);
         if page_size > 0 && len > page_size {
             items.truncate(page_size as usize);
-            // SAFETY: we just confirmed len > page_size > 0, so items is non-empty after truncate.
-            let last = items.last().expect("items non-empty after truncate");
+            // We just confirmed len > page_size > 0, so items is non-empty after truncate.
+            let Some(last) = items.last() else {
+                unreachable!("items non-empty after truncate of non-zero page_size");
+            };
             let (sort_val, id) = last_key(last);
             Self {
                 items,
