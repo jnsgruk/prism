@@ -132,7 +132,8 @@ const ProgressPanel = ({ progress }: { progress: RunProgress }): React.ReactElem
               rateLimitPercent < 10 ? "text-destructive" : "text-muted-foreground",
             )}
           >
-            API: {rateLimitPercent}%
+            {progress.rate_limit_remaining?.toLocaleString()}/
+            {progress.rate_limit_limit?.toLocaleString()} API calls left
           </p>
         )}
       </div>
