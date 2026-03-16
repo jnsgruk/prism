@@ -3,15 +3,16 @@ use std::collections::HashMap;
 use ps_core::repo::Repos;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
-    CompareTeamsRequest, CompareTeamsResponse, GetTeamMetricsRequest, GetTeamMetricsResponse,
-    ListPeriodsRequest, ListPeriodsResponse, Period, PeriodType, TeamMetrics,
+    CompareTeamsRequest, CompareTeamsResponse, Contribution, GetTeamMetricsRequest,
+    GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse, ListTeamContributionsRequest,
+    ListTeamContributionsResponse, Period, PeriodType, TeamMetrics,
 };
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
-use super::common::{db_err, require_auth};
+use super::common::{db_err, require_auth, to_timestamp};
 
 /// ISO 8601 date-only format (YYYY-MM-DD).
 const DATE_FMT: &[time::format_description::BorrowedFormatItem<'_>] =
@@ -59,6 +60,14 @@ fn json_f32(v: &serde_json::Value, key: &str) -> f32 {
     v.get(key)
         .and_then(serde_json::Value::as_f64)
         .unwrap_or(0.0) as f32
+}
+
+fn json_i32(v: &serde_json::Value, key: &str) -> i32 {
+    v.get(key).and_then(serde_json::Value::as_i64).unwrap_or(0) as i32
+}
+
+fn json_str<'a>(v: &'a serde_json::Value, key: &str) -> &'a str {
+    v.get(key).and_then(serde_json::Value::as_str).unwrap_or("")
 }
 
 fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics {
@@ -272,5 +281,75 @@ impl MetricsService for MetricsServiceImpl {
             .collect();
 
         Ok(Response::new(ListPeriodsResponse { periods }))
+    }
+
+    async fn list_team_contributions(
+        &self,
+        request: Request<ListTeamContributionsRequest>,
+    ) -> Result<Response<ListTeamContributionsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let team_id: Uuid = req
+            .team_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        let period = req
+            .period
+            .ok_or_else(|| Status::invalid_argument("period required"))?;
+        let period_start = parse_date(&period.start)?;
+        let period_end = parse_date(&period.end)?;
+
+        let page_size = if req.page_size > 0 { req.page_size } else { 25 };
+        let offset = req.page_index * page_size;
+
+        let contribution_type = req.contribution_type.as_deref();
+        let state = req.state.as_deref();
+
+        let (rows, total_count) = self
+            .repos
+            .metrics
+            .list_team_contributions(
+                team_id,
+                period_start,
+                period_end,
+                contribution_type,
+                state,
+                page_size,
+                offset,
+            )
+            .await
+            .map_err(db_err)?;
+
+        let contributions = rows
+            .into_iter()
+            .map(|r| {
+                let repo = json_str(&r.metadata, "repo").to_string();
+                Contribution {
+                    id: r.id.to_string(),
+                    person_name: r.person_name,
+                    platform: r.platform,
+                    contribution_type: r.contribution_type,
+                    platform_id: r.platform_id,
+                    title: r.title.unwrap_or_default(),
+                    url: r.url.unwrap_or_default(),
+                    state: r.state.unwrap_or_default(),
+                    created_at: Some(to_timestamp(r.created_at)),
+                    closed_at: r.closed_at.map(to_timestamp),
+                    additions: json_i32(&r.metrics, "additions"),
+                    deletions: json_i32(&r.metrics, "deletions"),
+                    changed_files: json_i32(&r.metrics, "changed_files"),
+                    review_count: json_i32(&r.metrics, "review_count"),
+                    review_hours: json_f32(&r.metrics, "review_hours"),
+                    repo,
+                }
+            })
+            .collect();
+
+        Ok(Response::new(ListTeamContributionsResponse {
+            contributions,
+            total_count: total_count as i32,
+        }))
     }
 }

@@ -398,7 +398,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows.into_iter().filter_map(|r| r.username).collect())
+        Ok(rows.into_iter().map(|r| r.username).collect())
     }
 
     /// Remove stale GitHub teams that weren't seen in the latest sync.

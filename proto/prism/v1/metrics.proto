@@ -2,10 +2,13 @@ syntax = "proto3";
 
 package prism.v1;
 
+import "google/protobuf/timestamp.proto";
+
 service MetricsService {
   rpc GetTeamMetrics(GetTeamMetricsRequest) returns (GetTeamMetricsResponse);
   rpc CompareTeams(CompareTeamsRequest) returns (CompareTeamsResponse);
   rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
+  rpc ListTeamContributions(ListTeamContributionsRequest) returns (ListTeamContributionsResponse);
 }
 
 enum PeriodType {
@@ -56,4 +59,41 @@ message ListPeriodsRequest {}
 
 message ListPeriodsResponse {
   repeated Period periods = 1;
+}
+
+message ListTeamContributionsRequest {
+  string team_id = 1;
+  Period period = 2;
+  // Filter by contribution type: "pull_request", "pr_review", or empty for all.
+  optional string contribution_type = 3;
+  // Filter by state: "merged", "open", "closed", "APPROVED", etc.
+  optional string state = 4;
+  int32 page_size = 5;
+  int32 page_index = 6;
+  optional string sort_field = 7;
+  optional bool sort_desc = 8;
+}
+
+message Contribution {
+  string id = 1;
+  string person_name = 2;
+  string platform = 3;
+  string contribution_type = 4;
+  string platform_id = 5;
+  string title = 6;
+  string url = 7;
+  string state = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp closed_at = 10;
+  int32 additions = 11;
+  int32 deletions = 12;
+  int32 changed_files = 13;
+  int32 review_count = 14;
+  float review_hours = 15;
+  string repo = 16;
+}
+
+message ListTeamContributionsResponse {
+  repeated Contribution contributions = 1;
+  int32 total_count = 2;
 }

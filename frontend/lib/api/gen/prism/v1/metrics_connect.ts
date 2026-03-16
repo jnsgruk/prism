@@ -10,6 +10,8 @@ import {
   GetTeamMetricsResponse,
   ListPeriodsRequest,
   ListPeriodsResponse,
+  ListTeamContributionsRequest,
+  ListTeamContributionsResponse,
 } from "./metrics_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
@@ -44,6 +46,15 @@ export const MetricsService = {
       name: "ListPeriods",
       I: ListPeriodsRequest,
       O: ListPeriodsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.MetricsService.ListTeamContributions
+     */
+    listTeamContributions: {
+      name: "ListTeamContributions",
+      I: ListTeamContributionsRequest,
+      O: ListTeamContributionsResponse,
       kind: MethodKind.Unary,
     },
   },

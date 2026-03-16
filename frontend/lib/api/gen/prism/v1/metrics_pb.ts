@@ -4,13 +4,16 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file prism/v1/metrics.proto.
  */
 export const file_prism_v1_metrics: GenFile /*@__PURE__*/ = fileDesc(
-  "ChZwcmlzbS92MS9tZXRyaWNzLnByb3RvEghwcmlzbS52MSJICgZQZXJpb2QSIgoEdHlwZRgBIAEoDjIULnByaXNtLnYxLlBlcmlvZFR5cGUSDQoFc3RhcnQYAiABKAkSCwoDZW5kGAMgASgJIoADCgtUZWFtTWV0cmljcxIPCgd0ZWFtX2lkGAEgASgJEhEKCXRlYW1fbmFtZRgCIAEoCRIgCgZwZXJpb2QYAyABKAsyEC5wcmlzbS52MS5QZXJpb2QSEgoKdGhyb3VnaHB1dBgEIAEoBRIjChthdmdfcmV2aWV3X3R1cm5hcm91bmRfaG91cnMYBSABKAISFAoMbWVtYmVyX2NvdW50GAYgASgFEjoKC3Jhd19tZXRyaWNzGAcgAygLMiUucHJpc20udjEuVGVhbU1ldHJpY3MuUmF3TWV0cmljc0VudHJ5EiMKG3Jldmlld190dXJuYXJvdW5kX3A3NV9ob3VycxgIIAEoAhIjChtyZXZpZXdfdHVybmFyb3VuZF9wOTBfaG91cnMYCSABKAISIwobcmV2aWV3X3R1cm5hcm91bmRfcDk5X2hvdXJzGAogASgCGjEKD1Jhd01ldHJpY3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIkoKFUdldFRlYW1NZXRyaWNzUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZCJAChZHZXRUZWFtTWV0cmljc1Jlc3BvbnNlEiYKB21ldHJpY3MYASABKAsyFS5wcmlzbS52MS5UZWFtTWV0cmljcyJJChNDb21wYXJlVGVhbXNSZXF1ZXN0EhAKCHRlYW1faWRzGAEgAygJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZCI+ChRDb21wYXJlVGVhbXNSZXNwb25zZRImCgdtZXRyaWNzGAEgAygLMhUucHJpc20udjEuVGVhbU1ldHJpY3MiFAoSTGlzdFBlcmlvZHNSZXF1ZXN0IjgKE0xpc3RQZXJpb2RzUmVzcG9uc2USIQoHcGVyaW9kcxgBIAMoCzIQLnByaXNtLnYxLlBlcmlvZCpvCgpQZXJpb2RUeXBlEhsKF1BFUklPRF9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQUEVSSU9EX1RZUEVfV0VFSxABEhUKEVBFUklPRF9UWVBFX01PTlRIEAISFwoTUEVSSU9EX1RZUEVfUVVBUlRFUhADMoACCg5NZXRyaWNzU2VydmljZRJTCg5HZXRUZWFtTWV0cmljcxIfLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVxdWVzdBogLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVzcG9uc2USTQoMQ29tcGFyZVRlYW1zEh0ucHJpc20udjEuQ29tcGFyZVRlYW1zUmVxdWVzdBoeLnByaXNtLnYxLkNvbXBhcmVUZWFtc1Jlc3BvbnNlEkoKC0xpc3RQZXJpb2RzEhwucHJpc20udjEuTGlzdFBlcmlvZHNSZXF1ZXN0Gh0ucHJpc20udjEuTGlzdFBlcmlvZHNSZXNwb25zZWIGcHJvdG8z",
+  "ChZwcmlzbS92MS9tZXRyaWNzLnByb3RvEghwcmlzbS52MSJICgZQZXJpb2QSIgoEdHlwZRgBIAEoDjIULnByaXNtLnYxLlBlcmlvZFR5cGUSDQoFc3RhcnQYAiABKAkSCwoDZW5kGAMgASgJIoADCgtUZWFtTWV0cmljcxIPCgd0ZWFtX2lkGAEgASgJEhEKCXRlYW1fbmFtZRgCIAEoCRIgCgZwZXJpb2QYAyABKAsyEC5wcmlzbS52MS5QZXJpb2QSEgoKdGhyb3VnaHB1dBgEIAEoBRIjChthdmdfcmV2aWV3X3R1cm5hcm91bmRfaG91cnMYBSABKAISFAoMbWVtYmVyX2NvdW50GAYgASgFEjoKC3Jhd19tZXRyaWNzGAcgAygLMiUucHJpc20udjEuVGVhbU1ldHJpY3MuUmF3TWV0cmljc0VudHJ5EiMKG3Jldmlld190dXJuYXJvdW5kX3A3NV9ob3VycxgIIAEoAhIjChtyZXZpZXdfdHVybmFyb3VuZF9wOTBfaG91cnMYCSABKAISIwobcmV2aWV3X3R1cm5hcm91bmRfcDk5X2hvdXJzGAogASgCGjEKD1Jhd01ldHJpY3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIkoKFUdldFRlYW1NZXRyaWNzUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZCJAChZHZXRUZWFtTWV0cmljc1Jlc3BvbnNlEiYKB21ldHJpY3MYASABKAsyFS5wcmlzbS52MS5UZWFtTWV0cmljcyJJChNDb21wYXJlVGVhbXNSZXF1ZXN0EhAKCHRlYW1faWRzGAEgAygJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZCI+ChRDb21wYXJlVGVhbXNSZXNwb25zZRImCgdtZXRyaWNzGAEgAygLMhUucHJpc20udjEuVGVhbU1ldHJpY3MiFAoSTGlzdFBlcmlvZHNSZXF1ZXN0IjgKE0xpc3RQZXJpb2RzUmVzcG9uc2USIQoHcGVyaW9kcxgBIAMoCzIQLnByaXNtLnYxLlBlcmlvZCKaAgocTGlzdFRlYW1Db250cmlidXRpb25zUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZBIeChFjb250cmlidXRpb25fdHlwZRgDIAEoCUgAiAEBEhIKBXN0YXRlGAQgASgJSAGIAQESEQoJcGFnZV9zaXplGAUgASgFEhIKCnBhZ2VfaW5kZXgYBiABKAUSFwoKc29ydF9maWVsZBgHIAEoCUgCiAEBEhYKCXNvcnRfZGVzYxgIIAEoCEgDiAEBQhQKEl9jb250cmlidXRpb25fdHlwZUIICgZfc3RhdGVCDQoLX3NvcnRfZmllbGRCDAoKX3NvcnRfZGVzYyLyAgoMQ29udHJpYnV0aW9uEgoKAmlkGAEgASgJEhMKC3BlcnNvbl9uYW1lGAIgASgJEhAKCHBsYXRmb3JtGAMgASgJEhkKEWNvbnRyaWJ1dGlvbl90eXBlGAQgASgJEhMKC3BsYXRmb3JtX2lkGAUgASgJEg0KBXRpdGxlGAYgASgJEgsKA3VybBgHIAEoCRINCgVzdGF0ZRgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBItCgljbG9zZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhEKCWFkZGl0aW9ucxgLIAEoBRIRCglkZWxldGlvbnMYDCABKAUSFQoNY2hhbmdlZF9maWxlcxgNIAEoBRIUCgxyZXZpZXdfY291bnQYDiABKAUSFAoMcmV2aWV3X2hvdXJzGA8gASgCEgwKBHJlcG8YECABKAkiYwodTGlzdFRlYW1Db250cmlidXRpb25zUmVzcG9uc2USLQoNY29udHJpYnV0aW9ucxgBIAMoCzIWLnByaXNtLnYxLkNvbnRyaWJ1dGlvbhITCgt0b3RhbF9jb3VudBgCIAEoBSpvCgpQZXJpb2RUeXBlEhsKF1BFUklPRF9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQUEVSSU9EX1RZUEVfV0VFSxABEhUKEVBFUklPRF9UWVBFX01PTlRIEAISFwoTUEVSSU9EX1RZUEVfUVVBUlRFUhADMuoCCg5NZXRyaWNzU2VydmljZRJTCg5HZXRUZWFtTWV0cmljcxIfLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVxdWVzdBogLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVzcG9uc2USTQoMQ29tcGFyZVRlYW1zEh0ucHJpc20udjEuQ29tcGFyZVRlYW1zUmVxdWVzdBoeLnByaXNtLnYxLkNvbXBhcmVUZWFtc1Jlc3BvbnNlEkoKC0xpc3RQZXJpb2RzEhwucHJpc20udjEuTGlzdFBlcmlvZHNSZXF1ZXN0Gh0ucHJpc20udjEuTGlzdFBlcmlvZHNSZXNwb25zZRJoChVMaXN0VGVhbUNvbnRyaWJ1dGlvbnMSJi5wcmlzbS52MS5MaXN0VGVhbUNvbnRyaWJ1dGlvbnNSZXF1ZXN0GicucHJpc20udjEuTGlzdFRlYW1Db250cmlidXRpb25zUmVzcG9uc2ViBnByb3RvMw",
+  [file_google_protobuf_timestamp],
 );
 
 /**
@@ -217,6 +220,178 @@ export const ListPeriodsResponseSchema: GenMessage<ListPeriodsResponse> /*@__PUR
 );
 
 /**
+ * @generated from message prism.v1.ListTeamContributionsRequest
+ */
+export type ListTeamContributionsRequest = Message<"prism.v1.ListTeamContributionsRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+
+  /**
+   * @generated from field: prism.v1.Period period = 2;
+   */
+  period?: Period;
+
+  /**
+   * Filter by contribution type: "pull_request", "pr_review", or empty for all.
+   *
+   * @generated from field: optional string contribution_type = 3;
+   */
+  contributionType?: string;
+
+  /**
+   * Filter by state: "merged", "open", "closed", "APPROVED", etc.
+   *
+   * @generated from field: optional string state = 4;
+   */
+  state?: string;
+
+  /**
+   * @generated from field: int32 page_size = 5;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: int32 page_index = 6;
+   */
+  pageIndex: number;
+
+  /**
+   * @generated from field: optional string sort_field = 7;
+   */
+  sortField?: string;
+
+  /**
+   * @generated from field: optional bool sort_desc = 8;
+   */
+  sortDesc?: boolean;
+};
+
+/**
+ * Describes the message prism.v1.ListTeamContributionsRequest.
+ * Use `create(ListTeamContributionsRequestSchema)` to create a new message.
+ */
+export const ListTeamContributionsRequestSchema: GenMessage<ListTeamContributionsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 8);
+
+/**
+ * @generated from message prism.v1.Contribution
+ */
+export type Contribution = Message<"prism.v1.Contribution"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string person_name = 2;
+   */
+  personName: string;
+
+  /**
+   * @generated from field: string platform = 3;
+   */
+  platform: string;
+
+  /**
+   * @generated from field: string contribution_type = 4;
+   */
+  contributionType: string;
+
+  /**
+   * @generated from field: string platform_id = 5;
+   */
+  platformId: string;
+
+  /**
+   * @generated from field: string title = 6;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string url = 7;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string state = 8;
+   */
+  state: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 9;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp closed_at = 10;
+   */
+  closedAt?: Timestamp;
+
+  /**
+   * @generated from field: int32 additions = 11;
+   */
+  additions: number;
+
+  /**
+   * @generated from field: int32 deletions = 12;
+   */
+  deletions: number;
+
+  /**
+   * @generated from field: int32 changed_files = 13;
+   */
+  changedFiles: number;
+
+  /**
+   * @generated from field: int32 review_count = 14;
+   */
+  reviewCount: number;
+
+  /**
+   * @generated from field: float review_hours = 15;
+   */
+  reviewHours: number;
+
+  /**
+   * @generated from field: string repo = 16;
+   */
+  repo: string;
+};
+
+/**
+ * Describes the message prism.v1.Contribution.
+ * Use `create(ContributionSchema)` to create a new message.
+ */
+export const ContributionSchema: GenMessage<Contribution> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_metrics,
+  9,
+);
+
+/**
+ * @generated from message prism.v1.ListTeamContributionsResponse
+ */
+export type ListTeamContributionsResponse = Message<"prism.v1.ListTeamContributionsResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.Contribution contributions = 1;
+   */
+  contributions: Contribution[];
+
+  /**
+   * @generated from field: int32 total_count = 2;
+   */
+  totalCount: number;
+};
+
+/**
+ * Describes the message prism.v1.ListTeamContributionsResponse.
+ * Use `create(ListTeamContributionsResponseSchema)` to create a new message.
+ */
+export const ListTeamContributionsResponseSchema: GenMessage<ListTeamContributionsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 10);
+
+/**
  * @generated from enum prism.v1.PeriodType
  */
 export enum PeriodType {
@@ -276,5 +451,13 @@ export const MetricsService: GenService<{
     methodKind: "unary";
     input: typeof ListPeriodsRequestSchema;
     output: typeof ListPeriodsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.MetricsService.ListTeamContributions
+   */
+  listTeamContributions: {
+    methodKind: "unary";
+    input: typeof ListTeamContributionsRequestSchema;
+    output: typeof ListTeamContributionsResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_metrics, 0);
