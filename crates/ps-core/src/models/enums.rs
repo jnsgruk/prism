@@ -72,16 +72,16 @@ impl Platform {
         }
     }
 
-    /// String slice for fixed variants only.  Panics on `Discourse` — use
-    /// [`as_cow`](Self::as_cow) or [`Display`] when the variant may be
-    /// Discourse.
+    /// String slice for fixed (non-Discourse) variants.
     fn static_str(&self) -> &'static str {
         match self {
             Self::Github => "github",
             Self::Launchpad => "launchpad",
             Self::Mattermost => "mattermost",
             Self::Jira => "jira",
-            Self::Discourse(_) => panic!("use as_cow() for Discourse"),
+            // Discourse uses Display for dynamic formatting; this arm is
+            // unreachable via the public API (Display dispatches before here).
+            Self::Discourse(_) => "discourse",
         }
     }
 
