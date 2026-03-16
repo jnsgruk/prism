@@ -73,8 +73,8 @@ struct Cursor {
     search_graphql_cursor: Option<String>,
     /// Usernames to search for cross-repo contributions.
     search_users: Vec<String>,
-    /// Repos already ingested in the `TeamRepos` phase (owner/repo pairs).
-    ingested_repos: HashSet<(String, String)>,
+    /// Repos already ingested in the `TeamRepos` phase ("owner/repo" keys).
+    ingested_repos: HashSet<String>,
     /// Last rate limit remaining value (used to decide whether to skip search).
     last_rate_limit_remaining: Option<i32>,
 }
@@ -293,7 +293,7 @@ async fn fetch_team_repos(
     }
 
     // Track ingested repos for filtering in the search phase.
-    cur.ingested_repos.insert((owner.clone(), repo.clone()));
+    cur.ingested_repos.insert(format!("{owner}/{repo}"));
 
     let mut items = Vec::new();
 
@@ -493,7 +493,7 @@ async fn fetch_member_search(
         let repo = &repo_info.name;
 
         // Skip PRs in repos we already ingested.
-        if cur.ingested_repos.contains(&(owner.clone(), repo.clone())) {
+        if cur.ingested_repos.contains(&format!("{owner}/{repo}")) {
             continue;
         }
 

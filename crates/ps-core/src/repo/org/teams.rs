@@ -103,6 +103,14 @@ impl OrgRepo {
         Ok(rows.into_iter().map(|t| team_with_count!(t)).collect())
     }
 
+    /// List all team IDs (lightweight query for metric computation).
+    pub async fn list_team_ids(&self) -> Result<Vec<Uuid>, Error> {
+        sqlx::query_scalar!("SELECT id FROM org.teams ORDER BY name")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
     /// Create a new team.
     pub async fn create_team(
         &self,

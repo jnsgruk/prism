@@ -81,16 +81,16 @@ pub async fn compute_all_snapshots(
     period_end: Date,
     period_type: PeriodType,
 ) -> Result<i32, ps_core::Error> {
-    let teams = repos.org.list_teams(None, None).await?;
+    let team_ids = repos.org.list_team_ids().await?;
 
-    stream::iter(teams.iter().map(Ok))
-        .try_for_each_concurrent(4, |team| async move {
-            compute_team_snapshot(repos, team.id, period_start, period_end, period_type).await
+    stream::iter(team_ids.iter().map(Ok))
+        .try_for_each_concurrent(4, |&team_id| async move {
+            compute_team_snapshot(repos, team_id, period_start, period_end, period_type).await
         })
         .await?;
 
     #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-    let computed = teams.len() as i32;
+    let computed = team_ids.len() as i32;
     info!(computed, %period_type, %period_start, "computed all team snapshots");
     Ok(computed)
 }
