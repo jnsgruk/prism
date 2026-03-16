@@ -854,8 +854,8 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-5.7: Deduplicate GitHubTeamRow mapping
 - [x] WS-5.8: Extract JSON-to-prost conversion
 - [x] WS-5.9: Deduplicate Timestamp construction
-- [ ] WS-5.10: Extract REST client generic helper
-- [ ] WS-5.11: Extract psctl client constructor
+- [ ] WS-5.10: Extract REST client generic helper (low priority)
+- [ ] WS-5.11: Extract psctl client constructor (low priority)
 - [x] WS-5.12: list_team_contributions params struct
 - [x] WS-5.13: Replace build_progress_json with struct
 - [x] WS-5.14: Derive handler list from single source
