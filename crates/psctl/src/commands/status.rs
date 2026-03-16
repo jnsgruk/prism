@@ -1,13 +1,15 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{GetStatusRequest, handlers_service_client::HandlersServiceClient};
-use tonic::transport::Channel;
+use ps_proto::prism::v1::GetStatusRequest;
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 use crate::format;
 
-pub async fn status(channel: &Channel, auth: &AuthInterceptor) -> Result<()> {
-    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
-    let response = client.get_status(GetStatusRequest {}).await?.into_inner();
+pub async fn status(clients: &mut Clients) -> Result<()> {
+    let response = clients
+        .handlers
+        .get_status(GetStatusRequest {})
+        .await?
+        .into_inner();
 
     if response.sources.is_empty() {
         println!("No sources configured.");

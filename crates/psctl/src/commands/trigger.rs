@@ -1,14 +1,11 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{
-    TriggerBackfillRequest, TriggerRunRequest, handlers_service_client::HandlersServiceClient,
-};
-use tonic::transport::Channel;
+use ps_proto::prism::v1::{TriggerBackfillRequest, TriggerRunRequest};
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 
-pub async fn trigger(channel: &Channel, auth: &AuthInterceptor, source: &str) -> Result<()> {
-    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
-    client
+pub async fn trigger(clients: &mut Clients, source: &str) -> Result<()> {
+    clients
+        .handlers
         .trigger_run(TriggerRunRequest {
             source_name: source.to_string(),
         })
@@ -17,14 +14,9 @@ pub async fn trigger(channel: &Channel, auth: &AuthInterceptor, source: &str) ->
     Ok(())
 }
 
-pub async fn backfill(
-    channel: &Channel,
-    auth: &AuthInterceptor,
-    source: &str,
-    since: &str,
-) -> Result<()> {
-    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
-    client
+pub async fn backfill(clients: &mut Clients, source: &str, since: &str) -> Result<()> {
+    clients
+        .handlers
         .trigger_backfill(TriggerBackfillRequest {
             source_name: source.to_string(),
             since_date: since.to_string(),

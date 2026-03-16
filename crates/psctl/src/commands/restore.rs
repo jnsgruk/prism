@@ -1,13 +1,10 @@
 use std::io::Write;
 
 use anyhow::{Result, bail};
-use ps_proto::prism::v1::{
-    PreviewBackupRequest, RestoreBackupRequest, auth_service_client::AuthServiceClient,
-};
+use ps_proto::prism::v1::{PreviewBackupRequest, RestoreBackupRequest};
 use tokio::io::AsyncReadExt;
-use tonic::transport::Channel;
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 use crate::format;
 
 const CHUNK_SIZE: usize = 64 * 1024;
@@ -29,13 +26,12 @@ async fn stream_file<T>(file_path: &str, f: impl Fn(Vec<u8>) -> T) -> Result<Vec
     Ok(chunks)
 }
 
-pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str) -> Result<()> {
-    let mut client = AuthServiceClient::with_interceptor(channel.clone(), auth.clone());
-
+pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
     // Preview: stream from disk
     let chunks = stream_file(file_path, |chunk| PreviewBackupRequest { chunk }).await?;
 
-    let preview = client
+    let preview = clients
+        .auth
         .preview_backup(tokio_stream::iter(chunks))
         .await?
         .into_inner();
@@ -83,7 +79,8 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
     // Restore: stream from disk again (don't keep preview data in memory)
     let chunks = stream_file(file_path, |chunk| RestoreBackupRequest { chunk }).await?;
 
-    let response = client
+    let response = clients
+        .auth
         .restore_backup(tokio_stream::iter(chunks))
         .await?
         .into_inner();

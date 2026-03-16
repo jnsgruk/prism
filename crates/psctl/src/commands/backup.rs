@@ -1,18 +1,11 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{CreateBackupRequest, admin_service_client::AdminServiceClient};
+use ps_proto::prism::v1::CreateBackupRequest;
 use tokio::io::AsyncWriteExt;
-use tonic::transport::Channel;
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 
-pub async fn backup(
-    channel: &Channel,
-    auth: &AuthInterceptor,
-    output: Option<String>,
-) -> Result<()> {
-    let mut client = AdminServiceClient::with_interceptor(channel.clone(), auth.clone());
-
-    let response = client.create_backup(CreateBackupRequest {}).await?;
+pub async fn backup(clients: &mut Clients, output: Option<String>) -> Result<()> {
+    let response = clients.admin.create_backup(CreateBackupRequest {}).await?;
     let mut stream = response.into_inner();
 
     let filename = output.unwrap_or_else(|| {

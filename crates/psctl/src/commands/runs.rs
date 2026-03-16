@@ -1,13 +1,12 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{ListRunsRequest, handlers_service_client::HandlersServiceClient};
-use tonic::transport::Channel;
+use ps_proto::prism::v1::ListRunsRequest;
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 use crate::format;
 
-pub async fn runs(channel: &Channel, auth: &AuthInterceptor, source: Option<String>) -> Result<()> {
-    let mut client = HandlersServiceClient::with_interceptor(channel.clone(), auth.clone());
-    let response = client
+pub async fn runs(clients: &mut Clients, source: Option<String>) -> Result<()> {
+    let response = clients
+        .handlers
         .list_runs(ListRunsRequest {
             source_name: source,
             handler_name: None,

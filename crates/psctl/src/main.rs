@@ -71,17 +71,17 @@ async fn main() -> Result<()> {
     // Load .env before clap parses args so env vars are available
     let _ = dotenvy::dotenv();
     let cli = Cli::parse();
-    let (channel, auth) = client::connect(&cli.server, cli.token.as_ref())?;
+    let mut clients = client::connect(&cli.server, cli.token.as_ref())?;
 
     match cli.command {
-        Command::Status => commands::status(&channel, &auth).await,
-        Command::Sources => commands::sources(&channel, &auth).await,
-        Command::Runs { source } => commands::runs(&channel, &auth, source).await,
-        Command::Trigger { source } => commands::trigger(&channel, &auth, &source).await,
+        Command::Status => commands::status(&mut clients).await,
+        Command::Sources => commands::sources(&mut clients).await,
+        Command::Runs { source } => commands::runs(&mut clients, source).await,
+        Command::Trigger { source } => commands::trigger(&mut clients, &source).await,
         Command::Backfill { source, since } => {
-            commands::backfill(&channel, &auth, &source, &since).await
+            commands::backfill(&mut clients, &source, &since).await
         }
-        Command::Backup { output } => commands::backup(&channel, &auth, output).await,
-        Command::Restore { file } => commands::restore(&channel, &auth, &file).await,
+        Command::Backup { output } => commands::backup(&mut clients, output).await,
+        Command::Restore { file } => commands::restore(&mut clients, &file).await,
     }
 }

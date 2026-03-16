@@ -1,12 +1,11 @@
 use anyhow::Result;
-use ps_proto::prism::v1::{ListSourcesRequest, config_service_client::ConfigServiceClient};
-use tonic::transport::Channel;
+use ps_proto::prism::v1::ListSourcesRequest;
 
-use crate::client::AuthInterceptor;
+use crate::client::Clients;
 
-pub async fn sources(channel: &Channel, auth: &AuthInterceptor) -> Result<()> {
-    let mut client = ConfigServiceClient::with_interceptor(channel.clone(), auth.clone());
-    let response = client
+pub async fn sources(clients: &mut Clients) -> Result<()> {
+    let response = clients
+        .config
         .list_sources(ListSourcesRequest {})
         .await?
         .into_inner();
