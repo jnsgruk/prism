@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
+use super::Platform;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Person {
     pub id: Uuid,
@@ -17,7 +19,7 @@ pub struct Person {
 pub struct PlatformIdentity {
     pub id: Uuid,
     pub person_id: Uuid,
-    pub platform: String,
+    pub platform: Platform,
     pub platform_username: String,
     pub platform_user_id: Option<String>,
 }

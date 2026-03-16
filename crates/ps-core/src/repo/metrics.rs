@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::models::{ContributionState, ContributionType, PeriodType};
 use sqlx::PgPool;
 use time::Date;
 use uuid::Uuid;
@@ -17,7 +18,7 @@ pub struct TeamSnapshotRow {
     pub member_count: i32,
     pub period_start: Date,
     pub period_end: Date,
-    pub period_type: String,
+    pub period_type: PeriodType,
     pub throughput: Option<i32>,
     pub avg_review_turnaround_hours: Option<f32>,
     pub raw_metrics: serde_json::Value,
@@ -26,8 +27,8 @@ pub struct TeamSnapshotRow {
 /// Raw contribution data needed for metrics computation.
 pub struct ContributionMetricRow {
     pub person_id: Option<Uuid>,
-    pub contribution_type: String,
-    pub state: Option<String>,
+    pub contribution_type: ContributionType,
+    pub state: Option<ContributionState>,
     pub created_at: time::OffsetDateTime,
     pub closed_at: Option<time::OffsetDateTime>,
     pub metrics: serde_json::Value,
@@ -44,8 +45,9 @@ impl MetricsRepo {
         &self,
         team_id: Uuid,
         period_start: Date,
-        period_type: &str,
+        period_type: PeriodType,
     ) -> Result<Option<TeamSnapshotRow>, Error> {
+        let period_type_str = period_type.as_str();
         let row = sqlx::query!(
             r#"
             WITH RECURSIVE team_tree AS (
@@ -70,7 +72,7 @@ impl MetricsRepo {
             "#,
             team_id,
             period_start,
-            period_type,
+            period_type_str,
         )
         .fetch_optional(&self.pool)
         .await
@@ -83,7 +85,7 @@ impl MetricsRepo {
             member_count: r.member_count,
             period_start: r.period_start,
             period_end: r.period_end,
-            period_type: r.period_type,
+            period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
             throughput: r.throughput,
             avg_review_turnaround_hours: r.avg_review_turnaround_hours,
             raw_metrics: r.raw_metrics,
@@ -95,8 +97,9 @@ impl MetricsRepo {
         &self,
         team_ids: &[Uuid],
         period_start: Date,
-        period_type: &str,
+        period_type: PeriodType,
     ) -> Result<Vec<TeamSnapshotRow>, Error> {
+        let period_type_str = period_type.as_str();
         let rows = sqlx::query!(
             r#"
             SELECT ts.id, ts.team_id, t.name AS team_name,
@@ -125,7 +128,7 @@ impl MetricsRepo {
             "#,
             team_ids,
             period_start,
-            period_type,
+            period_type_str,
         )
         .fetch_all(&self.pool)
         .await
@@ -140,7 +143,7 @@ impl MetricsRepo {
                 member_count: r.member_count,
                 period_start: r.period_start,
                 period_end: r.period_end,
-                period_type: r.period_type,
+                period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
                 throughput: r.throughput,
                 avg_review_turnaround_hours: r.avg_review_turnaround_hours,
                 raw_metrics: r.raw_metrics,
@@ -163,10 +166,12 @@ impl MetricsRepo {
 
         Ok(rows
             .into_iter()
-            .map(|r| PeriodRow {
-                start: r.period_start,
-                end: r.period_end,
-                period_type: r.period_type,
+            .filter_map(|r| {
+                Some(PeriodRow {
+                    start: r.period_start,
+                    end: r.period_end,
+                    period_type: PeriodType::from_str_opt(&r.period_type)?,
+                })
             })
             .collect())
     }
@@ -177,7 +182,7 @@ impl MetricsRepo {
         let team_id = snap.team_id;
         let period_start = snap.period_start;
         let period_end = snap.period_end;
-        let period_type = &snap.period_type;
+        let period_type = snap.period_type.as_str();
         let throughput = snap.throughput;
         let avg_review_turnaround_hours = snap.avg_review_turnaround_hours;
         let raw_metrics = &snap.raw_metrics;
@@ -251,14 +256,20 @@ impl MetricsRepo {
 
         Ok(rows
             .into_iter()
-            .map(|r| ContributionMetricRow {
-                person_id: r.person_id,
-                contribution_type: r.contribution_type,
-                state: r.state,
-                created_at: r.created_at,
-                closed_at: r.closed_at,
-                metrics: r.metrics,
-                metadata: r.metadata,
+            .filter_map(|r| {
+                Some(ContributionMetricRow {
+                    person_id: r.person_id,
+                    contribution_type: match r.contribution_type.as_str() {
+                        "pull_request" => ContributionType::PullRequest,
+                        "pr_review" => ContributionType::PrReview,
+                        _ => return None,
+                    },
+                    state: r.state.as_deref().and_then(ContributionState::from_str_opt),
+                    created_at: r.created_at,
+                    closed_at: r.closed_at,
+                    metrics: r.metrics,
+                    metadata: r.metadata,
+                })
             })
             .collect())
     }
@@ -294,6 +305,9 @@ impl MetricsRepo {
         period_end: Date,
         contribution_type: Option<&str>,
         state: Option<&str>,
+        search: Option<&str>,
+        sort_field: Option<&str>,
+        sort_desc: bool,
         page_size: i32,
         offset: i32,
     ) -> Result<(Vec<ContributionDetailRow>, i64), Error> {
@@ -320,7 +334,20 @@ impl MetricsRepo {
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND ($4::text IS NULL OR c.contribution_type = $4)
               AND ($5::text IS NULL OR c.state = $5)
-            ORDER BY c.created_at DESC
+              AND ($8::text IS NULL OR (
+                  c.title ILIKE '%' || $8 || '%'
+                  OR p.name ILIKE '%' || $8 || '%'
+                  OR c.metadata->>'repo' ILIKE '%' || $8 || '%'
+              ))
+            ORDER BY
+              CASE WHEN $9 = 'person_name' AND NOT $10 THEN p.name END ASC NULLS LAST,
+              CASE WHEN $9 = 'person_name' AND $10 THEN p.name END DESC NULLS LAST,
+              CASE WHEN $9 = 'state' AND NOT $10 THEN c.state END ASC NULLS LAST,
+              CASE WHEN $9 = 'state' AND $10 THEN c.state END DESC NULLS LAST,
+              CASE WHEN $9 = 'repo' AND NOT $10 THEN c.metadata->>'repo' END ASC NULLS LAST,
+              CASE WHEN $9 = 'repo' AND $10 THEN c.metadata->>'repo' END DESC NULLS LAST,
+              CASE WHEN COALESCE($9, 'created_at') = 'created_at' AND NOT $10 THEN c.created_at END ASC,
+              CASE WHEN COALESCE($9, 'created_at') = 'created_at' AND $10 THEN c.created_at END DESC
             LIMIT $6 OFFSET $7
             "#,
             team_id,
@@ -330,6 +357,9 @@ impl MetricsRepo {
             state,
             page_size as i64,
             offset as i64,
+            search,
+            sort_field,
+            sort_desc,
         )
         .fetch_all(&self.pool)
         .await
@@ -364,7 +394,7 @@ impl MetricsRepo {
 pub struct PeriodRow {
     pub start: Date,
     pub end: Date,
-    pub period_type: String,
+    pub period_type: PeriodType,
 }
 
 /// Input for upserting a team snapshot.
@@ -373,7 +403,7 @@ pub struct SnapshotInput {
     pub team_id: Uuid,
     pub period_start: Date,
     pub period_end: Date,
-    pub period_type: String,
+    pub period_type: PeriodType,
     pub throughput: i32,
     pub avg_review_turnaround_hours: Option<f32>,
     pub raw_metrics: serde_json::Value,

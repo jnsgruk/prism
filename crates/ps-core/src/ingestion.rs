@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::{RateLimitInfo, SourceConfig};
+use crate::models::{ContributionState, ContributionType, Platform, RateLimitInfo, SourceConfig};
 use crate::repo::Repos;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -19,13 +19,13 @@ pub struct IngestionContext {
 /// we look up `org.platform_identities` to find the corresponding `person_id`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContributionInput {
-    pub platform: String,
-    pub contribution_type: String,
+    pub platform: Platform,
+    pub contribution_type: ContributionType,
     pub platform_id: String,
     pub platform_username: String,
     pub title: Option<String>,
     pub url: Option<String>,
-    pub state: Option<String>,
+    pub state: Option<ContributionState>,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,
     pub closed_at: Option<OffsetDateTime>,
@@ -123,14 +123,14 @@ pub trait Source: Send + Sync {
 /// Used for identity resolution caching within a batch.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct ContributionKey {
-    pub platform: String,
+    pub platform: Platform,
     pub platform_id: String,
 }
 
 impl ContributionInput {
     pub fn key(&self) -> ContributionKey {
         ContributionKey {
-            platform: self.platform.clone(),
+            platform: self.platform,
             platform_id: self.platform_id.clone(),
         }
     }

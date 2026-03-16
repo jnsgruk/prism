@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use ps_core::ingestion::{
     ContributionInput, FetchResult, IngestionContext, IngestionPlan, RepoTarget, Source,
 };
+use ps_core::models::{ContributionState, ContributionType, Platform};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -319,11 +320,11 @@ async fn fetch_team_repos(
     } else {
         let pr_count = items
             .iter()
-            .filter(|i| i.contribution_type == "pull_request")
+            .filter(|i| i.contribution_type == ContributionType::PullRequest)
             .count();
         let review_count = items
             .iter()
-            .filter(|i| i.contribution_type == "pr_review")
+            .filter(|i| i.contribution_type == ContributionType::PrReview)
             .count();
         info!(
             source = ctx.source_config.name,
@@ -551,25 +552,24 @@ fn search_pr_to_contributions(
     let author = pr.author.as_ref().map_or("", |a| a.login.as_str());
 
     let pr_state = if pr.merged_at.is_some() {
-        "merged"
+        ContributionState::Merged
     } else {
         match pr.state.as_deref().unwrap_or("OPEN") {
-            "OPEN" => "open",
-            "CLOSED" => "closed",
-            "MERGED" => "merged",
-            other => other,
+            "CLOSED" => ContributionState::Closed,
+            "MERGED" => ContributionState::Merged,
+            _ => ContributionState::Open,
         }
     };
 
     let mut items = Vec::new();
 
     let mut state_history = vec![serde_json::json!({
-        "state": "open",
+        "state": ContributionState::Open.as_str(),
         "at": created_at_str,
     })];
     if let Some(ref closed_at) = pr.closed_at {
         state_history.push(serde_json::json!({
-            "state": pr_state,
+            "state": pr_state.as_str(),
             "at": closed_at,
         }));
     }
@@ -582,13 +582,13 @@ fn search_pr_to_contributions(
         .unwrap_or_default();
 
     items.push(ContributionInput {
-        platform: "github".into(),
-        contribution_type: "pull_request".into(),
+        platform: Platform::Github,
+        contribution_type: ContributionType::PullRequest,
         platform_id: format!("{owner}/{repo}/pull/{number}"),
         platform_username: author.to_string(),
         title: Some(title),
         url: Some(url.clone()),
-        state: Some(pr_state.to_string()),
+        state: Some(pr_state),
         created_at: parse_datetime(created_at_str)?,
         updated_at: Some(parse_datetime(updated_at_str)?),
         closed_at: pr.closed_at.as_deref().map(parse_datetime).transpose()?,
@@ -600,6 +600,7 @@ fn search_pr_to_contributions(
             "draft": pr.is_draft.unwrap_or(false),
         }),
         metadata: serde_json::json!({
+            "repo": format!("{owner}/{repo}"),
             "head_ref": pr.head_ref_name,
             "base_ref": pr.base_ref_name,
             "labels": labels,
@@ -621,14 +622,16 @@ fn search_pr_to_contributions(
 
             let review_id = review.database_id.unwrap_or(0);
 
+            let review_state = ContributionState::from_str_opt(&review.state);
+
             items.push(ContributionInput {
-                platform: "github".into(),
-                contribution_type: "pr_review".into(),
+                platform: Platform::Github,
+                contribution_type: ContributionType::PrReview,
                 platform_id: format!("{owner}/{repo}/review/{review_id}"),
                 platform_username: reviewer.to_string(),
                 title: Some(format!("Review on #{number}")),
                 url: Some(format!("{url}/reviews/{review_id}")),
-                state: Some(review.state.clone()),
+                state: review_state,
                 created_at: submitted_at.unwrap_or(parse_datetime(created_at_str)?),
                 updated_at: submitted_at,
                 closed_at: None,
@@ -636,6 +639,7 @@ fn search_pr_to_contributions(
                     "review_state": review.state,
                 }),
                 metadata: serde_json::json!({
+                    "repo": format!("{owner}/{repo}"),
                     "pr_number": number,
                     "pr_platform_id": format!("{owner}/{repo}/pull/{number}"),
                 }),
@@ -667,7 +671,7 @@ async fn store_batch_impl(
     let person_map = ctx
         .repos
         .org
-        .batch_resolve_person_ids("github", &usernames)
+        .batch_resolve_person_ids(Platform::Github, &usernames)
         .await?;
 
     let mut stored = 0usize;

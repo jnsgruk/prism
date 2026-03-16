@@ -1,5 +1,6 @@
 use crate::Error;
 use crate::ingestion::ContributionInput;
+use crate::models::ContributionState;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -85,12 +86,12 @@ impl ActivityRepo {
             "#,
             id,
             person_id,
-            item.platform,
-            item.contribution_type,
+            item.platform.as_str(),
+            item.contribution_type.as_str(),
             item.platform_id,
             item.title,
             item.url,
-            item.state,
+            item.state.map(ContributionState::as_str),
             item.created_at,
             item.updated_at,
             item.closed_at,

@@ -1,3 +1,4 @@
+use ps_core::models::PeriodType;
 use restate_sdk::prelude::*;
 use time::OffsetDateTime;
 use tracing::{error, info};
@@ -23,15 +24,15 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
         let today = OffsetDateTime::now_utc().date();
         let mut total = 0i32;
 
-        for period_type in &["week", "month", "quarter"] {
-            match self.compute_period(period_type, today).await {
+        for period_type in &[PeriodType::Week, PeriodType::Month, PeriodType::Quarter] {
+            match self.compute_period(*period_type, today).await {
                 Ok(count) => {
                     total += count;
-                    info!(period_type, count, "recomputed snapshots");
+                    info!(%period_type, count, "recomputed snapshots");
                 }
                 Err(e) => {
                     let err_msg = format!("failed to compute {period_type} snapshots: {e}");
-                    error!(period_type, error = %e, "failed to compute snapshots");
+                    error!(%period_type, error = %e, "failed to compute snapshots");
                     self.fail_run(&ctx, run_id, &err_msg).await;
                     return Err(TerminalError::new(err_msg));
                 }
@@ -74,7 +75,7 @@ impl MetricsComputeHandlerImpl {
 
     async fn compute_period(
         &self,
-        period_type: &str,
+        period_type: PeriodType,
         today: time::Date,
     ) -> Result<i32, ps_core::Error> {
         let (start, end) = ps_metrics::period_boundaries(today, period_type);

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::Error;
+use crate::models::Platform;
 use uuid::Uuid;
 
 use super::{IdentityRow, OrgRepo};
@@ -40,13 +41,14 @@ impl OrgRepo {
     /// people defined in the app's configuration are tracked.
     pub async fn batch_resolve_person_ids(
         &self,
-        platform: &str,
+        platform: Platform,
         usernames: &[String],
     ) -> Result<HashMap<String, Uuid>, Error> {
         if usernames.is_empty() {
             return Ok(HashMap::new());
         }
 
+        let platform_str = platform.as_str();
         let rows = sqlx::query!(
             r#"
             SELECT platform_username, person_id
@@ -54,7 +56,7 @@ impl OrgRepo {
             WHERE platform = $1
               AND platform_username = ANY($2)
             "#,
-            platform,
+            platform_str,
             usernames,
         )
         .fetch_all(&self.pool)

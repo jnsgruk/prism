@@ -35,7 +35,7 @@ fn build_source_proto(
 
     SourceConfig {
         id: source.id.to_string(),
-        source_type: source.source_type.clone(),
+        source_type: source.source_type.to_string(),
         name: source.name.clone(),
         enabled: source.enabled,
         settings: Some(settings_struct),
@@ -379,12 +379,12 @@ impl ConfigService for ConfigServiceImpl {
             .map_err(db_err)?;
 
         let mut details = HashMap::new();
-        details.insert("source_type".into(), source.source_type.clone());
+        details.insert("source_type".into(), source.source_type.to_string());
         details.insert("secrets_configured".into(), secret_keys.len().to_string());
 
         // For now, validate that required secrets exist based on source type
-        let required_secrets: &[&str] = match source.source_type.as_str() {
-            "github" | "jira" => &["api_token"],
+        let required_secrets: &[&str] = match source.source_type {
+            ps_core::models::Platform::Github => &["api_token"],
             _ => &[],
         };
 

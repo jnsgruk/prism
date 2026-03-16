@@ -29,21 +29,20 @@ impl MetricsServiceImpl {
 }
 
 #[allow(clippy::result_large_err)]
-fn parse_period_type(pt: i32) -> Result<&'static str, Status> {
+fn parse_period_type(pt: i32) -> Result<ps_core::models::PeriodType, Status> {
     match PeriodType::try_from(pt) {
-        Ok(PeriodType::Week) => Ok("week"),
-        Ok(PeriodType::Month) => Ok("month"),
-        Ok(PeriodType::Quarter) => Ok("quarter"),
+        Ok(PeriodType::Week) => Ok(ps_core::models::PeriodType::Week),
+        Ok(PeriodType::Month) => Ok(ps_core::models::PeriodType::Month),
+        Ok(PeriodType::Quarter) => Ok(ps_core::models::PeriodType::Quarter),
         _ => Err(Status::invalid_argument("invalid period_type")),
     }
 }
 
-fn period_type_to_proto(pt: &str) -> PeriodType {
+fn period_type_to_proto(pt: ps_core::models::PeriodType) -> PeriodType {
     match pt {
-        "week" => PeriodType::Week,
-        "month" => PeriodType::Month,
-        "quarter" => PeriodType::Quarter,
-        _ => PeriodType::Unspecified,
+        ps_core::models::PeriodType::Week => PeriodType::Week,
+        ps_core::models::PeriodType::Month => PeriodType::Month,
+        ps_core::models::PeriodType::Quarter => PeriodType::Quarter,
     }
 }
 
@@ -66,16 +65,12 @@ fn json_i32(v: &serde_json::Value, key: &str) -> i32 {
     v.get(key).and_then(serde_json::Value::as_i64).unwrap_or(0) as i32
 }
 
-fn json_str<'a>(v: &'a serde_json::Value, key: &str) -> &'a str {
-    v.get(key).and_then(serde_json::Value::as_str).unwrap_or("")
-}
-
 fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics {
     TeamMetrics {
         team_id: s.team_id.to_string(),
         team_name: s.team_name,
         period: Some(Period {
-            r#type: period_type_to_proto(&s.period_type).into(),
+            r#type: period_type_to_proto(s.period_type).into(),
             start: format_date(s.period_start),
             end: format_date(s.period_end),
         }),
@@ -106,7 +101,7 @@ impl MetricsService for MetricsServiceImpl {
         let period = req
             .period
             .ok_or_else(|| Status::invalid_argument("period required"))?;
-        let period_type_str = parse_period_type(period.r#type)?;
+        let period_type_val = parse_period_type(period.r#type)?;
         let period_start = parse_date(&period.start)?;
         let period_end = parse_date(&period.end)?;
         let today = OffsetDateTime::now_utc().date();
@@ -117,7 +112,7 @@ impl MetricsService for MetricsServiceImpl {
         let snapshot = self
             .repos
             .metrics
-            .get_team_snapshot(team_id, period_start, period_type_str)
+            .get_team_snapshot(team_id, period_start, period_type_val)
             .await
             .map_err(db_err)?;
 
@@ -129,7 +124,7 @@ impl MetricsService for MetricsServiceImpl {
                 team_id,
                 period_start,
                 period_end,
-                period_type_str,
+                period_type_val,
             )
             .await
             {
@@ -139,7 +134,7 @@ impl MetricsService for MetricsServiceImpl {
             let snapshot = self
                 .repos
                 .metrics
-                .get_team_snapshot(team_id, period_start, period_type_str)
+                .get_team_snapshot(team_id, period_start, period_type_val)
                 .await
                 .map_err(db_err)?;
 
@@ -196,7 +191,7 @@ impl MetricsService for MetricsServiceImpl {
         let period = req
             .period
             .ok_or_else(|| Status::invalid_argument("period required"))?;
-        let period_type_str = parse_period_type(period.r#type)?;
+        let period_type_val = parse_period_type(period.r#type)?;
         let period_start = parse_date(&period.start)?;
         let period_end = parse_date(&period.end)?;
         let today = OffsetDateTime::now_utc().date();
@@ -210,7 +205,7 @@ impl MetricsService for MetricsServiceImpl {
             } else {
                 self.repos
                     .metrics
-                    .get_team_snapshot(team_id, period_start, period_type_str)
+                    .get_team_snapshot(team_id, period_start, period_type_val)
                     .await
                     .map_err(db_err)?
             };
@@ -221,7 +216,7 @@ impl MetricsService for MetricsServiceImpl {
                     team_id,
                     period_start,
                     period_end,
-                    period_type_str,
+                    period_type_val,
                 )
                 .await;
             }
@@ -230,7 +225,7 @@ impl MetricsService for MetricsServiceImpl {
         let snapshots = self
             .repos
             .metrics
-            .compare_team_snapshots(&team_ids, period_start, period_type_str)
+            .compare_team_snapshots(&team_ids, period_start, period_type_val)
             .await
             .map_err(db_err)?;
 
@@ -274,7 +269,7 @@ impl MetricsService for MetricsServiceImpl {
         let periods = rows
             .into_iter()
             .map(|r| Period {
-                r#type: period_type_to_proto(&r.period_type).into(),
+                r#type: period_type_to_proto(r.period_type).into(),
                 start: format_date(r.start),
                 end: format_date(r.end),
             })
@@ -306,6 +301,9 @@ impl MetricsService for MetricsServiceImpl {
 
         let contribution_type = req.contribution_type.as_deref();
         let state = req.state.as_deref();
+        let search = req.search.as_deref().filter(|s| !s.is_empty());
+        let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
+        let sort_desc = req.sort_desc.unwrap_or(true);
 
         let (rows, total_count) = self
             .repos
@@ -316,6 +314,9 @@ impl MetricsService for MetricsServiceImpl {
                 period_end,
                 contribution_type,
                 state,
+                search,
+                sort_field,
+                sort_desc,
                 page_size,
                 offset,
             )
@@ -325,7 +326,15 @@ impl MetricsService for MetricsServiceImpl {
         let contributions = rows
             .into_iter()
             .map(|r| {
-                let repo = json_str(&r.metadata, "repo").to_string();
+                let repo = if let Some(s) = r.metadata.get("repo").and_then(|v| v.as_str()) {
+                    s.to_string()
+                } else {
+                    // Fallback: extract "owner/repo" from platform_id (e.g. "owner/repo/pull/123")
+                    match r.platform_id.splitn(3, '/').collect::<Vec<_>>().as_slice() {
+                        [owner, repo, ..] => format!("{owner}/{repo}"),
+                        _ => String::new(),
+                    }
+                };
                 Contribution {
                     id: r.id.to_string(),
                     person_name: r.person_name,

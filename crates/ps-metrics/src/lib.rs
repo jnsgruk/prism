@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use ps_core::models::{ContributionState, ContributionType, PeriodType};
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionMetricRow, SnapshotInput};
 use time::Date;
@@ -24,7 +25,7 @@ pub async fn compute_team_snapshot(
     team_id: Uuid,
     period_start: Date,
     period_end: Date,
-    period_type: &str,
+    period_type: PeriodType,
 ) -> Result<(), ps_core::Error> {
     let contributions = repos
         .metrics
@@ -52,7 +53,7 @@ pub async fn compute_team_snapshot(
             team_id,
             period_start,
             period_end,
-            period_type: period_type.to_owned(),
+            period_type,
             throughput,
             avg_review_turnaround_hours: review.as_ref().map(|r| r.avg),
             raw_metrics,
@@ -63,7 +64,7 @@ pub async fn compute_team_snapshot(
         %team_id,
         %period_start,
         %period_end,
-        period_type,
+        %period_type,
         throughput,
         avg_review_turnaround_hours = ?review.as_ref().map(|r| r.avg),
         "computed team snapshot"
@@ -77,7 +78,7 @@ pub async fn compute_all_snapshots(
     repos: &Repos,
     period_start: Date,
     period_end: Date,
-    period_type: &str,
+    period_type: PeriodType,
 ) -> Result<i32, ps_core::Error> {
     let teams = repos.org.list_teams(None, None).await?;
     let mut computed = 0;
@@ -87,7 +88,7 @@ pub async fn compute_all_snapshots(
         computed += 1;
     }
 
-    info!(computed, period_type, %period_start, "computed all team snapshots");
+    info!(computed, %period_type, %period_start, "computed all team snapshots");
     Ok(computed)
 }
 
@@ -96,7 +97,10 @@ pub async fn compute_all_snapshots(
 fn compute_throughput(contributions: &[ContributionMetricRow]) -> i32 {
     contributions
         .iter()
-        .filter(|c| c.contribution_type == "pull_request" && c.state.as_deref() == Some("merged"))
+        .filter(|c| {
+            c.contribution_type == ContributionType::PullRequest
+                && c.state == Some(ContributionState::Merged)
+        })
         .count() as i32
 }
 
@@ -110,7 +114,7 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
     // Collect reviews indexed by their parent PR platform_id
     let reviews: Vec<(&str, time::OffsetDateTime)> = contributions
         .iter()
-        .filter(|c| c.contribution_type == "pr_review")
+        .filter(|c| c.contribution_type == ContributionType::PrReview)
         .filter_map(|c| {
             let pr_platform_id = c.metadata.get("pr_platform_id")?.as_str()?;
             Some((pr_platform_id, c.created_at))
@@ -126,7 +130,7 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
 
     for pr in contributions
         .iter()
-        .filter(|c| c.contribution_type == "pull_request")
+        .filter(|c| c.contribution_type == ContributionType::PullRequest)
     {
         // Try the stored review_hours metric first (set during ingestion)
         if let Some(review_hours) = pr
@@ -168,6 +172,7 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
 }
 
 /// Nearest-rank percentile on a pre-sorted slice.
+#[allow(clippy::cast_precision_loss)]
 fn percentile(sorted: &[f32], p: f32) -> f32 {
     if sorted.is_empty() {
         return 0.0;
@@ -181,15 +186,15 @@ fn percentile(sorted: &[f32], p: f32) -> f32 {
 
 /// Determine period boundaries for a given date and period type.
 #[allow(clippy::expect_used)] // date arithmetic on known-valid values (day 1, known months)
-pub fn period_boundaries(reference_date: Date, period_type: &str) -> (Date, Date) {
+pub fn period_boundaries(reference_date: Date, period_type: PeriodType) -> (Date, Date) {
     match period_type {
-        "week" => {
+        PeriodType::Week => {
             let weekday = reference_date.weekday().number_days_from_monday();
             let start = reference_date - time::Duration::days(i64::from(weekday));
             let end = start + time::Duration::days(6);
             (start, end)
         }
-        "month" => {
+        PeriodType::Month => {
             let start = reference_date.replace_day(1).expect("day 1 always valid");
             let next_month = if reference_date.month() == time::Month::December {
                 start
@@ -205,7 +210,7 @@ pub fn period_boundaries(reference_date: Date, period_type: &str) -> (Date, Date
             let end = next_month - time::Duration::days(1);
             (start, end)
         }
-        "quarter" => {
+        PeriodType::Quarter => {
             let quarter_start_month = match reference_date.month() {
                 time::Month::January | time::Month::February | time::Month::March => {
                     time::Month::January
@@ -234,10 +239,6 @@ pub fn period_boundaries(reference_date: Date, period_type: &str) -> (Date, Date
             let end = next_quarter - time::Duration::days(1);
             (start, end)
         }
-        _ => {
-            // Default to month
-            period_boundaries(reference_date, "month")
-        }
     }
 }
 
@@ -249,35 +250,35 @@ mod tests {
     #[test]
     fn test_week_boundaries() {
         // 2026-03-13 is a Friday
-        let (start, end) = period_boundaries(date!(2026 - 03 - 13), "week");
+        let (start, end) = period_boundaries(date!(2026 - 03 - 13), PeriodType::Week);
         assert_eq!(start, date!(2026 - 03 - 09)); // Monday
         assert_eq!(end, date!(2026 - 03 - 15)); // Sunday
     }
 
     #[test]
     fn test_month_boundaries() {
-        let (start, end) = period_boundaries(date!(2026 - 03 - 13), "month");
+        let (start, end) = period_boundaries(date!(2026 - 03 - 13), PeriodType::Month);
         assert_eq!(start, date!(2026 - 03 - 01));
         assert_eq!(end, date!(2026 - 03 - 31));
     }
 
     #[test]
     fn test_month_boundaries_december() {
-        let (start, end) = period_boundaries(date!(2026 - 12 - 15), "month");
+        let (start, end) = period_boundaries(date!(2026 - 12 - 15), PeriodType::Month);
         assert_eq!(start, date!(2026 - 12 - 01));
         assert_eq!(end, date!(2026 - 12 - 31));
     }
 
     #[test]
     fn test_quarter_boundaries_q1() {
-        let (start, end) = period_boundaries(date!(2026 - 02 - 15), "quarter");
+        let (start, end) = period_boundaries(date!(2026 - 02 - 15), PeriodType::Quarter);
         assert_eq!(start, date!(2026 - 01 - 01));
         assert_eq!(end, date!(2026 - 03 - 31));
     }
 
     #[test]
     fn test_quarter_boundaries_q4() {
-        let (start, end) = period_boundaries(date!(2026 - 11 - 01), "quarter");
+        let (start, end) = period_boundaries(date!(2026 - 11 - 01), PeriodType::Quarter);
         assert_eq!(start, date!(2026 - 10 - 01));
         assert_eq!(end, date!(2026 - 12 - 31));
     }
@@ -285,11 +286,23 @@ mod tests {
     #[test]
     fn test_throughput_counts_merged_prs() {
         let contributions = vec![
-            make_contribution("pull_request", "merged"),
-            make_contribution("pull_request", "merged"),
-            make_contribution("pull_request", "closed"),
-            make_contribution("pull_request", "open"),
-            make_contribution("pr_review", "APPROVED"),
+            make_contribution(
+                ContributionType::PullRequest,
+                Some(ContributionState::Merged),
+            ),
+            make_contribution(
+                ContributionType::PullRequest,
+                Some(ContributionState::Merged),
+            ),
+            make_contribution(
+                ContributionType::PullRequest,
+                Some(ContributionState::Closed),
+            ),
+            make_contribution(ContributionType::PullRequest, Some(ContributionState::Open)),
+            make_contribution(
+                ContributionType::PrReview,
+                Some(ContributionState::Approved),
+            ),
         ];
         assert_eq!(compute_throughput(&contributions), 2);
     }
@@ -301,7 +314,10 @@ mod tests {
 
     #[test]
     fn test_review_turnaround_none_without_reviews() {
-        let contributions = vec![make_contribution("pull_request", "merged")];
+        let contributions = vec![make_contribution(
+            ContributionType::PullRequest,
+            Some(ContributionState::Merged),
+        )];
         assert!(compute_review_turnaround(&contributions).is_none());
     }
 
@@ -326,11 +342,14 @@ mod tests {
         assert!((percentile(&[], 75.0)).abs() < f32::EPSILON);
     }
 
-    fn make_contribution(contribution_type: &str, state: &str) -> ContributionMetricRow {
+    fn make_contribution(
+        contribution_type: ContributionType,
+        state: Option<ContributionState>,
+    ) -> ContributionMetricRow {
         ContributionMetricRow {
             person_id: Some(Uuid::nil()),
-            contribution_type: contribution_type.to_owned(),
-            state: Some(state.to_owned()),
+            contribution_type,
+            state,
             created_at: time::OffsetDateTime::UNIX_EPOCH,
             closed_at: None,
             metrics: serde_json::json!({}),

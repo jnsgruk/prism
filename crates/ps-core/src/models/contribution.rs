@@ -2,16 +2,18 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::{ContributionState, ContributionType, Platform};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contribution {
     pub id: Uuid,
     pub person_id: Option<Uuid>,
-    pub platform: String,
-    pub contribution_type: String,
+    pub platform: Platform,
+    pub contribution_type: ContributionType,
     pub platform_id: String,
     pub title: Option<String>,
     pub url: Option<String>,
-    pub state: Option<String>,
+    pub state: Option<ContributionState>,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,
     pub closed_at: Option<OffsetDateTime>,

@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::SourceConfig;
+use crate::models::{Platform, SourceConfig};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -7,6 +7,22 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct ConfigRepo {
     pool: PgPool,
+}
+
+/// Map a query row to `SourceConfig`, parsing `source_type` from its TEXT column.
+macro_rules! map_source_config {
+    ($r:expr) => {
+        SourceConfig {
+            id: $r.id,
+            source_type: Platform::from_str_opt(&$r.source_type).unwrap_or(Platform::Github),
+            name: $r.name,
+            enabled: $r.enabled,
+            settings: $r.settings,
+            schedule_cron: $r.schedule_cron,
+            created_at: $r.created_at,
+            updated_at: $r.updated_at,
+        }
+    };
 }
 
 impl ConfigRepo {
@@ -20,8 +36,7 @@ impl ConfigRepo {
 
     /// List all source configurations ordered by name.
     pub async fn list_sources(&self) -> Result<Vec<SourceConfig>, Error> {
-        sqlx::query_as!(
-            SourceConfig,
+        let rows = sqlx::query!(
             r#"
             SELECT id, source_type, name, enabled, settings, schedule_cron,
                    created_at, updated_at
@@ -31,13 +46,14 @@ impl ConfigRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(rows.into_iter().map(|r| map_source_config!(r)).collect())
     }
 
     /// Get a single source configuration by ID.
     pub async fn get_source(&self, id: Uuid) -> Result<Option<SourceConfig>, Error> {
-        sqlx::query_as!(
-            SourceConfig,
+        let row = sqlx::query!(
             r#"
             SELECT id, source_type, name, enabled, settings, schedule_cron,
                    created_at, updated_at
@@ -48,7 +64,9 @@ impl ConfigRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(row.map(|r| map_source_config!(r)))
     }
 
     /// Get an enabled source configuration by name.
@@ -56,8 +74,7 @@ impl ConfigRepo {
         &self,
         name: &str,
     ) -> Result<Option<SourceConfig>, Error> {
-        sqlx::query_as!(
-            SourceConfig,
+        let row = sqlx::query!(
             r#"
             SELECT id, source_type, name, enabled, settings, schedule_cron,
                    created_at, updated_at
@@ -68,7 +85,9 @@ impl ConfigRepo {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(row.map(|r| map_source_config!(r)))
     }
 
     /// Create a new source configuration.
@@ -80,8 +99,7 @@ impl ConfigRepo {
         settings: &serde_json::Value,
         schedule_cron: Option<&str>,
     ) -> Result<SourceConfig, Error> {
-        sqlx::query_as!(
-            SourceConfig,
+        let row = sqlx::query!(
             r#"
             INSERT INTO config.source_configs (id, source_type, name, settings, schedule_cron)
             VALUES ($1, $2, $3, $4, $5)
@@ -101,7 +119,9 @@ impl ConfigRepo {
             } else {
                 Error::Database(e.to_string())
             }
-        })
+        })?;
+
+        Ok(map_source_config!(row))
     }
 
     /// Check whether a source exists by ID.

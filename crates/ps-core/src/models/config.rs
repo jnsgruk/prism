@@ -2,10 +2,12 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::Platform;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceConfig {
     pub id: Uuid,
-    pub source_type: String,
+    pub source_type: Platform,
     pub name: String,
     pub enabled: bool,
     pub settings: serde_json::Value,
