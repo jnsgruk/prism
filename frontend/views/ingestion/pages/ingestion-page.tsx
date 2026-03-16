@@ -4,8 +4,9 @@ import { useCallback, useRef, useState } from "react";
 
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
+import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
 import { SourceStatusRow } from "@/views/ingestion/components/source-status-card";
-import { useIngestionStatus } from "@/views/ingestion/hooks/use-ingestion";
+import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
 
 const POLL_INTERVAL_BURST = 1_000;
 const POLL_INTERVAL_ACTIVE = 3_000;
@@ -33,6 +34,17 @@ const IngestionPage = (): React.ReactElement => {
       );
       return hasActive ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
     },
+  });
+
+  const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
+
+  let runsInterval = POLL_INTERVAL_IDLE;
+  if (isBursting) runsInterval = POLL_INTERVAL_BURST;
+  else if (hasActiveRun) runsInterval = POLL_INTERVAL_ACTIVE;
+
+  const { data: runs, isLoading: runsLoading } = useListRuns(undefined, {
+    refetchInterval: runsInterval,
+    handlerName: "GithubIngestionHandler",
   });
 
   if (sourcesLoading) {
@@ -63,13 +75,25 @@ const IngestionPage = (): React.ReactElement => {
     );
   }
 
+  const sourceNames = sources.map((s) => s.name);
+
   return (
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
-      <div className="flex-1 space-y-3 p-6">
-        {sources.map((source) => (
-          <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
-        ))}
+      <div className="flex-1 space-y-4 p-6">
+        <div className="space-y-3">
+          {sources.map((source) => (
+            <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
+          ))}
+        </div>
+
+        {runsLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <RunHistoryPanel runs={runs ?? []} sourceNames={sourceNames} />
+        )}
       </div>
     </>
   );

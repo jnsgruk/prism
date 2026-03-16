@@ -4,7 +4,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
   Clock,
   GitPullRequest,
   Loader2,
@@ -23,8 +22,7 @@ import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
-import { HandlerRunsTable } from "@/views/ingestion/components/ingestion-runs-table";
-import { useCancelRun, useListRuns, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
+import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { BackfillDialog } from "./backfill-dialog";
 
 export interface RunProgress {
@@ -215,17 +213,8 @@ export const SourceStatusRow = ({
   const triggerRun = useTriggerRun();
   const cancelRun = useCancelRun();
   const [showBackfill, setShowBackfill] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const config = stateConfig[source.state] ?? stateConfig[SourceState.UNSPECIFIED];
   const isCollecting = source.state === SourceState.COLLECTING;
-
-  let runsInterval: number | false = false;
-  if (expanded) runsInterval = isCollecting ? 3_000 : 30_000;
-
-  const { data: runs } = useListRuns(source.name, {
-    refetchInterval: runsInterval,
-    handlerName: "GithubIngestionHandler",
-  });
 
   const progress = useMemo((): RunProgress | null => {
     if (!isCollecting || !source.progressJson) return null;
@@ -333,16 +322,6 @@ export const SourceStatusRow = ({
                 </Button>
               </>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded(!expanded)}
-              className="ml-1 px-2"
-            >
-              <ChevronDown
-                className={cn("size-4 transition-transform duration-200", expanded && "rotate-180")}
-              />
-            </Button>
           </div>
         </div>
 
@@ -373,19 +352,6 @@ export const SourceStatusRow = ({
             </p>
           </div>
         </div>
-
-        {/* Expanded: run history */}
-        {expanded && (
-          <>
-            <Separator />
-            <div className="p-5">
-              <h4 className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Run History
-              </h4>
-              <HandlerRunsTable runs={runs ?? []} />
-            </div>
-          </>
-        )}
       </div>
 
       <BackfillDialog sourceName={source.name} open={showBackfill} onOpenChange={setShowBackfill} />

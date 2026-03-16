@@ -34,11 +34,37 @@ const mockSources = [
   },
 ];
 
+const mockRuns = [
+  {
+    id: "run-1",
+    sourceName: "github-main",
+    startedAt: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
+    completedAt: timestampFromDate(new Date("2026-03-12T10:05:00Z")),
+    status: "completed",
+    itemsCollected: 142,
+    rateLimitWaitsSeconds: 0,
+    handlerName: "GithubIngestionHandler",
+    handlerMethod: "run_ingestion",
+  },
+  {
+    id: "run-2",
+    sourceName: "jira-project",
+    startedAt: timestampFromDate(new Date("2026-03-11T08:30:00Z")),
+    completedAt: timestampFromDate(new Date("2026-03-11T08:31:00Z")),
+    status: "failed",
+    itemsCollected: 0,
+    errorMessage: "Authentication failed: invalid token",
+    rateLimitWaitsSeconds: 0,
+    handlerName: "GithubIngestionHandler",
+    handlerMethod: "run_ingestion",
+  },
+];
+
 vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
     service(HandlersService, {
       getStatus: () => create(GetStatusResponseSchema, { sources: mockSources }),
-      listRuns: () => create(ListRunsResponseSchema, { runs: [] }),
+      listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
       triggerRun: () => create(TriggerRunResponseSchema, {}),
       triggerBackfill: () => create(TriggerBackfillResponseSchema, {}),
     });
@@ -50,7 +76,7 @@ const renderPage = async (): Promise<void> => {
   render(<IngestionPage />, { wrapper: TestWrapper });
 
   await waitFor(() => {
-    expect(screen.getByText("github-main")).toBeInTheDocument();
+    expect(screen.getAllByText("github-main").length).toBeGreaterThanOrEqual(1);
   });
 };
 
@@ -60,8 +86,8 @@ describe("IngestionPage", () => {
   it("renders source names and state badges", async () => {
     await renderPage();
 
-    expect(screen.getByText("github-main")).toBeInTheDocument();
-    expect(screen.getByText("jira-project")).toBeInTheDocument();
+    expect(screen.getAllByText("github-main").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("jira-project").length).toBeGreaterThanOrEqual(1);
 
     expect(screen.getByText("Idle")).toBeInTheDocument();
     expect(screen.getAllByText("Error").length).toBeGreaterThanOrEqual(1);
@@ -81,10 +107,25 @@ describe("IngestionPage", () => {
     expect(screen.getAllByRole("button", { name: /Backfill/i })).toHaveLength(2);
   });
 
-  it("renders items collected for sources", async () => {
+  it("renders run history panel with table", async () => {
     await renderPage();
 
-    // Items appear in both desktop and mobile stat sections
-    expect(screen.getAllByText((142).toLocaleString()).length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getByText("Run History")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("renders filter controls in run history panel", async () => {
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Run History")).toBeInTheDocument();
+    });
+
+    // Select triggers are rendered as buttons
+    const triggers = screen.getAllByRole("combobox");
+    expect(triggers.length).toBeGreaterThanOrEqual(2);
   });
 });
