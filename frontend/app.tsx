@@ -9,6 +9,7 @@ const AdminPage = lazy(() => import("@/views/admin/pages/admin-page"));
 const IngestionPage = lazy(() => import("@/views/ingestion/pages/ingestion-page"));
 const LoginPage = lazy(() => import("@/views/login/pages/login-page"));
 const SetupPage = lazy(() => import("@/views/setup/pages/setup-page"));
+const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page"));
 
 export const App = (): React.ReactElement => (
   <AppShell>
@@ -20,6 +21,7 @@ export const App = (): React.ReactElement => (
         <Route path="/ingestion" element={<IngestionPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   </AppShell>
