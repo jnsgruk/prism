@@ -55,6 +55,20 @@ fn build_source_proto(
     }
 }
 
+/// Derive a URL-safe slug from a source name for use as a platform suffix.
+///
+/// "Canonical Discourse" → "canonical-discourse", "Ubuntu" → "ubuntu"
+fn slugify_source_name(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
 async fn fetch_secret_status(
     repos: &Repos,
     source_id: Uuid,
@@ -148,12 +162,22 @@ impl ConfigService for ConfigServiceImpl {
 
         let source_id = Uuid::now_v7();
 
+        // For Discourse, the source_type must be instance-qualified (e.g.
+        // "discourse-ubuntu") so it parses into Platform::Discourse(instance).
+        // The frontend sends "discourse"; derive the suffix from the source name.
+        let effective_source_type = if req.source_type == "discourse" {
+            let slug = slugify_source_name(&req.name);
+            format!("discourse-{slug}")
+        } else {
+            req.source_type.clone()
+        };
+
         let s = self
             .repos
             .config
             .create_source(
                 source_id,
-                &req.source_type,
+                &effective_source_type,
                 &req.name,
                 &settings,
                 req.schedule_cron.as_deref(),

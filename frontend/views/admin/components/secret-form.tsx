@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import { useSetSecret } from "@ps/hooks/use-config";
 
-import { SECRET_KEYS_BY_TYPE } from "@/views/admin/lib/source-types";
+import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 
 const SECRET_LABELS: Record<string, string> = {
   api_token: "API Token",
@@ -24,7 +24,7 @@ const secretLabel = (key: string): string => SECRET_LABELS[key] ?? key;
 /** Live secret form — sets secrets immediately via the API (requires existing source). */
 export const SecretForm = ({ source }: { source: SourceConfig }): React.ReactElement => {
   const setSecret = useSetSecret();
-  const secretKeys = SECRET_KEYS_BY_TYPE[source.sourceType] ?? ["api_token"];
+  const secretKeys = SECRET_KEYS_BY_TYPE[baseSourceType(source.sourceType)] ?? ["api_token"];
   const [values, setValues] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -96,7 +96,7 @@ export const BufferedSecretForm = ({
   secrets: Record<string, string>;
   onSecretsChange: (secrets: Record<string, string>) => void;
 }): React.ReactElement => {
-  const secretKeys = SECRET_KEYS_BY_TYPE[sourceType] ?? ["api_token"];
+  const secretKeys = SECRET_KEYS_BY_TYPE[baseSourceType(sourceType)] ?? ["api_token"];
 
   if (secretKeys.length === 0) {
     return (

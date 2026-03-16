@@ -9,7 +9,7 @@ import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/u
 import { cn } from "@ps/cn";
 
 import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
-import { SOURCE_TYPES } from "@/views/admin/lib/source-types";
+import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
 import { EditSourceDialog } from "./edit-source-dialog";
 
 export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {
@@ -21,8 +21,8 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
 
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
-  const sourceLabel =
-    SOURCE_TYPES.find((t) => t.value === source.sourceType)?.label ?? source.sourceType;
+  const base = baseSourceType(source.sourceType);
+  const sourceLabel = SOURCE_TYPES.find((t) => t.value === base)?.label ?? source.sourceType;
 
   const handleToggleEnabled = (): void => {
     updateSource.mutate({ sourceId: source.id, enabled: !source.enabled });

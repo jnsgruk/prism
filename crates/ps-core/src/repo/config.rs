@@ -10,11 +10,38 @@ pub struct ConfigRepo {
 }
 
 /// Map a query row to `SourceConfig`, parsing `source_type` from its TEXT column.
+///
+/// Handles bare `"discourse"` by deriving the instance suffix from the source
+/// name (e.g. source named "Ubuntu" → `Platform::Discourse("ubuntu")`).
+/// Falls back to `Platform::Github` for truly unknown values with a warning.
 macro_rules! map_source_config {
-    ($r:expr) => {
+    ($r:expr) => {{
+        let source_type = Platform::from_str_opt(&$r.source_type).unwrap_or_else(|| {
+            // Handle bare "discourse" stored before the instance-qualifying fix.
+            if $r.source_type == "discourse" {
+                let slug = $r
+                    .name
+                    .to_lowercase()
+                    .chars()
+                    .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                    .collect::<String>()
+                    .split('-')
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join("-");
+                Platform::Discourse(slug)
+            } else {
+                tracing::warn!(
+                    source_type = %$r.source_type,
+                    source_name = %$r.name,
+                    "unrecognised source_type in DB — defaulting to Github"
+                );
+                Platform::Github
+            }
+        });
         SourceConfig {
             id: $r.id,
-            source_type: Platform::from_str_opt(&$r.source_type).unwrap_or(Platform::Github),
+            source_type,
             name: $r.name,
             enabled: $r.enabled,
             settings: $r.settings,
@@ -22,7 +49,7 @@ macro_rules! map_source_config {
             created_at: $r.created_at,
             updated_at: $r.updated_at,
         }
-    };
+    }};
 }
 
 impl ConfigRepo {

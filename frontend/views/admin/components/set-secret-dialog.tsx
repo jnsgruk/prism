@@ -23,7 +23,7 @@ import { useState } from "react";
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import { useSetSecret } from "@ps/hooks/use-config";
 
-import { SECRET_KEYS_BY_TYPE } from "@/views/admin/lib/source-types";
+import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 
 export const SetSecretDialog = ({
   source,
@@ -35,7 +35,7 @@ export const SetSecretDialog = ({
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
   const setSecret = useSetSecret();
-  const secretKeys = SECRET_KEYS_BY_TYPE[source.sourceType] ?? ["api_token"];
+  const secretKeys = SECRET_KEYS_BY_TYPE[baseSourceType(source.sourceType)] ?? ["api_token"];
   const [selectedKey, setSelectedKey] = useState(secretKeys[0] ?? "api_token");
   const [secretValue, setSecretValue] = useState("");
 

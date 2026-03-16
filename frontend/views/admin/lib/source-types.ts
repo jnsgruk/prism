@@ -15,3 +15,8 @@ export const SECRET_KEYS_BY_TYPE: Record<string, string[]> = {
   google_drive: ["service_account_key"],
   mailing_list: [],
 };
+
+/** Normalize an instance-qualified source type to its base type for UI lookups.
+ *  e.g. "discourse-ubuntu" → "discourse", "github" → "github" */
+export const baseSourceType = (sourceType: string): string =>
+  sourceType.startsWith("discourse-") ? "discourse" : sourceType;

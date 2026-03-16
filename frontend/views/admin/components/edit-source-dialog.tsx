@@ -18,6 +18,7 @@ import { useUpdateSource } from "@ps/hooks/use-config";
 
 import { SecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
+import { baseSourceType } from "@/views/admin/lib/source-types";
 
 export const EditSourceDialog = ({
   source,
@@ -38,7 +39,7 @@ export const EditSourceDialog = ({
     }
   }, [open, source.settings]);
 
-  const SettingsForm = settingsForms[source.sourceType];
+  const SettingsForm = settingsForms[baseSourceType(source.sourceType)];
 
   const handleSave = (): void => {
     updateSource.mutate(
