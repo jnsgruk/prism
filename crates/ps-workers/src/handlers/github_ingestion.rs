@@ -644,18 +644,25 @@ fn build_status_message(
                 .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0) as usize;
 
-            let current_user = search_users
+            let total = search_users.map_or(0, Vec::len);
+            let batch_end = (search_user_index + 5).min(total); // matches SEARCH_BATCH_SIZE
+
+            // Show the first user in the batch for context.
+            let first_user = search_users
                 .and_then(|users| users.get(search_user_index))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
 
-            let total = search_users.map_or(0, Vec::len);
-
-            format!(
-                "Searching for cross-repo PRs by {current_user} ({}/{})",
-                search_user_index + 1,
-                total
-            )
+            if batch_end - search_user_index > 1 {
+                format!(
+                    "Searching cross-repo PRs for {first_user} + {} others ({}/{})",
+                    batch_end - search_user_index - 1,
+                    batch_end,
+                    total
+                )
+            } else {
+                format!("Searching cross-repo PRs for {first_user} ({batch_end}/{total})")
+            }
         }
         _ => "Starting ingestion".into(),
     }

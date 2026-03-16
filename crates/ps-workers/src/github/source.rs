@@ -19,6 +19,10 @@ const DEFAULT_LOOKBACK_DAYS: i64 = 7;
 /// Rate limit threshold below which the member search phase is skipped.
 const RATE_LIMIT_SEARCH_THRESHOLD: i32 = 200;
 
+/// Number of usernames to batch into a single GraphQL search query.
+/// GitHub search supports multiple `author:` terms with OR semantics.
+const SEARCH_BATCH_SIZE: usize = 5;
+
 /// GitHub source adapter implementing the [`Source`] trait.
 ///
 /// Uses the GraphQL API for fetching PRs + reviews in a single query per page,
@@ -418,11 +422,14 @@ async fn transition_to_member_search(
 }
 
 /// Search for cross-repo contributions by team members using GraphQL search.
+///
+/// Batches multiple usernames into a single query using OR semantics
+/// (`author:u1 author:u2 ...`) to reduce the number of API calls.
 async fn fetch_member_search(
     ctx: &IngestionContext,
     cur: &mut Cursor,
 ) -> Result<FetchResult, ps_core::Error> {
-    let Some(username) = cur.search_users.get(cur.search_user_index) else {
+    if cur.search_user_index >= cur.search_users.len() {
         // All users searched — we're done.
         info!(
             source = ctx.source_config.name,
@@ -435,13 +442,22 @@ async fn fetch_member_search(
             rate_limit: None,
             etag: None,
         });
-    };
+    }
 
     let token = decrypt_token(ctx).await?;
     let client = build_graphql_client(ctx, &token);
 
-    // Build search query: author:{user} type:pr org:{org1} org:{org2} updated:>{watermark}
-    let mut query = format!("author:{username} type:pr");
+    // Build search query with a batch of usernames.
+    let batch_end = (cur.search_user_index + SEARCH_BATCH_SIZE).min(cur.search_users.len());
+    let batch = cur
+        .search_users
+        .get(cur.search_user_index..batch_end)
+        .unwrap_or_default();
+
+    let mut query = String::from("type:pr");
+    for user in batch {
+        let _ = write!(query, " author:{user}");
+    }
     for org in &cur.orgs {
         let _ = write!(query, " org:{org}");
     }
@@ -496,7 +512,8 @@ async fn fetch_member_search(
 
     info!(
         source = ctx.source_config.name,
-        user = username,
+        batch_start = cur.search_user_index,
+        batch_end,
         results = page.items.len(),
         cross_repo_prs = cross_repo_count,
         rate_limit_remaining = page.rate_limit.remaining,
@@ -505,11 +522,12 @@ async fn fetch_member_search(
 
     // Determine next cursor.
     let next_cursor = if page.has_next_page {
+        // More pages for this batch of users.
         cur.search_graphql_cursor = page.end_cursor;
         Some(serialise_cursor(cur)?)
     } else {
-        // Move to next user.
-        cur.search_user_index += 1;
+        // Move to next batch of users.
+        cur.search_user_index = batch_end;
         cur.search_graphql_cursor = None;
         Some(serialise_cursor(cur)?)
     };
