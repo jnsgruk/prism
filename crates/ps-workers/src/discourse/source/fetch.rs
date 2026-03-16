@@ -59,11 +59,22 @@ pub(super) async fn fetch_batch_impl(
     let mut reached_watermark = false;
 
     for topic in topics {
-        // Check watermark — stop if we've reached topics older than our watermark
+        // Check watermark — stop if we've reached topics older than our watermark.
+        // Pinned topics appear at the top of /latest.json regardless of their
+        // bumped_at timestamp.  Skip them from the watermark boundary check
+        // (they'd otherwise stop ingestion prematurely), but still skip old
+        // pinned topics we've already ingested.
         let bumped_at = topic.bumped_at.as_deref().or(Some(&topic.created_at));
-        if let (Some(wm), Some(bumped)) = (&cur.watermark, bumped_at)
-            && bumped <= wm.as_str()
-        {
+        let older_than_watermark = matches!(
+            (&cur.watermark, bumped_at),
+            (Some(wm), Some(bumped)) if bumped <= wm.as_str()
+        );
+        if older_than_watermark {
+            if topic.pinned {
+                // Old pinned topic — skip it but keep scanning.
+                continue;
+            }
+            // Non-pinned topic older than watermark — we've reached the boundary.
             reached_watermark = true;
             break;
         }

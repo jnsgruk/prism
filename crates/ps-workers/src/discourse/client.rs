@@ -44,6 +44,8 @@ pub struct TopicSummary {
     pub bumped_at: Option<String>,
     pub last_posted_at: Option<String>,
     #[serde(default)]
+    pub pinned: bool,
+    #[serde(default)]
     pub has_accepted_answer: bool,
 }
 
