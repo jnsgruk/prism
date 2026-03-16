@@ -37,6 +37,7 @@ export interface RunProgress {
   search_users_completed?: number;
   rate_limit_remaining?: number;
   rate_limit_limit?: number;
+  status_message?: string;
 }
 
 const stateConfig: Record<
@@ -131,6 +132,9 @@ const ProgressSection = ({ progress }: { progress: RunProgress }): React.ReactEl
 
   return (
     <div className="space-y-2">
+      {progress.status_message && (
+        <p className="text-xs text-muted-foreground">{progress.status_message}</p>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium">{phaseLabel(progress.phase)}</span>
         {rateLimitPercent !== null && (

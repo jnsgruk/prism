@@ -579,5 +579,84 @@ fn build_progress_json(
         map.insert("rate_limit_limit".into(), serde_json::json!(rl.limit));
     }
 
+    // Build a human-readable status message.
+    let message = build_status_message(&cursor, phase, &map, rate_limit);
+    map.insert("status_message".into(), serde_json::json!(message));
+
     serde_json::Value::Object(map)
+}
+
+/// Build a human-readable status message from the current state.
+fn build_status_message(
+    cursor: &serde_json::Value,
+    phase: &str,
+    progress: &serde_json::Map<String, serde_json::Value>,
+    rate_limit: Option<&RateLimitInfo>,
+) -> String {
+    // Check for rate limit pressure first.
+    if let Some(rl) = rate_limit
+        && rl.remaining < 100
+    {
+        return format!(
+            "Rate limited — only {} API calls remaining, resets in {}m",
+            rl.remaining,
+            ((rl.reset_at - time::OffsetDateTime::now_utc()).whole_minutes()).max(1)
+        );
+    }
+
+    match phase {
+        "TeamRepos" => {
+            let current_repo = progress
+                .get("current_repo")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let repos_completed = progress
+                .get("repos_completed")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let repos_total = progress
+                .get("repos_total")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+
+            let watermark = cursor
+                .get("watermark")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            let since = if watermark.is_empty() {
+                "all time".into()
+            } else {
+                // Extract just the date part for readability.
+                watermark.split('T').next().unwrap_or(watermark).to_string()
+            };
+
+            format!(
+                "Fetching PRs updated since {since} from {current_repo} ({}/{})",
+                repos_completed + 1,
+                repos_total
+            )
+        }
+        "MemberSearch" => {
+            let search_users = cursor.get("search_users").and_then(|v| v.as_array());
+            let search_user_index = cursor
+                .get("search_user_index")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0) as usize;
+
+            let current_user = search_users
+                .and_then(|users| users.get(search_user_index))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+
+            let total = search_users.map_or(0, Vec::len);
+
+            format!(
+                "Searching for cross-repo PRs by {current_user} ({}/{})",
+                search_user_index + 1,
+                total
+            )
+        }
+        _ => "Starting ingestion".into(),
+    }
 }
