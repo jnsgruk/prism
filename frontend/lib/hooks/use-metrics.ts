@@ -15,30 +15,23 @@ const metricsClient = createClient(MetricsService, transport);
 
 export const metricsKeys = {
   all: ["metrics"] as const,
-  compare: (teamIds: string[], period: Period): readonly string[] => [
-    ...metricsKeys.all,
-    "compare",
-    ...teamIds,
-    `${period.type}-${period.start}`,
-  ],
-  periods: (): readonly string[] => [...metricsKeys.all, "periods"],
-  contributions: (
-    teamId: string,
-    period: Period,
-    filters: ContributionFilters,
-  ): readonly (string | number | boolean)[] => [
-    ...metricsKeys.all,
-    "contributions",
-    teamId,
-    `${period.type}-${period.start}`,
-    filters.contributionType ?? "",
-    filters.state ?? "",
-    filters.search ?? "",
-    filters.sortField ?? "",
-    filters.sortDesc ?? true,
-    filters.pageSize,
-    filters.pageIndex,
-  ],
+  compare: (teamIds: string[], period: Period) =>
+    [...metricsKeys.all, "compare", ...teamIds, `${period.type}-${period.start}`] as const,
+  periods: () => [...metricsKeys.all, "periods"] as const,
+  contributions: (teamId: string, period: Period, filters: ContributionFilters) =>
+    [
+      ...metricsKeys.all,
+      "contributions",
+      teamId,
+      `${period.type}-${period.start}`,
+      filters.contributionType ?? "",
+      filters.state ?? "",
+      filters.search ?? "",
+      filters.sortField ?? "",
+      filters.sortDesc ?? true,
+      filters.pageSize,
+      filters.pageIndex,
+    ] as const,
 };
 
 export interface ContributionFilters {
