@@ -50,26 +50,42 @@ pub struct IdentityRow {
 }
 
 /// Input for a directory import record.
+///
+/// Supports both JSON deserialization (for JSON file imports) and direct
+/// construction (for HTML directory parsing via `ps_core::directory`).
+#[derive(serde::Deserialize)]
 pub struct ImportRecord {
     pub name: String,
+    #[serde(default)]
     pub email: Option<String>,
+    #[serde(default)]
     pub level: Option<String>,
+    #[serde(default)]
     pub directory_id: Option<String>,
+    #[serde(default)]
     pub team: Option<String>,
+    #[serde(default)]
     pub team_type: Option<TeamType>,
+    #[serde(default)]
     pub org: Option<String>,
+    #[serde(default)]
     pub identities: Vec<ImportIdentity>,
     /// Manager name (from directory HTML --manager field).
+    #[serde(default)]
     pub manager_name: Option<String>,
     /// Nesting depth in the directory HTML (1 = VP, 2 = director/manager, etc.).
+    #[serde(default)]
     pub depth: Option<u32>,
     /// Whether this person has direct reports in the directory tree.
+    #[serde(default)]
     pub has_reports: bool,
     /// Group name from directory (e.g. "Ubuntu Engineering"), used for parent wiring.
+    #[serde(default)]
     pub group: Option<String>,
 }
 
 /// A platform identity within an import record.
+#[derive(serde::Deserialize)]
 pub struct ImportIdentity {
     pub platform: String,
     pub username: String,

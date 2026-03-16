@@ -1,37 +1,34 @@
 use std::collections::HashSet;
 
-use ps_core::models::TeamType;
-use serde::Deserialize;
-use tonic::Status;
+use crate::Error;
+use crate::models::TeamType;
+use crate::repo::org::{ImportIdentity, ImportRecord};
 
-use crate::directory::parse_directory_html;
+use super::parser::parse_directory_html;
 
-/// Detect file format and parse into `DirectoryRecord` entries.
+/// Detect file format and parse into `ImportRecord` entries.
 ///
 /// For HTML files, this also computes the team hierarchy from the directory
 /// nesting structure: depth-1 people are group leaders, depth-2 people with
 /// reports are team leaders, depth-3+ people with reports are squad leaders.
-#[allow(clippy::result_large_err)]
-pub(crate) fn parse_file_content(content: &str) -> Result<Vec<DirectoryRecord>, Status> {
+pub fn parse_file_content(content: &str) -> Result<Vec<ImportRecord>, Error> {
     let trimmed = content.trim_start();
     if trimmed.starts_with('<') || trimmed.starts_with("<!") {
         parse_html_to_records(content)
     } else {
-        serde_json::from_str(content)
-            .map_err(|e| Status::invalid_argument(format!("invalid JSON: {e}")))
+        serde_json::from_str(content).map_err(|e| Error::Validation(format!("invalid JSON: {e}")))
     }
 }
 
-/// Parse HTML directory into `DirectoryRecord` entries with hierarchy information.
+/// Parse HTML directory into `ImportRecord` entries with hierarchy information.
 ///
 /// Determines which people are team/squad leaders by checking whether they have
 /// reports (i.e. someone else lists them as their manager).
-#[allow(clippy::result_large_err)]
-fn parse_html_to_records(content: &str) -> Result<Vec<DirectoryRecord>, Status> {
+fn parse_html_to_records(content: &str) -> Result<Vec<ImportRecord>, Error> {
     let people = parse_directory_html(content);
     if people.is_empty() {
-        return Err(Status::invalid_argument(
-            "no valid entries found in HTML directory file",
+        return Err(Error::Validation(
+            "no valid entries found in HTML directory file".to_owned(),
         ));
     }
 
@@ -60,22 +57,22 @@ fn parse_html_to_records(content: &str) -> Result<Vec<DirectoryRecord>, Status> 
             );
 
             let mut identities = vec![
-                DirectoryIdentity {
+                ImportIdentity {
                     platform: "github".to_owned(),
                     username: p.github_username,
                 },
-                DirectoryIdentity {
+                ImportIdentity {
                     platform: "launchpad".to_owned(),
                     username: p.launchpad_username,
                 },
             ];
             if let Some(mm) = p.mattermost_username {
-                identities.push(DirectoryIdentity {
+                identities.push(ImportIdentity {
                     platform: "mattermost".to_owned(),
                     username: mm,
                 });
             }
-            DirectoryRecord {
+            ImportRecord {
                 name: p.display_name,
                 email: Some(p.email),
                 level: p.title,
@@ -123,38 +120,4 @@ fn derive_team_assignment(
         ),
         _ => (None, None),
     }
-}
-
-/// A single record in a directory import file.
-#[derive(Deserialize)]
-pub(crate) struct DirectoryRecord {
-    pub name: String,
-    #[serde(default)]
-    pub email: Option<String>,
-    #[serde(default)]
-    pub level: Option<String>,
-    #[serde(default)]
-    pub directory_id: Option<String>,
-    #[serde(default)]
-    pub team: Option<String>,
-    #[serde(default)]
-    pub team_type: Option<TeamType>,
-    #[serde(default)]
-    pub org: Option<String>,
-    #[serde(default)]
-    pub identities: Vec<DirectoryIdentity>,
-    #[serde(default)]
-    pub manager_name: Option<String>,
-    #[serde(default)]
-    pub depth: Option<u32>,
-    #[serde(default)]
-    pub has_reports: bool,
-    #[serde(default)]
-    pub group: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct DirectoryIdentity {
-    pub platform: String,
-    pub username: String,
 }

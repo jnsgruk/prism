@@ -1,11 +1,8 @@
-mod import;
-
 use std::collections::HashMap;
 
 use ps_core::models::TeamType;
 use ps_core::repo::org::{
-    IdentityRow, ImportIdentity, ImportRecord, ListPeopleParams, PersonRow, TeamWithCount,
-    github_teams::GitHubTeamRow,
+    IdentityRow, ListPeopleParams, PersonRow, TeamWithCount, github_teams::GitHubTeamRow,
 };
 use ps_core::repo::{PageRequest, Repos, SortParams};
 use ps_proto::prism::v1::org_service_server::OrgService;
@@ -28,8 +25,6 @@ use ps_proto::prism::v1::{
 use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
-
-use self::import::parse_file_content;
 
 use super::common::{db_err, require_auth};
 
@@ -404,32 +399,8 @@ impl OrgService for OrgServiceImpl {
         let content = String::from_utf8(req.file_content)
             .map_err(|_| Status::invalid_argument("file content is not valid UTF-8"))?;
 
-        let records = parse_file_content(&content)?;
-
-        let import_records: Vec<ImportRecord> = records
-            .into_iter()
-            .map(|r| ImportRecord {
-                name: r.name,
-                email: r.email,
-                level: r.level,
-                directory_id: r.directory_id,
-                team: r.team,
-                team_type: r.team_type,
-                org: r.org,
-                identities: r
-                    .identities
-                    .into_iter()
-                    .map(|i| ImportIdentity {
-                        platform: i.platform,
-                        username: i.username,
-                    })
-                    .collect(),
-                manager_name: r.manager_name,
-                depth: r.depth,
-                has_reports: r.has_reports,
-                group: r.group,
-            })
-            .collect();
+        let import_records = ps_core::directory::parse_file_content(&content)
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
         let result = self
             .repos

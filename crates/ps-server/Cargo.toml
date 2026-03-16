@@ -25,7 +25,6 @@ serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 time = { workspace = true, features = ["macros"] }
-scraper.workspace = true
 tower = { version = "0.5", features = ["util"] }
 http = "1"
 http-body = "1"
