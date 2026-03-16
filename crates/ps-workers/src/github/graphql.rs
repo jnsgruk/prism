@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tracing::warn;
 
-use super::types::{GraphQLPr, GraphQLRepoData, GraphQLSearchData, GraphQLSearchPr};
+use super::types::{GraphQLSearchData, GraphQLSearchPr};
 
 /// GitHub GraphQL API client.
 ///
@@ -102,13 +102,18 @@ impl GitHubGraphQLClient {
     /// Fetch a page of pull requests with inline reviews for a repository.
     ///
     /// Returns up to 100 PRs sorted by `UPDATED_AT ASC`, with up to 100
-    /// reviews per PR included inline.
+    /// reviews per PR included inline. Currently used only in tests —
+    /// production ingestion uses `search_pull_requests` for server-side
+    /// `updated:>` filtering.
+    #[cfg(test)]
     pub async fn fetch_pull_requests(
         &self,
         owner: &str,
         repo: &str,
         cursor: Option<&str>,
-    ) -> Result<GraphQLPage<GraphQLPr>, GraphQLClientError> {
+    ) -> Result<GraphQLPage<super::types::GraphQLPr>, GraphQLClientError> {
+        use super::types::GraphQLRepoData;
+
         let variables = serde_json::json!({
             "owner": owner,
             "repo": repo,
@@ -275,6 +280,7 @@ fn parse_rate_limit_headers(headers: &HeaderMap) -> RateLimitInfo {
 // GraphQL query strings
 // ---------------------------------------------------------------------------
 
+#[cfg(test)]
 const FETCH_PRS_QUERY: &str = r"
 query($owner: String!, $repo: String!, $cursor: String) {
   repository(owner: $owner, name: $repo) {

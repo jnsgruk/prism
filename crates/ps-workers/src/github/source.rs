@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use super::graphql::GitHubGraphQLClient;
 use super::repos;
-use super::types::{GraphQLPr, GraphQLSearchPr};
+use super::types::GraphQLSearchPr;
 
 /// Default lookback window when no watermark exists (non-backfill runs).
 const DEFAULT_LOOKBACK_DAYS: i64 = 7;
@@ -234,7 +234,10 @@ async fn fetch_batch_impl(
     }
 }
 
-/// Fetch PRs + reviews for team repos using GraphQL.
+/// Fetch PRs + reviews for team repos using GraphQL search.
+///
+/// Uses the `search` query with `repo:{owner}/{repo} type:pr updated:>{watermark}`
+/// so GitHub filters server-side rather than us paginating through all history.
 async fn fetch_team_repos(
     ctx: &IngestionContext,
     cur: &mut Cursor,
@@ -260,8 +263,14 @@ async fn fetch_team_repos(
     let token = decrypt_token(ctx).await?;
     let client = build_graphql_client(ctx, &token);
 
+    // Build search query with server-side updated filter.
+    let mut query = format!("repo:{owner}/{repo} type:pr");
+    if let Some(ref wm) = cur.watermark {
+        let _ = write!(query, " updated:>{wm}");
+    }
+
     let page = client
-        .fetch_pull_requests(owner, repo, cur.graphql_cursor.as_deref())
+        .search_pull_requests(&query, cur.graphql_cursor.as_deref())
         .await
         .map_err(|e| ps_core::Error::Internal(format!("GitHub GraphQL error: {e}")))?;
 
@@ -278,33 +287,25 @@ async fn fetch_team_repos(
     // Track ingested repos for filtering in the search phase.
     cur.ingested_repos.insert((owner.clone(), repo.clone()));
 
-    // Filter out PRs that are older than our watermark (since GraphQL doesn't
-    // support a `since` filter, we rely on UPDATED_AT ASC ordering and skip
-    // items updated before the watermark).
     let mut items = Vec::new();
 
-    for pr in &page.items {
-        // If this PR was updated before our watermark, skip it — but keep
-        // paginating since the sort is ASC and later PRs may be newer.
-        if let Some(ref wm) = cur.watermark
-            && pr.updated_at <= *wm
-        {
+    for search_pr in &page.items {
+        let Some(ref updated_at) = search_pr.updated_at else {
             continue;
-        }
+        };
 
         // Track max_updated_at for watermark advancement.
         match cur.max_updated_at {
-            Some(ref max) if pr.updated_at > *max => {
-                cur.max_updated_at = Some(pr.updated_at.clone());
+            Some(ref max) if updated_at > max => {
+                cur.max_updated_at = Some(updated_at.clone());
             }
             None => {
-                cur.max_updated_at = Some(pr.updated_at.clone());
+                cur.max_updated_at = Some(updated_at.clone());
             }
             _ => {}
         }
 
-        let author = pr.author.as_ref().map_or("", |a| a.login.as_str());
-        items.extend(graphql_pr_to_contributions(owner, repo, pr, author)?);
+        items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
     }
 
     // Determine next cursor.
@@ -519,110 +520,6 @@ async fn fetch_member_search(
         rate_limit: Some(page.rate_limit),
         etag: None,
     })
-}
-
-/// Convert a GraphQL PR (from repo query) to `ContributionInputs`.
-fn graphql_pr_to_contributions(
-    owner: &str,
-    repo: &str,
-    pr: &GraphQLPr,
-    author: &str,
-) -> Result<Vec<ContributionInput>, ps_core::Error> {
-    let mut items = Vec::new();
-
-    let pr_state = if pr.merged_at.is_some() {
-        "merged"
-    } else {
-        match pr.state.as_str() {
-            "OPEN" => "open",
-            "CLOSED" => "closed",
-            "MERGED" => "merged",
-            other => other,
-        }
-    };
-
-    // Build state_history.
-    let mut state_history = vec![serde_json::json!({
-        "state": "open",
-        "at": pr.created_at,
-    })];
-    if let Some(ref closed_at) = pr.closed_at {
-        state_history.push(serde_json::json!({
-            "state": pr_state,
-            "at": closed_at,
-        }));
-    }
-
-    let review_count = pr.reviews.nodes.len();
-    let labels: Vec<&str> = pr
-        .labels
-        .as_ref()
-        .map(|l| l.nodes.iter().map(|n| n.name.as_str()).collect())
-        .unwrap_or_default();
-
-    items.push(ContributionInput {
-        platform: "github".into(),
-        contribution_type: "pull_request".into(),
-        platform_id: format!("{owner}/{repo}/pull/{}", pr.number),
-        platform_username: author.to_string(),
-        title: Some(pr.title.clone()),
-        url: Some(pr.url.clone()),
-        state: Some(pr_state.to_string()),
-        created_at: parse_datetime(&pr.created_at)?,
-        updated_at: Some(parse_datetime(&pr.updated_at)?),
-        closed_at: pr.closed_at.as_deref().map(parse_datetime).transpose()?,
-        metrics: serde_json::json!({
-            "additions": pr.additions,
-            "deletions": pr.deletions,
-            "changed_files": pr.changed_files,
-            "review_count": review_count,
-            "draft": pr.is_draft,
-        }),
-        metadata: serde_json::json!({
-            "head_ref": pr.head_ref_name,
-            "base_ref": pr.base_ref_name,
-            "labels": labels,
-        }),
-        content: None,
-        state_history: Some(serde_json::Value::Array(state_history)),
-    });
-
-    // Map each review to a separate ContributionInput.
-    for review in &pr.reviews.nodes {
-        let reviewer = review.author.as_ref().map_or("", |a| a.login.as_str());
-
-        let submitted_at = review
-            .submitted_at
-            .as_deref()
-            .map(parse_datetime)
-            .transpose()?;
-
-        let review_id = review.database_id.unwrap_or(0);
-
-        items.push(ContributionInput {
-            platform: "github".into(),
-            contribution_type: "pr_review".into(),
-            platform_id: format!("{owner}/{repo}/review/{review_id}"),
-            platform_username: reviewer.to_string(),
-            title: Some(format!("Review on #{}", pr.number)),
-            url: Some(format!("{}/reviews/{review_id}", pr.url)),
-            state: Some(review.state.clone()),
-            created_at: submitted_at.unwrap_or(parse_datetime(&pr.created_at)?),
-            updated_at: submitted_at,
-            closed_at: None,
-            metrics: serde_json::json!({
-                "review_state": review.state,
-            }),
-            metadata: serde_json::json!({
-                "pr_number": pr.number,
-                "pr_platform_id": format!("{owner}/{repo}/pull/{}", pr.number),
-            }),
-            content: review.body.clone(),
-            state_history: None,
-        });
-    }
-
-    Ok(items)
 }
 
 /// Convert a GraphQL search PR to `ContributionInputs`.
