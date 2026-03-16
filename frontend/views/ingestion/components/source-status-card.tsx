@@ -132,9 +132,6 @@ const ProgressSection = ({ progress }: { progress: RunProgress }): React.ReactEl
 
   return (
     <div className="space-y-2">
-      {progress.status_message && (
-        <p className="text-xs text-muted-foreground">{progress.status_message}</p>
-      )}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium">{phaseLabel(progress.phase)}</span>
         {rateLimitPercent !== null && (
@@ -164,9 +161,6 @@ const ProgressSection = ({ progress }: { progress: RunProgress }): React.ReactEl
               style={{ width: `${String(repoPercent)}%` }}
             />
           </div>
-          {progress.current_repo && (
-            <p className="truncate text-xs text-muted-foreground">{progress.current_repo}</p>
-          )}
         </div>
       )}
 
@@ -199,6 +193,10 @@ const ProgressSection = ({ progress }: { progress: RunProgress }): React.ReactEl
           </span>
         )}
       </div>
+
+      {progress.status_message && (
+        <p className="truncate text-xs italic text-muted-foreground">{progress.status_message}</p>
+      )}
     </div>
   );
 };
