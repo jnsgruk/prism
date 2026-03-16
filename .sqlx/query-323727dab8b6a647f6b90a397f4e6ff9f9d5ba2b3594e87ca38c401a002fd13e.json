@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.ingestion_watermarks",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "323727dab8b6a647f6b90a397f4e6ff9f9d5ba2b3594e87ca38c401a002fd13e"
+}

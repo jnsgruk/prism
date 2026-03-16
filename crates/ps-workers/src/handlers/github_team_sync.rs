@@ -229,8 +229,10 @@ impl GithubTeamSyncHandlerImpl {
         for team in &all_teams {
             synced_slugs.push(team.slug.clone());
 
-            let members = fetch_all_members(client, org, &team.slug).await?;
-            let team_repos = fetch_all_repos(client, org, &team.slug).await?;
+            let (members, team_repos) = tokio::try_join!(
+                fetch_all_members(client, org, &team.slug),
+                fetch_all_repos(client, org, &team.slug),
+            )?;
 
             info!(
                 org,

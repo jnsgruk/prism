@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.contributions",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "10d1714a89642d207ac10668607a69d6dbcb6b66edf65562076be7d95f27ed4f"
+}

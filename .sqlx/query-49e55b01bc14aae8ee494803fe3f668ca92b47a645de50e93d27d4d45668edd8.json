@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE org.teams SET lead_id = NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "49e55b01bc14aae8ee494803fe3f668ca92b47a645de50e93d27d4d45668edd8"
+}

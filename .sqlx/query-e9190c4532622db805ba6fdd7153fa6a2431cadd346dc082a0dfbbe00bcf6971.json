@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.etag_cache",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e9190c4532622db805ba6fdd7153fa6a2431cadd346dc082a0dfbbe00bcf6971"
+}

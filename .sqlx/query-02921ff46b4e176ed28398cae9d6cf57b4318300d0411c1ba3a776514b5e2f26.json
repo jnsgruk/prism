@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.ingestion_runs",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "02921ff46b4e176ed28398cae9d6cf57b4318300d0411c1ba3a776514b5e2f26"
+}

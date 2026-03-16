@@ -116,26 +116,28 @@ impl OrgRepo {
             .map_err(|e| Error::Database(e.to_string()))?;
 
         // Order matters: children first due to foreign keys.
-        // Bulk DELETEs — parameterless, table names are hardcoded constants.
-        for table in &["org.team_memberships", "org.platform_identities"] {
-            sqlx::query(&format!("DELETE FROM {table}"))
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| Error::Database(e.to_string()))?;
-        }
+        sqlx::query!("DELETE FROM org.team_memberships")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        sqlx::query!("DELETE FROM org.platform_identities")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
 
         // Clear lead_id references before deleting people.
-        sqlx::query("UPDATE org.teams SET lead_id = NULL")
+        sqlx::query!("UPDATE org.teams SET lead_id = NULL")
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
-        let people = sqlx::query("DELETE FROM org.people")
+        let people = sqlx::query!("DELETE FROM org.people")
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
-        let teams = sqlx::query("DELETE FROM org.teams")
+        let teams = sqlx::query!("DELETE FROM org.teams")
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(e.to_string()))?;

@@ -507,27 +507,30 @@ impl ActivityRepo {
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
-        // Bulk DELETEs — parameterless, table names are hardcoded constants.
-        sqlx::query("DELETE FROM metrics.team_snapshots")
+        sqlx::query!("DELETE FROM metrics.team_snapshots")
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
-        let contribs = sqlx::query("DELETE FROM activity.contributions")
+        let contribs = sqlx::query!("DELETE FROM activity.contributions")
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(e.to_string()))?;
 
-        for table in &[
-            "activity.ingestion_runs",
-            "activity.ingestion_watermarks",
-            "activity.etag_cache",
-        ] {
-            sqlx::query(&format!("DELETE FROM {table}"))
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| Error::Database(e.to_string()))?;
-        }
+        sqlx::query!("DELETE FROM activity.ingestion_runs")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        sqlx::query!("DELETE FROM activity.ingestion_watermarks")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
+
+        sqlx::query!("DELETE FROM activity.etag_cache")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| Error::Database(e.to_string()))?;
 
         tx.commit()
             .await

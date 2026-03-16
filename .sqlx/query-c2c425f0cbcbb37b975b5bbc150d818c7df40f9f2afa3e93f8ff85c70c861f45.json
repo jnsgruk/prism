@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM metrics.team_snapshots",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c2c425f0cbcbb37b975b5bbc150d818c7df40f9f2afa3e93f8ff85c70c861f45"
+}
