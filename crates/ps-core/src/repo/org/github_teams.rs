@@ -371,6 +371,31 @@ impl OrgRepo {
         Ok(())
     }
 
+    /// Get distinct GitHub usernames across all mapped teams for a source.
+    ///
+    /// Used by the member search phase to find cross-repo contributions.
+    pub async fn get_mapped_github_team_member_usernames(
+        &self,
+        source_id: Uuid,
+    ) -> Result<Vec<String>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT DISTINCT gtm.github_username
+            FROM org.github_team_members gtm
+            JOIN org.github_teams gt ON gt.id = gtm.github_team_id
+            JOIN org.team_github_team_mappings m ON m.github_team_id = gt.id
+            WHERE gt.source_id = $1
+            ORDER BY gtm.github_username
+            "#,
+            source_id,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(rows.into_iter().map(|r| r.github_username).collect())
+    }
+
     /// Remove stale GitHub teams that weren't seen in the latest sync.
     pub async fn remove_stale_github_teams(
         &self,
