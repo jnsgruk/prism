@@ -11,15 +11,17 @@ use crate::format;
 
 const CHUNK_SIZE: usize = 64 * 1024;
 
+/// Split binary data into fixed-size chunks, mapping each to a proto message.
+fn chunk_data<T>(data: &[u8], f: impl Fn(Vec<u8>) -> T) -> Vec<T> {
+    data.chunks(CHUNK_SIZE).map(|c| f(c.to_vec())).collect()
+}
+
 pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str) -> Result<()> {
     let data = tokio::fs::read(file_path).await?;
     let mut client = AuthServiceClient::with_interceptor(channel.clone(), auth.clone());
 
     // Preview the backup before restoring
-    let chunks: Vec<PreviewBackupRequest> = data
-        .chunks(CHUNK_SIZE)
-        .map(|c| PreviewBackupRequest { chunk: c.to_vec() })
-        .collect();
+    let chunks = chunk_data(&data, |chunk| PreviewBackupRequest { chunk });
 
     let preview = client
         .preview_backup(tokio_stream::iter(chunks))
@@ -67,10 +69,7 @@ pub async fn restore(channel: &Channel, auth: &AuthInterceptor, file_path: &str)
     }
 
     // Stream the restore
-    let chunks: Vec<RestoreBackupRequest> = data
-        .chunks(CHUNK_SIZE)
-        .map(|c| RestoreBackupRequest { chunk: c.to_vec() })
-        .collect();
+    let chunks = chunk_data(&data, |chunk| RestoreBackupRequest { chunk });
 
     let response = client
         .restore_backup(tokio_stream::iter(chunks))

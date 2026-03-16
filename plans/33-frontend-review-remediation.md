@@ -192,14 +192,14 @@ These are not blockers but should be addressed when touching the relevant files:
 
 ## Checklist
 
-- [ ] WS-1: Extract shared run/handler components and formatting utils
-- [ ] WS-2: Fix render-phase navigate() calls
-- [ ] WS-3: Coordinate mutations in PersonDetailDialog
-- [ ] WS-4: Remove hardcoded orgName
-- [ ] WS-5: Add 404 catch-all route
-- [ ] WS-6: Extract duplicated flattenTeams helper
-- [ ] WS-7: Type safety — domain enums, as const, barrel exports
-- [ ] WS-8: Debounce GitHub team search
-- [ ] WS-9: Zod validation on setup page
-- [ ] WS-10: Split oversized files
+- [x] WS-1: Extract shared run/handler components and formatting utils
+- [x] WS-2: Fix render-phase navigate() calls
+- [x] WS-3: Coordinate mutations in PersonDetailDialog
+- [x] WS-4: Remove hardcoded orgName
+- [x] WS-5: Add 404 catch-all route
+- [x] WS-6: Extract duplicated flattenTeams helper
+- [x] WS-7: Type safety — domain enums, as const, barrel exports
+- [x] WS-8: Debounce GitHub team search
+- [x] WS-9: Zod validation on setup page
+- [x] WS-10: Split oversized files
 - [ ] All `prek run -av` clean
