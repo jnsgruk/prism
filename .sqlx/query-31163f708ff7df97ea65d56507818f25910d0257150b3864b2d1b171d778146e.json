@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)\n        SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[])\n        ON CONFLICT (platform, platform_username)\n        DO UPDATE SET person_id = EXCLUDED.person_id\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "31163f708ff7df97ea65d56507818f25910d0257150b3864b2d1b171d778146e"
+}

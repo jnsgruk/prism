@@ -5,7 +5,7 @@ use crate::models::TeamType;
 use sqlx::postgres::PgConnection;
 use uuid::Uuid;
 
-use super::{ImportRecord, ImportResult, OrgRepo};
+use super::{ImportIdentity, ImportRecord, ImportResult, OrgRepo};
 
 /// Mutable counters and lookup maps shared across import passes.
 struct ImportState {
@@ -317,65 +317,57 @@ async fn track_team_name(
     Ok(())
 }
 
-/// Map platform identities for a single record.
+/// Map platform identities for a single record using batch UPSERT.
 async fn map_identities(
     tx: &mut PgConnection,
     record: &ImportRecord,
     resolved_id: Uuid,
     state: &mut ImportState,
 ) -> Result<(), Error> {
-    for identity in &record.identities {
-        if identity.platform.is_empty() || identity.username.is_empty() {
-            state
-                .warnings
-                .push(format!("skipping empty identity for {}", record.name));
-            continue;
-        }
+    let valid: Vec<&ImportIdentity> = record
+        .identities
+        .iter()
+        .filter(|i| {
+            if i.platform.is_empty() || i.username.is_empty() {
+                state
+                    .warnings
+                    .push(format!("skipping empty identity for {}", record.name));
+                false
+            } else {
+                true
+            }
+        })
+        .collect();
 
-        let existing = sqlx::query_scalar!(
-            r#"
-            SELECT id FROM org.platform_identities
-            WHERE platform = $1 AND platform_username = $2
-            "#,
-            identity.platform,
-            identity.username,
-        )
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(Error::from)?;
+    if valid.is_empty() {
+        return Ok(());
+    }
 
-        if existing.is_some() {
-            sqlx::query!(
-                r#"
-                UPDATE org.platform_identities
-                SET person_id = $1
-                WHERE platform = $2 AND platform_username = $3
-                "#,
-                resolved_id,
-                identity.platform,
-                identity.username,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-        } else {
-            let identity_id = Uuid::now_v7();
-            sqlx::query!(
-                r#"
-                INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-                VALUES ($1, $2, $3, $4)
-                "#,
-                identity_id,
-                resolved_id,
-                identity.platform,
-                identity.username,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(Error::from)?;
+    let ids: Vec<Uuid> = valid.iter().map(|_| Uuid::now_v7()).collect();
+    let person_ids: Vec<Uuid> = vec![resolved_id; valid.len()];
+    let platforms: Vec<&str> = valid.iter().map(|i| i.platform.as_str()).collect();
+    let usernames: Vec<&str> = valid.iter().map(|i| i.username.as_str()).collect();
 
-            state.identities_mapped += 1;
-        }
+    let result = sqlx::query_scalar!(
+        r#"
+        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
+        SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[])
+        ON CONFLICT (platform, platform_username)
+        DO UPDATE SET person_id = EXCLUDED.person_id
+        RETURNING id
+        "#,
+        &ids,
+        &person_ids,
+        &platforms as &[&str],
+        &usernames as &[&str],
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+
+    #[allow(clippy::cast_possible_wrap)]
+    {
+        state.identities_mapped += result.len() as i32;
     }
     Ok(())
 }

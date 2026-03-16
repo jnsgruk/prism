@@ -824,7 +824,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-1.13: Backup input validation
 - [x] WS-1.14: Connection timeout for ps-migrate
 - [x] WS-2.1: Bulk upsert contributions
-- [ ] WS-2.2: Batch org import
+- [x] WS-2.2: Batch org import (identity mapping batched with UNNEST)
 - [x] WS-2.3: Batch list_sources secret status
 - [x] WS-2.4: Batch GitHub team member/repo sync
 - [x] WS-2.5: Batch repository upserts
@@ -834,7 +834,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-3.3: FromStr for domain enums
 - [x] WS-3.4: Error::Database structured variant
 - [x] WS-3.5: SourceState enum in psctl
-- [ ] WS-3.6: Typed ContributionInput.metrics/metadata
+- [x] WS-3.6: Typed ContributionInput.metrics/metadata
 - [x] WS-3.7: BTreeMap for BackupManifest
 - [x] WS-3.8: Remove no-op parse in password.rs
 - [x] WS-3.9: Consistent impl_sqlx_text! usage
@@ -854,8 +854,8 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-5.7: Deduplicate GitHubTeamRow mapping
 - [x] WS-5.8: Extract JSON-to-prost conversion
 - [x] WS-5.9: Deduplicate Timestamp construction
-- [ ] WS-5.10: Extract REST client generic helper (low priority)
-- [ ] WS-5.11: Extract psctl client constructor (low priority)
+- [x] WS-5.10: Extract REST client generic helper
+- [x] WS-5.11: Extract psctl client constructor
 - [x] WS-5.12: list_team_contributions params struct
 - [x] WS-5.13: Replace build_progress_json with struct
 - [x] WS-5.14: Derive handler list from single source
@@ -872,4 +872,4 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-7.3: Build headers once per client
 - [x] WS-7.4: HashSet lookup without allocation
 - [x] WS-7.5: Lighter query for team IDs
-- [ ] WS-7.6: compare_team_snapshots CTE optimization
+- [x] WS-7.6: compare_team_snapshots CTE optimization
