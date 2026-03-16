@@ -28,6 +28,12 @@ const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         true,
     ),
     (
+        "JiraIngestionHandler",
+        &["run_ingestion", "backfill"],
+        "Fetches issues, changelogs, and status transitions from Jira",
+        true,
+    ),
+    (
         "GithubTeamSyncHandler",
         &["sync_teams"],
         "Discovers GitHub teams, members, and repos for configured orgs",
@@ -40,6 +46,18 @@ const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         false,
     ),
 ];
+
+/// Map a platform to its Restate ingestion handler name.
+#[allow(clippy::result_large_err)]
+fn handler_for_platform(platform: &ps_core::models::Platform) -> Result<&'static str, Status> {
+    match platform {
+        ps_core::models::Platform::Github => Ok("GithubIngestionHandler"),
+        ps_core::models::Platform::Jira => Ok("JiraIngestionHandler"),
+        _ => Err(Status::unimplemented(format!(
+            "no ingestion handler for platform: {platform}"
+        ))),
+    }
+}
 
 /// Build the list of `HandlerInfo` proto messages from the static definitions.
 fn known_handlers() -> Vec<HandlerInfo> {
@@ -409,17 +427,20 @@ impl HandlersService for HandlersServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
-        // Verify source exists and is enabled
-        self.repos
+        // Verify source exists and is enabled, and get the source type for routing
+        let source = self
+            .repos
             .config
             .get_enabled_source_by_name(&req.source_name)
             .await
             .map_err(db_err)?
             .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
+        let handler = handler_for_platform(&source.source_type)?;
+
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/GithubIngestionHandler/{}/run_ingestion/send",
+            "{}/{handler}/{}/run_ingestion/send",
             self.restate_url, req.source_name,
         );
 
@@ -432,7 +453,7 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, %invocation_id, "triggered ingestion run via Restate");
+        info!(source = %req.source_name, %handler, %invocation_id, "triggered ingestion run via Restate");
 
         Ok(Response::new(TriggerRunResponse {}))
     }
@@ -451,17 +472,20 @@ impl HandlersService for HandlersServiceImpl {
             return Err(Status::invalid_argument("since_date is required"));
         }
 
-        // Verify source exists and is enabled
-        self.repos
+        // Verify source exists and is enabled, and get the source type for routing
+        let source = self
+            .repos
             .config
             .get_enabled_source_by_name(&req.source_name)
             .await
             .map_err(db_err)?
             .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
+        let handler = handler_for_platform(&source.source_type)?;
+
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/GithubIngestionHandler/{}/backfill/send",
+            "{}/{handler}/{}/backfill/send",
             self.restate_url, req.source_name,
         );
         let body = serde_json::json!(req.since_date);
@@ -475,7 +499,7 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
+        info!(source = %req.source_name, %handler, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
 
         Ok(Response::new(TriggerBackfillResponse {}))
     }

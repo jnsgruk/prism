@@ -16,7 +16,8 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         .repos
         .activity
         .get_watermark(&ctx.source_config.name)
-        .await?;
+        .await?
+        .filter(|w| !w.is_empty());
 
     let effective_watermark = watermark.clone().or_else(|| {
         let lookback =
