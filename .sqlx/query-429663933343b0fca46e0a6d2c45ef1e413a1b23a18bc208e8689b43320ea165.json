@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE ($1::text IS NULL OR source_name = $1)\n              AND ($2::text IS NULL OR handler_name = $2)\n            ORDER BY started_at DESC\n            LIMIT 100\n            ",
+  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE ($1::text IS NULL OR source_name = $1)\n              AND ($2::text IS NULL OR handler_name = $2)\n              AND handler_name LIKE '%IngestionHandler'\n            ORDER BY started_at DESC\n            LIMIT 100\n            ",
   "describe": {
     "columns": [
       {
@@ -67,5 +67,5 @@
       false
     ]
   },
-  "hash": "1d4180f74ab2f3763d15848756e0e43ee20d5318b1b13be72e3c59dc8f4efcfc"
+  "hash": "429663933343b0fca46e0a6d2c45ef1e413a1b23a18bc208e8689b43320ea165"
 }
