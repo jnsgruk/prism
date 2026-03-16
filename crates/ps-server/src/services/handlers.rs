@@ -230,7 +230,7 @@ impl HandlersServiceImpl {
         let url = format!("{}/query", self.restate_admin_url);
         let query = format!(
             "SELECT id FROM sys_invocation \
-             WHERE target_service_name = 'GithubIngestionHandler' \
+             WHERE target_service_name IN ('GithubIngestionHandler', 'JiraIngestionHandler') \
              AND target_service_key = '{source_name}' \
              AND status != 'completed'",
         );
@@ -662,7 +662,9 @@ impl HandlersService for HandlersServiceImpl {
         let invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
 
         // Store invocation ID for ingestion handlers (for cancellation support)
-        if req.handler_name == "GithubIngestionHandler" {
+        if req.handler_name == "GithubIngestionHandler"
+            || req.handler_name == "JiraIngestionHandler"
+        {
             let _ = self
                 .repos
                 .activity
