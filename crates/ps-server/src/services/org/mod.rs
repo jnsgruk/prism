@@ -13,14 +13,15 @@ use ps_proto::prism::v1::{
     DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse,
     GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse, GetTeamRequest,
     GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse, GitHubTeam as ProtoGitHubTeam,
-    ImportDirectoryRequest, ImportDirectoryResponse, ListGithubTeamsRequest,
-    ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse, ListTeamGithubTeamsRequest,
-    ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest,
-    ListUnassignedPeopleResponse, PaginationResponse, Person, PlatformIdentity,
-    ReactivatePersonRequest, ReactivatePersonResponse, RemovePersonFromTeamRequest,
-    RemovePersonFromTeamResponse, Team, TeamMappingSuggestion as ProtoTeamMappingSuggestion,
-    TeamType as ProtoTeamType, UnassignGithubTeamRequest, UnassignGithubTeamResponse,
-    UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
+    ImportDirectoryRequest, ImportDirectoryResponse, ImportJiraUsersRequest,
+    ImportJiraUsersResponse, ListGithubTeamsRequest, ListGithubTeamsResponse, ListPeopleRequest,
+    ListPeopleResponse, ListTeamGithubTeamsRequest, ListTeamGithubTeamsResponse, ListTeamsRequest,
+    ListTeamsResponse, ListUnassignedPeopleRequest, ListUnassignedPeopleResponse,
+    PaginationResponse, Person, PlatformIdentity, ReactivatePersonRequest,
+    ReactivatePersonResponse, RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, Team,
+    TeamMappingSuggestion as ProtoTeamMappingSuggestion, TeamType as ProtoTeamType,
+    UnassignGithubTeamRequest, UnassignGithubTeamResponse, UpdatePersonRequest,
+    UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::info;
@@ -713,5 +714,13 @@ impl OrgService for OrgServiceImpl {
             .map_err(db_err)?;
 
         Ok(Response::new(DismissTeamMappingSuggestionResponse {}))
+    }
+
+    async fn import_jira_users(
+        &self,
+        request: Request<ImportJiraUsersRequest>,
+    ) -> Result<Response<ImportJiraUsersResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        Err(Status::unimplemented("ImportJiraUsers not yet implemented"))
     }
 }

@@ -18,6 +18,9 @@ service OrgService {
   rpc RemovePersonFromTeam(RemovePersonFromTeamRequest) returns (RemovePersonFromTeamResponse);
   rpc ListUnassignedPeople(ListUnassignedPeopleRequest) returns (ListUnassignedPeopleResponse);
 
+  // Jira user import
+  rpc ImportJiraUsers(ImportJiraUsersRequest) returns (ImportJiraUsersResponse);
+
   // GitHub team management
   rpc ListGithubTeams(ListGithubTeamsRequest) returns (ListGithubTeamsResponse);
   rpc ListTeamGithubTeams(ListTeamGithubTeamsRequest) returns (ListTeamGithubTeamsResponse);
@@ -276,3 +279,17 @@ message DismissTeamMappingSuggestionRequest {
 }
 
 message DismissTeamMappingSuggestionResponse {}
+
+// Jira user CSV import
+
+message ImportJiraUsersRequest {
+  bytes file_content = 1;
+  // Source name for identity platform (e.g. "jira").
+  string source_name = 2;
+}
+
+message ImportJiraUsersResponse {
+  int32 identities_mapped = 1;
+  int32 unmatched_users = 2;
+  repeated string warnings = 3;
+}

@@ -9,6 +9,11 @@ service MetricsService {
   rpc CompareTeams(CompareTeamsRequest) returns (CompareTeamsResponse);
   rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
   rpc ListTeamContributions(ListTeamContributionsRequest) returns (ListTeamContributionsResponse);
+
+  // Phase 2: individual profile and flow metrics
+  rpc GetIndividualProfile(GetIndividualProfileRequest) returns (GetIndividualProfileResponse);
+  rpc ListPersonContributions(ListPersonContributionsRequest) returns (ListPersonContributionsResponse);
+  rpc GetFlowMetrics(GetFlowMetricsRequest) returns (GetFlowMetricsResponse);
 }
 
 enum PeriodType {
@@ -35,6 +40,13 @@ message TeamMetrics {
   float review_turnaround_p75_hours = 8;
   float review_turnaround_p90_hours = 9;
   float review_turnaround_p99_hours = 10;
+  // Phase 2 flow metrics (populated when Jira data is available)
+  float avg_cycle_time_hours = 11;
+  float wip_avg = 12;
+  float flow_efficiency = 13;
+  float lead_time_hours = 14;
+  // Platforms contributing data to this snapshot
+  repeated string source_platforms = 15;
 }
 
 message GetTeamMetricsRequest {
@@ -64,9 +76,9 @@ message ListPeriodsResponse {
 message ListTeamContributionsRequest {
   string team_id = 1;
   Period period = 2;
-  // Filter by contribution type: "pull_request", "pr_review", or empty for all.
+  // Filter by contribution type: "pull_request", "pr_review", "jira_ticket", etc.
   optional string contribution_type = 3;
-  // Filter by state: "merged", "open", "closed", "APPROVED", etc.
+  // Filter by state: "merged", "open", "closed", "in_progress", "APPROVED", etc.
   optional string state = 4;
   int32 page_size = 5;
   int32 page_index = 6;
@@ -98,4 +110,102 @@ message Contribution {
 message ListTeamContributionsResponse {
   repeated Contribution contributions = 1;
   int32 total_count = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Individual profile
+// ---------------------------------------------------------------------------
+
+message GetIndividualProfileRequest {
+  string person_id = 1;
+  Period period = 2;
+}
+
+message GetIndividualProfileResponse {
+  string person_id = 1;
+  string name = 2;
+  string team_name = 3;
+  string level = 4;
+  repeated PlatformIdentityInfo identities = 5;
+  repeated PlatformActivitySummary activity_by_platform = 6;
+  PeerComparison peer_context = 7;
+}
+
+message PlatformIdentityInfo {
+  string platform = 1;
+  string username = 2;
+}
+
+message PlatformActivitySummary {
+  // Platform identifier: "github", "jira", "discourse-ubuntu", etc.
+  string platform = 1;
+  int32 contribution_count = 2;
+  // Flexible key-value metrics per platform.
+  map<string, double> metrics = 3;
+}
+
+message PeerComparison {
+  string level = 1;
+  int32 peer_count = 2;
+  map<string, Percentile> metrics = 3;
+}
+
+message Percentile {
+  double value = 1;
+  // 0.0–1.0
+  double percentile = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Person contributions
+// ---------------------------------------------------------------------------
+
+message ListPersonContributionsRequest {
+  string person_id = 1;
+  // Filter by platform: "github", "jira", "discourse-ubuntu", etc.
+  optional string platform = 2;
+  // Filter by contribution type.
+  optional string contribution_type = 3;
+  // Only contributions created on or after this date (YYYY-MM-DD).
+  optional string since = 4;
+  int32 page_size = 5;
+  int32 page_index = 6;
+  optional string sort_field = 7;
+  optional bool sort_desc = 8;
+}
+
+message ListPersonContributionsResponse {
+  repeated Contribution contributions = 1;
+  int32 total_count = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Flow metrics
+// ---------------------------------------------------------------------------
+
+message GetFlowMetricsRequest {
+  string team_id = 1;
+  Period period = 2;
+}
+
+message GetFlowMetricsResponse {
+  double avg_cycle_time_hours = 1;
+  double wip_average = 2;
+  int32 throughput = 3;
+  double flow_efficiency = 4;
+  double lead_time_hours = 5;
+  repeated ThroughputDataPoint throughput_trend = 6;
+  repeated WipDataPoint wip_trend = 7;
+}
+
+message ThroughputDataPoint {
+  string date = 1;
+  int32 count = 2;
+  // Break down by source (optional).
+  string source = 3;
+}
+
+message WipDataPoint {
+  string date = 1;
+  double wip = 2;
 }

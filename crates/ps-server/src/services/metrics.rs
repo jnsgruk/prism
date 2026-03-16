@@ -5,8 +5,10 @@ use ps_core::repo::Repos;
 use ps_core::repo::metrics::ListContributionsParams;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
-    CompareTeamsRequest, CompareTeamsResponse, Contribution, GetTeamMetricsRequest,
-    GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse, ListTeamContributionsRequest,
+    CompareTeamsRequest, CompareTeamsResponse, Contribution, GetFlowMetricsRequest,
+    GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
+    GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
+    ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
     ListTeamContributionsResponse, Period, PeriodType, TeamMetrics,
 };
 use time::macros::format_description;
@@ -83,6 +85,11 @@ fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics 
         review_turnaround_p90_hours: json_f32(&s.raw_metrics, "review_turnaround_p90_hours"),
         review_turnaround_p99_hours: json_f32(&s.raw_metrics, "review_turnaround_p99_hours"),
         raw_metrics: HashMap::default(),
+        avg_cycle_time_hours: s.avg_cycle_time_hours.unwrap_or(0.0),
+        wip_avg: s.wip_avg.unwrap_or(0.0),
+        flow_efficiency: s.flow_efficiency.unwrap_or(0.0),
+        lead_time_hours: s.lead_time_hours.unwrap_or(0.0),
+        source_platforms: Vec::new(),
     }
 }
 
@@ -163,6 +170,11 @@ impl MetricsService for MetricsServiceImpl {
                     review_turnaround_p90_hours: 0.0,
                     review_turnaround_p99_hours: 0.0,
                     raw_metrics: HashMap::default(),
+                    avg_cycle_time_hours: 0.0,
+                    wip_avg: 0.0,
+                    flow_efficiency: 0.0,
+                    lead_time_hours: 0.0,
+                    source_platforms: Vec::new(),
                 }
             }
         } else if let Some(s) = snapshot {
@@ -256,6 +268,11 @@ impl MetricsService for MetricsServiceImpl {
                     review_turnaround_p90_hours: 0.0,
                     review_turnaround_p99_hours: 0.0,
                     raw_metrics: HashMap::default(),
+                    avg_cycle_time_hours: 0.0,
+                    wip_avg: 0.0,
+                    flow_efficiency: 0.0,
+                    lead_time_hours: 0.0,
+                    source_platforms: Vec::new(),
                 });
             }
         }
@@ -365,5 +382,33 @@ impl MetricsService for MetricsServiceImpl {
             contributions,
             total_count: total_count as i32,
         }))
+    }
+
+    async fn get_individual_profile(
+        &self,
+        request: Request<GetIndividualProfileRequest>,
+    ) -> Result<Response<GetIndividualProfileResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        Err(Status::unimplemented(
+            "GetIndividualProfile not yet implemented",
+        ))
+    }
+
+    async fn list_person_contributions(
+        &self,
+        request: Request<ListPersonContributionsRequest>,
+    ) -> Result<Response<ListPersonContributionsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        Err(Status::unimplemented(
+            "ListPersonContributions not yet implemented",
+        ))
+    }
+
+    async fn get_flow_metrics(
+        &self,
+        request: Request<GetFlowMetricsRequest>,
+    ) -> Result<Response<GetFlowMetricsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        Err(Status::unimplemented("GetFlowMetrics not yet implemented"))
     }
 }

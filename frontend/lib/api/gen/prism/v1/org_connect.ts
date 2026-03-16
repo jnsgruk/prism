@@ -24,6 +24,8 @@ import {
   GetTeamTreeResponse,
   ImportDirectoryRequest,
   ImportDirectoryResponse,
+  ImportJiraUsersRequest,
+  ImportJiraUsersResponse,
   ListGithubTeamsRequest,
   ListGithubTeamsResponse,
   ListPeopleRequest,
@@ -177,6 +179,17 @@ export const OrgService = {
       name: "ListUnassignedPeople",
       I: ListUnassignedPeopleRequest,
       O: ListUnassignedPeopleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Jira user import
+     *
+     * @generated from rpc prism.v1.OrgService.ImportJiraUsers
+     */
+    importJiraUsers: {
+      name: "ImportJiraUsers",
+      I: ImportJiraUsersRequest,
+      O: ImportJiraUsersResponse,
       kind: MethodKind.Unary,
     },
     /**

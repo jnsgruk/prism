@@ -57,6 +57,10 @@ pub async fn compute_team_snapshot(
             period_type,
             throughput,
             avg_review_turnaround_hours: review.as_ref().map(|r| r.avg),
+            avg_cycle_time_hours: None,
+            wip_avg: None,
+            flow_efficiency: None,
+            lead_time_hours: None,
             raw_metrics,
         })
         .await?;

@@ -21,6 +21,10 @@ pub struct TeamSnapshotRow {
     pub period_type: PeriodType,
     pub throughput: Option<i32>,
     pub avg_review_turnaround_hours: Option<f32>,
+    pub avg_cycle_time_hours: Option<f32>,
+    pub wip_avg: Option<f32>,
+    pub flow_efficiency: Option<f32>,
+    pub lead_time_hours: Option<f32>,
     pub raw_metrics: serde_json::Value,
 }
 
@@ -64,6 +68,8 @@ impl MetricsRepo {
                     WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE) AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
                    ts.throughput, ts.avg_review_turnaround_hours,
+                   ts.avg_cycle_time_hours, ts.wip_avg,
+                   ts.flow_efficiency, ts.lead_time_hours,
                    ts.raw_metrics AS "raw_metrics!"
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
@@ -89,6 +95,10 @@ impl MetricsRepo {
             period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
             throughput: r.throughput,
             avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+            avg_cycle_time_hours: r.avg_cycle_time_hours,
+            wip_avg: r.wip_avg,
+            flow_efficiency: r.flow_efficiency,
+            lead_time_hours: r.lead_time_hours,
             raw_metrics: r.raw_metrics,
         }))
     }
@@ -122,6 +132,8 @@ impl MetricsRepo {
                    COALESCE(mc.count, 0) AS "member_count!",
                    ts.period_start, ts.period_end, ts.period_type,
                    ts.throughput, ts.avg_review_turnaround_hours,
+                   ts.avg_cycle_time_hours, ts.wip_avg,
+                   ts.flow_efficiency, ts.lead_time_hours,
                    ts.raw_metrics AS "raw_metrics!"
             FROM metrics.team_snapshots ts
             JOIN org.teams t ON t.id = ts.team_id
@@ -151,6 +163,10 @@ impl MetricsRepo {
                 period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
                 throughput: r.throughput,
                 avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+                avg_cycle_time_hours: r.avg_cycle_time_hours,
+                wip_avg: r.wip_avg,
+                flow_efficiency: r.flow_efficiency,
+                lead_time_hours: r.lead_time_hours,
                 raw_metrics: r.raw_metrics,
             })
             .collect())
@@ -190,19 +206,29 @@ impl MetricsRepo {
         let period_type = snap.period_type.as_str();
         let throughput = snap.throughput;
         let avg_review_turnaround_hours = snap.avg_review_turnaround_hours;
+        let avg_cycle_time_hours = snap.avg_cycle_time_hours;
+        let wip_avg = snap.wip_avg;
+        let flow_efficiency = snap.flow_efficiency;
+        let lead_time_hours = snap.lead_time_hours;
         let raw_metrics = &snap.raw_metrics;
         sqlx::query!(
             r#"
             INSERT INTO metrics.team_snapshots (
                 id, team_id, period_start, period_end, period_type,
-                throughput, avg_review_turnaround_hours, raw_metrics, computed_at
+                throughput, avg_review_turnaround_hours,
+                avg_cycle_time_hours, wip_avg, flow_efficiency, lead_time_hours,
+                raw_metrics, computed_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())
             ON CONFLICT (team_id, period_start, period_type)
             DO UPDATE SET
                 period_end = EXCLUDED.period_end,
                 throughput = EXCLUDED.throughput,
                 avg_review_turnaround_hours = EXCLUDED.avg_review_turnaround_hours,
+                avg_cycle_time_hours = EXCLUDED.avg_cycle_time_hours,
+                wip_avg = EXCLUDED.wip_avg,
+                flow_efficiency = EXCLUDED.flow_efficiency,
+                lead_time_hours = EXCLUDED.lead_time_hours,
                 raw_metrics = EXCLUDED.raw_metrics,
                 computed_at = now()
             "#,
@@ -213,6 +239,10 @@ impl MetricsRepo {
             period_type,
             throughput,
             avg_review_turnaround_hours,
+            avg_cycle_time_hours,
+            wip_avg,
+            flow_efficiency,
+            lead_time_hours,
             raw_metrics,
         )
         .execute(&self.pool)
@@ -433,5 +463,9 @@ pub struct SnapshotInput {
     pub period_type: PeriodType,
     pub throughput: i32,
     pub avg_review_turnaround_hours: Option<f32>,
+    pub avg_cycle_time_hours: Option<f32>,
+    pub wip_avg: Option<f32>,
+    pub flow_efficiency: Option<f32>,
+    pub lead_time_hours: Option<f32>,
     pub raw_metrics: serde_json::Value,
 }

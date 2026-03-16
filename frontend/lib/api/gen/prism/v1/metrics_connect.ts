@@ -6,10 +6,16 @@
 import {
   CompareTeamsRequest,
   CompareTeamsResponse,
+  GetFlowMetricsRequest,
+  GetFlowMetricsResponse,
+  GetIndividualProfileRequest,
+  GetIndividualProfileResponse,
   GetTeamMetricsRequest,
   GetTeamMetricsResponse,
   ListPeriodsRequest,
   ListPeriodsResponse,
+  ListPersonContributionsRequest,
+  ListPersonContributionsResponse,
   ListTeamContributionsRequest,
   ListTeamContributionsResponse,
 } from "./metrics_pb.js";
@@ -55,6 +61,35 @@ export const MetricsService = {
       name: "ListTeamContributions",
       I: ListTeamContributionsRequest,
       O: ListTeamContributionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Phase 2: individual profile and flow metrics
+     *
+     * @generated from rpc prism.v1.MetricsService.GetIndividualProfile
+     */
+    getIndividualProfile: {
+      name: "GetIndividualProfile",
+      I: GetIndividualProfileRequest,
+      O: GetIndividualProfileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.MetricsService.ListPersonContributions
+     */
+    listPersonContributions: {
+      name: "ListPersonContributions",
+      I: ListPersonContributionsRequest,
+      O: ListPersonContributionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.MetricsService.GetFlowMetrics
+     */
+    getFlowMetrics: {
+      name: "GetFlowMetrics",
+      I: GetFlowMetricsRequest,
+      O: GetFlowMetricsResponse,
       kind: MethodKind.Unary,
     },
   },
