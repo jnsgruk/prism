@@ -838,18 +838,18 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-3.7: BTreeMap for BackupManifest
 - [x] WS-3.8: Remove no-op parse in password.rs
 - [x] WS-3.9: Consistent impl_sqlx_text! usage
-- [ ] WS-4.1: Parallelize compute_all_snapshots
-- [ ] WS-4.2: Parallelize reconcile_stale_runs
-- [ ] WS-4.3: Parallelize compare_teams
+- [x] WS-4.1: Parallelize compute_all_snapshots
+- [x] WS-4.2: Parallelize reconcile_stale_runs
+- [x] WS-4.3: Parallelize compare_teams
 - [x] WS-4.4: Parallelize GitHub team sync members+repos
 - [ ] WS-4.5: Parallelize count+data queries
-- [ ] WS-4.6: Parallelize admin count queries
-- [ ] WS-4.7: Parallelize handler cancellation
+- [x] WS-4.6: Parallelize admin count queries
+- [x] WS-4.7: Parallelize handler cancellation
 - [ ] WS-5.1: Split source.rs
 - [ ] WS-5.2: Split org.rs service
 - [x] WS-5.3: Extract session creation helper
 - [ ] WS-5.4: Extract handler boilerplate
-- [ ] WS-5.5: Extract IngestionContext construction
+- [x] WS-5.5: Extract IngestionContext construction
 - [x] WS-5.6: Deduplicate TeamWithCount mapping
 - [x] WS-5.7: Deduplicate GitHubTeamRow mapping
 - [ ] WS-5.8: Extract JSON-to-prost conversion
@@ -860,7 +860,7 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-5.13: Replace build_progress_json with struct
 - [x] WS-5.14: Derive handler list from single source
 - [ ] WS-5.15: Deduplicate psctl chunking logic
-- [ ] WS-5.16: Enum conversion boilerplate
+- [ ] WS-5.16: Enum conversion boilerplate (skipped — orphan rule prevents From impls)
 - [x] WS-6.1: Fix review-turnaround bug
 - [x] WS-6.2: Remove dead orgs code
 - [x] WS-6.3: Remove redundant create_source call
