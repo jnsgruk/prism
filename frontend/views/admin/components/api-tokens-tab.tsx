@@ -10,34 +10,10 @@ import {
 } from "@/components/ui/table";
 import { Key } from "lucide-react";
 
+import { formatDateOnly, formatRelativeTime } from "@/lib/format";
 import { CreateTokenDialog } from "@/views/admin/components/create-token-dialog";
 import { RevokeTokenDialog } from "@/views/admin/components/revoke-token-dialog";
 import { useListApiTokens } from "@/views/admin/hooks/use-admin";
-
-const formatTimestamp = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "Never";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
-const formatRelativeTime = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "Never";
-  const now = Date.now();
-  const then = Number(ts.seconds) * 1000;
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "Just now";
-  if (diffMin < 60) return `${String(diffMin)}m ago`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${String(diffHours)}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 30) return `${String(diffDays)}d ago`;
-  return formatTimestamp(ts);
-};
 
 export const ApiTokensTab = (): React.ReactElement => {
   const { data: tokens, isLoading, isError, error } = useListApiTokens();
@@ -84,7 +60,7 @@ export const ApiTokensTab = (): React.ReactElement => {
               <TableRow key={token.tokenId}>
                 <TableCell className="font-medium">{token.name}</TableCell>
                 <TableCell className="text-muted-foreground">
-                  {formatTimestamp(token.createdAt)}
+                  {formatDateOnly(token.createdAt)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatRelativeTime(token.lastUsedAt)}

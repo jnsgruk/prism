@@ -22,6 +22,7 @@ import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
+import { formatRelativeTime, formatTimestamp } from "@/lib/format";
 import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { BackfillDialog } from "./backfill-dialog";
 
@@ -73,30 +74,6 @@ const stateConfig: Record<
     variant: "outline",
     icon: <Clock className="size-3.5" />,
   },
-};
-
-const formatTimestamp = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "Never";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return (
-    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    ", " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
-  );
-};
-
-const formatRelativeTime = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "";
-  const now = Date.now();
-  const then = Number(ts.seconds) * 1000;
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${String(diffMin)}m ago`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${String(diffHours)}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${String(diffDays)}d ago`;
 };
 
 const phaseLabel = (phase?: string): string => {

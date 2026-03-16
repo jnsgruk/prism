@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Ban, CheckCircle2, Cog, Loader2, Play } from "lucide-react";
+import { AlertCircle, Cog, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
@@ -28,61 +28,15 @@ import { useListSources } from "@ps/hooks/use-config";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { RunDetailDialog } from "@/components/run-detail-dialog";
+import { formatDuration, formatTimestamp } from "@/lib/format";
+import { defaultStatus, statusConfig } from "@/lib/run-utils";
+import type { StatusFilter } from "@/lib/run-utils";
 import {
   useListHandlers,
   useListRuns,
   useTriggerHandler,
 } from "@/views/ingestion/hooks/use-ingestion";
-
-type StatusStyle = {
-  label: string;
-  variant: "default" | "secondary" | "destructive";
-  icon: React.ReactNode;
-};
-
-const defaultStatus: StatusStyle = {
-  label: "Running",
-  variant: "default",
-  icon: <Loader2 className="size-3 animate-spin" />,
-};
-
-const statusConfig: Record<string, StatusStyle> = {
-  completed: {
-    label: "Completed",
-    variant: "secondary",
-    icon: <CheckCircle2 className="size-3" />,
-  },
-  failed: {
-    label: "Failed",
-    variant: "destructive",
-    icon: <AlertCircle className="size-3" />,
-  },
-  cancelled: {
-    label: "Cancelled",
-    variant: "secondary",
-    icon: <Ban className="size-3" />,
-  },
-  running: defaultStatus,
-};
-
-const formatTimestamp = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "\u2014";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return (
-    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
-  );
-};
-
-const formatDuration = (start?: { seconds: bigint }, end?: { seconds: bigint }): string => {
-  if (!start || !end) return "\u2014";
-  const diffSec = Number(end.seconds - start.seconds);
-  if (diffSec < 60) return `${String(diffSec)}s`;
-  const min = Math.floor(diffSec / 60);
-  const sec = diffSec % 60;
-  return `${String(min)}m ${String(sec)}s`;
-};
 
 const TriggerHandlerDialog = ({
   handler,
@@ -211,11 +165,6 @@ const HandlerCard = ({ handler }: { handler: HandlerInfo }): React.ReactElement 
   );
 };
 
-const formatFullTimestamp = (ts?: { seconds: bigint }): string => {
-  if (!ts) return "—";
-  return new Date(Number(ts.seconds) * 1000).toLocaleString();
-};
-
 const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "handlerName",
@@ -232,7 +181,7 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
     header: "Source",
     cell: ({ row }) => (
       <span className="text-xs">
-        {row.original.sourceName === "_system" ? "—" : row.original.sourceName}
+        {row.original.sourceName === "_system" ? "\u2014" : row.original.sourceName}
       </span>
     ),
   },
@@ -273,76 +222,6 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
     },
   },
 ];
-
-const RunDetailDialog = ({
-  run,
-  open,
-  onOpenChange,
-}: {
-  run: HandlerRun;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}): React.ReactElement => {
-  const runConfig = statusConfig[run.status] ?? defaultStatus;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {run.handlerName}.{run.handlerMethod}
-          </DialogTitle>
-          <DialogDescription>
-            {run.sourceName === "_system" ? "Run details" : `Source: ${run.sourceName}`}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-muted-foreground">Status</p>
-              <Badge variant={runConfig.variant} className="mt-1 gap-1">
-                {runConfig.icon}
-                {runConfig.label}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Items collected</p>
-              <p className="font-medium">{run.itemsCollected.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Started</p>
-              <p>{formatFullTimestamp(run.startedAt)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Completed</p>
-              <p>{formatFullTimestamp(run.completedAt)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Duration</p>
-              <p>{formatDuration(run.startedAt, run.completedAt)}</p>
-            </div>
-            {run.rateLimitWaitsSeconds > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">Rate limit waits</p>
-                <p>{String(run.rateLimitWaitsSeconds)}s</p>
-              </div>
-            )}
-          </div>
-          {run.errorMessage && (
-            <div>
-              <p className="text-xs text-muted-foreground">Error</p>
-              <p className="mt-1 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {run.errorMessage}
-              </p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-type StatusFilter = "all" | "completed" | "failed" | "cancelled" | "running";
 
 const HandlerRunsTable = ({
   runs,
@@ -457,6 +336,12 @@ const HandlerRunsTable = ({
       {selectedRun && (
         <RunDetailDialog
           run={selectedRun}
+          title={`${selectedRun.handlerName}.${selectedRun.handlerMethod}`}
+          description={
+            selectedRun.sourceName === "_system"
+              ? "Run details"
+              : `Source: ${selectedRun.sourceName}`
+          }
           open={!!selectedRun}
           onOpenChange={(open) => {
             if (!open) setSelectedRun(null);
