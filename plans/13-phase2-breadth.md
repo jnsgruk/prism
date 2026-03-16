@@ -29,8 +29,9 @@ Phase 2 breaks into four workstreams. Two are source implementations that can pr
 
 | # | Workstream | Dependencies | Estimated effort |
 |---|-----------|-------------|-----------------|
-| W1 | Jira source | Phase 1 ingestion infra | Medium |
-| W2 | Discourse source(s) | Phase 1 ingestion infra | Medium |
+| W0 | Shared groundwork | Phase 1 complete | Small |
+| W1 | Jira source | W0 | Medium |
+| W2 | Discourse source(s) | W0 | Medium |
 | W3 | DORA & flow metrics | W1 (Jira data needed for cycle time) | Medium |
 | W4 | Individual profile UI | Phase 1 frontend, W3 metrics | Medium |
 
@@ -49,13 +50,32 @@ The `activity.etag_cache` table and the `Source` trait's support for conditional
 ### Suggested sequencing
 
 ```
-Week 1–2:  Shared groundwork (Platform/ContributionType enum variants, typed metrics structs,
-           snapshot_sources + individual_profiles migrations, proto messages)
-           W1, W2 start in parallel
-Week 3–4:  W1, W2 continue; W3 starts (GitHub flow metrics first)
-Week 5–6:  W3 integrates Jira data; W4 starts
-Week 7–8:  Integration, polish, identity resolution cleanup
+Week 1:    W0 — shared groundwork (enums, typed metrics, migrations, proto messages, buf generate)
+Week 2–3:  W1, W2 start in parallel
+Week 4–5:  W1, W2 continue; W3 starts (GitHub flow metrics first)
+Week 6–7:  W3 integrates Jira data; W4 starts
+Week 8:    Integration, polish, identity resolution cleanup
 ```
+
+---
+
+## W0: Shared Groundwork
+
+Everything W1–W4 depend on but that doesn't belong to any single source or feature.
+
+### Deliverables
+
+1. **New `Platform` enum variants** — `Jira`, `Discourse` (plus instance-qualified `discourse-*` naming for Discourse) in `ps-core/src/models/enums.rs`
+2. **New `ContributionType` enum variants** — `JiraTicket`, `DiscoursePost`, `DiscourseTopic`
+3. **Typed metrics layer** — `ContributionData` tagged enum with `PullRequest`, `PrReview`, `JiraTicket`, `DiscoursePost`, `DiscourseTopic` variants (formalises existing JSONB shapes for GitHub, adds new ones for Jira/Discourse). See [Typed Metrics Layer](#typed-metrics-layer-new-in-phase-2) section for full struct definitions.
+4. **Migration `0012_create_snapshot_sources.sql`** — `metrics.snapshot_sources` link table for traceability
+5. **Migration `0013_create_individual_profiles.sql`** — `metrics.individual_profiles` table
+6. **Proto message definitions** — `Contribution`, `FlowMetricsResponse`, `IndividualProfileResponse`, `PlatformActivitySummary`, `PeerComparison`, `Percentile`, `ThroughputDataPoint`, `WipDataPoint` messages and the new RPC stubs (`GetIndividualProfile`, `ListPersonContributions`, `GetFlowMetrics`)
+7. **`buf generate`** — regenerate Rust + TypeScript clients after proto changes
+
+### Sequencing note
+
+W0 is a prerequisite for W1 and W2, which can then proceed in parallel. Proto stubs and migrations can land before the service implementations that use them.
 
 ---
 
@@ -69,6 +89,9 @@ Week 7–8:  Integration, polish, identity resolution cleanup
 4. **State transition tracking** for Jira ticket lifecycle
 5. **Ingestion status** visible in existing UI
 6. **Admin UI: Jira source form** — source-specific form component in the Data Sources admin tab for creating/editing Jira sources. Fields: base URL, project keys (multi-value input), story points custom field ID, Cloud vs Server toggle. Credentials (email, API token) via `SetSecret` through password-style inputs. Includes a "Test Connection" button that validates the Jira URL and credentials by calling `ConfigService.TestConnection`.
+7. **`psctl contributions --platform jira`** — thin wrapper over `ListPersonContributions` filtered to Jira, following the existing psctl pattern
+8. **Backup/restore: Jira data** — extend backup bundle to include Jira contributions (`activity.contributions WHERE platform = 'jira'`), Jira watermarks, and Jira source configs. Update `PreviewBackup` response to include Jira ticket counts.
+9. **Jira user CSV import** — file upload to create `platform_identities` for Jira, mapping Jira `accountId` values to people via email address matching. See [Jira User Import](#jira-user-import) section below.
 
 ### Jira REST API approach
 
@@ -142,11 +165,41 @@ Set via `ConfigService.SetSecret(source_id, "email", ...)` and `ConfigService.Se
 
 ### Identity resolution
 
-Jira identifies users by `accountId` (Cloud) or `username` (Server). The ingestion layer must:
+Jira identifies users by `accountId` (Cloud) or `username` (Server). The Jira Cloud REST API does not allow resolving email addresses to `accountId` values without elevated permissions. Instead, identity mapping relies on an admin-uploaded CSV export from Jira user management (see [Jira User Import](#jira-user-import) below).
 
-1. Look up the Jira `accountId` or `emailAddress` against `org.platform_identities` where `platform = 'jira'`
-2. If no match, store with `person_id = NULL` and record the Jira display name + email in `metadata` for later manual mapping
+The ingestion layer must:
+
+1. Look up the Jira `accountId` against `org.platform_identities` where `platform = 'jira'` and `platform_user_id` matches
+2. If no match, store the contribution with `person_id = NULL` and record the Jira display name + `accountId` in `metadata` for later manual mapping
 3. Surface unresolved Jira identities in the admin UI alongside GitHub unknowns
+
+### Jira user import
+
+**Problem:** Jira Cloud returns `accountId` (an opaque string like `6254586fc23e5b006ab2c6d8`) on issue fields (assignee, reporter), but our API access level cannot resolve `accountId` → email. Without this mapping, Jira contributions cannot be linked to people in the org.
+
+**Solution:** Jira Cloud's admin console allows exporting a CSV of all managed users (`Organization → Users → Export users`). This CSV contains the columns we need:
+
+| CSV column | Use |
+|------------|-----|
+| `User id` | Jira `accountId` — stored as `platform_user_id` in `org.platform_identities` |
+| `email` | Matched against `org.people.email` to find the person |
+| `User name` | Display name — used in warnings for unmatched users |
+| `User status` | Filter: only import `Active` users |
+
+**Import flow** (follows the existing directory HTML import pattern):
+
+1. **Frontend:** CSV file upload in the Jira source form (or a dedicated "Import Jira Users" action in the admin org tab). Reuses the same drag-and-drop upload pattern as the directory import dialog.
+2. **Proto:** New RPC `OrgService.ImportJiraUsers(ImportJiraUsersRequest) returns (ImportJiraUsersResponse)` — request carries `bytes file_content` and `string source_name` (e.g. `"jira"`); response carries `identities_mapped`, `unmatched_users` count, and `warnings`.
+3. **Parser (`ps-core/src/directory/`):** Parse CSV using the `csv` crate. Extract `User id`, `email`, `User name`, `User status`. Skip non-`Active` users. The CSV header names are fixed by Jira's export format.
+4. **Identity mapping (`ps-core/src/repo/org/`):** For each row:
+   - Look up `org.people` by `email` (case-insensitive match)
+   - If a person is found: batch `UPSERT` into `org.platform_identities` with `platform = 'jira'`, `platform_username = email`, `platform_user_id = accountId`, `person_id = matched_person_id`
+   - If no person match: record in warnings (`"No person found for jira user Mateo Florido <mateo.florido@canonical.com>"`)
+5. **Ingestion lookup:** During Jira ingestion, resolve `accountId` from issue fields against `platform_identities WHERE platform = 'jira' AND platform_user_id = $1` — this is the reverse lookup that `batch_resolve_person_ids` already supports (extended to match on `platform_user_id` in addition to `platform_username`).
+
+**Re-import behaviour:** Safe to re-upload. `ON CONFLICT (platform, platform_username) DO UPDATE` reassigns the `platform_user_id` and `person_id` if the mapping changes. New users in subsequent exports are added; existing mappings are updated.
+
+**Why not automate via API?** Jira Cloud's `/rest/api/3/user/search` and `/rest/api/3/users` endpoints require `browse-users` or `manage-users` scopes, which are admin-level. The CSV export is available to any org admin and is a one-time (or infrequent) operation — the user list changes slowly.
 
 ### ETag support
 
@@ -154,6 +207,7 @@ Jira Cloud supports conditional requests (`If-None-Match` / `ETag`), but since t
 
 ### Considerations
 
+- **`batch_resolve_person_ids` must support `platform_user_id` lookup** — Jira ingestion resolves `accountId` (stored in `platform_user_id`), not `platform_username`. Add a `batch_resolve_by_user_id` method or extend the existing one with a discriminator. GitHub continues to resolve by `platform_username`.
 - **Story points field name varies** per Jira instance — make it configurable in `settings`
 - **Jira Cloud pagination** uses `startAt`/`maxResults`; watch for the `total` field changing between pages (concurrent updates)
 - **Sub-tasks:** Ingest as separate contributions with `metadata.parent_key` referencing the parent. Do not double-count story points from parent + children.
@@ -170,6 +224,7 @@ Jira Cloud supports conditional requests (`If-None-Match` / `ETag`), but since t
 3. **Multiple source configs** — one per Discourse instance
 4. **Ingestion status** per instance in existing UI
 5. **Admin UI: Discourse source form** — source-specific form component for creating/editing Discourse sources. Fields: base URL, category filter (multi-select), minimum post threshold. Credentials (API key, API username) via `SetSecret` through password-style inputs. "Test Connection" button validates the Discourse instance URL and credentials via `ConfigService.TestConnection`. The form supports adding multiple Discourse instances, each as a separate source config row.
+6. **Backup/restore: Discourse data** — extend backup bundle to include Discourse contributions (`activity.contributions WHERE platform LIKE 'discourse-%'`), per-instance watermarks, and Discourse source configs. Update `PreviewBackup` response to include Discourse post/topic counts.
 
 ### Multi-instance design
 
@@ -289,6 +344,8 @@ Discourse does not document ETag support on its JSON endpoints. The `/latest.jso
 5. **New `metrics.snapshot_sources` link table** mapping snapshots to contributing `contribution_id` values (migration required — table does not yet exist). Populated for all source types during metric computation
 6. **Updated `/teams` comparison page** — add new columns for flow metrics (avg cycle time, WIP, throughput, lead time proxy) alongside existing Phase 1 PR metrics. Each metric cell links to the underlying contributions for traceability. Add source badges showing which platforms are feeding each team's data.
 7. **Team detail page at `/teams/[teamId]`** — dedicated page for a single team showing: flow metric trends over time (Tremor charts), contribution breakdown by source, team member list with per-person summary stats, and links to individual profiles. This page is the bridge between the team comparison view and individual profiles — without it, users cannot drill down from high-level team metrics to understand what's driving them.
+8. **`psctl metrics TEAM --period MONTH`** — thin wrapper over `GetFlowMetrics` / `GetTeamMetrics`, dumps flow + DORA metrics for a team and period
+9. **Backup/restore: flow metric snapshots** — extend backup bundle to include new entries in `metrics.team_snapshots` and `metrics.individual_profiles` with cross-source flow data, and `metrics.snapshot_sources` link rows
 
 ### What becomes computable with multiple sources
 
@@ -343,6 +400,8 @@ Every metric in `metrics.team_snapshots` and `metrics.individual_profiles` must 
 3. **Peer comparison context** — how this person's patterns compare to others at the same level
 4. **Period selector** — reusable from team views
 5. **Proto service methods** for individual profile queries
+6. **`psctl people [--team TEAM] [--unresolved]`** — list people, optionally filtered to a team or showing only unresolved identities. The `--unresolved` flag is particularly useful during initial setup to surface Jira and Discourse identities that haven't been mapped yet.
+7. **`psctl contributions --person PERSON [--platform PLATFORM] [--since DATE]`** — query contributions with person/source/date filters
 
 ### Page layout
 
@@ -553,32 +612,21 @@ struct DiscoursePostMetrics {
 
 ---
 
-## `psctl` Extensions
+## `psctl` & Backup/Restore Extensions
 
-Phase 2 adds API surface for new sources, flow metrics, and individual profiles. `psctl` gains corresponding subcommands:
+The psctl commands and backup/restore extensions are distributed across workstreams as deliverables rather than tracked separately:
 
-| Command | Description | Backing RPC |
-|---------|-------------|-------------|
-| `psctl people [--team TEAM] [--unresolved]` | List people, optionally filtered to a team or showing only unresolved identities | `GetIndividualProfile` / `ListPeople` |
-| `psctl metrics TEAM --period MONTH` | Dump flow + DORA metrics for a team and period | `GetFlowMetrics` / `GetTeamMetrics` |
-| `psctl contributions --platform jira [--person PERSON] [--since DATE]` | Query contributions with source/person/date filters | `ListPersonContributions` |
+| Deliverable | Workstream | Backing RPC |
+|-------------|------------|-------------|
+| `psctl contributions --platform jira` | W1 | `ListPersonContributions` |
+| Backup/restore: Jira data | W1 | `PreviewBackup` / `RestoreBackup` |
+| Backup/restore: Discourse data | W2 | `PreviewBackup` / `RestoreBackup` |
+| `psctl metrics TEAM --period MONTH` | W3 | `GetFlowMetrics` / `GetTeamMetrics` |
+| Backup/restore: flow metric snapshots | W3 | `PreviewBackup` / `RestoreBackup` |
+| `psctl people [--team TEAM] [--unresolved]` | W4 | `GetIndividualProfile` / `ListPeople` |
+| `psctl contributions --person PERSON` | W4 | `ListPersonContributions` |
 
-The `--unresolved` flag on `psctl people` is particularly useful during initial setup — it surfaces Jira and Discourse identities that haven't been mapped to org people yet, so an admin can fix them before metrics are computed.
-
-These commands are thin wrappers over the gRPC API, following the same pattern as Phase 1's `psctl status`, `psctl backup`, and `psctl trigger` commands. The `psctl` crate depends only on `ps-proto`.
-
-### Backup/Restore Extension
-
-Phase 1 establishes the backup/restore feature (UI-driven: "Restore from backup" on the first-run wizard, "Download backup" in admin settings). Phase 2 must extend the backup bundle to include the new data introduced by each workstream:
-
-- **Jira contributions** — all `activity.contributions` rows where `platform = 'jira'`, including `state_history` and metrics JSONB
-- **Discourse contributions** — all `activity.contributions` rows where `platform LIKE 'discourse-%'`, including both topic and post contribution types
-- **New watermarks** — `activity.ingestion_watermarks` rows for Jira and each Discourse instance
-- **New source configs** — `config.source_configs` rows for Jira and Discourse sources (credentials remain in `config.secrets`, already covered by Phase 1)
-- **Flow metric snapshots** — any new entries in `metrics.team_snapshots` and `metrics.individual_profiles` that include cross-source flow data
-- **New indexes** — no action needed; indexes are recreated by migrations, not stored in backups
-
-The `PreviewBackup` RPC response should be updated to include counts for the new contribution types (e.g. "1,204 Jira tickets, 3,891 Discourse posts") so the admin sees a meaningful summary before restoring.
+All psctl commands are thin wrappers over the gRPC API, following the same pattern as Phase 1's `psctl status`, `psctl backup`, and `psctl trigger` commands. The `psctl` crate depends only on `ps-proto`.
 
 ---
 
@@ -599,6 +647,13 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 
 ### Per-workstream automated tests
 
+**W0 — Shared groundwork:**
+- Typed metrics layer: round-trip serialization tests for each `ContributionData` variant (serialize to `serde_json::Value`, deserialize back, assert equality)
+- Existing GitHub JSONB data deserializes correctly into the new `PullRequest` and `PrReview` typed variants (backwards compatibility)
+- New enum variants (`Platform::Jira`, `ContributionType::JiraTicket`, etc.) round-trip through `FromStr`/`Display` and sqlx `TEXT` encode/decode
+- Migrations apply cleanly: `snapshot_sources` and `individual_profiles` tables exist with correct schemas
+- Proto generation: `buf lint` passes, `buf breaking` passes against main
+
 **W1 — Jira source:**
 - `wiremock` integration tests against recorded Jira API responses (search, issue detail with changelog)
 - Full pipeline test: JQL response → `JiraTicket` contribution → DB upsert with correct `state_history`
@@ -606,6 +661,11 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 - Watermark advancement: verify `ingestion_watermarks` updates correctly after each page
 - Admin UI form: component test for Jira source creation form, `SetSecret` calls, and `TestConnection` flow
 - Error handling: invalid project key, expired token, rate limit response
+- `psctl contributions --platform jira`: verify CLI output matches expected format with test fixture data
+- Backup/restore: round-trip test — backup with Jira contributions, restore to clean DB, verify Jira data intact
+- Jira user CSV import: parse test CSV → match emails to existing people → verify `platform_identities` rows created with correct `platform_user_id` (accountId)
+- Jira user CSV import: unmatched emails produce warnings, not errors
+- Jira user CSV import: re-import updates existing identity mappings without duplicates
 
 **W2 — Discourse source:**
 - `wiremock` integration tests against recorded Discourse API responses (`/latest.json`, `/t/{id}.json`)
@@ -614,6 +674,7 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 - Watermark: verify topic ID watermark advances correctly
 - Admin UI form: component test for Discourse source creation form, multi-instance add flow, `SetSecret`, `TestConnection`
 - Category filtering: verify `settings.categories` limits ingestion scope
+- Backup/restore: round-trip test — backup with Discourse contributions from two instances, restore, verify both instances' data intact
 
 **W3 — DORA & flow metrics:**
 - Unit tests in `ps-metrics` with known Jira contribution datasets: assert correct cycle time, WIP, throughput
@@ -622,6 +683,8 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 - `snapshot_sources` population: verify every computed metric links back to contributing `contribution_id` values
 - `/teams` page integration test: verify new flow metric columns render with correct values
 - Team detail page (`/teams/[teamId]`): component tests for metric trend charts, member list, drill-down links
+- `psctl metrics`: verify CLI output renders flow + DORA metrics correctly for a team/period
+- Backup/restore: round-trip test — backup with `snapshot_sources` link rows and `individual_profiles`, restore, verify traceability links intact
 
 **W4 — Individual profile UI:**
 - Component tests for profile page layout, activity distribution chart, peer comparison panel
@@ -629,6 +692,8 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 - Navigation test: verify breadcrumb trail `/teams → /teams/[teamId] → /people/[personId]` works end-to-end
 - Traceability: click a metric row → correct source contributions are displayed
 - Cross-platform summary: verify contributions from GitHub, Jira, and Discourse all appear correctly
+- `psctl people`: verify `--team` filter, `--unresolved` flag, and default output
+- `psctl contributions --person`: verify person/platform/date filters produce correct output
 
 ### Per-workstream manual testing
 
@@ -640,6 +705,9 @@ The `PreviewBackup` RPC response should be updated to include counts for the new
 5. Trigger ingestion (or wait for scheduled run) → check Ingestion Status page for Jira progress
 6. Query `activity.contributions WHERE platform = 'jira'` to verify data landed
 7. Check admin UI for any unresolved Jira identities
+8. Upload Jira user CSV export → verify identities mapped count matches expected
+9. Re-trigger ingestion → verify Jira contributions now resolve to people via `accountId` lookup
+10. Re-upload the same CSV → verify no duplicates created, counts reflect updates
 
 **After W2 (Discourse source):**
 1. Open admin UI → Data Sources → click "Add Source" → select "Discourse"
