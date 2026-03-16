@@ -25,6 +25,7 @@ async-trait.workspace = true
 tokio.workspace = true
 zeroize.workspace = true
 scraper.workspace = true
+csv.workspace = true
 hex = "0.4"
 flate2 = "1"
 tar = "0.4"

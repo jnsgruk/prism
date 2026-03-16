@@ -721,6 +721,34 @@ impl OrgService for OrgServiceImpl {
         request: Request<ImportJiraUsersRequest>,
     ) -> Result<Response<ImportJiraUsersResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        Err(Status::unimplemented("ImportJiraUsers not yet implemented"))
+        let req = request.into_inner();
+
+        let content = String::from_utf8(req.file_content)
+            .map_err(|_| Status::invalid_argument("file content is not valid UTF-8"))?;
+
+        let (records, mut warnings) = ps_core::directory::parse_jira_user_csv(&content)
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
+
+        let (identities_mapped, unmatched_users, import_warnings) = self
+            .repos
+            .org
+            .import_jira_users(&records)
+            .await
+            .map_err(db_err)?;
+
+        warnings.extend(import_warnings);
+
+        info!(
+            identities_mapped,
+            unmatched_users,
+            warnings = warnings.len(),
+            "Jira user import complete"
+        );
+
+        Ok(Response::new(ImportJiraUsersResponse {
+            identities_mapped,
+            unmatched_users,
+            warnings,
+        }))
     }
 }

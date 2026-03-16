@@ -12,6 +12,7 @@ import type {
   CreateTeamResponse,
   DeleteTeamResponse,
   ImportDirectoryResponse,
+  ImportJiraUsersResponse,
   Person,
   UpdatePersonResponse,
   UpdateTeamResponse,
@@ -79,6 +80,21 @@ export const useImportDirectory = (): UseMutationResult<
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (fileContent: Uint8Array) => orgClient.importDirectory({ fileContent }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useImportJiraUsers = (): UseMutationResult<
+  ImportJiraUsersResponse,
+  Error,
+  { fileContent: Uint8Array; sourceName: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fileContent, sourceName }) =>
+      orgClient.importJiraUsers({ fileContent, sourceName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.all });
     },

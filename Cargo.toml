@@ -90,6 +90,9 @@ base64 = "0.22"
 # HTML parsing
 scraper = "0.22"
 
+# CSV parsing
+csv = "1"
+
 # HTTP client (for source adapters)
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 

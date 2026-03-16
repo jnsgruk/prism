@@ -1,6 +1,7 @@
 import { Separator } from "@/components/ui/separator";
 
 import { ImportDirectoryDialog } from "./import-directory-dialog";
+import { ImportJiraUsersDialog } from "./import-jira-users-dialog";
 import { ResetDataDialog } from "./reset-data-dialog";
 
 export const SystemTab = (): React.ReactElement => (
@@ -22,6 +23,15 @@ export const SystemTab = (): React.ReactElement => (
           </p>
         </div>
         <ImportDirectoryDialog />
+      </div>
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Import Jira Users</p>
+          <p className="text-sm text-muted-foreground">
+            Upload a Jira Cloud user CSV export to map Jira account IDs to people.
+          </p>
+        </div>
+        <ImportJiraUsersDialog />
       </div>
     </div>
 

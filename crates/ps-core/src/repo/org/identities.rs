@@ -108,4 +108,88 @@ impl OrgRepo {
 
         Ok(map)
     }
+
+    /// Import Jira users by matching email addresses to existing people and
+    /// creating platform identities with `platform_user_id` set to the Jira
+    /// `accountId`.
+    ///
+    /// Returns `(mapped_count, unmatched_count, warnings)`.
+    pub async fn import_jira_users(
+        &self,
+        records: &[crate::directory::JiraUserRecord],
+    ) -> Result<(i32, i32, Vec<String>), Error> {
+        if records.is_empty() {
+            return Ok((0, 0, vec![]));
+        }
+
+        // Collect unique emails for batch lookup
+        let emails: Vec<String> = records.iter().map(|r| r.email.to_lowercase()).collect();
+
+        // Look up people by email (case-insensitive)
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, LOWER(email) as "email!"
+            FROM org.people
+            WHERE LOWER(email) = ANY($1)
+              AND active = true
+            "#,
+            &emails,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let email_to_person: HashMap<String, Uuid> =
+            rows.into_iter().map(|r| (r.email, r.id)).collect();
+
+        let mut mapped_count = 0i32;
+        let mut unmatched_count = 0i32;
+        let mut warnings = Vec::new();
+
+        // Collect matched records for batch upsert
+        let mut person_ids = Vec::new();
+        let mut platforms = Vec::new();
+        let mut usernames = Vec::new();
+        let mut user_ids = Vec::new();
+
+        for record in records {
+            let email_lower = record.email.to_lowercase();
+            if let Some(&person_id) = email_to_person.get(&email_lower) {
+                person_ids.push(person_id);
+                platforms.push("jira".to_string());
+                usernames.push(record.email.clone());
+                user_ids.push(record.account_id.clone());
+                mapped_count += 1;
+            } else {
+                unmatched_count += 1;
+                warnings.push(format!(
+                    "No person found for Jira user {} <{}>",
+                    record.display_name, record.email
+                ));
+            }
+        }
+
+        // Batch upsert platform identities
+        if !person_ids.is_empty() {
+            sqlx::query!(
+                r#"
+                INSERT INTO org.platform_identities (person_id, platform, platform_username, platform_user_id)
+                SELECT * FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[])
+                ON CONFLICT (platform, platform_username)
+                DO UPDATE SET
+                    platform_user_id = EXCLUDED.platform_user_id,
+                    person_id = EXCLUDED.person_id
+                "#,
+                &person_ids,
+                &platforms,
+                &usernames,
+                &user_ids as &[String],
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+        }
+
+        Ok((mapped_count, unmatched_count, warnings))
+    }
 }
