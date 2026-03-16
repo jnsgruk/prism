@@ -24,6 +24,17 @@ const RATE_LIMIT_SEARCH_THRESHOLD: i32 = 200;
 /// GitHub search supports multiple `author:` terms with OR semantics.
 const SEARCH_BATCH_SIZE: usize = 5;
 
+/// Check whether a GitHub username matches the expected format.
+///
+/// GitHub usernames may contain alphanumerics and hyphens only. We reject
+/// anything else to prevent GraphQL query injection via crafted usernames.
+fn is_valid_github_username(username: &str) -> bool {
+    !username.is_empty()
+        && username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
 /// GitHub source adapter implementing the [`Source`] trait.
 ///
 /// Uses the GraphQL API for fetching PRs + reviews in a single query per page,
@@ -104,14 +115,6 @@ impl Source for GitHubSource {
     }
 
     fn initial_cursor(&self, plan: &IngestionPlan) -> String {
-        let orgs: Vec<String> = plan
-            .source_name
-            .as_str()
-            .parse::<serde_json::Value>()
-            .ok()
-            .and(None) // not used this way; orgs are embedded by plan_impl
-            .unwrap_or_default();
-
         let cursor = Cursor {
             phase: IngestionPhase::TeamRepos,
             repo_index: 0,
@@ -119,7 +122,7 @@ impl Source for GitHubSource {
             watermark: plan.watermark.clone(),
             repos: plan.repos.clone(),
             max_updated_at: plan.watermark.clone(),
-            orgs,
+            orgs: vec![],
             search_user_index: 0,
             search_graphql_cursor: None,
             search_users: vec![],
@@ -454,6 +457,10 @@ async fn fetch_member_search(
 
     let mut query = String::from("type:pr");
     for user in batch {
+        if !is_valid_github_username(user) {
+            warn!(username = %user, "skipping username with invalid characters in member search");
+            continue;
+        }
         let _ = write!(query, " author:{user}");
     }
     for org in &cur.orgs {

@@ -28,6 +28,25 @@ pub struct ListPullsParams<'a> {
     pub if_none_match: Option<&'a str>,
 }
 
+/// Validate that a URL path segment contains only safe characters.
+///
+/// GitHub org names, repo names, and team slugs consist of alphanumerics,
+/// hyphens, underscores, and dots. Reject anything else to prevent path
+/// traversal or injection.
+fn validate_path_segment(segment: &str, label: &str) -> Result<(), GitHubError> {
+    if segment.is_empty()
+        || !segment
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+    {
+        return Err(GitHubError::InvalidPathSegment {
+            label: label.to_string(),
+            value: segment.to_string(),
+        });
+    }
+    Ok(())
+}
+
 /// Low-level GitHub REST API client.
 pub struct GitHubClient {
     http: reqwest::Client,
@@ -56,6 +75,9 @@ impl GitHubClient {
         &self,
         params: &ListPullsParams<'_>,
     ) -> Result<PageResult<GitHubPr>, GitHubError> {
+        validate_path_segment(params.owner, "owner")?;
+        validate_path_segment(params.repo, "repo")?;
+
         let mut url = format!(
             "{}/repos/{}/{}/pulls?state={}&sort=updated&direction=asc&per_page={}&page={}",
             self.base_url, params.owner, params.repo, params.state, params.per_page, params.page,
@@ -126,6 +148,9 @@ impl GitHubClient {
         repo: &str,
         pr_number: u32,
     ) -> Result<Vec<GitHubReview>, GitHubError> {
+        validate_path_segment(owner, "owner")?;
+        validate_path_segment(repo, "repo")?;
+
         let url = format!(
             "{}/repos/{owner}/{repo}/pulls/{pr_number}/reviews?per_page=100",
             self.base_url,
@@ -156,6 +181,8 @@ impl GitHubClient {
         page: u32,
         per_page: u32,
     ) -> Result<PageResult<GitHubRepo>, GitHubError> {
+        validate_path_segment(org, "org")?;
+
         let url = format!(
             "{}/orgs/{org}/repos?type=all&sort=updated&per_page={per_page}&page={page}",
             self.base_url,
@@ -207,6 +234,8 @@ impl GitHubClient {
         org: &str,
         page: u32,
     ) -> Result<PageResult<GitHubTeam>, GitHubError> {
+        validate_path_segment(org, "org")?;
+
         let url = format!(
             "{}/orgs/{org}/teams?per_page=100&page={page}",
             self.base_url,
@@ -259,6 +288,9 @@ impl GitHubClient {
         team_slug: &str,
         page: u32,
     ) -> Result<PageResult<GitHubUser>, GitHubError> {
+        validate_path_segment(org, "org")?;
+        validate_path_segment(team_slug, "team_slug")?;
+
         let url = format!(
             "{}/orgs/{org}/teams/{team_slug}/members?per_page=100&page={page}",
             self.base_url,
@@ -312,6 +344,9 @@ impl GitHubClient {
         team_slug: &str,
         page: u32,
     ) -> Result<PageResult<GitHubTeamRepo>, GitHubError> {
+        validate_path_segment(org, "org")?;
+        validate_path_segment(team_slug, "team_slug")?;
+
         let url = format!(
             "{}/orgs/{org}/teams/{team_slug}/repos?per_page=100&page={page}",
             self.base_url,
@@ -446,6 +481,8 @@ pub enum GitHubError {
         status: reqwest::StatusCode,
         body: String,
     },
+    #[error("invalid URL path segment for {label}: {value:?}")]
+    InvalidPathSegment { label: String, value: String },
 }
 
 #[cfg(test)]

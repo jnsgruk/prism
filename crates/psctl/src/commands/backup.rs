@@ -29,6 +29,15 @@ pub async fn backup(
     }
 
     file.flush().await?;
+
+    // Restrict backup file permissions to owner-only on Unix (contains sensitive data).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        tokio::fs::set_permissions(&filename, perms).await?;
+    }
+
     println!("Backup saved to {filename} ({total_bytes} bytes).");
     Ok(())
 }
