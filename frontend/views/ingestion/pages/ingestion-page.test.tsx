@@ -114,7 +114,8 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    // Table should show run data — "Completed" appears as both filter button and status badge
+    expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(2);
   });
 
   it("renders filter controls in run history panel", async () => {
@@ -124,8 +125,11 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Select triggers are rendered as buttons
-    const triggers = screen.getAllByRole("combobox");
-    expect(triggers.length).toBeGreaterThanOrEqual(2);
+    // Source filter buttons
+    expect(screen.getByRole("button", { name: "All sources" })).toBeInTheDocument();
+
+    // Status filter buttons
+    expect(screen.getByRole("button", { name: "Completed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Failed" })).toBeInTheDocument();
   });
 });

@@ -7,25 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { AlertCircle, Ban, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { AlertCircle, Ban, CheckCircle2, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
+
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 
 type StatusStyle = {
   label: string;
@@ -50,8 +39,6 @@ const statusConfig: Record<string, StatusStyle> = {
   running: defaultStatus,
 };
 
-const PAGE_SIZE = 15;
-
 const formatTimestamp = (ts?: { seconds: bigint }): string => {
   if (!ts) return "—";
   const date = new Date(Number(ts.seconds) * 1000);
@@ -75,6 +62,50 @@ const formatDuration = (start?: { seconds: bigint }, end?: { seconds: bigint }):
   const sec = diffSec % 60;
   return `${String(min)}m ${String(sec)}s`;
 };
+
+const columns: ColumnDef<HandlerRun, unknown>[] = [
+  {
+    accessorKey: "sourceName",
+    header: "Source",
+    cell: ({ row }) => <span className="font-medium">{row.original.sourceName}</span>,
+  },
+  {
+    accessorKey: "startedAt",
+    header: "Started",
+    cell: ({ row }) => <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>,
+  },
+  {
+    id: "duration",
+    header: "Duration",
+    cell: ({ row }) => (
+      <span className="text-xs">
+        {formatDuration(row.original.startedAt, row.original.completedAt)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "itemsCollected",
+    header: () => <span className="block text-right">Items</span>,
+    cell: ({ row }) => (
+      <span className="block text-right tabular-nums">
+        {row.original.itemsCollected.toLocaleString()}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const cfg = statusConfig[row.original.status] ?? defaultStatus;
+      return (
+        <Badge variant={cfg.variant} className="gap-1">
+          {cfg.icon}
+          {cfg.label}
+        </Badge>
+      );
+    },
+  },
+];
 
 const RunDetailDialog = ({
   run,
@@ -140,6 +171,8 @@ const RunDetailDialog = ({
   );
 };
 
+type StatusFilter = "all" | "completed" | "failed" | "cancelled" | "running";
+
 export const RunHistoryPanel = ({
   runs,
   sourceNames,
@@ -149,10 +182,15 @@ export const RunHistoryPanel = ({
 }): React.ReactElement => {
   const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [pageSize, setPageSize] = useState(25);
+  const [pageIndex, setPageIndex] = useState(0);
 
-  // Reset page when filters change
+  // Reset to first page when filters change.
+  useEffect(() => {
+    setPageIndex(0);
+  }, [sourceFilter, statusFilter, pageSize]);
+
   const filteredRuns = useMemo(() => {
     let result = runs;
     if (sourceFilter !== "all") {
@@ -164,146 +202,102 @@ export const RunHistoryPanel = ({
     return result;
   }, [runs, sourceFilter, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRuns.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const pageRuns = filteredRuns.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const totalCount = filteredRuns.length;
+  const pageRuns = filteredRuns.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
 
-  const statusOptions = useMemo(() => {
-    const statuses = new Set(runs.map((r) => r.status));
-    return [...statuses].toSorted();
-  }, [runs]);
+  const handleNextPage = useCallback(() => {
+    setPageIndex((i) => i + 1);
+  }, []);
 
-  const handleSourceChange = (value: string | null): void => {
-    setSourceFilter(value ?? "all");
-    setPage(0);
-  };
+  const handlePrevPage = useCallback(() => {
+    setPageIndex((i) => Math.max(0, i - 1));
+  }, []);
 
-  const handleStatusChange = (value: string | null): void => {
-    setStatusFilter(value ?? "all");
-    setPage(0);
-  };
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+  }, []);
 
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold">Run History</h2>
-      <div className="rounded-lg border bg-card">
-        {/* Filters */}
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b px-5 py-3">
-          <Select value={sourceFilter} onValueChange={handleSourceChange}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="All sources" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {sourceNames.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {statusOptions.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {(statusConfig[status] ?? defaultStatus).label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+      <div className="space-y-4">
+        {/* Filters — same layout pattern as PeopleTab */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Button
+              variant={sourceFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSourceFilter("all")}
+            >
+              All sources
+            </Button>
+            {sourceNames.map((name) => (
+              <Button
+                key={name}
+                variant={sourceFilter === name ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSourceFilter(name)}
+              >
+                {name}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={statusFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("all")}
+            >
+              All
+            </Button>
+            <Button
+              variant={statusFilter === "completed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("completed")}
+            >
+              Completed
+            </Button>
+            <Button
+              variant={statusFilter === "failed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("failed")}
+            >
+              Failed
+            </Button>
+            <Button
+              variant={statusFilter === "running" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("running")}
+            >
+              Running
+            </Button>
+          </div>
         </div>
 
-        {/* Table */}
-        {pageRuns.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            {runs.length === 0
-              ? "No ingestion runs yet. Trigger a run from one of the sources above."
-              : "No runs match the current filters."}
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Source</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="text-right">Items</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRuns.map((run) => {
-                const runConfig = statusConfig[run.status] ?? defaultStatus;
-                return (
-                  <TableRow
-                    key={run.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedRun(run)}
-                  >
-                    <TableCell className="font-medium">{run.sourceName}</TableCell>
-                    <TableCell className="text-xs">{formatTimestamp(run.startedAt)}</TableCell>
-                    <TableCell className="text-xs">
-                      {formatDuration(run.startedAt, run.completedAt)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {run.itemsCollected.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={runConfig.variant} className="gap-1">
-                        {runConfig.icon}
-                        {runConfig.label}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
+        <DataTable columns={columns} data={pageRuns} onRowClick={setSelectedRun} />
 
-        {/* Pagination footer */}
-        {filteredRuns.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between border-t px-5 py-3">
-            <p className="text-xs text-muted-foreground">
-              {filteredRuns.length} runs &middot; page {safePage + 1} of {totalPages}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2"
-                disabled={safePage === 0}
-                onClick={() => setPage(safePage - 1)}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2"
-                disabled={safePage >= totalPages - 1}
-                onClick={() => setPage(safePage + 1)}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {selectedRun && (
-          <RunDetailDialog
-            run={selectedRun}
-            open={!!selectedRun}
-            onOpenChange={(open) => {
-              if (!open) setSelectedRun(null);
-            }}
-          />
-        )}
+        <DataTablePagination
+          totalCount={totalCount}
+          pageSize={pageSize}
+          pageIndex={pageIndex}
+          hasNextPage={hasNextPage}
+          onPageSizeChange={handlePageSizeChange}
+          onPreviousPage={handlePrevPage}
+          onNextPage={handleNextPage}
+        />
       </div>
+
+      {selectedRun && (
+        <RunDetailDialog
+          run={selectedRun}
+          open={!!selectedRun}
+          onOpenChange={(open) => {
+            if (!open) setSelectedRun(null);
+          }}
+        />
+      )}
     </section>
   );
 };
