@@ -5,6 +5,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::identity_resolution::IdentityResolutionHandlerClient;
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
 
@@ -120,6 +121,12 @@ impl DiscourseIngestionHandlerImpl {
             info!(source = source_name, "triggering metrics recomputation");
             ctx.service_client::<MetricsComputeHandlerClient>()
                 .compute_current_periods()
+                .send();
+
+            // Trigger identity resolution for this Discourse instance.
+            info!(source = source_name, "triggering identity resolution");
+            ctx.object_client::<IdentityResolutionHandlerClient>(source_name)
+                .resolve_identities()
                 .send();
         }
 

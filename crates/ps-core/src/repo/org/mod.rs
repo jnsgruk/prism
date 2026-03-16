@@ -4,9 +4,11 @@ mod identities;
 mod import;
 mod memberships;
 mod people;
+mod resolutions;
 mod teams;
 
 pub use people::ListPeopleParams;
+pub use resolutions::PendingResolution;
 
 use crate::models::TeamType;
 use sqlx::PgPool;

@@ -16,34 +16,24 @@ pub(super) async fn store_batch_impl(
     let instance = extract_instance(&ctx.source_config.name);
     let platform = Platform::Discourse(instance);
 
-    // Collect unique (username, display_name) pairs for identity resolution.
-    // Display names are extracted from post metadata where available.
+    // Collect unique usernames for resolve-only identity lookup.
+    // We only attribute contributions to people already known in the system
+    // (imported via directory). Unknown Discourse users get person_id = NULL.
     let mut seen = std::collections::HashSet::new();
-    let users: Vec<(String, Option<String>)> = items
+    let usernames: Vec<String> = items
         .iter()
         .filter(|i| !i.platform_username.is_empty() && seen.insert(i.platform_username.clone()))
-        .map(|i| {
-            let display_name = i
-                .metadata
-                .get("display_name")
-                .and_then(serde_json::Value::as_str)
-                .map(String::from);
-            (i.platform_username.clone(), display_name)
-        })
+        .map(|i| i.platform_username.clone())
         .collect();
 
-    // Auto-create people + identities for new usernames.
+    // Resolve-only: look up existing identities, never auto-create.
     let person_map = ctx
         .repos
         .org
-        .batch_ensure_identities(&platform, &users)
+        .batch_resolve_person_ids(&platform, &usernames)
         .await?;
 
-    let new_identities = users.len()
-        - users
-            .iter()
-            .filter(|(u, _)| person_map.contains_key(u))
-            .count();
+    let unresolved = usernames.len() - person_map.len();
 
     let mut ids = Vec::with_capacity(items.len());
     let mut person_ids = Vec::with_capacity(items.len());
@@ -85,10 +75,10 @@ pub(super) async fn store_batch_impl(
         );
     }
 
-    if new_identities > 0 {
-        info!(
+    if unresolved > 0 {
+        debug!(
             source = ctx.source_config.name,
-            stored, new_identities, "stored Discourse batch — created new identities"
+            stored, unresolved, "stored Discourse batch — some usernames unresolved"
         );
     } else {
         debug!(stored, "stored Discourse batch");

@@ -393,7 +393,56 @@ impl_sqlx_text!(ContributionType, |s: &str| s.parse().ok());
 impl_sqlx_text!(ContributionState, |s: &str| s.parse().ok());
 impl_sqlx_text!(IngestionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(PeriodType, |s: &str| s.parse().ok());
+impl_sqlx_text!(ResolutionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(Role, |s: &str| s.parse().ok());
+
+// ---------------------------------------------------------------------------
+// ResolutionStatus
+// ---------------------------------------------------------------------------
+
+/// The status of an identity resolution attempt for a person on a platform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolutionStatus {
+    /// Not yet attempted — new person or new source.
+    Pending,
+    /// Successfully matched to a platform username.
+    Resolved,
+    /// Attempted but no match found.
+    Unresolved,
+    /// Admin manually set the identity — skip auto-resolution.
+    Manual,
+}
+
+impl fmt::Display for ResolutionStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl ResolutionStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Resolved => "resolved",
+            Self::Unresolved => "unresolved",
+            Self::Manual => "manual",
+        }
+    }
+}
+
+impl FromStr for ResolutionStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pending" => Ok(Self::Pending),
+            "resolved" => Ok(Self::Resolved),
+            "unresolved" => Ok(Self::Unresolved),
+            "manual" => Ok(Self::Manual),
+            _ => Err(format!("invalid ResolutionStatus: {s}")),
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Role

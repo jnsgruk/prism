@@ -24,7 +24,7 @@ use ps_proto::prism::v1::{
     UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::common::{db_err, require_auth};
@@ -417,6 +417,41 @@ impl OrgService for OrgServiceImpl {
             warnings = result.warnings.len(),
             "directory import complete"
         );
+
+        // Seed identity resolution rows for all configured Discourse/Jira sources.
+        // This ensures new people get pending resolution entries so the next
+        // resolution run picks them up automatically.
+        if let Ok(sources) = self.repos.config.list_sources().await {
+            let platforms: Vec<String> = sources
+                .iter()
+                .filter(|s| {
+                    s.enabled
+                        && (s.source_type.is_discourse()
+                            || s.source_type == ps_core::models::Platform::Jira)
+                })
+                .map(|s| s.name.clone())
+                .collect();
+
+            if !platforms.is_empty() {
+                match self
+                    .repos
+                    .org
+                    .ensure_resolution_rows_for_platforms(&platforms)
+                    .await
+                {
+                    Ok(count) if count > 0 => {
+                        info!(
+                            count,
+                            "seeded pending identity resolution rows after directory import"
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!("failed to seed resolution rows: {e}");
+                    }
+                }
+            }
+        }
 
         Ok(Response::new(ImportDirectoryResponse {
             people_imported: result.people_imported,

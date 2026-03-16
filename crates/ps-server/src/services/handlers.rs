@@ -46,6 +46,12 @@ const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         true,
     ),
     (
+        "IdentityResolutionHandler",
+        &["resolve_identities"],
+        "Resolves pending platform identities for known directory people",
+        true,
+    ),
+    (
         "MetricsComputeHandler",
         &["compute_current_periods"],
         "Recomputes metric snapshots for all teams across current week/month/quarter",

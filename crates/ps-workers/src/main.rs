@@ -4,6 +4,9 @@ use ps_workers::handlers::discourse_ingestion::{
 };
 use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
 use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
+use ps_workers::handlers::identity_resolution::{
+    IdentityResolutionHandler, IdentityResolutionHandlerImpl,
+};
 use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
 use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
 use restate_sdk::prelude::*;
@@ -52,6 +55,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let discourse_ingestion = DiscourseIngestionHandlerImpl {
         state: state.clone(),
     };
+    let identity_resolution = IdentityResolutionHandlerImpl {
+        state: state.clone(),
+    };
     let metrics_compute = MetricsComputeHandlerImpl {
         state: state.clone(),
     };
@@ -88,6 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(team_sync.serve())
                 .bind(jira_ingestion.serve())
                 .bind(discourse_ingestion.serve())
+                .bind(identity_resolution.serve())
                 .bind(metrics_compute.serve())
                 .build(),
         )

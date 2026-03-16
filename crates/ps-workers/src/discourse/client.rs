@@ -145,6 +145,16 @@ pub struct AboutInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Admin API response types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct AdminUser {
+    pub username: String,
+    pub email: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // Client implementation
 // ---------------------------------------------------------------------------
 
@@ -309,6 +319,73 @@ impl DiscourseClient {
         let version = about.about.version.as_deref().unwrap_or("unknown");
 
         Ok(format!("Connected to {title} (Discourse {version})"))
+    }
+
+    /// Search for a user by email via the admin API.
+    ///
+    /// Requires an admin-scoped API key. Returns the username if an exact
+    /// email match is found.
+    pub async fn admin_user_search(&self, email: &str) -> Result<Option<String>, ps_core::Error> {
+        let url = format!("{}/admin/users/list/active.json", self.base_url);
+
+        let req = self
+            .http
+            .get(&url)
+            .query(&[("filter", email), ("show_emails", "true")])
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse admin user search failed: {e}"))
+        })?;
+
+        Self::handle_rate_limit(&resp)?;
+
+        // 403 means the API key lacks admin scope — not an error, just
+        // means this strategy is unavailable.
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            return Ok(None);
+        }
+
+        Self::require_success(&resp)?;
+
+        let users: Vec<AdminUser> = resp.json().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse admin user search parse: {e}"))
+        })?;
+
+        let email_lower = email.to_lowercase();
+        let matched = users.into_iter().find(|u| {
+            u.email
+                .as_deref()
+                .is_some_and(|e| e.to_lowercase() == email_lower)
+        });
+
+        Ok(matched.map(|u| u.username))
+    }
+
+    /// Look up a user by username via the public endpoint.
+    ///
+    /// Returns `true` if the user exists (200 response), `false` on 404.
+    pub async fn user_exists(&self, username: &str) -> Result<bool, ps_core::Error> {
+        let url = format!("{}/u/{}.json", self.base_url, username);
+
+        let req = self
+            .http
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp =
+            self.auth(req).send().await.map_err(|e| {
+                ps_core::Error::Internal(format!("discourse user lookup failed: {e}"))
+            })?;
+
+        Self::handle_rate_limit(&resp)?;
+
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(false);
+        }
+
+        Self::require_success(&resp)?;
+        Ok(true)
     }
 
     /// Check for 429 and return a rate-limit error.
