@@ -827,10 +827,10 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [ ] WS-2.2: Batch org import
 - [x] WS-2.3: Batch list_sources secret status
 - [x] WS-2.4: Batch GitHub team member/repo sync
-- [ ] WS-2.5: Batch repository upserts
-- [ ] WS-2.6: Decrypt token once per run
+- [x] WS-2.5: Batch repository upserts
+- [x] WS-2.6: Decrypt token once per run
 - [x] WS-3.1: Role enum
-- [ ] WS-3.2: Repo row types → enums
+- [x] WS-3.2: Repo row types → enums
 - [x] WS-3.3: FromStr for domain enums
 - [x] WS-3.4: Error::Database structured variant
 - [x] WS-3.5: SourceState enum in psctl
@@ -845,21 +845,21 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-4.5: Parallelize count+data queries
 - [x] WS-4.6: Parallelize admin count queries
 - [x] WS-4.7: Parallelize handler cancellation
-- [ ] WS-5.1: Split source.rs
-- [ ] WS-5.2: Split org.rs service
+- [x] WS-5.1: Split source.rs
+- [x] WS-5.2: Split org.rs service
 - [x] WS-5.3: Extract session creation helper
-- [ ] WS-5.4: Extract handler boilerplate
+- [ ] WS-5.4: Extract handler boilerplate (deferred — Restate context type variance)
 - [x] WS-5.5: Extract IngestionContext construction
 - [x] WS-5.6: Deduplicate TeamWithCount mapping
 - [x] WS-5.7: Deduplicate GitHubTeamRow mapping
-- [ ] WS-5.8: Extract JSON-to-prost conversion
+- [x] WS-5.8: Extract JSON-to-prost conversion
 - [x] WS-5.9: Deduplicate Timestamp construction
 - [ ] WS-5.10: Extract REST client generic helper
 - [ ] WS-5.11: Extract psctl client constructor
 - [x] WS-5.12: list_team_contributions params struct
 - [x] WS-5.13: Replace build_progress_json with struct
 - [x] WS-5.14: Derive handler list from single source
-- [ ] WS-5.15: Deduplicate psctl chunking logic
+- [x] WS-5.15: Deduplicate psctl chunking logic
 - [ ] WS-5.16: Enum conversion boilerplate (skipped — orphan rule prevents From impls)
 - [x] WS-6.1: Fix review-turnaround bug
 - [x] WS-6.2: Remove dead orgs code

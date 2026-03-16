@@ -18,7 +18,7 @@ pub struct IngestionRunRow {
     pub source_name: String,
     pub started_at: OffsetDateTime,
     pub completed_at: Option<OffsetDateTime>,
-    pub status: String,
+    pub status: crate::models::IngestionStatus,
     pub items_collected: Option<i32>,
     pub error_message: Option<String>,
     pub handler_name: String,
@@ -28,7 +28,7 @@ pub struct IngestionRunRow {
 /// A joined row from `config.source_configs` + `activity.ingestion_watermarks`.
 pub struct SourceStatusRow {
     pub name: String,
-    pub source_type: String,
+    pub source_type: crate::models::Platform,
     pub watermark_value: Option<String>,
     pub last_successful_run: Option<OffsetDateTime>,
     pub last_attempt: Option<OffsetDateTime>,
@@ -291,7 +291,10 @@ impl ActivityRepo {
                 source_name: r.source_name,
                 started_at: r.started_at,
                 completed_at: r.completed_at,
-                status: r.status,
+                status: r
+                    .status
+                    .parse()
+                    .unwrap_or(crate::models::IngestionStatus::Failed),
                 items_collected: r.items_collected,
                 error_message: r.error_message,
                 handler_name: r.handler_name,
@@ -483,7 +486,10 @@ impl ActivityRepo {
             .into_iter()
             .map(|r| SourceStatusRow {
                 name: r.name,
-                source_type: r.source_type,
+                source_type: r
+                    .source_type
+                    .parse()
+                    .unwrap_or(crate::models::Platform::Github),
                 watermark_value: r.watermark_value,
                 last_successful_run: r.last_successful_run,
                 last_attempt: r.last_attempt,

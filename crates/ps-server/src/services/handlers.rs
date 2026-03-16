@@ -348,7 +348,7 @@ impl HandlersService for HandlersServiceImpl {
 
                 SourceStatus {
                     name: s.name,
-                    source_type: s.source_type,
+                    source_type: s.source_type.to_string(),
                     state: state.into(),
                     last_run,
                     next_run: None, // TODO: compute from schedule_cron
@@ -386,7 +386,7 @@ impl HandlersService for HandlersServiceImpl {
                 source_name: r.source_name,
                 started_at: Some(to_timestamp(r.started_at)),
                 completed_at: r.completed_at.map(to_timestamp),
-                status: r.status,
+                status: r.status.to_string(),
                 items_collected: r.items_collected.unwrap_or(0),
                 error_message: r.error_message,
                 rate_limit_waits_seconds: 0,

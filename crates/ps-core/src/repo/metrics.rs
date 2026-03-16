@@ -295,12 +295,12 @@ pub struct ListContributionsParams<'a> {
 pub struct ContributionDetailRow {
     pub id: Uuid,
     pub person_name: String,
-    pub platform: String,
-    pub contribution_type: String,
+    pub platform: crate::models::Platform,
+    pub contribution_type: crate::models::ContributionType,
     pub platform_id: String,
     pub title: Option<String>,
     pub url: Option<String>,
-    pub state: Option<String>,
+    pub state: Option<crate::models::ContributionState>,
     pub created_at: time::OffsetDateTime,
     pub closed_at: Option<time::OffsetDateTime>,
     pub metrics: serde_json::Value,
@@ -389,12 +389,18 @@ impl MetricsRepo {
                 .map(|r| ContributionDetailRow {
                     id: r.id,
                     person_name: r.person_name,
-                    platform: r.platform,
-                    contribution_type: r.contribution_type,
+                    platform: r
+                        .platform
+                        .parse()
+                        .unwrap_or(crate::models::Platform::Github),
+                    contribution_type: r
+                        .contribution_type
+                        .parse()
+                        .unwrap_or(crate::models::ContributionType::PullRequest),
                     platform_id: r.platform_id,
                     title: r.title,
                     url: r.url,
-                    state: r.state,
+                    state: r.state.and_then(|s| s.parse().ok()),
                     created_at: r.created_at,
                     closed_at: r.closed_at,
                     metrics: r.metrics,
