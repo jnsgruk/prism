@@ -72,6 +72,8 @@ message ListTeamContributionsRequest {
   int32 page_index = 6;
   optional string sort_field = 7;
   optional bool sort_desc = 8;
+  // Free-text search across title, author, and repo.
+  optional string search = 9;
 }
 
 message Contribution {
