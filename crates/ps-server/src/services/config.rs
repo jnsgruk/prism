@@ -12,16 +12,17 @@ use ps_proto::prism::v1::{
 use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct ConfigServiceImpl {
     repos: Repos,
-    secret_key: [u8; 32],
+    secret_key: Zeroizing<[u8; 32]>,
 }
 
 impl ConfigServiceImpl {
-    pub fn new(repos: Repos, secret_key: [u8; 32]) -> Self {
+    pub fn new(repos: Repos, secret_key: Zeroizing<[u8; 32]>) -> Self {
         Self { repos, secret_key }
     }
 }

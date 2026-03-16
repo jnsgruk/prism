@@ -22,8 +22,8 @@ pub struct TestServer {
 }
 
 /// A fixed test secret key (32 bytes, only used in tests).
-fn test_secret_key() -> [u8; 32] {
-    *b"test-secret-key-32-bytes-long!!!"
+fn test_secret_key() -> zeroize::Zeroizing<[u8; 32]> {
+    zeroize::Zeroizing::new(*b"test-secret-key-32-bytes-long!!!")
 }
 
 impl TestServer {

@@ -20,6 +20,10 @@ use uuid::Uuid;
 
 use super::common::{db_err, require_auth, to_timestamp};
 
+/// Maximum backup upload size (100 MB). Prevents unbounded memory allocation
+/// on the public preview/restore endpoints.
+const MAX_BACKUP_SIZE: usize = 100 * 1024 * 1024;
+
 pub struct AuthServiceImpl {
     repos: Repos,
 }
@@ -179,6 +183,12 @@ impl AuthService for AuthServiceImpl {
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
             data.extend_from_slice(&chunk.chunk);
+            if data.len() > MAX_BACKUP_SIZE {
+                return Err(Status::resource_exhausted(format!(
+                    "backup exceeds maximum size of {} MB",
+                    MAX_BACKUP_SIZE / 1024 / 1024,
+                )));
+            }
         }
 
         // Parse the backup archive
@@ -220,6 +230,12 @@ impl AuthService for AuthServiceImpl {
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
             data.extend_from_slice(&chunk.chunk);
+            if data.len() > MAX_BACKUP_SIZE {
+                return Err(Status::resource_exhausted(format!(
+                    "backup exceeds maximum size of {} MB",
+                    MAX_BACKUP_SIZE / 1024 / 1024,
+                )));
+            }
         }
 
         // Parse backup

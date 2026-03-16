@@ -2,6 +2,7 @@ use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use zeroize::Zeroizing;
 
 use crate::Error;
 
@@ -45,18 +46,27 @@ pub fn decrypt(key: &[u8; 32], data: &[u8]) -> Result<Vec<u8>, Error> {
 }
 
 /// Load the 256-bit encryption key from the `PS_SECRET_KEY` environment variable
-/// (base64-encoded).
-pub fn load_secret_key() -> Result<[u8; 32], Error> {
-    let encoded = std::env::var("PS_SECRET_KEY")
-        .map_err(|_| Error::Encryption("PS_SECRET_KEY environment variable not set".into()))?;
+/// (base64-encoded). The returned key is wrapped in [`Zeroizing`] so it is
+/// automatically zeroed when dropped.
+pub fn load_secret_key() -> Result<Zeroizing<[u8; 32]>, Error> {
+    let encoded = Zeroizing::new(
+        std::env::var("PS_SECRET_KEY")
+            .map_err(|_| Error::Encryption("PS_SECRET_KEY environment variable not set".into()))?,
+    );
 
-    let decoded = STANDARD
-        .decode(encoded.trim())
-        .map_err(|e| Error::Encryption(format!("PS_SECRET_KEY is not valid base64: {e}")))?;
+    let decoded = Zeroizing::new(
+        STANDARD
+            .decode(encoded.trim())
+            .map_err(|e| Error::Encryption(format!("PS_SECRET_KEY is not valid base64: {e}")))?,
+    );
 
-    decoded.try_into().map_err(|v: Vec<u8>| {
-        Error::Encryption(format!("PS_SECRET_KEY must be 32 bytes, got {}", v.len()))
-    })
+    let arr: [u8; 32] = decoded.as_slice().try_into().map_err(|_| {
+        Error::Encryption(format!(
+            "PS_SECRET_KEY must be 32 bytes, got {}",
+            decoded.len()
+        ))
+    })?;
+    Ok(Zeroizing::new(arr))
 }
 
 #[cfg(test)]
@@ -120,6 +130,6 @@ mod tests {
         let loaded = load_secret_key().unwrap();
         unsafe { std::env::remove_var("PS_SECRET_KEY") };
 
-        assert_eq!(loaded, key);
+        assert_eq!(*loaded, key);
     }
 }

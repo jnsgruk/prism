@@ -25,6 +25,7 @@ time.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
 restate-sdk.workspace = true
+zeroize.workspace = true
 
 [dev-dependencies]
 wiremock.workspace = true

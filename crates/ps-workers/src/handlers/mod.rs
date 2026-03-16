@@ -4,6 +4,7 @@ pub mod metrics_compute;
 
 use ps_core::models::SourceConfig;
 use ps_core::repo::Repos;
+use zeroize::Zeroizing;
 
 /// Shared state available to all Restate handlers.
 ///
@@ -11,7 +12,7 @@ use ps_core::repo::Repos;
 #[derive(Clone)]
 pub struct SharedState {
     pub repos: Repos,
-    pub secret_key: [u8; 32],
+    pub secret_key: Zeroizing<[u8; 32]>,
     pub http_client: reqwest::Client,
 }
 

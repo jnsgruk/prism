@@ -109,5 +109,8 @@ async-trait = "0.1"
 # Restate durable execution SDK
 restate-sdk = "0.9"
 
+# Memory safety
+zeroize = "1"
+
 # Testing
 wiremock = "0.6"

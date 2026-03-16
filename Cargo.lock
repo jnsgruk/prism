@@ -2204,6 +2204,7 @@ dependencies = [
  "time",
  "tracing",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -2225,6 +2226,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -2287,6 +2289,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -2311,6 +2314,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "wiremock",
+ "zeroize",
 ]
 
 [[package]]

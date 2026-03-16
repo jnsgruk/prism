@@ -32,3 +32,4 @@ http-body = "1"
 rand.workspace = true
 regex = "1"
 reqwest.workspace = true
+zeroize.workspace = true
