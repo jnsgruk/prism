@@ -140,6 +140,7 @@ async fn register_with_restate(admin_url: &str, self_url: &str) {
     for attempt in 1u64..=10 {
         let body = serde_json::json!({
             "uri": self_url,
+            "force": true,
         });
 
         match client.post(&url).json(&body).send().await {
