@@ -68,10 +68,10 @@ pub(super) async fn fetch_batch_impl(
     let (response, rate_limit) = client
         .search(
             &jql,
-            cur.start_at,
             MAX_RESULTS_PER_PAGE,
             "summary,status,issuetype,priority,labels,assignee,reporter,created,updated,resolutiondate,parent",
             "changelog",
+            cur.next_page_token.as_deref(),
         )
         .await?;
 
@@ -79,9 +79,8 @@ pub(super) async fn fetch_batch_impl(
 
     info!(
         source = ctx.source_config.name,
-        start_at = cur.start_at,
         returned,
-        total = response.total,
+        is_last = ?response.is_last,
         "fetched Jira issues"
     );
 
@@ -91,13 +90,6 @@ pub(super) async fn fetch_batch_impl(
         .into_iter()
         .filter_map(|issue| convert_issue(&cur, &issue))
         .collect();
-
-    // Update cursor for next page
-    cur.total = Some(response.total);
-    #[allow(clippy::cast_possible_wrap)]
-    {
-        cur.start_at += returned as i64;
-    }
 
     // Track max updated_at for watermark advancement
     for item in &items {
@@ -117,8 +109,12 @@ pub(super) async fn fetch_batch_impl(
         }
     }
 
-    // Determine if there are more pages
-    let next_cursor = if cur.start_at < response.total {
+    // Determine if there are more pages using cursor-based pagination
+    let has_more = response
+        .is_last
+        .map_or(response.next_page_token.is_some(), |last| !last);
+    let next_cursor = if has_more {
+        cur.next_page_token = response.next_page_token;
         Some(serialise_cursor(&cur)?)
     } else {
         None

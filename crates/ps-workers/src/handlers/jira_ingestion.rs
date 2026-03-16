@@ -532,8 +532,7 @@ fn build_jira_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String {
     let cursor = crate::jira::source::Cursor {
         watermark: plan.watermark.clone(),
         projects,
-        start_at: 0,
-        total: None,
+        next_page_token: None,
         max_updated_at: plan.watermark.clone(),
         base_url,
         story_points_field,
@@ -570,14 +569,6 @@ fn build_progress_json(
     let cursor: serde_json::Value =
         serde_json::from_str(cursor_json).unwrap_or(serde_json::Value::Null);
 
-    let start_at = cursor
-        .get("start_at")
-        .and_then(serde_json::Value::as_i64)
-        .unwrap_or(0);
-    let total = cursor
-        .get("total")
-        .and_then(serde_json::Value::as_i64)
-        .unwrap_or(0);
     let projects = cursor
         .get("projects")
         .and_then(|v| v.as_array())
@@ -589,17 +580,17 @@ fn build_progress_json(
         })
         .unwrap_or_default();
 
-    let status_message = if total > 0 {
-        format!("Fetching Jira issues from {projects} ({start_at}/{total})")
+    let scope = if projects.is_empty() {
+        "all projects".to_string()
     } else {
-        format!("Searching for Jira issues in {projects}")
+        projects
     };
+
+    let status_message = format!("Fetching Jira issues from {scope} ({tickets_fetched} so far)");
 
     let mut progress = serde_json::json!({
         "phase": "jql_search",
         "tickets_fetched": tickets_fetched,
-        "start_at": start_at,
-        "total": total,
         "status_message": status_message,
     });
 

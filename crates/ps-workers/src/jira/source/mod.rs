@@ -22,10 +22,8 @@ pub(crate) struct Cursor {
     pub(crate) watermark: Option<String>,
     /// Configured project keys.
     pub(crate) projects: Vec<String>,
-    /// Current `startAt` offset for JQL pagination.
-    pub(crate) start_at: i64,
-    /// Total issues reported by the Jira search endpoint.
-    pub(crate) total: Option<i64>,
+    /// Cursor token for Jira's cursor-based pagination.
+    pub(crate) next_page_token: Option<String>,
     /// Track the latest `updated` timestamp seen across all items.
     pub(crate) max_updated_at: Option<String>,
     /// Base URL for constructing issue URLs.
@@ -78,8 +76,7 @@ impl Source for JiraSource {
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
             projects: vec![],
-            start_at: 0,
-            total: None,
+            next_page_token: None,
             max_updated_at: plan.watermark.clone(),
             base_url: String::new(),
             story_points_field: None,

@@ -6,7 +6,7 @@
 
 use base64::Engine;
 use ps_core::models::RateLimitInfo;
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::AUTHORIZATION;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::debug;
@@ -19,13 +19,25 @@ pub struct JiraClient {
 }
 
 /// A page of search results from the Jira JQL search endpoint.
+///
+/// Jira Cloud's `/rest/api/3/search/jql` uses cursor-based pagination
+/// with `nextPageToken` instead of the legacy `startAt`/`total` pattern.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
+    #[serde(default)]
     pub start_at: i64,
+    #[serde(default)]
     pub max_results: i64,
+    #[serde(default)]
     pub total: i64,
     pub issues: Vec<JiraIssue>,
+    /// Cursor for the next page. `None` or absent means last page.
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+    /// Whether this is the last page of results.
+    #[serde(default)]
+    pub is_last: Option<bool>,
 }
 
 /// A single Jira issue from the search or issue detail endpoint.
@@ -146,47 +158,46 @@ impl JiraClient {
         }
     }
 
-    /// Run a JQL search query with pagination.
+    /// Run a JQL search query with cursor-based pagination.
     ///
-    /// `fields` specifies which fields to include. Use `"*all"` for full
-    /// detail or a comma-separated list for lightweight radar queries.
+    /// Uses the Jira Cloud `/rest/api/3/search/jql` GET endpoint.
+    /// `fields` specifies which fields to include (comma-separated).
+    /// `next_page_token` is the cursor from a previous response for pagination.
     pub async fn search(
         &self,
         jql: &str,
-        start_at: i64,
         max_results: i64,
         fields: &str,
         expand: &str,
+        next_page_token: Option<&str>,
     ) -> Result<(SearchResponse, Option<RateLimitInfo>), ps_core::Error> {
-        let url = format!("{}/rest/api/3/search", self.base_url);
+        let url = format!("{}/rest/api/3/search/jql", self.base_url);
 
-        let mut body = serde_json::json!({
-            "jql": jql,
-            "startAt": start_at,
-            "maxResults": max_results,
-            "fields": fields.split(',').map(str::trim).collect::<Vec<_>>(),
-        });
+        let mut query_params = vec![
+            ("jql".to_string(), jql.to_string()),
+            ("maxResults".to_string(), max_results.to_string()),
+            ("fields".to_string(), fields.to_string()),
+        ];
 
-        if !expand.is_empty()
-            && let Some(obj) = body.as_object_mut()
-        {
-            obj.insert(
-                "expand".into(),
-                serde_json::json!(expand.split(',').map(str::trim).collect::<Vec<_>>()),
-            );
+        if !expand.is_empty() {
+            query_params.push(("expand".to_string(), expand.to_string()));
         }
 
-        debug!(jql, start_at, max_results, "jira search request");
+        if let Some(token) = next_page_token {
+            query_params.push(("nextPageToken".to_string(), token.to_string()));
+        }
+
+        debug!(jql, max_results, "jira search request");
 
         let resp = self
             .http
-            .post(&url)
+            .get(&url)
             .header(AUTHORIZATION, &self.auth_header)
-            .header(CONTENT_TYPE, "application/json")
-            .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
+            .query(&query_params)
             .send()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("jira request failed: {e}")))?;
+            .map_err(|e| ps_core::Error::Internal(format!("jira search request failed: {e}")))?;
 
         let rate_limit = extract_rate_limit(&resp);
 
@@ -235,9 +246,10 @@ impl JiraClient {
             .http
             .get(&url)
             .header(AUTHORIZATION, &self.auth_header)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("jira request failed: {e}")))?;
+            .map_err(|e| ps_core::Error::Internal(format!("jira issue request failed: {e}")))?;
 
         if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = resp
