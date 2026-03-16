@@ -191,6 +191,23 @@ impl OrgRepo {
             .execute(&self.pool)
             .await
             .map_err(Error::from)?;
+
+            // Backfill person_id on existing Jira contributions whose assignee
+            // now has a known identity mapping.
+            sqlx::query!(
+                r#"
+                UPDATE activity.contributions c
+                SET person_id = pi.person_id
+                FROM org.platform_identities pi
+                WHERE c.platform = 'jira'
+                  AND c.person_id IS NULL
+                  AND pi.platform = 'jira'
+                  AND pi.platform_user_id = c.metadata->>'assignee_account_id'
+                "#,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
         }
 
         Ok((mapped_count, unmatched_count, warnings))
