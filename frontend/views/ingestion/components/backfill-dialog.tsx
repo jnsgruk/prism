@@ -20,10 +20,12 @@ export const BackfillDialog = ({
   sourceName,
   open,
   onOpenChange,
+  onAction,
 }: {
   sourceName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAction?: () => void;
 }): React.ReactElement => {
   const backfill = useTriggerBackfill();
   const [sinceDate, setSinceDate] = useState("");
@@ -39,6 +41,7 @@ export const BackfillDialog = ({
           toast.success(`Backfill triggered for ${sourceName} since ${sinceDate}`);
           onOpenChange(false);
           setSinceDate("");
+          onAction?.();
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : "Failed to trigger backfill");

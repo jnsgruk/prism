@@ -356,7 +356,12 @@ export const SourceStatusRow = ({
         </div>
       </div>
 
-      <BackfillDialog sourceName={source.name} open={showBackfill} onOpenChange={setShowBackfill} />
+      <BackfillDialog
+        sourceName={source.name}
+        open={showBackfill}
+        onOpenChange={setShowBackfill}
+        onAction={onAction}
+      />
     </>
   );
 };

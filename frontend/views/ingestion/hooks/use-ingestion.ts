@@ -56,9 +56,9 @@ export const useTriggerRun = (): UseMutationResult<TriggerRunResponse, Error, st
 
   return useMutation({
     mutationFn: (sourceName: string) => handlersClient.triggerRun({ sourceName }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
+      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
@@ -73,9 +73,9 @@ export const useTriggerBackfill = (): UseMutationResult<
   return useMutation({
     mutationFn: (req: { sourceName: string; sinceDate: string }) =>
       handlersClient.triggerBackfill(req),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
+      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
@@ -85,9 +85,9 @@ export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, stri
 
   return useMutation({
     mutationFn: (sourceName: string) => handlersClient.cancelRun({ sourceName }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
+      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
     },
   });
 };
