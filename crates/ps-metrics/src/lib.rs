@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+use futures::stream::{self, TryStreamExt};
 use ps_core::models::{ContributionState, ContributionType, PeriodType};
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionMetricRow, SnapshotInput};
@@ -82,9 +83,11 @@ pub async fn compute_all_snapshots(
 ) -> Result<i32, ps_core::Error> {
     let teams = repos.org.list_teams(None, None).await?;
 
-    for team in &teams {
-        compute_team_snapshot(repos, team.id, period_start, period_end, period_type).await?;
-    }
+    stream::iter(teams.iter().map(Ok))
+        .try_for_each_concurrent(4, |team| async move {
+            compute_team_snapshot(repos, team.id, period_start, period_end, period_type).await
+        })
+        .await?;
 
     #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
     let computed = teams.len() as i32;

@@ -144,42 +144,61 @@ impl HandlersServiceImpl {
     /// invocations are no longer running. Mutates the slice in-place so
     /// callers see corrected `has_active_run` values.
     async fn reconcile_stale_runs(&self, sources: &mut [SourceStatusRow]) {
-        for source in sources.iter_mut() {
-            if !source.has_active_run {
+        // Collect (index, invocation_id) pairs for sources that need checking
+        let checks: Vec<(usize, String)> = sources
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| {
+                if !s.has_active_run {
+                    return None;
+                }
+                match &s.current_invocation_id {
+                    Some(id) if !id.is_empty() => Some((i, id.clone())),
+                    _ => None,
+                }
+            })
+            .collect();
+
+        // Check all invocations in parallel (read-only HTTP GETs)
+        let alive_results: Vec<(usize, bool)> = futures::future::join_all(
+            checks
+                .iter()
+                .map(|(i, id)| async move { (*i, self.is_invocation_alive(id).await) }),
+        )
+        .await;
+
+        // Process stale results sequentially (writes to DB + in-memory mutation)
+        for (idx, alive) in alive_results {
+            if alive {
                 continue;
             }
 
-            let invocation_id = match &source.current_invocation_id {
-                Some(id) if !id.is_empty() => id.clone(),
-                _ => continue, // No invocation ID to check
+            let Some(source) = sources.get_mut(idx) else {
+                continue;
             };
+            warn!(
+                source = %source.name,
+                invocation_id = source.current_invocation_id.as_deref().unwrap_or(""),
+                "reconciling stale run — Restate invocation no longer active",
+            );
 
-            if !self.is_invocation_alive(&invocation_id).await {
-                warn!(
-                    source = %source.name,
-                    %invocation_id,
-                    "reconciling stale run — Restate invocation no longer active",
-                );
-
-                if let Err(e) = self
-                    .repos
-                    .activity
-                    .cancel_active_runs_with_reason(
-                        &source.name,
-                        "Cancelled — invocation no longer active in Restate",
-                    )
-                    .await
-                {
-                    warn!(source = %source.name, error = %e, "failed to reconcile stale run");
-                    continue;
-                }
-
-                // Update in-memory state so this request returns correct data
-                source.has_active_run = false;
-                source.active_run_items = None;
-                source.active_run_started_at = None;
-                source.current_invocation_id = None;
+            if let Err(e) = self
+                .repos
+                .activity
+                .cancel_active_runs_with_reason(
+                    &source.name,
+                    "Cancelled — invocation no longer active in Restate",
+                )
+                .await
+            {
+                warn!(source = %source.name, error = %e, "failed to reconcile stale run");
+                continue;
             }
+
+            source.has_active_run = false;
+            source.active_run_items = None;
+            source.active_run_started_at = None;
+            source.current_invocation_id = None;
         }
     }
 
@@ -496,10 +515,13 @@ impl HandlersService for HandlersServiceImpl {
             }
         }
 
-        // Cancel all discovered invocations
-        for id in &ids_to_cancel {
-            self.cancel_restate_invocation(&req.source_name, id).await;
-        }
+        // Cancel all discovered invocations in parallel
+        futures::future::join_all(
+            ids_to_cancel
+                .iter()
+                .map(|id| self.cancel_restate_invocation(&req.source_name, id)),
+        )
+        .await;
 
         // Mark active runs as cancelled in the database
         self.repos

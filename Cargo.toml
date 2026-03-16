@@ -109,6 +109,9 @@ async-trait = "0.1"
 # Restate durable execution SDK
 restate-sdk = "0.9"
 
+# Async combinators
+futures = "0.3"
+
 # Memory safety
 zeroize = "1"
 

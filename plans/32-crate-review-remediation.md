@@ -820,8 +820,8 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-1.9: Backup file permissions
 - [x] WS-1.10: URL encoding in REST client
 - [x] WS-1.11: GraphQL username sanitization
-- [ ] WS-1.12: Zeroize secret key material
-- [ ] WS-1.13: Backup input validation
+- [x] WS-1.12: Zeroize secret key material
+- [x] WS-1.13: Backup input validation
 - [x] WS-1.14: Connection timeout for ps-migrate
 - [ ] WS-2.1: Bulk upsert contributions
 - [ ] WS-2.2: Batch org import
@@ -829,10 +829,10 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [ ] WS-2.4: Batch GitHub team member/repo sync
 - [ ] WS-2.5: Batch repository upserts
 - [ ] WS-2.6: Decrypt token once per run
-- [ ] WS-3.1: Role enum
+- [x] WS-3.1: Role enum
 - [ ] WS-3.2: Repo row types → enums
 - [x] WS-3.3: FromStr for domain enums
-- [ ] WS-3.4: Error::Database structured variant
+- [x] WS-3.4: Error::Database structured variant
 - [x] WS-3.5: SourceState enum in psctl
 - [ ] WS-3.6: Typed ContributionInput.metrics/metadata
 - [x] WS-3.7: BTreeMap for BackupManifest

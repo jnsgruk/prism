@@ -44,13 +44,13 @@ impl AdminService for AdminServiceImpl {
         let stream = async_stream::try_stream! {
             let mut buf = Vec::new();
 
-            // Gather table counts and write backup
-            let source_count = repos.config.count_sources().await.map_err(db_err)?;
-
-            let people_count = repos.org.count_people().await.map_err(db_err)?;
-            let team_count = repos.org.count_teams().await.map_err(db_err)?;
-
-            let user_count = repos.auth.count_users().await.map_err(db_err)?;
+            // Gather table counts in parallel
+            let (source_count, people_count, team_count, user_count) = tokio::try_join!(
+                async { repos.config.count_sources().await.map_err(db_err) },
+                async { repos.org.count_people().await.map_err(db_err) },
+                async { repos.org.count_teams().await.map_err(db_err) },
+                async { repos.auth.count_users().await.map_err(db_err) },
+            )?;
 
             let mut table_counts = BTreeMap::new();
             #[allow(clippy::cast_possible_truncation)]

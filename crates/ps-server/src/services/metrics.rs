@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures::stream::TryStreamExt;
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::ListContributionsParams;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
@@ -198,30 +199,33 @@ impl MetricsService for MetricsServiceImpl {
         let today = OffsetDateTime::now_utc().date();
         let is_open = period_end >= today;
 
-        // For open periods, always recompute all teams.
-        // For closed periods, only compute missing snapshots.
-        for &team_id in &team_ids {
-            let existing = if is_open {
-                None
-            } else {
-                self.repos
-                    .metrics
-                    .get_team_snapshot(team_id, period_start, period_type_val)
-                    .await
-                    .map_err(db_err)?
-            };
+        // Compute missing/stale snapshots in parallel (capped at 4 concurrent).
+        futures::stream::iter(team_ids.iter().map(Ok::<_, Status>))
+            .try_for_each_concurrent(4, |&team_id| async move {
+                let needs_compute = if is_open {
+                    true
+                } else {
+                    self.repos
+                        .metrics
+                        .get_team_snapshot(team_id, period_start, period_type_val)
+                        .await
+                        .map_err(db_err)?
+                        .is_none()
+                };
 
-            if existing.is_none() {
-                let _ = ps_metrics::compute_team_snapshot(
-                    &self.repos,
-                    team_id,
-                    period_start,
-                    period_end,
-                    period_type_val,
-                )
-                .await;
-            }
-        }
+                if needs_compute {
+                    let _ = ps_metrics::compute_team_snapshot(
+                        &self.repos,
+                        team_id,
+                        period_start,
+                        period_end,
+                        period_type_val,
+                    )
+                    .await;
+                }
+                Ok(())
+            })
+            .await?;
 
         let snapshots = self
             .repos
