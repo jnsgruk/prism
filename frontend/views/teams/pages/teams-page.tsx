@@ -11,21 +11,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, ArrowUpDown, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ChevronDown, ChevronRight, Users, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 
+import { Button } from "@/components/ui/button";
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
-import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
-import {
-  MetricDrilldownSheet,
-  type DrilldownMetric,
-  type DrilldownTarget,
-} from "@/views/teams/components/metric-drilldown-sheet";
+import { ContributionTable } from "@/views/teams/components/contribution-table";
+import { ReviewDistribution } from "@/views/teams/components/review-distribution";
+import { TeamMetricCards, type DrilldownMetric } from "@/views/teams/components/team-metric-cards";
 import {
   buildPeriod,
   defaultPeriodKey,
@@ -42,6 +40,25 @@ import {
 
 type SortField = "name" | "throughput" | "reviewP75" | "members";
 type SortDir = "asc" | "desc";
+
+interface DrilldownState {
+  metric: NonNullable<DrilldownMetric>;
+  teamId: string;
+  teamName: string;
+}
+
+const METRIC_CONFIG = {
+  throughput: {
+    title: "Merged PRs",
+    contributionType: "pull_request",
+    state: "merged",
+  },
+  review_turnaround: {
+    title: "Review Turnaround",
+    contributionType: "pr_review",
+    state: undefined,
+  },
+} as const;
 
 const TeamsPage = (): React.ReactElement => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,7 +83,7 @@ const TeamsPage = (): React.ReactElement => {
 
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [drilldown, setDrilldown] = useState<DrilldownTarget | null>(null);
+  const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
@@ -145,10 +162,11 @@ const TeamsPage = (): React.ReactElement => {
   const members = teamDetail?.members ?? [];
 
   const openDrilldown = useCallback((metric: DrilldownMetric, teamId: string, teamName: string) => {
-    setDrilldown({ metric, teamId, teamName });
+    if (!metric) return;
+    setDrilldown((prev) =>
+      prev?.metric === metric && prev.teamId === teamId ? null : { metric, teamId, teamName },
+    );
   }, []);
-
-  const closeDrilldown = useCallback(() => setDrilldown(null), []);
 
   return (
     <>
@@ -300,6 +318,33 @@ const TeamsPage = (): React.ReactElement => {
           </>
         )}
 
+        {/* Inline contribution drill-down */}
+        {drilldown && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
+                  {METRIC_CONFIG[drilldown.metric].title} — {drilldown.teamName}
+                </CardTitle>
+              </div>
+              <Button variant="ghost" size="icon-sm" onClick={() => setDrilldown(null)}>
+                <X className="size-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {drilldown.metric === "review_turnaround" && (
+                <ReviewDistribution teamId={drilldown.teamId} period={period} />
+              )}
+              <ContributionTable
+                teamId={drilldown.teamId}
+                period={period}
+                defaultContributionType={METRIC_CONFIG[drilldown.metric].contributionType}
+                defaultState={METRIC_CONFIG[drilldown.metric].state}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* No children message for leaf teams */}
         {selectedTeam && !hasChildren && !isLoading && sortedMetrics.length === 0 && (
           <Card>
@@ -360,9 +405,6 @@ const TeamsPage = (): React.ReactElement => {
           </Collapsible>
         )}
       </div>
-
-      {/* Metric drill-down sheet */}
-      <MetricDrilldownSheet target={drilldown} period={period} onClose={closeDrilldown} />
     </>
   );
 };

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GitPullRequest, Clock, Users, Activity } from "lucide-react";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-import type { DrilldownMetric } from "@/views/teams/components/metric-drilldown-sheet";
+export type DrilldownMetric = "throughput" | "review_turnaround" | null;
 
 const MetricCard = ({
   label,
