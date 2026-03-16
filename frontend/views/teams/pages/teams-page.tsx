@@ -6,14 +6,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import {
   AlertCircle,
-  ArrowUpDown,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -24,18 +22,19 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
-import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
-import { ReviewDistribution } from "@/views/teams/components/review-distribution";
-import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
+import { MetricsRow } from "@/views/teams/components/metrics-row";
 import {
   buildPeriod,
   defaultPeriodKey,
   PeriodSelector,
 } from "@/views/teams/components/period-selector";
+import { ReviewDistribution } from "@/views/teams/components/review-distribution";
+import { SortableHeader } from "@/views/teams/components/sortable-header";
+import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
+import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
+import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
 import { TeamSelector } from "@/views/teams/components/team-selector";
 import {
   findTeam,
@@ -44,9 +43,6 @@ import {
   useGetTeam,
   useGetTeamTree,
 } from "@/views/teams/hooks/use-teams";
-
-type SortField = "name" | "throughput" | "reviewP75" | "members";
-type SortDir = "asc" | "desc";
 
 const TeamsPage = (): React.ReactElement => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -437,68 +433,5 @@ const TeamsPage = (): React.ReactElement => {
     </>
   );
 };
-
-const SortableHeader = ({
-  field,
-  current,
-  dir,
-  onSort,
-  children,
-}: {
-  field: SortField;
-  current: SortField;
-  dir: SortDir;
-  onSort: (field: SortField) => void;
-  children: React.ReactNode;
-}): React.ReactElement => (
-  <TableHead>
-    <button className="flex items-center gap-1 text-left font-medium" onClick={() => onSort(field)}>
-      {children}
-      <ArrowUpDown
-        className={`size-3 ${current === field ? "text-foreground" : "text-muted-foreground/50"}`}
-      />
-      {current === field && <span className="text-xs">{dir === "asc" ? "\u2191" : "\u2193"}</span>}
-    </button>
-  </TableHead>
-);
-
-const MetricsRow = ({
-  metrics,
-  teamType,
-  teamTypeBadge,
-  hasChildren,
-  onSelect,
-}: {
-  metrics: TeamMetrics;
-  teamType: string | undefined;
-  teamTypeBadge: "default" | "secondary" | "outline" | "destructive" | undefined;
-  hasChildren: boolean;
-  onSelect: () => void;
-}): React.ReactElement => (
-  <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onSelect}>
-    <TableCell className="font-medium">
-      <span className="flex items-center gap-2">
-        {metrics.teamName}
-        {hasChildren && <ChevronRight className="size-3 text-muted-foreground" />}
-      </span>
-    </TableCell>
-    <TableCell>
-      {teamType && teamTypeBadge && (
-        <Badge variant={teamTypeBadge} className="text-[10px]">
-          {teamType}
-        </Badge>
-      )}
-    </TableCell>
-    <TableCell>
-      <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>{metrics.throughput}</Badge>
-    </TableCell>
-    <TableCell>
-      {metrics.reviewTurnaroundP75Hours > 0
-        ? `${metrics.reviewTurnaroundP75Hours.toFixed(1)}h`
-        : "\u2014"}
-    </TableCell>
-    <TableCell>{metrics.memberCount}</TableCell>
-  </TableRow>
-);
 
 export default TeamsPage;
