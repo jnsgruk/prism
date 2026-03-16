@@ -870,6 +870,6 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [x] WS-7.1: build_people HashMap
 - [ ] WS-7.2: Stream backup in psctl
 - [x] WS-7.3: Build headers once per client
-- [ ] WS-7.4: HashSet lookup without allocation
-- [ ] WS-7.5: Lighter query for team IDs
+- [x] WS-7.4: HashSet lookup without allocation
+- [x] WS-7.5: Lighter query for team IDs
 - [ ] WS-7.6: compare_team_snapshots CTE optimization
