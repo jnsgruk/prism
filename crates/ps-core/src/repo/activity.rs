@@ -107,6 +107,100 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Bulk upsert multiple contributions in a single query using UNNEST arrays.
+    pub async fn bulk_upsert_contributions(
+        &self,
+        ids: &[Uuid],
+        person_ids: &[Option<Uuid>],
+        items: &[&ContributionInput],
+    ) -> Result<(), Error> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        let platforms: Vec<String> = items.iter().map(|i| i.platform.to_string()).collect();
+        let ctypes: Vec<String> = items
+            .iter()
+            .map(|i| i.contribution_type.to_string())
+            .collect();
+        let platform_ids: Vec<&str> = items.iter().map(|i| i.platform_id.as_str()).collect();
+        let titles: Vec<Option<&str>> = items.iter().map(|i| i.title.as_deref()).collect();
+        let urls: Vec<Option<&str>> = items.iter().map(|i| i.url.as_deref()).collect();
+        let states: Vec<Option<String>> = items
+            .iter()
+            .map(|i| i.state.map(|s| s.to_string()))
+            .collect();
+        let created_ats: Vec<time::OffsetDateTime> = items.iter().map(|i| i.created_at).collect();
+        let updated_ats: Vec<Option<time::OffsetDateTime>> =
+            items.iter().map(|i| i.updated_at).collect();
+        let closed_ats: Vec<Option<time::OffsetDateTime>> =
+            items.iter().map(|i| i.closed_at).collect();
+        let metrics_vals: Vec<&serde_json::Value> = items.iter().map(|i| &i.metrics).collect();
+        let metadata_vals: Vec<&serde_json::Value> = items.iter().map(|i| &i.metadata).collect();
+        let contents: Vec<Option<&str>> = items.iter().map(|i| i.content.as_deref()).collect();
+        let state_histories: Vec<Option<&serde_json::Value>> =
+            items.iter().map(|i| i.state_history.as_ref()).collect();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO activity.contributions (
+                id, person_id, platform, contribution_type, platform_id,
+                title, url, state, created_at, updated_at, closed_at,
+                metrics, metadata, content, state_history, ingested_at
+            )
+            SELECT
+                unnest($1::uuid[]),
+                unnest($2::uuid[]),
+                unnest($3::text[]),
+                unnest($4::text[]),
+                unnest($5::text[]),
+                unnest($6::text[]),
+                unnest($7::text[]),
+                unnest($8::text[]),
+                unnest($9::timestamptz[]),
+                unnest($10::timestamptz[]),
+                unnest($11::timestamptz[]),
+                unnest($12::jsonb[]),
+                unnest($13::jsonb[]),
+                unnest($14::text[]),
+                unnest($15::jsonb[]),
+                now()
+            ON CONFLICT (platform, platform_id)
+            DO UPDATE SET
+                person_id = COALESCE(EXCLUDED.person_id, activity.contributions.person_id),
+                title = EXCLUDED.title,
+                url = EXCLUDED.url,
+                state = EXCLUDED.state,
+                updated_at = EXCLUDED.updated_at,
+                closed_at = EXCLUDED.closed_at,
+                metrics = EXCLUDED.metrics,
+                metadata = EXCLUDED.metadata,
+                content = EXCLUDED.content,
+                state_history = EXCLUDED.state_history,
+                ingested_at = now()
+            "#,
+            ids,
+            person_ids as &[Option<Uuid>],
+            &platforms,
+            &ctypes,
+            &platform_ids as &[&str],
+            &titles as &[Option<&str>],
+            &urls as &[Option<&str>],
+            &states as &[Option<String>],
+            &created_ats,
+            &updated_ats as &[Option<time::OffsetDateTime>],
+            &closed_ats as &[Option<time::OffsetDateTime>],
+            &metrics_vals as &[&serde_json::Value],
+            &metadata_vals as &[&serde_json::Value],
+            &contents as &[Option<&str>],
+            &state_histories as &[Option<&serde_json::Value>],
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
     /// Read the current watermark value for a source.
     pub async fn get_watermark(&self, source_name: &str) -> Result<Option<String>, Error> {
         sqlx::query_scalar!(

@@ -25,21 +25,28 @@ pub(super) async fn store_batch_impl(
         .batch_resolve_person_ids(Platform::Github, &usernames)
         .await?;
 
-    let mut stored = 0usize;
+    // Filter to items with resolved identities, collect for bulk upsert.
+    let mut ids = Vec::with_capacity(items.len());
+    let mut person_ids = Vec::with_capacity(items.len());
+    let mut resolved_items: Vec<&ContributionInput> = Vec::with_capacity(items.len());
     let mut skipped = 0usize;
+
     for item in items {
         let Some(person_id) = person_map.get(&item.platform_username).copied() else {
             skipped += 1;
             continue;
         };
-        let id = Uuid::now_v7();
+        ids.push(Uuid::now_v7());
+        person_ids.push(Some(person_id));
+        resolved_items.push(item);
+    }
 
+    let stored = resolved_items.len();
+    if stored > 0 {
         ctx.repos
             .activity
-            .upsert_contribution(id, Some(person_id), item)
+            .bulk_upsert_contributions(&ids, &person_ids, &resolved_items)
             .await?;
-
-        stored += 1;
     }
 
     if skipped > 0 {
