@@ -760,8 +760,14 @@ fn build_rest_client(ctx: &IngestionContext, token: &str) -> super::client::GitH
     super::client::GitHubClient::new(ctx.http_client.clone(), base_url, token)
 }
 
-/// Decrypt the GitHub API token from the source's encrypted secrets.
+/// Get the API token, using the pre-decrypted value from `IngestionContext`
+/// when available, falling back to DB lookup + decryption otherwise.
 async fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
+    // Use pre-decrypted token if available (set once per run in the handler)
+    if let Some(ref token) = ctx.token {
+        return Ok(token.clone());
+    }
+
     let encrypted = ctx
         .repos
         .config

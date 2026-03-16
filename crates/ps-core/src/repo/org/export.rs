@@ -36,6 +36,52 @@ impl OrgRepo {
         Ok(())
     }
 
+    /// Batch upsert multiple repository records using UNNEST arrays.
+    pub async fn bulk_upsert_repositories(
+        &self,
+        ids: &[Uuid],
+        github_orgs: &[&str],
+        github_repos: &[&str],
+        default_branches: &[Option<&str>],
+        primary_languages: &[Option<&str>],
+    ) -> Result<(), Error> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        // Convert Option<&str> slices to Option<String> vecs for sqlx binding
+        let branches: Vec<Option<String>> = default_branches
+            .iter()
+            .map(|b| b.map(String::from))
+            .collect();
+        let languages: Vec<Option<String>> = primary_languages
+            .iter()
+            .map(|l| l.map(String::from))
+            .collect();
+        let orgs: Vec<String> = github_orgs.iter().map(|s| (*s).to_string()).collect();
+        let repos: Vec<String> = github_repos.iter().map(|s| (*s).to_string()).collect();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO org.repositories (id, github_org, github_repo, default_branch, primary_language)
+            SELECT * FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[], $5::text[])
+            ON CONFLICT (github_org, github_repo)
+            DO UPDATE SET
+                default_branch = COALESCE(EXCLUDED.default_branch, org.repositories.default_branch),
+                primary_language = COALESCE(EXCLUDED.primary_language, org.repositories.primary_language)
+            "#,
+            ids,
+            &orgs,
+            &repos,
+            &branches as &[Option<String>],
+            &languages as &[Option<String>],
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
     /// Count people (for backup manifest).
     pub async fn count_people(&self) -> Result<i64, Error> {
         sqlx::query_scalar!("SELECT COUNT(*) FROM org.people")

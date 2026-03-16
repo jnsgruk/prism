@@ -12,6 +12,9 @@ pub struct IngestionContext {
     pub source_config: SourceConfig,
     pub secret_key: Zeroizing<[u8; 32]>,
     pub http_client: reqwest::Client,
+    /// Pre-decrypted API token. Populated once at the start of an ingestion
+    /// run to avoid repeated decryption per batch.
+    pub token: Option<String>,
 }
 
 /// A single contribution to upsert into `activity.contributions`.

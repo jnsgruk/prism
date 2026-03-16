@@ -63,7 +63,10 @@ impl GithubIngestionHandlerImpl {
         };
         let run_id = self.create_run(ctx, source_name, method).await?;
 
-        let ing_ctx = self.ingestion_context(&config);
+        // Decrypt token once per run, outside ctx.run() to avoid journaling
+        let token = self.decrypt_source_token(config.id).await?;
+
+        let ing_ctx = self.ingestion_context(&config, Some(token));
         let mut plan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
             Err(e) => {
@@ -91,12 +94,26 @@ impl GithubIngestionHandlerImpl {
         }
 
         let (total_items, final_cursor) = self
-            .fetch_store_loop(ctx, run_id, source_name, &config, source.as_ref(), &plan)
+            .fetch_store_loop(
+                ctx,
+                run_id,
+                source_name,
+                &config,
+                source.as_ref(),
+                &plan,
+                ing_ctx.token.as_deref(),
+            )
             .await?;
 
         if total_items > 0 {
-            self.advance_watermark(ctx, &config, &final_cursor, total_items)
-                .await?;
+            self.advance_watermark(
+                ctx,
+                &config,
+                &final_cursor,
+                total_items,
+                ing_ctx.token.as_deref(),
+            )
+            .await?;
         }
 
         self.complete_run(ctx, run_id, source_name, total_items)
@@ -113,13 +130,33 @@ impl GithubIngestionHandlerImpl {
         Ok(())
     }
 
-    fn ingestion_context(&self, config: &SourceConfig) -> IngestionContext {
+    fn ingestion_context(&self, config: &SourceConfig, token: Option<String>) -> IngestionContext {
         IngestionContext {
             repos: self.state.repos.clone(),
             source_config: config.clone(),
             secret_key: self.state.secret_key.clone(),
             http_client: self.state.http_client.clone(),
+            token,
         }
+    }
+
+    /// Decrypt the API token for a source. Called once per run, outside any
+    /// Restate `ctx.run()` closure to avoid journaling the plaintext.
+    async fn decrypt_source_token(&self, source_id: uuid::Uuid) -> Result<String, TerminalError> {
+        let encrypted = self
+            .state
+            .repos
+            .config
+            .get_encrypted_secret(source_id, "api_token")
+            .await
+            .map_err(|e| TerminalError::new(format!("db error: {e}")))?
+            .ok_or_else(|| TerminalError::new("source has no api_token configured"))?;
+
+        let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &encrypted)
+            .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
+
+        String::from_utf8(decrypted)
+            .map_err(|e| TerminalError::new(format!("invalid token encoding: {e}")))
     }
 
     async fn load_config(
@@ -176,6 +213,7 @@ impl GithubIngestionHandlerImpl {
     }
 
     /// Fetch and store batches in a loop, returning `(total_items, final_cursor)`.
+    #[allow(clippy::too_many_arguments)]
     async fn fetch_store_loop(
         &self,
         ctx: &ObjectContext<'_>,
@@ -184,6 +222,7 @@ impl GithubIngestionHandlerImpl {
         config: &SourceConfig,
         source: &dyn ps_core::ingestion::Source,
         plan: &IngestionPlan,
+        token: Option<&str>,
     ) -> Result<(i32, String), TerminalError> {
         let mut cursor = source.initial_cursor(plan);
         let mut total_items = 0i32;
@@ -192,7 +231,7 @@ impl GithubIngestionHandlerImpl {
         let mut identities_skipped = 0u32;
 
         loop {
-            let batch = self.fetch_batch(ctx, config, &cursor).await?;
+            let batch = self.fetch_batch(ctx, config, &cursor, token).await?;
 
             // Count PRs vs reviews in the batch.
             for item in &batch.items {
@@ -204,7 +243,7 @@ impl GithubIngestionHandlerImpl {
 
             if !batch.items.is_empty() {
                 let batch_size = batch.items.len();
-                let stored = self.store_batch(ctx, config, &batch.items).await?;
+                let stored = self.store_batch(ctx, config, &batch.items, token).await?;
                 total_items += stored;
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 {
@@ -269,11 +308,13 @@ impl GithubIngestionHandlerImpl {
         ctx: &ObjectContext<'_>,
         config: &SourceConfig,
         cursor: &str,
+        token: Option<&str>,
     ) -> Result<SerFetchResult, TerminalError> {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
         let sk = self.state.secret_key.clone();
+        let tok = token.map(String::from);
         let cur = cursor.to_string();
         let source_type = config.source_type;
 
@@ -291,6 +332,7 @@ impl GithubIngestionHandlerImpl {
                         source_config: cfg,
                         secret_key: sk,
                         http_client: http,
+                        token: tok,
                     };
                     let result = src
                         .fetch_batch(&ic, &cur)
@@ -314,11 +356,13 @@ impl GithubIngestionHandlerImpl {
         ctx: &ObjectContext<'_>,
         config: &SourceConfig,
         items: &[ContributionInput],
+        token: Option<&str>,
     ) -> Result<i32, TerminalError> {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
         let sk = self.state.secret_key.clone();
+        let tok = token.map(String::from);
         let items = items.to_vec();
         let source_type = config.source_type;
 
@@ -336,6 +380,7 @@ impl GithubIngestionHandlerImpl {
                         source_config: cfg,
                         secret_key: sk,
                         http_client: http,
+                        token: tok,
                     };
                     let count = src
                         .store_batch(&ic, &items)
@@ -356,11 +401,13 @@ impl GithubIngestionHandlerImpl {
         config: &SourceConfig,
         cursor: &str,
         total_items: i32,
+        token: Option<&str>,
     ) -> Result<(), TerminalError> {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
         let sk = self.state.secret_key.clone();
+        let tok = token.map(String::from);
         let wm = cursor.to_string();
         let source_type = config.source_type;
 
@@ -377,6 +424,7 @@ impl GithubIngestionHandlerImpl {
                     source_config: cfg,
                     secret_key: sk,
                     http_client: http,
+                    token: tok,
                 };
                 let watermark = extract_watermark(&wm).unwrap_or_default();
                 src.advance_watermark(&ic, &watermark, total_items)

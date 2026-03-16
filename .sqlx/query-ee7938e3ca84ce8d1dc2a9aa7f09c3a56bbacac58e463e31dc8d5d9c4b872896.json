@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.repositories (id, github_org, github_repo, default_branch, primary_language)\n            SELECT * FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[], $5::text[])\n            ON CONFLICT (github_org, github_repo)\n            DO UPDATE SET\n                default_branch = COALESCE(EXCLUDED.default_branch, org.repositories.default_branch),\n                primary_language = COALESCE(EXCLUDED.primary_language, org.repositories.primary_language)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ee7938e3ca84ce8d1dc2a9aa7f09c3a56bbacac58e463e31dc8d5d9c4b872896"
+}
