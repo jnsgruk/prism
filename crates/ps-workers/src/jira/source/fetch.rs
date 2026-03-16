@@ -39,20 +39,30 @@ pub(super) async fn fetch_batch_impl(
         &token,
     );
 
-    // Build JQL query
-    let project_list = cur
-        .projects
-        .iter()
-        .map(|p| format!("\"{p}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let jql = if let Some(ref wm) = cur.watermark {
-        // Convert RFC 3339 to Jira's expected format: "yyyy-MM-dd HH:mm"
-        let jira_date = format_watermark_for_jql(wm);
-        format!("project IN ({project_list}) AND updated >= \"{jira_date}\" ORDER BY updated ASC")
+    // Build JQL query — project filter is optional
+    let project_filter = if cur.projects.is_empty() {
+        String::new()
     } else {
-        format!("project IN ({project_list}) ORDER BY updated ASC")
+        let project_list = cur
+            .projects
+            .iter()
+            .map(|p| format!("\"{p}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("project IN ({project_list})")
+    };
+
+    let jql = match (project_filter.is_empty(), &cur.watermark) {
+        (false, Some(wm)) => {
+            let jira_date = format_watermark_for_jql(wm);
+            format!("{project_filter} AND updated >= \"{jira_date}\" ORDER BY updated ASC")
+        }
+        (false, None) => format!("{project_filter} ORDER BY updated ASC"),
+        (true, Some(wm)) => {
+            let jira_date = format_watermark_for_jql(wm);
+            format!("updated >= \"{jira_date}\" ORDER BY updated ASC")
+        }
+        (true, None) => "ORDER BY updated ASC".into(),
     };
 
     let (response, rate_limit) = client

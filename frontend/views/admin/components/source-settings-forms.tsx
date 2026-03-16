@@ -268,11 +268,9 @@ const JiraSettingsForm = ({
 
       {/* Project keys */}
       <div className="space-y-2">
-        <Label>
-          Project Keys <span className="text-destructive">*</span>
-        </Label>
+        <Label>Project Keys</Label>
         <p className="text-xs text-muted-foreground">
-          Jira project keys to ingest issues from (e.g. PROJ, ENG).
+          Optional filter. Leave empty to ingest all projects.
         </p>
         <div className="flex gap-2">
           <Input

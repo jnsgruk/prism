@@ -11,12 +11,6 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_default();
 
-    if projects.is_empty() {
-        return Err(ps_core::Error::Validation(
-            "Jira source has no projects configured".into(),
-        ));
-    }
-
     // Load watermark. If none exists, default to 30 days ago.
     let watermark = ctx
         .repos
