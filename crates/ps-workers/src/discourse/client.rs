@@ -87,6 +87,25 @@ pub struct Post {
     pub created_at: String,
     pub updated_at: Option<String>,
     pub raw: Option<String>,
+    /// If this post is a reply, the post number it replies to.
+    #[serde(default)]
+    pub reply_to_post_number: Option<i32>,
+}
+
+// ---------------------------------------------------------------------------
+// /post_action_users.json response types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct PostActionUsersResponse {
+    pub post_action_users: Vec<PostActionUser>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PostActionUser {
+    pub id: i64,
+    pub username: String,
+    pub name: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +223,37 @@ impl DiscourseClient {
         resp.json()
             .await
             .map_err(|e| ps_core::Error::Internal(format!("discourse topic parse error: {e}")))
+    }
+
+    /// Fetch the users who liked a specific post.
+    ///
+    /// Uses `post_action_type_id=2` (like) on the post-actions endpoint.
+    pub async fn post_likers(&self, post_id: i64) -> Result<Vec<PostActionUser>, ps_core::Error> {
+        let url = format!("{}/post_action_users.json", self.base_url);
+
+        debug!(post_id, "discourse post_likers request");
+
+        let req = self
+            .http
+            .get(&url)
+            .query(&[
+                ("id", post_id.to_string()),
+                ("post_action_type_id", "2".to_string()),
+            ])
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse post_likers request failed: {e}"))
+        })?;
+
+        Self::handle_rate_limit(&resp)?;
+        Self::require_success(&resp)?;
+
+        let body: PostActionUsersResponse = resp.json().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse post_likers parse error: {e}"))
+        })?;
+
+        Ok(body.post_action_users)
     }
 
     /// Fetch all categories for mapping category IDs to names.

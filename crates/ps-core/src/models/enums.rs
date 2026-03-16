@@ -158,6 +158,7 @@ pub enum ContributionType {
     JiraTicket,
     DiscoursePost,
     DiscourseTopic,
+    DiscourseLike,
 }
 
 impl fmt::Display for ContributionType {
@@ -174,6 +175,7 @@ impl ContributionType {
             Self::JiraTicket => "jira_ticket",
             Self::DiscoursePost => "discourse_post",
             Self::DiscourseTopic => "discourse_topic",
+            Self::DiscourseLike => "discourse_like",
         }
     }
 }
@@ -187,6 +189,7 @@ impl FromStr for ContributionType {
             "jira_ticket" => Ok(Self::JiraTicket),
             "discourse_post" => Ok(Self::DiscoursePost),
             "discourse_topic" => Ok(Self::DiscourseTopic),
+            "discourse_like" => Ok(Self::DiscourseLike),
             _ => Err(format!("invalid ContributionType: {s}")),
         }
     }

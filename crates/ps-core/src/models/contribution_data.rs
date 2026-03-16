@@ -25,6 +25,7 @@ pub enum ContributionData {
     JiraTicket(JiraTicketData),
     DiscoursePost(DiscoursePostData),
     DiscourseTopic(DiscourseTopicData),
+    DiscourseLike(DiscourseLikeData),
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +126,12 @@ pub struct DiscoursePostData {
     /// Position in thread (1 = original post).
     #[serde(default)]
     pub post_number: i32,
+    /// The post number this post replies to, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reply_to_post_number: Option<i32>,
+    /// Whether this post is a reply to another post.
+    #[serde(default)]
+    pub is_reply: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +153,24 @@ pub struct DiscourseTopicData {
     /// Whether the topic has an accepted answer.
     #[serde(default)]
     pub solved: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Discourse — DiscourseLike
+// ---------------------------------------------------------------------------
+
+/// Typed metrics + metadata for a Discourse like contribution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct DiscourseLikeData {
+    /// The ID of the liked post.
+    pub post_id: i64,
+    /// The topic containing the liked post.
+    pub topic_id: i64,
+    /// Position of the liked post in its topic.
+    pub post_number: i32,
+    /// Username of the post author (the person who received the like).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_author: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -227,9 +252,49 @@ mod tests {
             reply_count: 5,
             likes: 12,
             post_number: 3,
+            reply_to_post_number: Some(1),
+            is_reply: true,
         });
         let json = data.to_json();
         assert_eq!(json["type"], "discourse_post");
+        assert_eq!(json["reply_to_post_number"], 1);
+        assert!(json["is_reply"].as_bool().unwrap());
+        let back = ContributionData::from_json(&json).unwrap();
+        assert_eq!(data, back);
+    }
+
+    #[test]
+    fn round_trip_discourse_post_backward_compat() {
+        // Old data without reply fields should deserialise with defaults.
+        let json = serde_json::json!({
+            "type": "discourse_post",
+            "topic_id": 999,
+            "reply_count": 2,
+            "likes": 5,
+            "post_number": 1,
+        });
+        let data = ContributionData::from_json(&json).unwrap();
+        match data {
+            ContributionData::DiscoursePost(ref d) => {
+                assert_eq!(d.reply_to_post_number, None);
+                assert!(!d.is_reply);
+            }
+            _ => panic!("expected DiscoursePost"),
+        }
+    }
+
+    #[test]
+    fn round_trip_discourse_like() {
+        let data = ContributionData::DiscourseLike(DiscourseLikeData {
+            post_id: 42,
+            topic_id: 10,
+            post_number: 3,
+            post_author: Some("alice".into()),
+        });
+        let json = data.to_json();
+        assert_eq!(json["type"], "discourse_like");
+        assert_eq!(json["post_id"], 42);
+        assert_eq!(json["post_author"], "alice");
         let back = ContributionData::from_json(&json).unwrap();
         assert_eq!(data, back);
     }

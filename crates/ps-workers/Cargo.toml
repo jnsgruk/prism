@@ -23,6 +23,7 @@ serde_json.workspace = true
 uuid.workspace = true
 time.workspace = true
 async-trait.workspace = true
+futures.workspace = true
 base64.workspace = true
 thiserror.workspace = true
 restate-sdk.workspace = true

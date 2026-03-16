@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
+use futures::stream::{self, StreamExt};
 use ps_core::ingestion::{ContributionInput, FetchResult, IngestionContext};
-use ps_core::models::{ContributionType, DiscoursePostData, DiscourseTopicData, Platform};
+use ps_core::models::{
+    ContributionType, DiscourseLikeData, DiscoursePostData, DiscourseTopicData, Platform,
+};
 use tracing::{debug, info, warn};
 
 use super::{Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, serialise_cursor};
-use crate::discourse::client::{Category, DiscourseClient, Post, TopicSummary};
+use crate::discourse::client::{Category, DiscourseClient, Post, PostActionUser, TopicSummary};
 
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
@@ -22,6 +25,11 @@ pub(super) async fn fetch_batch_impl(
         .get("base_url")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("https://discourse.example.com");
+
+    let fetch_likes = settings
+        .get("fetch_likes")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
 
     let client = DiscourseClient::new(ctx.http_client.clone(), base_url, &api_key, &api_username);
 
@@ -130,6 +138,13 @@ pub(super) async fn fetch_batch_impl(
             for post in &post_stream.posts {
                 items.push(build_post_input(post, topic, &cur));
             }
+
+            // Fetch likes for posts that have them (opt-in via source settings)
+            if fetch_likes {
+                let like_items =
+                    fetch_likes_for_posts(&client, &post_stream.posts, topic, &cur).await;
+                items.extend(like_items);
+            }
         }
     }
 
@@ -210,11 +225,14 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
         cur.base_url, topic.slug, topic.id, post.post_number
     );
 
+    let is_reply = post.reply_to_post_number.is_some();
     let metrics_data = DiscoursePostData {
         topic_id: post.topic_id,
         reply_count: post.reply_count,
         likes: post.like_count,
         post_number: post.post_number,
+        reply_to_post_number: post.reply_to_post_number,
+        is_reply,
     };
 
     let created_at = parse_discourse_datetime(&post.created_at)
@@ -244,6 +262,94 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
             "display_name": post.name,
         }),
         content: post.raw.clone(),
+        state_history: None,
+    }
+}
+
+/// Fetch likers for all posts with `like_count > 0` in a topic, with capped
+/// concurrency, and return the resulting `ContributionInput` items.
+async fn fetch_likes_for_posts(
+    client: &DiscourseClient,
+    posts: &[Post],
+    topic: &TopicSummary,
+    cur: &Cursor,
+) -> Vec<ContributionInput> {
+    let likeable_posts: Vec<Post> = posts.iter().filter(|p| p.like_count > 0).cloned().collect();
+
+    if likeable_posts.is_empty() {
+        return vec![];
+    }
+
+    let topic = topic.clone();
+    let cur = cur.clone();
+
+    stream::iter(likeable_posts)
+        .map(|post| {
+            let topic = &topic;
+            let cur = &cur;
+            async move {
+                match client.post_likers(post.id).await {
+                    Ok(likers) => likers
+                        .iter()
+                        .map(|liker| build_like_input(liker, &post, topic, cur))
+                        .collect::<Vec<_>>(),
+                    Err(e) => {
+                        warn!(post_id = post.id, "failed to fetch post likers: {e}");
+                        vec![]
+                    }
+                }
+            }
+        })
+        .buffer_unordered(5)
+        .flat_map(stream::iter)
+        .collect()
+        .await
+}
+
+/// Build a `ContributionInput` for a Discourse like.
+fn build_like_input(
+    liker: &PostActionUser,
+    post: &Post,
+    topic: &TopicSummary,
+    cur: &Cursor,
+) -> ContributionInput {
+    let platform = Platform::Discourse(cur.instance.clone());
+    let url = format!(
+        "{}/t/{}/{}/{}",
+        cur.base_url, topic.slug, topic.id, post.post_number
+    );
+
+    let metrics_data = DiscourseLikeData {
+        post_id: post.id,
+        topic_id: post.topic_id,
+        post_number: post.post_number,
+        post_author: Some(post.username.clone()),
+    };
+
+    let created_at = parse_discourse_datetime(&post.created_at)
+        .unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+
+    ContributionInput {
+        platform,
+        contribution_type: ContributionType::DiscourseLike,
+        platform_id: format!("like-{}-{}", post.id, liker.username),
+        platform_username: liker.username.clone(),
+        title: Some(topic.title.clone()),
+        url: Some(url),
+        state: None,
+        created_at,
+        updated_at: None,
+        closed_at: None,
+        metrics: serde_json::to_value(&metrics_data).unwrap_or_default(),
+        metadata: serde_json::json!({
+            "post_author": post.username,
+            "topic_id": post.topic_id,
+            "topic_title": topic.title,
+            "post_number": post.post_number,
+            "username": liker.username,
+            "display_name": liker.name,
+        }),
+        content: None,
         state_history: None,
     }
 }
