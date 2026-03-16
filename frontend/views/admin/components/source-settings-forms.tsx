@@ -211,9 +211,138 @@ const GitHubSettingsForm = ({
   );
 };
 
+const JiraSettingsForm = ({
+  settings,
+  onChange,
+}: {
+  settings: JsonObject;
+  onChange: (settings: JsonObject) => void;
+}): React.ReactElement => {
+  const baseUrl = typeof settings.base_url === "string" ? settings.base_url : "";
+  const projects = toStringArray(settings.projects);
+  const storyPointsField =
+    typeof settings.story_points_field === "string" ? settings.story_points_field : "";
+  const apiMode = typeof settings.api_mode === "string" ? settings.api_mode : "cloud";
+  const [projectInput, setProjectInput] = useState("");
+
+  const update = (patch: JsonObject): void => {
+    onChange({ ...settings, ...patch });
+  };
+
+  const addProject = (): void => {
+    const trimmed = projectInput.trim().toUpperCase();
+    if (trimmed && !projects.includes(trimmed)) {
+      update({ projects: [...projects, trimmed] });
+      setProjectInput("");
+    }
+  };
+
+  const removeProject = (project: string): void => {
+    update({ projects: projects.filter((p) => p !== project) });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Credentials hint */}
+      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+        For Jira Cloud, set the <code className="font-semibold">email</code> and{" "}
+        <code className="font-semibold">api_token</code> secrets. For Jira Server/Data Center, only
+        the <code className="font-semibold">api_token</code> (PAT) is needed.
+      </div>
+
+      {/* Base URL */}
+      <div className="space-y-2">
+        <Label htmlFor="jira-base-url">
+          Base URL <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="jira-base-url"
+          value={baseUrl}
+          onChange={(e) => update({ base_url: e.target.value })}
+          placeholder="https://your-org.atlassian.net"
+        />
+        <p className="text-xs text-muted-foreground">
+          The base URL of your Jira instance (Cloud or Server).
+        </p>
+      </div>
+
+      {/* Project keys */}
+      <div className="space-y-2">
+        <Label>
+          Project Keys <span className="text-destructive">*</span>
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Jira project keys to ingest issues from (e.g. PROJ, ENG).
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={projectInput}
+            onChange={(e) => setProjectInput(e.target.value)}
+            placeholder="e.g. PROJ"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addProject();
+              }
+            }}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addProject}>
+            Add
+          </Button>
+        </div>
+        {projects.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {projects.map((project) => (
+              <Badge key={project} variant="secondary" className="gap-1">
+                {project}
+                <button
+                  type="button"
+                  onClick={() => removeProject(project)}
+                  className="hover:text-destructive"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Story Points Field */}
+      <div className="space-y-2">
+        <Label htmlFor="story-points-field">Story Points Field</Label>
+        <Input
+          id="story-points-field"
+          value={storyPointsField}
+          onChange={(e) => update({ story_points_field: e.target.value || null })}
+          placeholder="e.g. customfield_10016"
+        />
+        <p className="text-xs text-muted-foreground">
+          Custom field ID for story points. Varies per instance.
+        </p>
+      </div>
+
+      {/* API Mode */}
+      <div className="space-y-2">
+        <Label>API Mode</Label>
+        <Select value={apiMode} onValueChange={(v) => v !== null && update({ api_mode: v })}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cloud">Cloud (API token + email)</SelectItem>
+            <SelectItem value="server">Server / Data Center (PAT)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+};
+
 export const settingsForms: Record<
   string,
   (props: { settings: JsonObject; onChange: (s: JsonObject) => void }) => React.ReactElement
 > = {
   github: GitHubSettingsForm,
+  jira: JiraSettingsForm,
 };

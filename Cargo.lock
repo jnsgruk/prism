@@ -2269,6 +2269,7 @@ name = "ps-server"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "base64",
  "futures",
  "http",
  "http-body",

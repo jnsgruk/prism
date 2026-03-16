@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use base64::Engine;
 use ps_core::crypto;
 use ps_core::repo::Repos;
 use ps_proto::prism::v1::config_service_server::ConfigService;
@@ -21,11 +22,16 @@ use super::common::{
 pub struct ConfigServiceImpl {
     repos: Repos,
     secret_key: Zeroizing<[u8; 32]>,
+    http_client: reqwest::Client,
 }
 
 impl ConfigServiceImpl {
     pub fn new(repos: Repos, secret_key: Zeroizing<[u8; 32]>) -> Self {
-        Self { repos, secret_key }
+        Self {
+            repos,
+            secret_key,
+            http_client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -335,9 +341,9 @@ impl ConfigService for ConfigServiceImpl {
         details.insert("source_type".into(), source.source_type.to_string());
         details.insert("secrets_configured".into(), secret_keys.len().to_string());
 
-        // For now, validate that required secrets exist based on source type
+        // Validate required secrets based on source type
         let required_secrets: &[&str] = match source.source_type {
-            ps_core::models::Platform::Github => &["api_token"],
+            ps_core::models::Platform::Github | ps_core::models::Platform::Jira => &["api_token"],
             _ => &[],
         };
 
@@ -355,14 +361,144 @@ impl ConfigService for ConfigServiceImpl {
             }));
         }
 
-        // TODO: actual connection testing per source type (HTTP calls to GitHub/Jira APIs)
-        // For now, return success if all required secrets are present
-        details.insert("status".into(), "secrets_validated".into());
+        // Test connection per source type
+        if source.source_type == ps_core::models::Platform::Jira {
+            self.test_jira_connection(source_id, &source, &mut details)
+                .await
+        } else {
+            // Default: return success if all required secrets are present
+            details.insert("status".into(), "secrets_validated".into());
+            Ok(Response::new(TestConnectionResponse {
+                success: true,
+                error_message: String::new(),
+                details,
+            }))
+        }
+    }
+}
 
-        Ok(Response::new(TestConnectionResponse {
-            success: true,
-            error_message: String::new(),
-            details,
-        }))
+impl ConfigServiceImpl {
+    /// Test connection to a Jira instance by calling the `/rest/api/3/myself` endpoint.
+    async fn test_jira_connection(
+        &self,
+        source_id: Uuid,
+        source: &ps_core::models::SourceConfig,
+        details: &mut HashMap<String, String>,
+    ) -> Result<Response<TestConnectionResponse>, Status> {
+        let base_url = source
+            .settings
+            .get("base_url")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .trim_end_matches('/');
+
+        if base_url.is_empty() {
+            return Ok(Response::new(TestConnectionResponse {
+                success: false,
+                error_message: "base_url is not configured".into(),
+                details: details.clone(),
+            }));
+        }
+
+        let api_mode = source
+            .settings
+            .get("api_mode")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("cloud");
+
+        // Decrypt API token
+        let token = match self
+            .repos
+            .config
+            .get_encrypted_secret(source_id, "api_token")
+            .await
+        {
+            Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
+                Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
+                Err(e) => {
+                    return Ok(Response::new(TestConnectionResponse {
+                        success: false,
+                        error_message: format!("failed to decrypt api_token: {e}"),
+                        details: details.clone(),
+                    }));
+                }
+            },
+            Ok(None) => {
+                return Ok(Response::new(TestConnectionResponse {
+                    success: false,
+                    error_message: "api_token secret not found".into(),
+                    details: details.clone(),
+                }));
+            }
+            Err(e) => {
+                return Ok(Response::new(TestConnectionResponse {
+                    success: false,
+                    error_message: format!("db error: {e}"),
+                    details: details.clone(),
+                }));
+            }
+        };
+
+        // For Cloud mode, also decrypt email for Basic auth
+        let auth_header = if api_mode == "server" {
+            format!("Bearer {token}")
+        } else {
+            let email = match self
+                .repos
+                .config
+                .get_encrypted_secret(source_id, "email")
+                .await
+            {
+                Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
+                    Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
+                    Err(_) => String::new(),
+                },
+                _ => String::new(),
+            };
+            let credentials =
+                base64::engine::general_purpose::STANDARD.encode(format!("{email}:{token}"));
+            format!("Basic {credentials}")
+        };
+
+        // Call Jira /rest/api/3/myself
+        let url = format!("{base_url}/rest/api/3/myself");
+        match self
+            .http_client
+            .get(&url)
+            .header("Authorization", &auth_header)
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                let status = resp.status();
+                if status.is_success() {
+                    let body: serde_json::Value = resp.json().await.unwrap_or_default();
+                    let display_name = body
+                        .get("displayName")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    details.insert("status".into(), "connected".into());
+                    details.insert("authenticated_as".into(), display_name.to_string());
+                    Ok(Response::new(TestConnectionResponse {
+                        success: true,
+                        error_message: String::new(),
+                        details: details.clone(),
+                    }))
+                } else {
+                    let body = resp.text().await.unwrap_or_default();
+                    details.insert("response_body".into(), body);
+                    Ok(Response::new(TestConnectionResponse {
+                        success: false,
+                        error_message: format!("Jira returned {status}"),
+                        details: details.clone(),
+                    }))
+                }
+            }
+            Err(e) => Ok(Response::new(TestConnectionResponse {
+                success: false,
+                error_message: format!("connection failed: {e}"),
+                details: details.clone(),
+            })),
+        }
     }
 }
