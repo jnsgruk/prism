@@ -3,6 +3,23 @@ use uuid::Uuid;
 
 use super::OrgRepo;
 
+/// Map a sqlx row with GitHub team fields into a `GitHubTeamRow` struct.
+macro_rules! github_team_row {
+    ($row:expr) => {
+        GitHubTeamRow {
+            id: $row.id,
+            source_id: $row.source_id,
+            github_org: $row.github_org,
+            github_team_id: $row.github_team_id,
+            slug: $row.slug,
+            name: $row.name,
+            description: $row.description,
+            member_count: $row.member_count,
+            repo_count: $row.repo_count,
+        }
+    };
+}
+
 /// A discovered GitHub team row.
 pub struct GitHubTeamRow {
     pub id: Uuid,
@@ -172,20 +189,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| GitHubTeamRow {
-                id: r.id,
-                source_id: r.source_id,
-                github_org: r.github_org,
-                github_team_id: r.github_team_id,
-                slug: r.slug,
-                name: r.name,
-                description: r.description,
-                member_count: r.member_count,
-                repo_count: r.repo_count,
-            })
-            .collect())
+        Ok(rows.into_iter().map(|r| github_team_row!(r)).collect())
     }
 
     /// Assign a GitHub team to a Prism team.
@@ -246,20 +250,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| GitHubTeamRow {
-                id: r.id,
-                source_id: r.source_id,
-                github_org: r.github_org,
-                github_team_id: r.github_team_id,
-                slug: r.slug,
-                name: r.name,
-                description: r.description,
-                member_count: r.member_count,
-                repo_count: r.repo_count,
-            })
-            .collect())
+        Ok(rows.into_iter().map(|r| github_team_row!(r)).collect())
     }
 
     /// Get the union of all repos across all mapped GitHub teams for scoped ingestion.

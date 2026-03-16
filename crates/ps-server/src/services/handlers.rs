@@ -17,6 +17,43 @@ use tracing::{info, warn};
 
 use super::common::{db_err, require_auth, to_timestamp};
 
+/// Single source of truth for all known handler/method combinations.
+///
+/// Each tuple is `(handler_name, &[methods], description, requires_key)`.
+const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
+    (
+        "GithubIngestionHandler",
+        &["run_ingestion", "backfill"],
+        "Fetches pull requests and reviews from GitHub repositories",
+        true,
+    ),
+    (
+        "GithubTeamSyncHandler",
+        &["sync_teams"],
+        "Discovers GitHub teams, members, and repos for configured orgs",
+        true,
+    ),
+    (
+        "MetricsComputeHandler",
+        &["compute_current_periods"],
+        "Recomputes metric snapshots for all teams across current week/month/quarter",
+        false,
+    ),
+];
+
+/// Build the list of `HandlerInfo` proto messages from the static definitions.
+fn known_handlers() -> Vec<HandlerInfo> {
+    HANDLER_DEFS
+        .iter()
+        .map(|(name, methods, description, requires_key)| HandlerInfo {
+            name: (*name).into(),
+            methods: methods.iter().map(|m| (*m).to_string()).collect(),
+            description: (*description).into(),
+            requires_key: *requires_key,
+        })
+        .collect()
+}
+
 /// Only allow safe identifiers in Restate SQL queries (no parameterised query support).
 static SAFE_IDENTIFIER: LazyLock<Regex> = LazyLock::new(|| {
     // SAFETY: This is a compile-time-valid regex pattern
@@ -514,31 +551,9 @@ impl HandlersService for HandlersServiceImpl {
     ) -> Result<Response<ListHandlersResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        let handlers = vec![
-            HandlerInfo {
-                name: "GithubIngestionHandler".into(),
-                methods: vec!["run_ingestion".into(), "backfill".into()],
-                description: "Fetches pull requests and reviews from GitHub repositories".into(),
-                requires_key: true,
-            },
-            HandlerInfo {
-                name: "GithubTeamSyncHandler".into(),
-                methods: vec!["sync_teams".into()],
-                description: "Discovers GitHub teams, members, and repos for configured orgs"
-                    .into(),
-                requires_key: true,
-            },
-            HandlerInfo {
-                name: "MetricsComputeHandler".into(),
-                methods: vec!["compute_current_periods".into()],
-                description:
-                    "Recomputes metric snapshots for all teams across current week/month/quarter"
-                        .into(),
-                requires_key: false,
-            },
-        ];
-
-        Ok(Response::new(ListHandlersResponse { handlers }))
+        Ok(Response::new(ListHandlersResponse {
+            handlers: known_handlers(),
+        }))
     }
 
     async fn trigger_handler(
@@ -554,25 +569,19 @@ impl HandlersService for HandlersServiceImpl {
         if req.method.is_empty() {
             return Err(Status::invalid_argument("method is required"));
         }
-        // Validate handler + method combination
-        let is_service = matches!(
-            (req.handler_name.as_str(), req.method.as_str()),
-            ("MetricsComputeHandler", "compute_current_periods")
-        );
-        let is_object = matches!(
-            (req.handler_name.as_str(), req.method.as_str()),
-            ("GithubIngestionHandler", "run_ingestion" | "backfill")
-                | ("GithubTeamSyncHandler", "sync_teams")
-        );
-        if !is_service && !is_object {
+        // Validate handler + method combination against single source of truth
+        let handler_def = HANDLER_DEFS.iter().find(|(name, methods, _, _)| {
+            *name == req.handler_name && methods.contains(&req.method.as_str())
+        });
+        let Some((_, _, _, requires_key)) = handler_def else {
             return Err(Status::invalid_argument(format!(
                 "unknown handler/method: {}/{}",
                 req.handler_name, req.method,
             )));
-        }
+        };
 
         // Object handlers require a key (source name); services do not
-        let url = if is_object {
+        let url = if *requires_key {
             if req.key.is_empty() {
                 return Err(Status::invalid_argument("key (source name) is required"));
             }

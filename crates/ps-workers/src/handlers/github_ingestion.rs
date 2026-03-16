@@ -1,6 +1,7 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext, IngestionPlan};
 use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
+use serde::Serialize;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -90,7 +91,7 @@ impl GithubIngestionHandlerImpl {
         }
 
         let (total_items, final_cursor) = self
-            .fetch_store_loop(ctx, run_id, source_name, &config, &plan)
+            .fetch_store_loop(ctx, run_id, source_name, &config, source.as_ref(), &plan)
             .await?;
 
         if total_items > 0 {
@@ -181,11 +182,9 @@ impl GithubIngestionHandlerImpl {
         run_id: Uuid,
         source_name: &str,
         config: &SourceConfig,
+        source: &dyn ps_core::ingestion::Source,
         plan: &IngestionPlan,
     ) -> Result<(i32, String), TerminalError> {
-        let source = registry::create_source(config.source_type)
-            .ok_or_else(|| TerminalError::new("source unavailable"))?;
-
         let mut cursor = source.initial_cursor(plan);
         let mut total_items = 0i32;
         let mut prs_fetched = 0u32;
@@ -278,7 +277,7 @@ impl GithubIngestionHandlerImpl {
         let cur = cursor.to_string();
         let source_type = config.source_type;
 
-        let fetch_result = ctx
+        Ok(ctx
             .run(|| {
                 let repos = repos.clone();
                 let http = http.clone();
@@ -298,22 +297,16 @@ impl GithubIngestionHandlerImpl {
                         .await
                         .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
 
-                    let serialised = serde_json::to_value(&SerFetchResult {
+                    Ok(Json::from(SerFetchResult {
                         items: result.items,
                         next_cursor: result.next_cursor,
                         rate_limit: result.rate_limit,
-                    })
-                    .map_err(|e| TerminalError::new(format!("serialise error: {e}")))?;
-
-                    Ok(Json::from(serialised))
+                    }))
                 }
             })
             .name("fetch_batch")
             .await?
-            .into_inner();
-
-        serde_json::from_value(fetch_result)
-            .map_err(|e| TerminalError::new(format!("deserialise error: {e}")))
+            .into_inner())
     }
 
     async fn store_batch(
@@ -489,6 +482,30 @@ fn extract_watermark(cursor_json: &str) -> Option<String> {
         .map(String::from)
 }
 
+/// Structured progress report for an ingestion run.
+#[derive(Serialize)]
+struct ProgressReport {
+    phase: String,
+    prs_fetched: u32,
+    reviews_fetched: u32,
+    identities_skipped: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repos_total: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repos_completed: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current_repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    search_users_total: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    search_users_completed: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rate_limit_remaining: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rate_limit_limit: Option<i32>,
+    status_message: String,
+}
+
 /// Build a structured progress JSON object from cursor state and counters.
 fn build_progress_json(
     cursor_json: &str,
@@ -511,14 +528,20 @@ fn build_progress_json(
         other => other,
     };
 
-    let mut map = serde_json::Map::new();
-    map.insert("phase".into(), serde_json::json!(phase_label));
-    map.insert("prs_fetched".into(), serde_json::json!(prs_fetched));
-    map.insert("reviews_fetched".into(), serde_json::json!(reviews_fetched));
-    map.insert(
-        "identities_skipped".into(),
-        serde_json::json!(identities_skipped),
-    );
+    let mut report = ProgressReport {
+        phase: phase_label.to_string(),
+        prs_fetched,
+        reviews_fetched,
+        identities_skipped,
+        repos_total: None,
+        repos_completed: None,
+        current_repo: None,
+        search_users_total: None,
+        search_users_completed: None,
+        rate_limit_remaining: None,
+        rate_limit_limit: None,
+        status_message: String::new(),
+    };
 
     // Add phase-specific fields.
     if phase == "TeamRepos" {
@@ -542,11 +565,9 @@ fn build_progress_json(
                 )
             });
 
-        map.insert("repos_total".into(), serde_json::json!(repos_total));
-        map.insert("repos_completed".into(), serde_json::json!(repo_index));
-        if let Some(repo) = current_repo {
-            map.insert("current_repo".into(), serde_json::json!(repo));
-        }
+        report.repos_total = Some(repos_total);
+        report.repos_completed = Some(repo_index);
+        report.current_repo = current_repo;
     } else if phase == "MemberSearch" {
         let search_users_total = cursor
             .get("search_users")
@@ -557,29 +578,30 @@ fn build_progress_json(
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
 
-        map.insert(
-            "search_users_total".into(),
-            serde_json::json!(search_users_total),
-        );
-        map.insert(
-            "search_users_completed".into(),
-            serde_json::json!(search_user_index),
-        );
+        report.search_users_total = Some(search_users_total);
+        report.search_users_completed = Some(search_user_index);
     }
 
     if let Some(rl) = rate_limit {
-        map.insert(
-            "rate_limit_remaining".into(),
-            serde_json::json!(rl.remaining),
-        );
-        map.insert("rate_limit_limit".into(), serde_json::json!(rl.limit));
+        report.rate_limit_remaining = Some(rl.remaining);
+        report.rate_limit_limit = Some(rl.limit);
     }
 
-    // Build a human-readable status message.
-    let message = build_status_message(&cursor, phase, &map, rate_limit);
-    map.insert("status_message".into(), serde_json::json!(message));
+    // Build a human-readable status message. We need to pass the intermediate
+    // map representation for `build_status_message` which reads named fields.
+    // Serialize to Value first, extract the map, build the message, then set it.
+    let mut value = serde_json::to_value(&report).unwrap_or(serde_json::Value::Null);
+    let message = build_status_message(
+        &cursor,
+        phase,
+        value.as_object().unwrap_or(&serde_json::Map::new()),
+        rate_limit,
+    );
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("status_message".into(), serde_json::json!(message));
+    }
 
-    serde_json::Value::Object(map)
+    value
 }
 
 /// Build a human-readable status message from the current state.

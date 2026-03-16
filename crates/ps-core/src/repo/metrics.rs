@@ -277,6 +277,20 @@ impl MetricsRepo {
     }
 }
 
+/// Parameters for listing team contributions with filtering and pagination.
+pub struct ListContributionsParams<'a> {
+    pub team_id: Uuid,
+    pub period_start: Date,
+    pub period_end: Date,
+    pub contribution_type: Option<&'a str>,
+    pub state: Option<&'a str>,
+    pub search: Option<&'a str>,
+    pub sort_field: Option<&'a str>,
+    pub sort_desc: bool,
+    pub page_size: i32,
+    pub offset: i32,
+}
+
 /// A detailed contribution row for drill-down display.
 pub struct ContributionDetailRow {
     pub id: Uuid,
@@ -299,21 +313,20 @@ impl MetricsRepo {
     ///
     /// Uses the same recursive team-tree CTE as `get_team_contributions` but returns
     /// full contribution details for drill-down display.
-    #[allow(clippy::too_many_arguments)]
     pub async fn list_team_contributions(
         &self,
-        team_id: Uuid,
-        period_start: Date,
-        period_end: Date,
-        contribution_type: Option<&str>,
-        state: Option<&str>,
-        search: Option<&str>,
-        sort_field: Option<&str>,
-        sort_desc: bool,
-        page_size: i32,
-        offset: i32,
+        params: &ListContributionsParams<'_>,
     ) -> Result<(Vec<ContributionDetailRow>, i64), Error> {
-        let escaped_search = search.map(super::escape_like);
+        let team_id = params.team_id;
+        let period_start = params.period_start;
+        let period_end = params.period_end;
+        let contribution_type = params.contribution_type;
+        let state = params.state;
+        let sort_field = params.sort_field;
+        let sort_desc = params.sort_desc;
+        let page_size = params.page_size;
+        let offset = params.offset;
+        let escaped_search = params.search.map(super::escape_like);
         let search = escaped_search.as_deref();
         let rows = sqlx::query!(
             r#"

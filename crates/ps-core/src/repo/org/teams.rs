@@ -4,6 +4,22 @@ use uuid::Uuid;
 
 use super::{OrgRepo, TeamWithCount};
 
+/// Map a sqlx row with team-with-count fields into a `TeamWithCount` struct.
+macro_rules! team_with_count {
+    ($row:expr) => {
+        TeamWithCount {
+            id: $row.id,
+            name: $row.name,
+            org_name: $row.org_name,
+            parent_team_id: $row.parent_team_id,
+            lead_id: $row.lead_id,
+            lead_name: $row.lead_name,
+            team_type: $row.team_type,
+            member_count: $row.member_count,
+        }
+    };
+}
+
 impl OrgRepo {
     /// List teams with active member counts, optionally filtered by parent and/or type.
     pub async fn list_teams(
@@ -35,19 +51,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|t| TeamWithCount {
-                id: t.id,
-                name: t.name,
-                org_name: t.org_name,
-                parent_team_id: t.parent_team_id,
-                lead_id: t.lead_id,
-                lead_name: t.lead_name,
-                team_type: t.team_type,
-                member_count: t.member_count,
-            })
-            .collect())
+        Ok(rows.into_iter().map(|t| team_with_count!(t)).collect())
     }
 
     /// Get a single team with its active member count.
@@ -72,16 +76,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(row.map(|t| TeamWithCount {
-            id: t.id,
-            name: t.name,
-            org_name: t.org_name,
-            parent_team_id: t.parent_team_id,
-            lead_id: t.lead_id,
-            lead_name: t.lead_name,
-            team_type: t.team_type,
-            member_count: t.member_count,
-        }))
+        Ok(row.map(|t| team_with_count!(t)))
     }
 
     /// Get all teams (flat list) for building a tree in memory.
@@ -105,19 +100,7 @@ impl OrgRepo {
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|t| TeamWithCount {
-                id: t.id,
-                name: t.name,
-                org_name: t.org_name,
-                parent_team_id: t.parent_team_id,
-                lead_id: t.lead_id,
-                lead_name: t.lead_name,
-                team_type: t.team_type,
-                member_count: t.member_count,
-            })
-            .collect())
+        Ok(rows.into_iter().map(|t| team_with_count!(t)).collect())
     }
 
     /// Create a new team.

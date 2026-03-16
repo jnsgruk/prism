@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use ps_core::repo::Repos;
+use ps_core::repo::metrics::ListContributionsParams;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
     CompareTeamsRequest, CompareTeamsResponse, Contribution, GetTeamMetricsRequest,
@@ -308,7 +309,7 @@ impl MetricsService for MetricsServiceImpl {
         let (rows, total_count) = self
             .repos
             .metrics
-            .list_team_contributions(
+            .list_team_contributions(&ListContributionsParams {
                 team_id,
                 period_start,
                 period_end,
@@ -319,7 +320,7 @@ impl MetricsService for MetricsServiceImpl {
                 sort_desc,
                 page_size,
                 offset,
-            )
+            })
             .await
             .map_err(db_err)?;
 
