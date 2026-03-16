@@ -3,13 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
@@ -17,73 +10,72 @@ import { useSetSecret } from "@ps/hooks/use-config";
 
 import { SECRET_KEYS_BY_TYPE } from "@/views/admin/lib/source-types";
 
+const SECRET_LABELS: Record<string, string> = {
+  api_token: "API Token",
+  email: "Email",
+  api_key: "API Key",
+  api_username: "API Username",
+  oauth_token: "OAuth Token",
+  service_account_key: "Service Account Key",
+};
+
+const secretLabel = (key: string): string => SECRET_LABELS[key] ?? key;
+
 /** Live secret form — sets secrets immediately via the API (requires existing source). */
 export const SecretForm = ({ source }: { source: SourceConfig }): React.ReactElement => {
   const setSecret = useSetSecret();
   const secretKeys = SECRET_KEYS_BY_TYPE[source.sourceType] ?? ["api_token"];
-  const [selectedKey, setSelectedKey] = useState(secretKeys[0] ?? "api_token");
-  const [secretValue, setSecretValue] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const handleSave = (): void => {
+  const handleSave = (key: string): void => {
+    const value = values[key] ?? "";
+    if (!value.trim()) return;
+    setSavingKey(key);
     setSecret.mutate(
-      { sourceId: source.id, secretKey: selectedKey, secretValue },
+      { sourceId: source.id, secretKey: key, secretValue: value },
       {
         onSuccess: () => {
-          setSecretValue("");
+          setValues((prev) => ({ ...prev, [key]: "" }));
+          setSavingKey(null);
         },
+        onSettled: () => setSavingKey(null),
       },
     );
   };
 
   return (
     <div className="space-y-3">
-      {secretKeys.length > 1 && (
-        <div className="space-y-2">
-          <Label>Secret key</Label>
-          <Select value={selectedKey} onValueChange={(v) => v !== null && setSelectedKey(v)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {secretKeys.map((k) => (
-                <SelectItem key={k} value={k}>
-                  {k}
-                  {source.secretStatus[k] ? " (set)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {secretKeys.map((key) => (
+        <div key={key} className="space-y-2">
+          <Label>
+            {secretLabel(key)}
+            {source.secretStatus[key] && (
+              <Badge variant="secondary" className="ml-2">
+                set
+              </Badge>
+            )}
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              type="password"
+              value={values[key] ?? ""}
+              onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.value }))}
+              placeholder={source.secretStatus[key] ? "Paste new value to update" : "Required"}
+              className="font-mono"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleSave(key)}
+              disabled={savingKey === key || !(values[key] ?? "").trim()}
+            >
+              {savingKey === key ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </div>
-      )}
-
-      <div className="space-y-2">
-        <Label>
-          {secretKeys.length <= 1 ? selectedKey : "Value"}
-          {source.secretStatus[selectedKey] && (
-            <Badge variant="secondary" className="ml-2">
-              set
-            </Badge>
-          )}
-        </Label>
-        <div className="flex gap-2">
-          <Input
-            type="password"
-            value={secretValue}
-            onChange={(e) => setSecretValue(e.target.value)}
-            placeholder="Paste new value to update"
-            className="font-mono"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={setSecret.isPending || !secretValue.trim()}
-          >
-            {setSecret.isPending ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </div>
+      ))}
 
       {setSecret.isError && (
         <Alert variant="destructive">
@@ -105,7 +97,6 @@ export const BufferedSecretForm = ({
   onSecretsChange: (secrets: Record<string, string>) => void;
 }): React.ReactElement => {
   const secretKeys = SECRET_KEYS_BY_TYPE[sourceType] ?? ["api_token"];
-  const [selectedKey, setSelectedKey] = useState(secretKeys[0] ?? "api_token");
 
   if (secretKeys.length === 0) {
     return (
@@ -113,50 +104,27 @@ export const BufferedSecretForm = ({
     );
   }
 
-  const currentValue = secrets[selectedKey] ?? "";
-
-  const updateSecret = (key: string, value: string): void => {
-    onSecretsChange({ ...secrets, [key]: value });
-  };
-
   return (
     <div className="space-y-3">
-      {secretKeys.length > 1 && (
-        <div className="space-y-2">
-          <Label>Secret key</Label>
-          <Select value={selectedKey} onValueChange={(v) => v !== null && setSelectedKey(v)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {secretKeys.map((k) => (
-                <SelectItem key={k} value={k}>
-                  {k}
-                  {secrets[k] ? " (filled)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {secretKeys.map((key) => (
+        <div key={key} className="space-y-2">
+          <Label>
+            {secretLabel(key)}
+            {secrets[key] && (
+              <Badge variant="secondary" className="ml-2">
+                filled
+              </Badge>
+            )}
+          </Label>
+          <Input
+            type="password"
+            value={secrets[key] ?? ""}
+            onChange={(e) => onSecretsChange({ ...secrets, [key]: e.target.value })}
+            placeholder={`Paste ${secretLabel(key).toLowerCase()}`}
+            className="font-mono"
+          />
         </div>
-      )}
-
-      <div className="space-y-2">
-        <Label>
-          {secretKeys.length <= 1 ? selectedKey : "Value"}
-          {currentValue && (
-            <Badge variant="secondary" className="ml-2">
-              filled
-            </Badge>
-          )}
-        </Label>
-        <Input
-          type="password"
-          value={currentValue}
-          onChange={(e) => updateSecret(selectedKey, e.target.value)}
-          placeholder="Paste secret value"
-          className="font-mono"
-        />
-      </div>
+      ))}
     </div>
   );
 };
