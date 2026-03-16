@@ -555,7 +555,6 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.completed_at IS NULL
-                  AND ir.handler_name = 'GithubIngestionHandler'
                 ORDER BY ir.started_at DESC
                 LIMIT 1
             ) ar ON true
@@ -564,7 +563,6 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.status = 'completed'
-                  AND ir.handler_name = 'GithubIngestionHandler'
                 ORDER BY ir.completed_at DESC
                 LIMIT 1
             ) lr ON true
