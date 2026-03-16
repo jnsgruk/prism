@@ -1,6 +1,7 @@
 use ps_workers::handlers::SharedState;
 use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
 use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
+use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
 use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
@@ -42,6 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let team_sync = GithubTeamSyncHandlerImpl {
         state: state.clone(),
     };
+    let jira_ingestion = JiraIngestionHandlerImpl {
+        state: state.clone(),
+    };
     let metrics_compute = MetricsComputeHandlerImpl {
         state: state.clone(),
     };
@@ -76,6 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Endpoint::builder()
                 .bind(ingestion.serve())
                 .bind(team_sync.serve())
+                .bind(jira_ingestion.serve())
                 .bind(metrics_compute.serve())
                 .build(),
         )

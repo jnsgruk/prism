@@ -1,5 +1,6 @@
 pub mod github_ingestion;
 pub mod github_team_sync;
+pub mod jira_ingestion;
 pub mod metrics_compute;
 
 use ps_core::models::SourceConfig;

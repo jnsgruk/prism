@@ -2,6 +2,7 @@ use ps_core::ingestion::Source;
 use ps_core::models::Platform;
 
 use crate::github::GitHubSource;
+use crate::jira::JiraSource;
 
 /// Create a source adapter for the given platform.
 ///
@@ -9,6 +10,7 @@ use crate::github::GitHubSource;
 pub fn create_source(platform: &Platform) -> Option<Box<dyn Source>> {
     match platform {
         Platform::Github => Some(Box::new(GitHubSource)),
+        Platform::Jira => Some(Box::new(JiraSource)),
         _ => None,
     }
 }

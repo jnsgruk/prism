@@ -22,6 +22,9 @@ pub enum Error {
     #[error("backup error: {0}")]
     Backup(String),
 
+    #[error("rate limited: retry after {retry_after_secs}s")]
+    RateLimit { retry_after_secs: u64 },
+
     #[error("{0}")]
     Internal(String),
 }

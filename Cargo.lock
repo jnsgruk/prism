@@ -2300,6 +2300,7 @@ name = "ps-workers"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64",
  "ps-core",
  "ps-metrics",
  "ps-proto",

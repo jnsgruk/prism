@@ -70,4 +70,42 @@ impl OrgRepo {
 
         Ok(map)
     }
+
+    /// Batch-resolve platform user IDs (e.g. Jira `accountId`) to person IDs.
+    ///
+    /// This resolves against `platform_user_id` instead of `platform_username`,
+    /// which is necessary for platforms like Jira where the identifier used in
+    /// API responses is an opaque account ID rather than a human-readable username.
+    pub async fn batch_resolve_by_user_id(
+        &self,
+        platform: &Platform,
+        user_ids: &[String],
+    ) -> Result<HashMap<String, Uuid>, Error> {
+        if user_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let platform_str = platform.to_string();
+        let rows = sqlx::query!(
+            r#"
+            SELECT platform_user_id, person_id
+            FROM org.platform_identities
+            WHERE platform = $1
+              AND platform_user_id = ANY($2)
+              AND platform_user_id IS NOT NULL
+            "#,
+            platform_str,
+            user_ids,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let map: HashMap<String, Uuid> = rows
+            .into_iter()
+            .filter_map(|r| r.platform_user_id.map(|uid| (uid, r.person_id)))
+            .collect();
+
+        Ok(map)
+    }
 }
