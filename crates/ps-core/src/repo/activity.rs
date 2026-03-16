@@ -201,6 +201,30 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Backfill `person_id` on Discourse contributions that have a username
+    /// stored in `metadata->>'username'` but no `person_id` yet.
+    ///
+    /// Returns the number of rows updated.
+    pub async fn backfill_discourse_person_ids(&self, platform: &str) -> Result<u64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE activity.contributions c
+            SET person_id = pi.person_id
+            FROM org.platform_identities pi
+            WHERE c.platform = $1
+              AND c.person_id IS NULL
+              AND pi.platform = $1
+              AND pi.platform_username = c.metadata->>'username'
+            "#,
+            platform,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(result.rows_affected())
+    }
+
     /// Read the current watermark value for a source.
     pub async fn get_watermark(&self, source_name: &str) -> Result<Option<String>, Error> {
         sqlx::query_scalar!(

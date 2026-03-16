@@ -240,6 +240,8 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
             "topic_id": post.topic_id,
             "topic_title": topic.title,
             "post_number": post.post_number,
+            "username": post.username,
+            "display_name": post.name,
         }),
         content: post.raw.clone(),
         state_history: None,

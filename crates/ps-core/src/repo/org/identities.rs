@@ -109,6 +109,98 @@ impl OrgRepo {
         Ok(map)
     }
 
+    /// Auto-create people and platform identities for usernames not yet in the
+    /// system.  Returns a complete `username → person_id` map covering both
+    /// pre-existing and newly-created identities.
+    ///
+    /// Used by sources (e.g. Discourse) where the API response is the
+    /// authoritative user list — every observed username should have an identity.
+    pub async fn batch_ensure_identities(
+        &self,
+        platform: &Platform,
+        users: &[(String, Option<String>)], // (username, display_name)
+    ) -> Result<HashMap<String, Uuid>, Error> {
+        if users.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let usernames: Vec<String> = users.iter().map(|(u, _)| u.clone()).collect();
+
+        // Resolve existing identities first.
+        let mut map = self.batch_resolve_person_ids(platform, &usernames).await?;
+
+        // Collect users that need to be created.
+        let new_users: Vec<&(String, Option<String>)> = users
+            .iter()
+            .filter(|(u, _)| !u.is_empty() && !map.contains_key(u))
+            .collect();
+
+        if new_users.is_empty() {
+            return Ok(map);
+        }
+
+        // Deduplicate by username (in case the batch has duplicates).
+        let mut seen = std::collections::HashSet::new();
+        let deduped: Vec<&&(String, Option<String>)> = new_users
+            .iter()
+            .filter(|(u, _)| seen.insert(u.clone()))
+            .collect();
+
+        let platform_str = platform.to_string();
+
+        // Batch-create people.
+        let person_ids: Vec<Uuid> = deduped.iter().map(|_| Uuid::now_v7()).collect();
+        let names: Vec<String> = deduped
+            .iter()
+            .map(|(username, display_name)| {
+                display_name
+                    .as_ref()
+                    .filter(|n| !n.is_empty())
+                    .cloned()
+                    .unwrap_or_else(|| username.clone())
+            })
+            .collect();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO org.people (id, name)
+            SELECT * FROM UNNEST($1::uuid[], $2::text[])
+            "#,
+            &person_ids,
+            &names,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        // Batch-create platform identities.
+        let identity_ids: Vec<Uuid> = deduped.iter().map(|_| Uuid::now_v7()).collect();
+        let platforms: Vec<String> = deduped.iter().map(|_| platform_str.clone()).collect();
+        let usernames_for_insert: Vec<String> = deduped.iter().map(|(u, _)| u.clone()).collect();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
+            SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[])
+            ON CONFLICT (platform, platform_username) DO NOTHING
+            "#,
+            &identity_ids,
+            &person_ids,
+            &platforms,
+            &usernames_for_insert,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        // Add newly created mappings to the result.
+        for ((username, _), &person_id) in deduped.iter().zip(&person_ids) {
+            map.insert(username.clone(), person_id);
+        }
+
+        Ok(map)
+    }
+
     /// Import Jira users by matching email addresses to existing people and
     /// creating platform identities with `platform_user_id` set to the Jira
     /// `accountId`.

@@ -16,25 +16,38 @@ pub(super) async fn store_batch_impl(
     let instance = extract_instance(&ctx.source_config.name);
     let platform = Platform::Discourse(instance);
 
-    // Collect unique usernames for batch identity resolution.
-    let usernames: Vec<String> = items
+    // Collect unique (username, display_name) pairs for identity resolution.
+    // Display names are extracted from post metadata where available.
+    let mut seen = std::collections::HashSet::new();
+    let users: Vec<(String, Option<String>)> = items
         .iter()
-        .filter(|i| !i.platform_username.is_empty())
-        .map(|i| i.platform_username.clone())
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
+        .filter(|i| !i.platform_username.is_empty() && seen.insert(i.platform_username.clone()))
+        .map(|i| {
+            let display_name = i
+                .metadata
+                .get("display_name")
+                .and_then(serde_json::Value::as_str)
+                .map(String::from);
+            (i.platform_username.clone(), display_name)
+        })
         .collect();
 
+    // Auto-create people + identities for new usernames.
     let person_map = ctx
         .repos
         .org
-        .batch_resolve_person_ids(&platform, &usernames)
+        .batch_ensure_identities(&platform, &users)
         .await?;
+
+    let new_identities = users.len()
+        - users
+            .iter()
+            .filter(|(u, _)| person_map.contains_key(u))
+            .count();
 
     let mut ids = Vec::with_capacity(items.len());
     let mut person_ids = Vec::with_capacity(items.len());
     let mut resolved_items: Vec<&ContributionInput> = Vec::with_capacity(items.len());
-    let mut unresolved_count = 0usize;
 
     for item in items {
         let person_id = if item.platform_username.is_empty() {
@@ -46,10 +59,6 @@ pub(super) async fn store_batch_impl(
         ids.push(Uuid::now_v7());
         person_ids.push(person_id);
         resolved_items.push(item);
-
-        if person_id.is_none() && !item.platform_username.is_empty() {
-            unresolved_count += 1;
-        }
     }
 
     let stored = resolved_items.len();
@@ -60,12 +69,26 @@ pub(super) async fn store_batch_impl(
             .await?;
     }
 
-    if unresolved_count > 0 {
+    // Backfill person_id on older Discourse contributions whose username
+    // now has a known identity mapping (via metadata->>'username').
+    let platform_str = platform.to_string();
+    let backfilled = ctx
+        .repos
+        .activity
+        .backfill_discourse_person_ids(&platform_str)
+        .await?;
+
+    if backfilled > 0 {
         info!(
             source = ctx.source_config.name,
-            stored,
-            unresolved_identities = unresolved_count,
-            "stored batch — some Discourse identities unresolved"
+            backfilled, "backfilled person_id on older Discourse contributions"
+        );
+    }
+
+    if new_identities > 0 {
+        info!(
+            source = ctx.source_config.name,
+            stored, new_identities, "stored Discourse batch — created new identities"
         );
     } else {
         debug!(stored, "stored Discourse batch");
