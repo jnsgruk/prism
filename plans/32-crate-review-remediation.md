@@ -809,14 +809,14 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 
 ## Checklist
 
-- [ ] WS-1.1: Validate Restate SQL inputs
-- [ ] WS-1.2: Move token decryption outside ctx.run()
-- [ ] WS-1.3: Generate random restore password
-- [ ] WS-1.4: Add role checks to admin operations
-- [ ] WS-1.5: Fail-closed auth interceptor
-- [ ] WS-1.6: Stop leaking DB errors
-- [ ] WS-1.7: Escape LIKE wildcards
-- [ ] WS-1.8: Session token to stderr
+- [x] WS-1.1: Validate Restate SQL inputs
+- [x] WS-1.2: Move token decryption outside ctx.run()
+- [x] WS-1.3: Generate random restore password
+- [x] WS-1.4: Add role checks to admin operations
+- [ ] WS-1.5: Fail-closed auth interceptor (deferred — generic ResBody constraint)
+- [x] WS-1.6: Stop leaking DB errors
+- [x] WS-1.7: Escape LIKE wildcards
+- [x] WS-1.8: Session token to stderr
 - [ ] WS-1.9: Backup file permissions
 - [ ] WS-1.10: URL encoding in REST client
 - [ ] WS-1.11: GraphQL username sanitization
@@ -835,25 +835,25 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [ ] WS-3.4: Error::Database structured variant
 - [ ] WS-3.5: SourceState enum in psctl
 - [ ] WS-3.6: Typed ContributionInput.metrics/metadata
-- [ ] WS-3.7: BTreeMap for BackupManifest
-- [ ] WS-3.8: Remove no-op parse in password.rs
+- [x] WS-3.7: BTreeMap for BackupManifest
+- [x] WS-3.8: Remove no-op parse in password.rs
 - [ ] WS-3.9: Consistent impl_sqlx_text! usage
 - [ ] WS-4.1: Parallelize compute_all_snapshots
 - [ ] WS-4.2: Parallelize reconcile_stale_runs
 - [ ] WS-4.3: Parallelize compare_teams
-- [ ] WS-4.4: Parallelize GitHub team sync members+repos
+- [x] WS-4.4: Parallelize GitHub team sync members+repos
 - [ ] WS-4.5: Parallelize count+data queries
 - [ ] WS-4.6: Parallelize admin count queries
 - [ ] WS-4.7: Parallelize handler cancellation
 - [ ] WS-5.1: Split source.rs
 - [ ] WS-5.2: Split org.rs service
-- [ ] WS-5.3: Extract session creation helper
+- [x] WS-5.3: Extract session creation helper
 - [ ] WS-5.4: Extract handler boilerplate
 - [ ] WS-5.5: Extract IngestionContext construction
 - [ ] WS-5.6: Deduplicate TeamWithCount mapping
 - [ ] WS-5.7: Deduplicate GitHubTeamRow mapping
 - [ ] WS-5.8: Extract JSON-to-prost conversion
-- [ ] WS-5.9: Deduplicate Timestamp construction
+- [x] WS-5.9: Deduplicate Timestamp construction
 - [ ] WS-5.10: Extract REST client generic helper
 - [ ] WS-5.11: Extract psctl client constructor
 - [ ] WS-5.12: list_team_contributions params struct
@@ -861,13 +861,13 @@ Each workstream's tasks should be committed in logical chunks. Run `prek run -av
 - [ ] WS-5.14: Derive handler list from single source
 - [ ] WS-5.15: Deduplicate psctl chunking logic
 - [ ] WS-5.16: Enum conversion boilerplate
-- [ ] WS-6.1: Fix review-turnaround bug
+- [x] WS-6.1: Fix review-turnaround bug
 - [ ] WS-6.2: Remove dead orgs code
 - [ ] WS-6.3: Remove redundant create_source call
 - [ ] WS-6.4: Remove unnecessary JSON Value round-trip
-- [ ] WS-6.5: Minor idiom fixes (batch)
-- [ ] WS-6.6: Replace runtime sqlx::query in reset_all
-- [ ] WS-7.1: build_people HashMap
+- [x] WS-6.5: Minor idiom fixes (batch)
+- [x] WS-6.6: Replace runtime sqlx::query in reset_all
+- [x] WS-7.1: build_people HashMap
 - [ ] WS-7.2: Stream backup in psctl
 - [ ] WS-7.3: Build headers once per client
 - [ ] WS-7.4: HashSet lookup without allocation
