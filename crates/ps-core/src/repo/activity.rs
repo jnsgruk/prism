@@ -41,6 +41,8 @@ pub struct SourceStatusRow {
     pub active_run_started_at: Option<OffsetDateTime>,
     /// Current Restate invocation ID (for reconciliation).
     pub current_invocation_id: Option<String>,
+    /// Structured progress JSON from the active run.
+    pub active_run_progress: Option<serde_json::Value>,
 }
 
 impl ActivityRepo {
@@ -315,6 +317,30 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Update the progress of a running ingestion with structured detail.
+    pub async fn update_run_progress_detail(
+        &self,
+        id: Uuid,
+        items_collected: i32,
+        progress: &serde_json::Value,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET items_collected = $2, progress = $3
+            WHERE id = $1
+            "#,
+            id,
+            items_collected,
+            progress,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
     /// Store the Restate invocation ID for a running ingestion.
     pub async fn set_current_invocation_id(
         &self,
@@ -421,12 +447,13 @@ impl ActivityRepo {
                 ar.id IS NOT NULL as "has_active_run!",
                 ar.items_collected as "active_run_items?",
                 ar.started_at as "active_run_started_at?",
-                iw.current_invocation_id as "current_invocation_id?"
+                iw.current_invocation_id as "current_invocation_id?",
+                ar.progress as "active_run_progress?"
             FROM config.source_configs sc
             LEFT JOIN activity.ingestion_watermarks iw
                 ON sc.name = iw.source_name
             LEFT JOIN LATERAL (
-                SELECT id, items_collected, started_at
+                SELECT id, items_collected, started_at, progress
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.completed_at IS NULL
@@ -465,6 +492,7 @@ impl ActivityRepo {
                 active_run_items: r.active_run_items,
                 active_run_started_at: r.active_run_started_at,
                 current_invocation_id: r.current_invocation_id,
+                active_run_progress: r.active_run_progress,
             })
             .collect())
     }

@@ -1,5 +1,5 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext, IngestionPlan};
-use ps_core::models::SourceConfig;
+use ps_core::models::{RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -188,13 +188,30 @@ impl GithubIngestionHandlerImpl {
 
         let mut cursor = source.initial_cursor(plan);
         let mut total_items = 0i32;
+        let mut prs_fetched = 0u32;
+        let mut reviews_fetched = 0u32;
+        let mut identities_skipped = 0u32;
 
         loop {
             let batch = self.fetch_batch(ctx, config, &cursor).await?;
 
+            // Count PRs vs reviews in the batch.
+            for item in &batch.items {
+                match item.contribution_type.as_str() {
+                    "pull_request" => prs_fetched += 1,
+                    "pr_review" => reviews_fetched += 1,
+                    _ => {}
+                }
+            }
+
             if !batch.items.is_empty() {
+                let batch_size = batch.items.len();
                 let stored = self.store_batch(ctx, config, &batch.items).await?;
                 total_items += stored;
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    identities_skipped += (batch_size as u32).saturating_sub(stored as u32);
+                }
 
                 info!(
                     source = source_name,
@@ -202,22 +219,48 @@ impl GithubIngestionHandlerImpl {
                     total_items,
                     "stored batch"
                 );
+            }
 
-                if let Err(e) = self
-                    .state
-                    .repos
-                    .activity
-                    .update_run_progress(run_id, total_items)
-                    .await
-                {
-                    warn!(source = source_name, "failed to update run progress: {e}");
-                }
+            // Build progress JSON from cursor state.
+            let progress = build_progress_json(
+                &cursor,
+                prs_fetched,
+                reviews_fetched,
+                identities_skipped,
+                batch.rate_limit.as_ref(),
+            );
+
+            if let Err(e) = self
+                .state
+                .repos
+                .activity
+                .update_run_progress_detail(run_id, total_items, &progress)
+                .await
+            {
+                warn!(source = source_name, "failed to update run progress: {e}");
             }
 
             let Some(next_cursor) = batch.next_cursor else {
                 break;
             };
             cursor = next_cursor;
+        }
+
+        // Final progress update with "complete" phase.
+        let final_progress = serde_json::json!({
+            "phase": "complete",
+            "prs_fetched": prs_fetched,
+            "reviews_fetched": reviews_fetched,
+            "identities_skipped": identities_skipped,
+        });
+        if let Err(e) = self
+            .state
+            .repos
+            .activity
+            .update_run_progress_detail(run_id, total_items, &final_progress)
+            .await
+        {
+            warn!(source = source_name, "failed to update final progress: {e}");
         }
 
         Ok((total_items, cursor))
@@ -260,6 +303,7 @@ impl GithubIngestionHandlerImpl {
                     let serialised = serde_json::to_value(&SerFetchResult {
                         items: result.items,
                         next_cursor: result.next_cursor,
+                        rate_limit: result.rate_limit,
                     })
                     .map_err(|e| TerminalError::new(format!("serialise error: {e}")))?;
 
@@ -436,6 +480,8 @@ impl GithubIngestionHandlerImpl {
 struct SerFetchResult {
     items: Vec<ContributionInput>,
     next_cursor: Option<String>,
+    #[serde(default)]
+    rate_limit: Option<RateLimitInfo>,
 }
 
 /// Extract the `max_updated_at` field from a serialised cursor JSON.
@@ -445,4 +491,93 @@ fn extract_watermark(cursor_json: &str) -> Option<String> {
         .get("max_updated_at")?
         .as_str()
         .map(String::from)
+}
+
+/// Build a structured progress JSON object from cursor state and counters.
+fn build_progress_json(
+    cursor_json: &str,
+    prs_fetched: u32,
+    reviews_fetched: u32,
+    identities_skipped: u32,
+    rate_limit: Option<&RateLimitInfo>,
+) -> serde_json::Value {
+    let cursor: serde_json::Value =
+        serde_json::from_str(cursor_json).unwrap_or(serde_json::Value::Null);
+
+    let phase = cursor
+        .get("phase")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    let phase_label = match phase {
+        "TeamRepos" => "team_repos",
+        "MemberSearch" => "member_search",
+        other => other,
+    };
+
+    let mut map = serde_json::Map::new();
+    map.insert("phase".into(), serde_json::json!(phase_label));
+    map.insert("prs_fetched".into(), serde_json::json!(prs_fetched));
+    map.insert("reviews_fetched".into(), serde_json::json!(reviews_fetched));
+    map.insert(
+        "identities_skipped".into(),
+        serde_json::json!(identities_skipped),
+    );
+
+    // Add phase-specific fields.
+    if phase == "TeamRepos" {
+        let repos_total = cursor
+            .get("repos")
+            .and_then(|v| v.as_array())
+            .map_or(0, Vec::len);
+        let repo_index = cursor
+            .get("repo_index")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        let current_repo = cursor
+            .get("repos")
+            .and_then(|v| v.as_array())
+            .and_then(|repos| repos.get(repo_index as usize))
+            .map(|r| {
+                format!(
+                    "{}/{}",
+                    r.get("owner").and_then(|v| v.as_str()).unwrap_or(""),
+                    r.get("repo").and_then(|v| v.as_str()).unwrap_or(""),
+                )
+            });
+
+        map.insert("repos_total".into(), serde_json::json!(repos_total));
+        map.insert("repos_completed".into(), serde_json::json!(repo_index));
+        if let Some(repo) = current_repo {
+            map.insert("current_repo".into(), serde_json::json!(repo));
+        }
+    } else if phase == "MemberSearch" {
+        let search_users_total = cursor
+            .get("search_users")
+            .and_then(|v| v.as_array())
+            .map_or(0, Vec::len);
+        let search_user_index = cursor
+            .get("search_user_index")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+
+        map.insert(
+            "search_users_total".into(),
+            serde_json::json!(search_users_total),
+        );
+        map.insert(
+            "search_users_completed".into(),
+            serde_json::json!(search_user_index),
+        );
+    }
+
+    if let Some(rl) = rate_limit {
+        map.insert(
+            "rate_limit_remaining".into(),
+            serde_json::json!(rl.remaining),
+        );
+        map.insert("rate_limit_limit".into(), serde_json::json!(rl.limit));
+    }
+
+    serde_json::Value::Object(map)
 }

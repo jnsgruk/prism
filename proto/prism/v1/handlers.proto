@@ -33,6 +33,8 @@ message SourceStatus {
   optional google.protobuf.Timestamp next_run = 5;
   int32 items_collected = 6;
   map<string, string> rate_limit_info = 7;
+  // Structured progress JSON for active runs. Empty string when not collecting.
+  string progress_json = 8;
 }
 
 message HandlerRun {

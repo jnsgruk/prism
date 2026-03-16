@@ -255,6 +255,14 @@ impl HandlersService for HandlersServiceImpl {
                     )
                 };
 
+                let progress_json = if s.has_active_run {
+                    s.active_run_progress
+                        .map(|v| v.to_string())
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
+
                 SourceStatus {
                     name: s.name,
                     source_type: s.source_type,
@@ -263,6 +271,7 @@ impl HandlersService for HandlersServiceImpl {
                     next_run: None, // TODO: compute from schedule_cron
                     items_collected,
                     rate_limit_info: HashMap::new(),
+                    progress_json,
                 }
             })
             .collect();
