@@ -63,7 +63,7 @@ export const AddTeamDialog = ({
       {
         name,
         teamType: Number(teamType) as TeamType,
-        orgName: "Canonical",
+        orgName: teams[0]?.orgName ?? "",
         leadId: leadId || undefined,
         parentTeamId: parentTeamId || undefined,
       },

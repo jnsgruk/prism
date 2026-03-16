@@ -23,12 +23,12 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import type { Person, Team } from "@ps/api/gen/prism/v1/org_pb";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 import {
   useUpdatePerson,
   useDeactivatePerson,
@@ -36,12 +36,10 @@ import {
   useAssignPersonToTeam,
   useRemovePersonFromTeam,
 } from "@/views/admin/hooks/use-admin";
+import { flattenTeams } from "@/views/admin/lib/team-utils";
+import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 
 type Filter = "all" | "unassigned" | "inactive";
-
-/** Recursively flatten tree into a flat team list. */
-const flattenTeams = (teams: Team[]): Team[] =>
-  teams.flatMap((t) => [t, ...flattenTeams(t.children)]);
 
 const columns: ColumnDef<Person, unknown>[] = [
   {
@@ -242,32 +240,48 @@ const PersonDetailDialog = ({
     setTeamId(person.teamId ?? "");
   }, [person]);
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+
+    const mutations: Promise<unknown>[] = [];
 
     const nameChanged = name !== person.name;
     const emailChanged = email !== (person.email ?? "");
     const levelChanged = level !== (person.level ?? "");
     if (nameChanged || emailChanged || levelChanged) {
-      updatePerson.mutate({
-        personId: person.id,
-        name: nameChanged ? name : undefined,
-        email: emailChanged ? email : undefined,
-        level: levelChanged ? level : undefined,
-      });
+      mutations.push(
+        updatePerson.mutateAsync({
+          personId: person.id,
+          name: nameChanged ? name : undefined,
+          email: emailChanged ? email : undefined,
+          level: levelChanged ? level : undefined,
+        }),
+      );
     }
 
     const teamChanged = teamId !== (person.teamId ?? "");
     if (teamChanged) {
       if (person.teamId) {
-        removeFromTeam.mutate({ personId: person.id, teamId: person.teamId });
+        mutations.push(
+          removeFromTeam.mutateAsync({ personId: person.id, teamId: person.teamId }),
+        );
       }
       if (teamId) {
-        assign.mutate({ personId: person.id, teamId });
+        mutations.push(assign.mutateAsync({ personId: person.id, teamId }));
       }
     }
 
-    onOpenChange(false);
+    if (mutations.length === 0) {
+      onOpenChange(false);
+      return;
+    }
+
+    try {
+      await Promise.all(mutations);
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save changes");
+    }
   };
 
   const handleToggleActive = (): void => {

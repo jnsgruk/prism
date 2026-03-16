@@ -12,16 +12,13 @@ import { useSearchParams } from "react-router";
 
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
 
+import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
+import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";
+import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
+import { flattenTeams } from "@/views/admin/lib/team-utils";
 import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
 import { TeamTree } from "@/views/teams/components/team-tree";
 import { useGetTeamTree } from "@/views/teams/hooks/use-teams";
-import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
-import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
-import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";
-
-/** Recursively flatten a tree of teams into a flat list. */
-const flattenTeams = (teams: Team[]): Team[] =>
-  teams.flatMap((t) => [t, ...flattenTeams(t.children)]);
 
 export const TeamsTab = (): React.ReactElement => {
   const { data: tree, isLoading } = useGetTeamTree();
