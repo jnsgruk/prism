@@ -1,4 +1,7 @@
 use ps_workers::handlers::SharedState;
+use ps_workers::handlers::discourse_ingestion::{
+    DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
+};
 use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
 use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
 use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
@@ -46,6 +49,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let jira_ingestion = JiraIngestionHandlerImpl {
         state: state.clone(),
     };
+    let discourse_ingestion = DiscourseIngestionHandlerImpl {
+        state: state.clone(),
+    };
     let metrics_compute = MetricsComputeHandlerImpl {
         state: state.clone(),
     };
@@ -81,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(ingestion.serve())
                 .bind(team_sync.serve())
                 .bind(jira_ingestion.serve())
+                .bind(discourse_ingestion.serve())
                 .bind(metrics_compute.serve())
                 .build(),
         )

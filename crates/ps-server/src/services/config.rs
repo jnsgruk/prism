@@ -344,6 +344,7 @@ impl ConfigService for ConfigServiceImpl {
         // Validate required secrets based on source type
         let required_secrets: &[&str] = match source.source_type {
             ps_core::models::Platform::Github | ps_core::models::Platform::Jira => &["api_token"],
+            ps_core::models::Platform::Discourse(_) => &["api_key"],
             _ => &[],
         };
 
@@ -365,6 +366,9 @@ impl ConfigService for ConfigServiceImpl {
         if source.source_type == ps_core::models::Platform::Jira {
             self.test_jira_connection(source_id, &source, &mut details)
                 .await
+        } else if source.source_type.is_discourse() {
+            self.test_discourse_connection(source_id, &source, &mut details)
+                .await
         } else {
             // Default: return success if all required secrets are present
             details.insert("status".into(), "secrets_validated".into());
@@ -378,6 +382,111 @@ impl ConfigService for ConfigServiceImpl {
 }
 
 impl ConfigServiceImpl {
+    /// Test connection to a Discourse instance by calling `/about.json`.
+    async fn test_discourse_connection(
+        &self,
+        source_id: Uuid,
+        source: &ps_core::models::SourceConfig,
+        details: &mut HashMap<String, String>,
+    ) -> Result<Response<TestConnectionResponse>, Status> {
+        let base_url = source
+            .settings
+            .get("base_url")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .trim_end_matches('/');
+
+        if base_url.is_empty() {
+            return Ok(Response::new(TestConnectionResponse {
+                success: false,
+                error_message: "base_url is not configured".into(),
+                details: details.clone(),
+            }));
+        }
+
+        // Decrypt API key
+        let api_key = match self
+            .repos
+            .config
+            .get_encrypted_secret(source_id, "api_key")
+            .await
+        {
+            Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
+                Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
+                Err(e) => {
+                    return Ok(Response::new(TestConnectionResponse {
+                        success: false,
+                        error_message: format!("failed to decrypt api_key: {e}"),
+                        details: details.clone(),
+                    }));
+                }
+            },
+            Ok(None) => {
+                return Ok(Response::new(TestConnectionResponse {
+                    success: false,
+                    error_message: "api_key secret not found".into(),
+                    details: details.clone(),
+                }));
+            }
+            Err(e) => {
+                return Ok(Response::new(TestConnectionResponse {
+                    success: false,
+                    error_message: format!("db error: {e}"),
+                    details: details.clone(),
+                }));
+            }
+        };
+
+        // Call Discourse /about.json
+        let url = format!("{base_url}/about.json");
+        match self
+            .http_client
+            .get(&url)
+            .header("Api-Key", &api_key)
+            .header("Api-Username", "system")
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                let status = resp.status();
+                if status.is_success() {
+                    let body: serde_json::Value = resp.json().await.unwrap_or_default();
+                    let title = body
+                        .get("about")
+                        .and_then(|a| a.get("title"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let version = body
+                        .get("about")
+                        .and_then(|a| a.get("version"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    details.insert("status".into(), "connected".into());
+                    details.insert("site_title".into(), title.to_string());
+                    details.insert("discourse_version".into(), version.to_string());
+                    Ok(Response::new(TestConnectionResponse {
+                        success: true,
+                        error_message: String::new(),
+                        details: details.clone(),
+                    }))
+                } else {
+                    let body = resp.text().await.unwrap_or_default();
+                    details.insert("response_body".into(), body);
+                    Ok(Response::new(TestConnectionResponse {
+                        success: false,
+                        error_message: format!("Discourse returned {status}"),
+                        details: details.clone(),
+                    }))
+                }
+            }
+            Err(e) => Ok(Response::new(TestConnectionResponse {
+                success: false,
+                error_message: format!("connection failed: {e}"),
+                details: details.clone(),
+            })),
+        }
+    }
+
     /// Test connection to a Jira instance by calling the `/rest/api/3/myself` endpoint.
     async fn test_jira_connection(
         &self,

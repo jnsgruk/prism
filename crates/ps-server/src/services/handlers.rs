@@ -34,6 +34,12 @@ const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         true,
     ),
     (
+        "DiscourseIngestionHandler",
+        &["run_ingestion", "backfill"],
+        "Fetches topics and posts from a Discourse instance",
+        true,
+    ),
+    (
         "GithubTeamSyncHandler",
         &["sync_teams"],
         "Discovers GitHub teams, members, and repos for configured orgs",
@@ -53,6 +59,7 @@ fn handler_for_platform(platform: &ps_core::models::Platform) -> Result<&'static
     match platform {
         ps_core::models::Platform::Github => Ok("GithubIngestionHandler"),
         ps_core::models::Platform::Jira => Ok("JiraIngestionHandler"),
+        ps_core::models::Platform::Discourse(_) => Ok("DiscourseIngestionHandler"),
         _ => Err(Status::unimplemented(format!(
             "no ingestion handler for platform: {platform}"
         ))),
@@ -230,7 +237,7 @@ impl HandlersServiceImpl {
         let url = format!("{}/query", self.restate_admin_url);
         let query = format!(
             "SELECT id FROM sys_invocation \
-             WHERE target_service_name IN ('GithubIngestionHandler', 'JiraIngestionHandler') \
+             WHERE target_service_name IN ('GithubIngestionHandler', 'JiraIngestionHandler', 'DiscourseIngestionHandler') \
              AND target_service_key = '{source_name}' \
              AND status != 'completed'",
         );
@@ -664,6 +671,7 @@ impl HandlersService for HandlersServiceImpl {
         // Store invocation ID for ingestion handlers (for cancellation support)
         if req.handler_name == "GithubIngestionHandler"
             || req.handler_name == "JiraIngestionHandler"
+            || req.handler_name == "DiscourseIngestionHandler"
         {
             let _ = self
                 .repos

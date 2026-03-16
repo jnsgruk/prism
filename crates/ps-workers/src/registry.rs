@@ -1,6 +1,7 @@
 use ps_core::ingestion::Source;
 use ps_core::models::Platform;
 
+use crate::discourse::DiscourseSource;
 use crate::github::GitHubSource;
 use crate::jira::JiraSource;
 
@@ -11,6 +12,7 @@ pub fn create_source(platform: &Platform) -> Option<Box<dyn Source>> {
     match platform {
         Platform::Github => Some(Box::new(GitHubSource)),
         Platform::Jira => Some(Box::new(JiraSource)),
+        Platform::Discourse(_) => Some(Box::new(DiscourseSource)),
         _ => None,
     }
 }

@@ -337,10 +337,120 @@ const JiraSettingsForm = ({
   );
 };
 
+const DiscourseSettingsForm = ({
+  settings,
+  onChange,
+}: {
+  settings: JsonObject;
+  onChange: (settings: JsonObject) => void;
+}): React.ReactElement => {
+  const baseUrl = typeof settings.base_url === "string" ? settings.base_url : "";
+  const categories = toStringArray(settings.categories);
+  const minPosts = typeof settings.min_posts === "number" ? settings.min_posts : 0;
+  const [categoryInput, setCategoryInput] = useState("");
+
+  const update = (patch: JsonObject): void => {
+    onChange({ ...settings, ...patch });
+  };
+
+  const addCategory = (): void => {
+    const trimmed = categoryInput.trim().toLowerCase();
+    if (trimmed && !categories.includes(trimmed)) {
+      update({ categories: [...categories, trimmed] });
+      setCategoryInput("");
+    }
+  };
+
+  const removeCategory = (cat: string): void => {
+    update({ categories: categories.filter((c) => c !== cat) });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Credentials hint */}
+      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+        Set the <code className="font-semibold">api_key</code> secret with a Discourse API key. The
+        key needs read access. Use <code className="font-semibold">system</code> as the API username
+        for global keys.
+      </div>
+
+      {/* Base URL */}
+      <div className="space-y-2">
+        <Label htmlFor="discourse-base-url">
+          Base URL <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="discourse-base-url"
+          value={baseUrl}
+          onChange={(e) => update({ base_url: e.target.value })}
+          placeholder="https://discourse.ubuntu.com"
+        />
+        <p className="text-xs text-muted-foreground">The base URL of the Discourse instance.</p>
+      </div>
+
+      {/* Category filter */}
+      <div className="space-y-2">
+        <Label>Category Filter</Label>
+        <p className="text-xs text-muted-foreground">
+          Optional. Leave empty to ingest all categories.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={categoryInput}
+            onChange={(e) => setCategoryInput(e.target.value)}
+            placeholder="e.g. development"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCategory();
+              }
+            }}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCategory}>
+            Add
+          </Button>
+        </div>
+        {categories.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {categories.map((cat) => (
+              <Badge key={cat} variant="secondary" className="gap-1">
+                {cat}
+                <button
+                  type="button"
+                  onClick={() => removeCategory(cat)}
+                  className="hover:text-destructive"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Min posts */}
+      <div className="space-y-2">
+        <Label htmlFor="min-posts">Minimum Posts</Label>
+        <Input
+          id="min-posts"
+          type="number"
+          min={0}
+          value={minPosts}
+          onChange={(e) => update({ min_posts: Number.parseInt(e.target.value, 10) || 0 })}
+        />
+        <p className="text-xs text-muted-foreground">
+          Skip topics with fewer posts than this. Set to 0 to ingest all.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export const settingsForms: Record<
   string,
   (props: { settings: JsonObject; onChange: (s: JsonObject) => void }) => React.ReactElement
 > = {
   github: GitHubSettingsForm,
   jira: JiraSettingsForm,
+  discourse: DiscourseSettingsForm,
 };
