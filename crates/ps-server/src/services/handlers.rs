@@ -48,8 +48,8 @@ const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
     (
         "IdentityResolutionHandler",
         &["resolve_identities"],
-        "Resolves pending platform identities for known directory people",
-        true,
+        "Resolves pending platform identities for known directory people across all Discourse sources",
+        false,
     ),
     (
         "MetricsComputeHandler",

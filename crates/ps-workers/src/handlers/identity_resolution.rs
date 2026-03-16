@@ -1,4 +1,3 @@
-use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -10,141 +9,68 @@ pub struct IdentityResolutionHandlerImpl {
     pub state: SharedState,
 }
 
-#[restate_sdk::object]
+#[restate_sdk::service]
 pub trait IdentityResolutionHandler {
-    /// Resolve pending platform identities for known directory people.
-    ///
-    /// Keyed by platform string (e.g. "discourse-ubuntu"). Strategies:
-    /// 1. Admin API email lookup (if API key has admin scope)
-    /// 2. Username probing via existing identities (public endpoint)
+    /// Resolve pending platform identities for known directory people
+    /// across all configured Discourse sources.
     async fn resolve_identities() -> Result<(), TerminalError>;
 }
 
 impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
-    async fn resolve_identities(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
-        let platform = ctx.key().to_string();
-        info!(platform = %platform, "starting identity resolution");
+    async fn resolve_identities(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
+        info!("starting identity resolution across all Discourse sources");
 
-        let run_id = self.create_run(&ctx, &platform).await?;
+        let run_id = self.create_run(&ctx).await?;
 
-        // Only Discourse platforms are supported for now.
-        if !platform.starts_with("discourse-") {
-            info!(platform = %platform, "identity resolution not yet supported for this platform");
-            self.complete_run(&ctx, run_id, &platform, 0).await;
+        // List all enabled Discourse sources.
+        let sources = self.list_discourse_sources(&ctx).await?;
+
+        if sources.is_empty() {
+            info!("no enabled Discourse sources configured");
+            self.complete_run(&ctx, run_id, 0).await;
             return Ok(());
         }
 
-        // Ensure pending resolution rows exist for all active people.
-        let ensured = self.ensure_pending_rows(&ctx, &platform).await?;
-        if ensured > 0 {
-            info!(platform = %platform, ensured, "created pending resolution rows");
-        }
+        info!(count = sources.len(), "found Discourse sources to resolve");
 
-        // Load source config to get base_url and decrypt API key.
-        let config = self.load_discourse_config(&ctx, &platform).await?;
+        let mut total_resolved = 0i32;
 
-        // Decrypt API key outside ctx.run() to avoid journaling plaintext.
-        let api_key = self
-            .decrypt_source_secret_optional(config.id, "api_key")
-            .await?;
-        let api_username = self
-            .decrypt_source_secret_optional(config.id, "api_username")
-            .await?;
-
-        let base_url = config
-            .settings
-            .get("base_url")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("")
-            .trim_end_matches('/')
-            .to_string();
-
-        if base_url.is_empty() {
-            self.fail_run(&ctx, run_id, &platform, "no base_url configured")
-                .await;
-            return Err(TerminalError::new("no base_url configured for source"));
-        }
-
-        let client = DiscourseClient::new(
-            self.state.http_client.clone(),
-            &base_url,
-            api_key.as_deref().unwrap_or(""),
-            api_username.as_deref().unwrap_or("system"),
-        );
-
-        // Fetch pending resolutions.
-        let pending = self.load_pending(&ctx, &platform).await?;
-
-        if pending.is_empty() {
-            info!(platform = %platform, "no pending resolutions");
-            self.complete_run(&ctx, run_id, &platform, 0).await;
-            return Ok(());
-        }
-
-        info!(platform = %platform, count = pending.len(), "resolving pending identities");
-
-        let mut resolved_count = 0i32;
-
-        for person in &pending {
-            let result = self.resolve_person(&ctx, &client, &platform, person).await;
-
-            match result {
-                Ok(true) => {
-                    resolved_count += 1;
-                    debug!(
-                        platform = %platform,
-                        person = %person.name,
-                        "resolved identity"
-                    );
-                }
-                Ok(false) => {
-                    debug!(
-                        platform = %platform,
-                        person = %person.name,
-                        "could not resolve identity"
-                    );
+        for source in &sources {
+            match self.resolve_source(&ctx, source).await {
+                Ok(count) => {
+                    total_resolved += count;
+                    if count > 0 {
+                        info!(
+                            source = %source.name,
+                            resolved = count,
+                            "resolved identities for source"
+                        );
+                    }
                 }
                 Err(e) => {
-                    // Rate limit — sleep and retry will happen on next run.
-                    if let Some(retry_after) = extract_rate_limit_secs(&e) {
-                        warn!(
-                            platform = %platform,
-                            retry_after,
-                            resolved_count,
-                            "rate limited during resolution, stopping"
-                        );
-                        // Use durable sleep for rate limit backoff.
-                        ctx.sleep(std::time::Duration::from_secs(retry_after))
-                            .await?;
-                        // Continue with remaining people after sleep.
-                        continue;
-                    }
                     warn!(
-                        platform = %platform,
-                        person = %person.name,
+                        source = %source.name,
                         error = %e,
-                        "error resolving identity, skipping"
+                        "failed to resolve identities for source, continuing"
                     );
                 }
             }
         }
 
-        self.complete_run(&ctx, run_id, &platform, resolved_count)
-            .await;
+        self.complete_run(&ctx, run_id, total_resolved).await;
 
-        // Backfill contributions now that new identities may exist.
-        if resolved_count > 0 {
-            self.backfill_contributions(&ctx, &platform).await;
-        }
-
-        info!(
-            platform = %platform,
-            resolved_count,
-            total = pending.len(),
-            "identity resolution complete"
-        );
+        info!(total_resolved, "identity resolution complete");
         Ok(())
     }
+}
+
+/// Serialisable source info for Restate journaling.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct SourceInfo {
+    id: String,
+    name: String,
+    platform: String,
+    base_url: String,
 }
 
 /// Serialisable pending person info for Restate journaling.
@@ -156,21 +82,20 @@ struct PendingPerson {
 }
 
 impl IdentityResolutionHandlerImpl {
-    async fn create_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        platform: &str,
-    ) -> Result<Uuid, TerminalError> {
+    async fn create_run(&self, ctx: &Context<'_>) -> Result<Uuid, TerminalError> {
         let repos = self.state.repos.clone();
-        let p = platform.to_string();
         ctx.run(|| {
             let repos = repos.clone();
-            let p = p.clone();
             async move {
                 let id = Uuid::now_v7();
                 repos
                     .activity
-                    .create_run(id, &p, "IdentityResolutionHandler", "resolve_identities")
+                    .create_run(
+                        id,
+                        "_system",
+                        "IdentityResolutionHandler",
+                        "resolve_identities",
+                    )
                     .await
                     .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                 Ok(Json::from(id.to_string()))
@@ -183,13 +108,7 @@ impl IdentityResolutionHandlerImpl {
         .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
     }
 
-    async fn complete_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        platform: &str,
-        items: i32,
-    ) {
+    async fn complete_run(&self, ctx: &Context<'_>, run_id: Uuid, items: i32) {
         let repos = self.state.repos.clone();
         let result = ctx
             .run(|| {
@@ -207,43 +126,158 @@ impl IdentityResolutionHandlerImpl {
             .await;
 
         if let Err(e) = result {
-            error!(platform, "failed to update run status: {e}");
+            error!("failed to update run status: {e}");
         }
     }
 
-    async fn fail_run(
+    /// List all enabled Discourse sources from the config table.
+    async fn list_discourse_sources(
         &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        platform: &str,
-        error_msg: &str,
-    ) {
+        ctx: &Context<'_>,
+    ) -> Result<Vec<SourceInfo>, TerminalError> {
         let repos = self.state.repos.clone();
-        let err = error_msg.to_string();
-        let result = ctx
+        Ok(ctx
             .run(|| {
                 let repos = repos.clone();
-                let err = err.clone();
                 async move {
-                    repos
-                        .activity
-                        .fail_run(run_id, &err)
+                    let sources = repos
+                        .config
+                        .list_sources()
                         .await
                         .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
+
+                    let discourse_sources: Vec<SourceInfo> = sources
+                        .into_iter()
+                        .filter(|s| s.enabled && s.source_type.is_discourse())
+                        .map(|s| {
+                            let base_url = s
+                                .settings
+                                .get("base_url")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("")
+                                .trim_end_matches('/')
+                                .to_string();
+                            SourceInfo {
+                                id: s.id.to_string(),
+                                name: s.name,
+                                platform: s.source_type.to_string(),
+                                base_url,
+                            }
+                        })
+                        .collect();
+
+                    Ok(Json::from(discourse_sources))
                 }
             })
-            .name("fail_run")
-            .await;
+            .name("list_discourse_sources")
+            .await?
+            .into_inner())
+    }
 
-        if let Err(e) = result {
-            error!(platform, "failed to update run status: {e}");
+    /// Resolve identities for a single Discourse source.
+    /// Returns the number of people resolved.
+    async fn resolve_source(
+        &self,
+        ctx: &Context<'_>,
+        source: &SourceInfo,
+    ) -> Result<i32, TerminalError> {
+        let platform = &source.platform;
+
+        // Ensure pending resolution rows exist for all active people.
+        let ensured = self.ensure_pending_rows(ctx, platform).await?;
+        if ensured > 0 {
+            info!(source = %source.name, ensured, "created pending resolution rows");
         }
+
+        if source.base_url.is_empty() {
+            return Err(TerminalError::new(format!(
+                "no base_url configured for source '{}'",
+                source.name
+            )));
+        }
+
+        let source_id: Uuid = source
+            .id
+            .parse()
+            .map_err(|e| TerminalError::new(format!("invalid source_id: {e}")))?;
+
+        // Decrypt API key outside ctx.run() to avoid journaling plaintext.
+        let api_key = self
+            .decrypt_source_secret_optional(source_id, "api_key")
+            .await?;
+        let api_username = self
+            .decrypt_source_secret_optional(source_id, "api_username")
+            .await?;
+
+        let client = DiscourseClient::new(
+            self.state.http_client.clone(),
+            &source.base_url,
+            api_key.as_deref().unwrap_or(""),
+            api_username.as_deref().unwrap_or("system"),
+        );
+
+        // Fetch pending resolutions.
+        let pending = self.load_pending(ctx, platform).await?;
+
+        if pending.is_empty() {
+            debug!(source = %source.name, "no pending resolutions");
+            return Ok(0);
+        }
+
+        info!(source = %source.name, count = pending.len(), "resolving pending identities");
+
+        let mut resolved_count = 0i32;
+
+        for person in &pending {
+            let result = self.resolve_person(ctx, &client, platform, person).await;
+
+            match result {
+                Ok(true) => {
+                    resolved_count += 1;
+                    debug!(
+                        source = %source.name,
+                        person = %person.name,
+                        "resolved identity"
+                    );
+                }
+                Ok(false) => {
+                    debug!(
+                        source = %source.name,
+                        person = %person.name,
+                        "could not resolve identity"
+                    );
+                }
+                Err(e) => {
+                    if is_rate_limited(&e) {
+                        warn!(
+                            source = %source.name,
+                            resolved_count,
+                            "rate limited during resolution, sleeping 60s"
+                        );
+                        ctx.sleep(std::time::Duration::from_secs(60)).await?;
+                        continue;
+                    }
+                    warn!(
+                        source = %source.name,
+                        person = %person.name,
+                        error = %e,
+                        "error resolving identity, skipping"
+                    );
+                }
+            }
+        }
+
+        // Backfill contributions now that new identities may exist.
+        if resolved_count > 0 {
+            self.backfill_contributions(ctx, platform).await;
+        }
+
+        Ok(resolved_count)
     }
 
     async fn ensure_pending_rows(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         platform: &str,
     ) -> Result<u64, TerminalError> {
         let repos = self.state.repos.clone();
@@ -262,32 +296,6 @@ impl IdentityResolutionHandlerImpl {
                 }
             })
             .name("ensure_pending_rows")
-            .await?
-            .into_inner())
-    }
-
-    /// Load the source config for a Discourse platform.
-    ///
-    /// The source name matches the platform string (e.g. "discourse-ubuntu").
-    async fn load_discourse_config(
-        &self,
-        ctx: &ObjectContext<'_>,
-        platform: &str,
-    ) -> Result<SourceConfig, TerminalError> {
-        let repos = self.state.repos.clone();
-        let p = platform.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let p = p.clone();
-                async move {
-                    let config = super::load_source_config(&repos, &p)
-                        .await
-                        .map_err(TerminalError::new)?;
-                    Ok(Json::from(config))
-                }
-            })
-            .name("load_config")
             .await?
             .into_inner())
     }
@@ -319,7 +327,7 @@ impl IdentityResolutionHandlerImpl {
 
     async fn load_pending(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         platform: &str,
     ) -> Result<Vec<PendingPerson>, TerminalError> {
         let repos = self.state.repos.clone();
@@ -357,7 +365,7 @@ impl IdentityResolutionHandlerImpl {
     /// Returns `Ok(true)` if resolved, `Ok(false)` if unresolved.
     async fn resolve_person(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         client: &DiscourseClient,
         platform: &str,
         person: &PendingPerson,
@@ -407,7 +415,7 @@ impl IdentityResolutionHandlerImpl {
 
     async fn load_candidate_usernames(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         person_id: Uuid,
     ) -> Result<Vec<String>, TerminalError> {
         let repos = self.state.repos.clone();
@@ -430,7 +438,7 @@ impl IdentityResolutionHandlerImpl {
 
     async fn store_resolution(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         person_id: Uuid,
         platform: &str,
         username: &str,
@@ -460,7 +468,7 @@ impl IdentityResolutionHandlerImpl {
 
     async fn store_unresolved(
         &self,
-        ctx: &ObjectContext<'_>,
+        ctx: &Context<'_>,
         person_id: Uuid,
         platform: &str,
     ) -> Result<(), TerminalError> {
@@ -487,7 +495,7 @@ impl IdentityResolutionHandlerImpl {
 
     /// Backfill `person_id` on Discourse contributions after new identities
     /// have been created by resolution.
-    async fn backfill_contributions(&self, ctx: &ObjectContext<'_>, platform: &str) {
+    async fn backfill_contributions(&self, ctx: &Context<'_>, platform: &str) {
         let repos = self.state.repos.clone();
         let p = platform.to_string();
 
@@ -525,14 +533,8 @@ impl IdentityResolutionHandlerImpl {
     }
 }
 
-/// Extract rate-limit retry-after seconds from a `TerminalError` message.
-fn extract_rate_limit_secs(err: &TerminalError) -> Option<u64> {
+/// Check if a `TerminalError` is caused by rate limiting.
+fn is_rate_limited(err: &TerminalError) -> bool {
     let msg = err.to_string();
-    if msg.contains("rate limit") || msg.contains("429") {
-        // Try to extract retry_after from the error message.
-        // The ps_core::Error::RateLimit format includes retry_after_secs.
-        Some(60) // Default to 60 seconds
-    } else {
-        None
-    }
+    msg.contains("rate limit") || msg.contains("429")
 }

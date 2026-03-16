@@ -123,9 +123,9 @@ impl DiscourseIngestionHandlerImpl {
                 .compute_current_periods()
                 .send();
 
-            // Trigger identity resolution for this Discourse instance.
+            // Trigger identity resolution across all Discourse sources.
             info!(source = source_name, "triggering identity resolution");
-            ctx.object_client::<IdentityResolutionHandlerClient>(source_name)
+            ctx.service_client::<IdentityResolutionHandlerClient>()
                 .resolve_identities()
                 .send();
         }
