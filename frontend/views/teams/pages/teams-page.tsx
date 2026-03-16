@@ -11,19 +11,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, ArrowUpDown, ChevronDown, ChevronRight, Users, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  GitPullRequest,
+  Users,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 
-import { Button } from "@/components/ui/button";
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
-import { TeamMetricCards, type DrilldownMetric } from "@/views/teams/components/team-metric-cards";
+import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
 import {
   buildPeriod,
   defaultPeriodKey,
@@ -40,25 +47,6 @@ import {
 
 type SortField = "name" | "throughput" | "reviewP75" | "members";
 type SortDir = "asc" | "desc";
-
-interface DrilldownState {
-  metric: NonNullable<DrilldownMetric>;
-  teamId: string;
-  teamName: string;
-}
-
-const METRIC_CONFIG = {
-  throughput: {
-    title: "Merged PRs",
-    contributionType: "pull_request",
-    state: "merged",
-  },
-  review_turnaround: {
-    title: "Review Turnaround",
-    contributionType: "pr_review",
-    state: undefined,
-  },
-} as const;
 
 const TeamsPage = (): React.ReactElement => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -83,7 +71,6 @@ const TeamsPage = (): React.ReactElement => {
 
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
@@ -158,15 +145,10 @@ const TeamsPage = (): React.ReactElement => {
   const error = treeError ?? metricsError;
 
   const [membersOpen, setMembersOpen] = useState(false);
+  const [prsOpen, setPrsOpen] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
   const members = teamDetail?.members ?? [];
-
-  const openDrilldown = useCallback((metric: DrilldownMetric, teamId: string, teamName: string) => {
-    if (!metric) return;
-    setDrilldown((prev) =>
-      prev?.metric === metric && prev.teamId === teamId ? null : { metric, teamId, teamName },
-    );
-  }, []);
 
   return (
     <>
@@ -208,7 +190,6 @@ const TeamsPage = (): React.ReactElement => {
                 ? selectedTeam.totalMemberCount
                 : selectedTeam.memberCount
             }
-            onDrillDown={(metric) => openDrilldown(metric, effectiveTeamId, selectedTeam.name)}
           />
         )}
 
@@ -268,7 +249,6 @@ const TeamsPage = (): React.ReactElement => {
                           }
                           hasChildren={(childTeam?.children.length ?? 0) > 0}
                           onSelect={() => setSelectedTeamId(m.teamId)}
-                          onDrillDown={(metric) => openDrilldown(metric, m.teamId, m.teamName)}
                         />
                       );
                     })}
@@ -318,33 +298,6 @@ const TeamsPage = (): React.ReactElement => {
           </>
         )}
 
-        {/* Inline contribution drill-down */}
-        {drilldown && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>
-                  {METRIC_CONFIG[drilldown.metric].title} — {drilldown.teamName}
-                </CardTitle>
-              </div>
-              <Button variant="ghost" size="icon-sm" onClick={() => setDrilldown(null)}>
-                <X className="size-4" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {drilldown.metric === "review_turnaround" && (
-                <ReviewDistribution teamId={drilldown.teamId} period={period} />
-              )}
-              <ContributionTable
-                teamId={drilldown.teamId}
-                period={period}
-                defaultContributionType={METRIC_CONFIG[drilldown.metric].contributionType}
-                defaultState={METRIC_CONFIG[drilldown.metric].state}
-              />
-            </CardContent>
-          </Card>
-        )}
-
         {/* No children message for leaf teams */}
         {selectedTeam && !hasChildren && !isLoading && sortedMetrics.length === 0 && (
           <Card>
@@ -356,7 +309,83 @@ const TeamsPage = (): React.ReactElement => {
           </Card>
         )}
 
-        {/* Collapsible members section */}
+        {/* Merged PRs — collapsible */}
+        {selectedTeam && (
+          <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
+            <Card>
+              <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
+                <CollapsibleTrigger
+                  render={
+                    <button type="button" className="flex w-full items-center gap-2 text-left" />
+                  }
+                >
+                  {prsOpen ? (
+                    <ChevronDown className="size-4" />
+                  ) : (
+                    <ChevronRight className="size-4" />
+                  )}
+                  <GitPullRequest className="size-4 text-muted-foreground" />
+                  <CardTitle>Merged PRs</CardTitle>
+                  {currentMetrics && (
+                    <Badge variant="secondary" className="ml-1">
+                      {currentMetrics.throughput}
+                    </Badge>
+                  )}
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <ContributionTable
+                    teamId={effectiveTeamId}
+                    period={period}
+                    defaultContributionType="pull_request"
+                    defaultState="merged"
+                  />
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {/* Reviews — collapsible */}
+        {selectedTeam && (
+          <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
+            <Card>
+              <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
+                <CollapsibleTrigger
+                  render={
+                    <button type="button" className="flex w-full items-center gap-2 text-left" />
+                  }
+                >
+                  {reviewsOpen ? (
+                    <ChevronDown className="size-4" />
+                  ) : (
+                    <ChevronRight className="size-4" />
+                  )}
+                  <Clock className="size-4 text-muted-foreground" />
+                  <CardTitle>Reviews</CardTitle>
+                  {currentMetrics && currentMetrics.reviewTurnaroundP75Hours > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      P75 {currentMetrics.reviewTurnaroundP75Hours.toFixed(1)}h
+                    </Badge>
+                  )}
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-4 pt-0">
+                  <ReviewDistribution teamId={effectiveTeamId} period={period} />
+                  <ContributionTable
+                    teamId={effectiveTeamId}
+                    period={period}
+                    defaultContributionType="pr_review"
+                  />
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {/* Members — collapsible */}
         {selectedTeam && members.length > 0 && (
           <Collapsible open={!hasChildren || membersOpen} onOpenChange={setMembersOpen}>
             <Card>
@@ -439,14 +468,12 @@ const MetricsRow = ({
   teamTypeBadge,
   hasChildren,
   onSelect,
-  onDrillDown,
 }: {
   metrics: TeamMetrics;
   teamType: string | undefined;
   teamTypeBadge: "default" | "secondary" | "outline" | "destructive" | undefined;
   hasChildren: boolean;
   onSelect: () => void;
-  onDrillDown: (metric: DrilldownMetric) => void;
 }): React.ReactElement => (
   <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onSelect}>
     <TableCell className="font-medium">
@@ -463,32 +490,12 @@ const MetricsRow = ({
       )}
     </TableCell>
     <TableCell>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (metrics.throughput > 0) onDrillDown("throughput");
-        }}
-        className={metrics.throughput > 0 ? "cursor-pointer" : "cursor-default"}
-      >
-        <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>
-          {metrics.throughput}
-        </Badge>
-      </button>
+      <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>{metrics.throughput}</Badge>
     </TableCell>
     <TableCell>
-      {metrics.reviewTurnaroundP75Hours > 0 ? (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDrillDown("review_turnaround");
-          }}
-          className="cursor-pointer hover:underline"
-        >
-          {metrics.reviewTurnaroundP75Hours.toFixed(1)}h
-        </button>
-      ) : (
-        "\u2014"
-      )}
+      {metrics.reviewTurnaroundP75Hours > 0
+        ? `${metrics.reviewTurnaroundP75Hours.toFixed(1)}h`
+        : "\u2014"}
     </TableCell>
     <TableCell>{metrics.memberCount}</TableCell>
   </TableRow>
