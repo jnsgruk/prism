@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 use ps_core::models::{ContributionState, ContributionType, PeriodType};
 use ps_core::repo::Repos;
@@ -8,6 +9,7 @@ use tracing::info;
 use uuid::Uuid;
 
 /// Review turnaround distribution: average + percentiles.
+#[derive(Debug, Clone, Copy)]
 pub struct ReviewTurnaround {
     pub avg: f32,
     pub p75: f32,
@@ -35,16 +37,14 @@ pub async fn compute_team_snapshot(
     let throughput = compute_throughput(&contributions);
     let review = compute_review_turnaround(&contributions);
 
-    let raw_metrics = review.as_ref().map_or_else(
-        || serde_json::json!({}),
-        |r| {
-            serde_json::json!({
-                "review_turnaround_p75_hours": r.p75,
-                "review_turnaround_p90_hours": r.p90,
-                "review_turnaround_p99_hours": r.p99,
-            })
-        },
-    );
+    let raw_metrics = match review {
+        Some(r) => serde_json::json!({
+            "review_turnaround_p75_hours": r.p75,
+            "review_turnaround_p90_hours": r.p90,
+            "review_turnaround_p99_hours": r.p99,
+        }),
+        None => serde_json::json!({}),
+    };
 
     repos
         .metrics
@@ -81,13 +81,13 @@ pub async fn compute_all_snapshots(
     period_type: PeriodType,
 ) -> Result<i32, ps_core::Error> {
     let teams = repos.org.list_teams(None, None).await?;
-    let mut computed = 0;
 
     for team in &teams {
         compute_team_snapshot(repos, team.id, period_start, period_end, period_type).await?;
-        computed += 1;
     }
 
+    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+    let computed = teams.len() as i32;
     info!(computed, %period_type, %period_start, "computed all team snapshots");
     Ok(computed)
 }
@@ -111,17 +111,21 @@ fn compute_throughput(contributions: &[ContributionMetricRow]) -> i32 {
 /// PR-review pairs exist.
 #[allow(clippy::cast_precision_loss)] // review turnaround doesn't need sub-second precision
 fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<ReviewTurnaround> {
-    // Collect reviews indexed by their parent PR platform_id
-    let reviews: Vec<(&str, time::OffsetDateTime)> = contributions
+    // Index reviews by their parent PR platform_id for O(1) lookup per PR.
+    let mut reviews_by_pr: HashMap<&str, Vec<time::OffsetDateTime>> = HashMap::new();
+    for c in contributions
         .iter()
         .filter(|c| c.contribution_type == ContributionType::PrReview)
-        .filter_map(|c| {
-            let pr_platform_id = c.metadata.get("pr_platform_id")?.as_str()?;
-            Some((pr_platform_id, c.created_at))
-        })
-        .collect();
+    {
+        if let Some(pr_platform_id) = c.metadata.get("pr_platform_id").and_then(|v| v.as_str()) {
+            reviews_by_pr
+                .entry(pr_platform_id)
+                .or_default()
+                .push(c.created_at);
+        }
+    }
 
-    if reviews.is_empty() {
+    if reviews_by_pr.is_empty() {
         return None;
     }
 
@@ -143,13 +147,13 @@ fn compute_review_turnaround(contributions: &[ContributionMetricRow]) -> Option<
             continue;
         }
 
-        // Fallback: compute from first review time minus PR creation
-        if let Some(earliest_review) = reviews
-            .iter()
-            .filter(|(_, review_time)| *review_time >= pr.created_at)
-            .min_by_key(|(_, t)| *t)
+        // Fallback: find the earliest review for THIS PR (matching platform_id)
+        // that was created after the PR itself.
+        if let Some(&earliest) = reviews_by_pr
+            .get(pr.platform_id.as_str())
+            .and_then(|times| times.iter().filter(|&&t| t >= pr.created_at).min())
         {
-            let delta = earliest_review.1 - pr.created_at;
+            let delta = earliest - pr.created_at;
             let hours = delta.whole_seconds() as f32 / 3600.0;
             if hours >= 0.0 {
                 turnaround_hours.push(hours);
@@ -342,12 +346,58 @@ mod tests {
         assert!((percentile(&[], 75.0)).abs() < f32::EPSILON);
     }
 
+    #[test]
+    fn test_review_turnaround_no_cross_attribution() {
+        // PR A was created at T=0, PR B at T=10h
+        // Review for PR B was created at T=1h (matching pr_platform_id = "B")
+        // Without proper filtering, PR A would incorrectly match Review-for-B
+        let pr_a = ContributionMetricRow {
+            person_id: Some(Uuid::nil()),
+            platform_id: "PR_A".into(),
+            contribution_type: ContributionType::PullRequest,
+            state: Some(ContributionState::Merged),
+            created_at: time::OffsetDateTime::UNIX_EPOCH,
+            closed_at: None,
+            metrics: serde_json::json!({}),
+            metadata: serde_json::json!({}),
+        };
+        let pr_b = ContributionMetricRow {
+            person_id: Some(Uuid::nil()),
+            platform_id: "PR_B".into(),
+            contribution_type: ContributionType::PullRequest,
+            state: Some(ContributionState::Merged),
+            created_at: time::OffsetDateTime::UNIX_EPOCH + time::Duration::hours(10),
+            closed_at: None,
+            metrics: serde_json::json!({}),
+            metadata: serde_json::json!({}),
+        };
+        let review_for_b = ContributionMetricRow {
+            person_id: Some(Uuid::nil()),
+            platform_id: "REVIEW_1".into(),
+            contribution_type: ContributionType::PrReview,
+            state: Some(ContributionState::Approved),
+            created_at: time::OffsetDateTime::UNIX_EPOCH + time::Duration::hours(1),
+            closed_at: None,
+            metrics: serde_json::json!({}),
+            metadata: serde_json::json!({"pr_platform_id": "PR_B"}),
+        };
+
+        let contributions = vec![pr_a, pr_b, review_for_b];
+        let result = compute_review_turnaround(&contributions);
+
+        // Should not find a turnaround for PR A (no review matches PR_A).
+        // Should not find a turnaround for PR B (review is before PR B's creation).
+        // So no turnaround data should be computed.
+        assert!(result.is_none());
+    }
+
     fn make_contribution(
         contribution_type: ContributionType,
         state: Option<ContributionState>,
     ) -> ContributionMetricRow {
         ContributionMetricRow {
             person_id: Some(Uuid::nil()),
+            platform_id: Uuid::now_v7().to_string(),
             contribution_type,
             state,
             created_at: time::OffsetDateTime::UNIX_EPOCH,

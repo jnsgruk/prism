@@ -27,6 +27,7 @@ pub struct TeamSnapshotRow {
 /// Raw contribution data needed for metrics computation.
 pub struct ContributionMetricRow {
     pub person_id: Option<Uuid>,
+    pub platform_id: String,
     pub contribution_type: ContributionType,
     pub state: Option<ContributionState>,
     pub created_at: time::OffsetDateTime,
@@ -235,7 +236,7 @@ impl MetricsRepo {
                 SELECT t.id FROM org.teams t
                 JOIN team_tree tt ON t.parent_team_id = tt.id
             )
-            SELECT DISTINCT c.person_id, c.contribution_type, c.state,
+            SELECT DISTINCT c.person_id, c.platform_id, c.contribution_type, c.state,
                    c.created_at, c.closed_at,
                    c.metrics, c.metadata
             FROM activity.contributions c
@@ -259,6 +260,7 @@ impl MetricsRepo {
             .filter_map(|r| {
                 Some(ContributionMetricRow {
                     person_id: r.person_id,
+                    platform_id: r.platform_id,
                     contribution_type: match r.contribution_type.as_str() {
                         "pull_request" => ContributionType::PullRequest,
                         "pr_review" => ContributionType::PrReview,
