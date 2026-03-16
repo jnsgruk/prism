@@ -80,12 +80,15 @@ const IngestionPage = (): React.ReactElement => {
   return (
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
-      <div className="flex-1 space-y-4 p-6">
-        <div className="space-y-3">
-          {sources.map((source) => (
-            <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
-          ))}
-        </div>
+      <div className="flex-1 space-y-6 p-6">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold">Sources</h2>
+          <div className="space-y-3">
+            {sources.map((source) => (
+              <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
+            ))}
+          </div>
+        </section>
 
         {runsLoading ? (
           <div className="flex justify-center py-8">
