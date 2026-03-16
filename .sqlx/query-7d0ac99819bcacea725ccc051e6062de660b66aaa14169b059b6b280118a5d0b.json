@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.identity_resolutions (person_id, platform)\n            SELECT p.id, $1\n            FROM org.people p\n            WHERE p.active = true\n              AND NOT EXISTS (\n                  SELECT 1 FROM org.identity_resolutions ir\n                  WHERE ir.person_id = p.id AND ir.platform = $1\n              )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7d0ac99819bcacea725ccc051e6062de660b66aaa14169b059b6b280118a5d0b"
+}

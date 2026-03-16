@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.identity_resolutions (person_id, platform, status, resolved_at, attempted_at)\n            VALUES ($1, $2, 'manual', now(), now())\n            ON CONFLICT (person_id, platform)\n            DO UPDATE SET status = 'manual', resolved_at = now(), attempted_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "560b3d0dc386249f7ea82354f1ab27b1533f4f2697601f350e306c04ebc3075a"
+}

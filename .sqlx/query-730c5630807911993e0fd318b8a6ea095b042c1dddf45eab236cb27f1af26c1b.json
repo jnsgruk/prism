@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO org.platform_identities (id, person_id, platform, platform_username)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (platform, platform_username)\n            DO UPDATE SET person_id = EXCLUDED.person_id\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "730c5630807911993e0fd318b8a6ea095b042c1dddf45eab236cb27f1af26c1b"
+}

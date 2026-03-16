@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT ir.person_id, p.name AS person_name, p.email\n            FROM org.identity_resolutions ir\n            JOIN org.people p ON p.id = ir.person_id\n            WHERE ir.platform = $1\n              AND ir.status = 'pending'\n              AND p.active = true\n            ORDER BY p.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "person_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "316e30b7239b7ae2d8bcd2566ebdda36feb5b923a49396763a1e6d192fd158b4"
+}
