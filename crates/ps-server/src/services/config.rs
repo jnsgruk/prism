@@ -344,7 +344,6 @@ impl ConfigService for ConfigServiceImpl {
         // Validate required secrets based on source type
         let required_secrets: &[&str] = match source.source_type {
             ps_core::models::Platform::Github | ps_core::models::Platform::Jira => &["api_token"],
-            ps_core::models::Platform::Discourse(_) => &["api_key"],
             _ => &[],
         };
 
@@ -404,7 +403,7 @@ impl ConfigServiceImpl {
             }));
         }
 
-        // Decrypt API key
+        // Decrypt API key (optional — Discourse public endpoints work without auth)
         let api_key = match self
             .repos
             .config
@@ -421,13 +420,7 @@ impl ConfigServiceImpl {
                     }));
                 }
             },
-            Ok(None) => {
-                return Ok(Response::new(TestConnectionResponse {
-                    success: false,
-                    error_message: "api_key secret not found".into(),
-                    details: details.clone(),
-                }));
-            }
+            Ok(None) => String::new(),
             Err(e) => {
                 return Ok(Response::new(TestConnectionResponse {
                     success: false,
@@ -439,14 +432,13 @@ impl ConfigServiceImpl {
 
         // Call Discourse /about.json
         let url = format!("{base_url}/about.json");
-        match self
-            .http_client
-            .get(&url)
-            .header("Api-Key", &api_key)
-            .header("Api-Username", "system")
-            .send()
-            .await
-        {
+        let mut req = self.http_client.get(&url);
+        if !api_key.is_empty() {
+            req = req
+                .header("Api-Key", &api_key)
+                .header("Api-Username", "system");
+        }
+        match req.send().await {
             Ok(resp) => {
                 let status = resp.status();
                 if status.is_success() {

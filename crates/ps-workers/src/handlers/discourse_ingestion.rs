@@ -62,10 +62,13 @@ impl DiscourseIngestionHandlerImpl {
         };
         let run_id = self.create_run(ctx, source_name, method).await?;
 
-        // Decrypt API key once per run, outside ctx.run() to avoid journaling
-        let api_key = self.decrypt_source_token(config.id, "api_key").await?;
+        // Decrypt API key once per run, outside ctx.run() to avoid journaling.
+        // API key is optional — Discourse public endpoints work without auth.
+        let api_key = self
+            .decrypt_source_secret_optional(config.id, "api_key")
+            .await?;
 
-        let ing_ctx = self.ingestion_context(&config, Some(api_key));
+        let ing_ctx = self.ingestion_context(&config, api_key);
 
         let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
@@ -137,25 +140,30 @@ impl DiscourseIngestionHandlerImpl {
         }
     }
 
-    async fn decrypt_source_token(
+    /// Decrypt an optional secret.  Returns `None` if the secret is not configured.
+    async fn decrypt_source_secret_optional(
         &self,
         source_id: uuid::Uuid,
         key: &str,
-    ) -> Result<String, TerminalError> {
+    ) -> Result<Option<String>, TerminalError> {
         let encrypted = self
             .state
             .repos
             .config
             .get_encrypted_secret(source_id, key)
             .await
-            .map_err(|e| TerminalError::new(format!("db error: {e}")))?
-            .ok_or_else(|| TerminalError::new(format!("source has no {key} configured")))?;
+            .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
 
-        let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &encrypted)
-            .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
-
-        String::from_utf8(decrypted)
-            .map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))
+        match encrypted {
+            Some(enc) => {
+                let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &enc)
+                    .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
+                let s = String::from_utf8(decrypted)
+                    .map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))?;
+                Ok(Some(s))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn load_config(

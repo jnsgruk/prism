@@ -141,6 +141,20 @@ impl DiscourseClient {
         }
     }
 
+    /// Apply auth headers to a request builder, if an API key is configured.
+    ///
+    /// Discourse public endpoints work without authentication (with stricter
+    /// rate limits), so we skip the headers when no key is set.
+    fn auth(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        if self.api_key.is_empty() {
+            builder
+        } else {
+            builder
+                .header("Api-Key", &self.api_key)
+                .header("Api-Username", &self.api_username)
+        }
+    }
+
     /// Fetch the latest topics page.
     ///
     /// `page` is 0-indexed.  Returns topics sorted by latest activity.
@@ -149,18 +163,15 @@ impl DiscourseClient {
 
         debug!(page, "discourse latest request");
 
-        let resp = self
+        let req = self
             .http
             .get(&url)
             .query(&[("page", page.to_string()), ("order", "activity".into())])
-            .header("Api-Key", &self.api_key)
-            .header("Api-Username", &self.api_username)
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await
-            .map_err(|e| {
-                ps_core::Error::Internal(format!("discourse latest request failed: {e}"))
-            })?;
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse latest request failed: {e}"))
+        })?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
@@ -176,17 +187,14 @@ impl DiscourseClient {
 
         debug!(topic_id, "discourse topic request");
 
-        let resp = self
+        let req = self
             .http
             .get(&url)
-            .header("Api-Key", &self.api_key)
-            .header("Api-Username", &self.api_username)
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await
-            .map_err(|e| {
-                ps_core::Error::Internal(format!("discourse topic request failed: {e}"))
-            })?;
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse topic request failed: {e}"))
+        })?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
@@ -200,17 +208,14 @@ impl DiscourseClient {
     pub async fn categories(&self) -> Result<Vec<Category>, ps_core::Error> {
         let url = format!("{}/categories.json", self.base_url);
 
-        let resp = self
+        let req = self
             .http
             .get(&url)
-            .header("Api-Key", &self.api_key)
-            .header("Api-Username", &self.api_username)
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await
-            .map_err(|e| {
-                ps_core::Error::Internal(format!("discourse categories request failed: {e}"))
-            })?;
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse categories request failed: {e}"))
+        })?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
@@ -227,16 +232,11 @@ impl DiscourseClient {
     pub async fn test_connection(&self) -> Result<String, ps_core::Error> {
         let url = format!("{}/about.json", self.base_url);
 
-        let resp = self
-            .http
-            .get(&url)
-            .header("Api-Key", &self.api_key)
-            .header("Api-Username", &self.api_username)
-            .send()
-            .await
-            .map_err(|e| {
-                ps_core::Error::Internal(format!("discourse connection test failed: {e}"))
-            })?;
+        let req = self.http.get(&url);
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse connection test failed: {e}"))
+        })?;
 
         let status = resp.status();
         if !status.is_success() {

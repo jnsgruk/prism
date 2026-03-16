@@ -10,7 +10,7 @@ export const SOURCE_TYPES = [
 export const SECRET_KEYS_BY_TYPE: Record<string, string[]> = {
   github: ["api_token"],
   jira: ["api_token", "email"],
-  discourse: ["api_key"],
+  discourse: [],
   launchpad: ["oauth_token"],
   google_drive: ["service_account_key"],
   mailing_list: [],

@@ -90,6 +90,9 @@ impl Source for DiscourseSource {
 }
 
 /// Decrypt the Discourse API key from the source config secrets.
+///
+/// Returns an empty string if no API key is configured — Discourse public
+/// endpoints work without authentication (with stricter rate limits).
 pub(crate) async fn decrypt_api_key(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
     if let Some(ref token) = ctx.token {
         return Ok(token.clone());
@@ -99,16 +102,17 @@ pub(crate) async fn decrypt_api_key(ctx: &IngestionContext) -> Result<String, ps
         .repos
         .config
         .get_encrypted_secret(ctx.source_config.id, "api_key")
-        .await?
-        .ok_or_else(|| {
-            ps_core::Error::Validation("Discourse source has no api_key configured".into())
-        })?;
+        .await?;
 
-    let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &encrypted)
-        .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-
-    String::from_utf8(decrypted)
-        .map_err(|e| ps_core::Error::Internal(format!("invalid api_key encoding: {e}")))
+    match encrypted {
+        Some(enc) => {
+            let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &enc)
+                .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
+            String::from_utf8(decrypted)
+                .map_err(|e| ps_core::Error::Internal(format!("invalid api_key encoding: {e}")))
+        }
+        None => Ok(String::new()),
+    }
 }
 
 /// Decrypt the optional Discourse API username from secrets.

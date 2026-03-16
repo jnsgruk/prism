@@ -369,9 +369,8 @@ const DiscourseSettingsForm = ({
     <div className="space-y-4">
       {/* Credentials hint */}
       <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-        Set the <code className="font-semibold">api_key</code> secret with a Discourse API key. The
-        key needs read access. Use <code className="font-semibold">system</code> as the API username
-        for global keys.
+        Optional: set the <code className="font-semibold">api_key</code> secret for higher rate
+        limits and access to private categories. Public instances work without a key.
       </div>
 
       {/* Base URL */}
