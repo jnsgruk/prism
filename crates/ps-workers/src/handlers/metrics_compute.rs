@@ -1,11 +1,12 @@
-use ps_core::repo::Repos;
 use restate_sdk::prelude::*;
 use time::OffsetDateTime;
 use tracing::{error, info};
 use uuid::Uuid;
 
+use super::SharedState;
+
 pub struct MetricsComputeHandlerImpl {
-    pub repos: Repos,
+    pub state: SharedState,
 }
 
 #[restate_sdk::service]
@@ -46,7 +47,7 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
 
 impl MetricsComputeHandlerImpl {
     async fn create_run(&self, ctx: &Context<'_>) -> Result<Uuid, TerminalError> {
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         ctx.run(|| {
             let repos = repos.clone();
             async move {
@@ -77,11 +78,11 @@ impl MetricsComputeHandlerImpl {
         today: time::Date,
     ) -> Result<i32, ps_core::Error> {
         let (start, end) = ps_metrics::period_boundaries(today, period_type);
-        ps_metrics::compute_all_snapshots(&self.repos, start, end, period_type).await
+        ps_metrics::compute_all_snapshots(&self.state.repos, start, end, period_type).await
     }
 
     async fn complete_run(&self, ctx: &Context<'_>, run_id: Uuid, items: i32) {
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
@@ -103,7 +104,7 @@ impl MetricsComputeHandlerImpl {
     }
 
     async fn fail_run(&self, ctx: &Context<'_>, run_id: Uuid, error_msg: &str) {
-        let repos = self.repos.clone();
+        let repos = self.state.repos.clone();
         let err = error_msg.to_string();
         let result = ctx
             .run(|| {

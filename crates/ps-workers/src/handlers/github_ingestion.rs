@@ -133,15 +133,10 @@ impl GithubIngestionHandlerImpl {
                 let repos = repos.clone();
                 let name = name.clone();
                 async move {
-                    let row = repos
-                        .config
-                        .get_enabled_source_by_name(&name)
+                    let config = super::load_source_config(&repos, &name)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?
-                        .ok_or_else(|| {
-                            TerminalError::new(format!("source '{name}' not found or disabled"))
-                        })?;
-                    Ok(Json::from(row))
+                        .map_err(TerminalError::new)?;
+                    Ok(Json::from(config))
                 }
             })
             .name("load_config")

@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state: state.clone(),
     };
     let metrics_compute = MetricsComputeHandlerImpl {
-        repos: state.repos.clone(),
+        state: state.clone(),
     };
 
     // Health service for k8s probes
