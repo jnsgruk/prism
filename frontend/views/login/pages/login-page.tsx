@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
@@ -18,12 +18,13 @@ const LoginPage = (): React.ReactElement | null => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  if (statusLoading) return null;
+  useEffect(() => {
+    if (!statusLoading && setupComplete === false) {
+      navigate("/setup", { replace: true });
+    }
+  }, [statusLoading, setupComplete, navigate]);
 
-  if (setupComplete === false) {
-    navigate("/setup", { replace: true });
-    return null;
-  }
+  if (statusLoading || setupComplete === false) return null;
 
   const handleLogin = (e: React.FormEvent): void => {
     e.preventDefault();

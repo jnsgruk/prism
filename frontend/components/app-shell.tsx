@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +38,17 @@ export const AppShell = ({
   const { data: setupComplete, isLoading: setupLoading } = useSetupStatus();
   const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
 
+  const needsSetup = !isPublicRoute && !setupLoading && !userLoading && setupComplete === false;
+  const needsLogin = !isPublicRoute && !setupLoading && !userLoading && !needsSetup && (userError || !user);
+
+  useEffect(() => {
+    if (needsSetup) navigate("/setup", { replace: true });
+  }, [needsSetup, navigate]);
+
+  useEffect(() => {
+    if (needsLogin) navigate("/login", { replace: true });
+  }, [needsLogin, navigate]);
+
   // Public routes render without the shell
   if (isPublicRoute) {
     return (
@@ -48,21 +61,12 @@ export const AppShell = ({
   // Loading state for authenticated routes
   if (setupLoading || userLoading) return <LoadingSkeleton />;
 
-  // Redirect to setup if not complete
-  if (setupComplete === false) {
-    navigate("/setup", { replace: true });
-    return null;
-  }
-
-  // Redirect to login if not authenticated
-  if (userError || !user) {
-    navigate("/login", { replace: true });
-    return null;
-  }
+  // Waiting for redirect
+  if (needsSetup || needsLogin) return null;
 
   return (
     <SidebarProvider>
-      <AppSidebar user={user} />
+      <AppSidebar user={user!} />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   );
