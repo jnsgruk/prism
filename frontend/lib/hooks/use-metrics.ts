@@ -2,7 +2,12 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
-import type { Period, TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import type {
+  Contribution,
+  ListTeamContributionsResponse,
+  Period,
+  TeamMetrics,
+} from "@ps/api/gen/prism/v1/metrics_pb";
 import { MetricsService, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
 import { transport } from "@ps/api/transport";
 
@@ -17,7 +22,28 @@ export const metricsKeys = {
     `${period.type}-${period.start}`,
   ],
   periods: (): readonly string[] => [...metricsKeys.all, "periods"],
+  contributions: (
+    teamId: string,
+    period: Period,
+    filters: ContributionFilters,
+  ): readonly (string | number)[] => [
+    ...metricsKeys.all,
+    "contributions",
+    teamId,
+    `${period.type}-${period.start}`,
+    filters.contributionType ?? "",
+    filters.state ?? "",
+    filters.pageSize,
+    filters.pageIndex,
+  ],
 };
+
+export interface ContributionFilters {
+  contributionType?: string;
+  state?: string;
+  pageSize: number;
+  pageIndex: number;
+}
 
 export const useCompareTeams = (
   teamIds: string[],
@@ -37,4 +63,24 @@ export const useListPeriods = (): UseQueryResult<Period[], Error> =>
     select: (data): Period[] => data.periods,
   });
 
+export const useListTeamContributions = (
+  teamId: string,
+  period: Period,
+  filters: ContributionFilters,
+): UseQueryResult<ListTeamContributionsResponse, Error> =>
+  useQuery({
+    queryKey: metricsKeys.contributions(teamId, period, filters),
+    queryFn: () =>
+      metricsClient.listTeamContributions({
+        teamId,
+        period,
+        contributionType: filters.contributionType,
+        state: filters.state,
+        pageSize: filters.pageSize,
+        pageIndex: filters.pageIndex,
+      }),
+    enabled: teamId.length > 0,
+  });
+
+export type { Contribution };
 export { PeriodType };

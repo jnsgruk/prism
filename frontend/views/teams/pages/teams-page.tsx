@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertCircle, ArrowUpDown, ChevronDown, ChevronRight, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -21,6 +21,11 @@ import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 import { useCompareTeams } from "@/lib/hooks/use-metrics";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
+import {
+  MetricDrilldownSheet,
+  type DrilldownMetric,
+  type DrilldownTarget,
+} from "@/views/teams/components/metric-drilldown-sheet";
 import {
   buildPeriod,
   defaultPeriodKey,
@@ -61,6 +66,7 @@ const TeamsPage = (): React.ReactElement => {
 
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [drilldown, setDrilldown] = useState<DrilldownTarget | null>(null);
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
@@ -138,6 +144,12 @@ const TeamsPage = (): React.ReactElement => {
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
   const members = teamDetail?.members ?? [];
 
+  const openDrilldown = useCallback((metric: DrilldownMetric, teamId: string, teamName: string) => {
+    setDrilldown({ metric, teamId, teamName });
+  }, []);
+
+  const closeDrilldown = useCallback(() => setDrilldown(null), []);
+
   return (
     <>
       <PageHeader
@@ -178,6 +190,7 @@ const TeamsPage = (): React.ReactElement => {
                 ? selectedTeam.totalMemberCount
                 : selectedTeam.memberCount
             }
+            onDrillDown={(metric) => openDrilldown(metric, effectiveTeamId, selectedTeam.name)}
           />
         )}
 
@@ -237,6 +250,7 @@ const TeamsPage = (): React.ReactElement => {
                           }
                           hasChildren={(childTeam?.children.length ?? 0) > 0}
                           onSelect={() => setSelectedTeamId(m.teamId)}
+                          onDrillDown={(metric) => openDrilldown(metric, m.teamId, m.teamName)}
                         />
                       );
                     })}
@@ -346,6 +360,9 @@ const TeamsPage = (): React.ReactElement => {
           </Collapsible>
         )}
       </div>
+
+      {/* Metric drill-down sheet */}
+      <MetricDrilldownSheet target={drilldown} period={period} onClose={closeDrilldown} />
     </>
   );
 };
@@ -380,12 +397,14 @@ const MetricsRow = ({
   teamTypeBadge,
   hasChildren,
   onSelect,
+  onDrillDown,
 }: {
   metrics: TeamMetrics;
   teamType: string | undefined;
   teamTypeBadge: "default" | "secondary" | "outline" | "destructive" | undefined;
   hasChildren: boolean;
   onSelect: () => void;
+  onDrillDown: (metric: DrilldownMetric) => void;
 }): React.ReactElement => (
   <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onSelect}>
     <TableCell className="font-medium">
@@ -402,12 +421,32 @@ const MetricsRow = ({
       )}
     </TableCell>
     <TableCell>
-      <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>{metrics.throughput}</Badge>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (metrics.throughput > 0) onDrillDown("throughput");
+        }}
+        className={metrics.throughput > 0 ? "cursor-pointer" : "cursor-default"}
+      >
+        <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>
+          {metrics.throughput}
+        </Badge>
+      </button>
     </TableCell>
     <TableCell>
-      {metrics.reviewTurnaroundP75Hours > 0
-        ? `${metrics.reviewTurnaroundP75Hours.toFixed(1)}h`
-        : "\u2014"}
+      {metrics.reviewTurnaroundP75Hours > 0 ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDrillDown("review_turnaround");
+          }}
+          className="cursor-pointer hover:underline"
+        >
+          {metrics.reviewTurnaroundP75Hours.toFixed(1)}h
+        </button>
+      ) : (
+        "\u2014"
+      )}
     </TableCell>
     <TableCell>{metrics.memberCount}</TableCell>
   </TableRow>
