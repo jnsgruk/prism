@@ -42,7 +42,7 @@ export const ImportJiraUsersDialog = (): React.ReactElement => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
+      <DialogTrigger render={<Button />}>
         <Upload className="size-4" />
         Import Jira Users
       </DialogTrigger>
