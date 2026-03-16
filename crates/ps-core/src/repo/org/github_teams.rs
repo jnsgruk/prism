@@ -371,29 +371,34 @@ impl OrgRepo {
         Ok(())
     }
 
-    /// Get distinct GitHub usernames across all mapped teams for a source.
+    /// Get distinct GitHub usernames for all active Prism team members.
+    ///
+    /// Combines two sources:
+    /// 1. GitHub team members from mapped teams (via `github_team_members`)
+    /// 2. All people with GitHub platform identities who are in any Prism team
+    ///    (catches teams that don't have a GitHub team mapping)
     ///
     /// Used by the member search phase to find cross-repo contributions.
-    pub async fn get_mapped_github_team_member_usernames(
-        &self,
-        source_id: Uuid,
-    ) -> Result<Vec<String>, Error> {
+    pub async fn get_all_github_team_member_usernames(&self) -> Result<Vec<String>, Error> {
         let rows = sqlx::query!(
             r#"
-            SELECT DISTINCT gtm.github_username
-            FROM org.github_team_members gtm
-            JOIN org.github_teams gt ON gt.id = gtm.github_team_id
-            JOIN org.team_github_team_mappings m ON m.github_team_id = gt.id
-            WHERE gt.source_id = $1
-            ORDER BY gtm.github_username
+            SELECT DISTINCT username FROM (
+                -- People with GitHub platform identities who are active team members
+                SELECT pi.platform_username AS username
+                FROM org.platform_identities pi
+                JOIN org.team_memberships tm ON tm.person_id = pi.person_id
+                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
+                JOIN org.people p ON p.id = pi.person_id AND p.active = true
+                WHERE pi.platform = 'github'
+            ) all_users
+            ORDER BY username
             "#,
-            source_id,
         )
         .fetch_all(&self.pool)
         .await
         .map_err(|e| Error::Database(e.to_string()))?;
 
-        Ok(rows.into_iter().map(|r| r.github_username).collect())
+        Ok(rows.into_iter().filter_map(|r| r.username).collect())
     }
 
     /// Remove stale GitHub teams that weren't seen in the latest sync.

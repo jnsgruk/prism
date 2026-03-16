@@ -376,12 +376,9 @@ async fn transition_to_member_search(
         });
     }
 
-    // Load team member usernames for search.
-    let usernames = ctx
-        .repos
-        .org
-        .get_mapped_github_team_member_usernames(ctx.source_config.id)
-        .await?;
+    // Load all GitHub usernames for active team members — includes users from
+    // teams without a GitHub team mapping.
+    let usernames = ctx.repos.org.get_all_github_team_member_usernames().await?;
 
     if usernames.is_empty() {
         info!(

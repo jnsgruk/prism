@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT username FROM (\n                -- People with GitHub platform identities who are active team members\n                SELECT pi.platform_username AS username\n                FROM org.platform_identities pi\n                JOIN org.team_memberships tm ON tm.person_id = pi.person_id\n                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n                JOIN org.people p ON p.id = pi.person_id AND p.active = true\n                WHERE pi.platform = 'github'\n            ) all_users\n            ORDER BY username\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [null]
+  },
+  "hash": "75cefa50ba297c0323bfa1b880b9fd9b944b63599e8b899435ffbad6bbb7085e"
+}
