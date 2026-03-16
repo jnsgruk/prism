@@ -183,6 +183,8 @@
           treefmt = {
             projectRootFile = "flake.nix";
 
+            settings.global.excludes = [ ".sqlx/*" ];
+
             programs = {
               deadnix.enable = true;
               nixfmt.enable = true;
