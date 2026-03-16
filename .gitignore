@@ -32,3 +32,5 @@ Thumbs.db
 
 # K8s
 k8s/gateway/charts/
+
+reports/
