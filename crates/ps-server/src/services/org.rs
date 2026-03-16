@@ -34,17 +34,26 @@ use super::common::{db_err, require_auth};
 
 /// Build `Person` proto messages from person rows + their platform identities.
 fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Person> {
+    // Index identities by person_id for O(N+M) instead of O(N*M) lookup.
+    let mut identity_map: HashMap<Uuid, Vec<&IdentityRow>> = HashMap::new();
+    for i in identities {
+        identity_map.entry(i.person_id).or_default().push(i);
+    }
+
     people
         .into_iter()
         .map(|p| {
-            let person_identities: Vec<PlatformIdentity> = identities
-                .iter()
-                .filter(|i| i.person_id == p.id)
-                .map(|i| PlatformIdentity {
-                    platform: i.platform.clone(),
-                    username: i.platform_username.clone(),
+            let person_identities: Vec<PlatformIdentity> = identity_map
+                .get(&p.id)
+                .map(|ids| {
+                    ids.iter()
+                        .map(|i| PlatformIdentity {
+                            platform: i.platform.clone(),
+                            username: i.platform_username.clone(),
+                        })
+                        .collect()
                 })
-                .collect();
+                .unwrap_or_default();
 
             Person {
                 id: p.id.to_string(),

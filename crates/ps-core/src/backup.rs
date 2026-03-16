@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
 use flate2::Compression;
@@ -15,7 +15,7 @@ pub struct BackupManifest {
     pub schema_version: i32,
     #[serde(with = "time::serde::rfc3339")]
     pub exported_at: OffsetDateTime,
-    pub table_counts: HashMap<String, i32>,
+    pub table_counts: BTreeMap<String, i32>,
     pub app_version: String,
 }
 
@@ -130,7 +130,7 @@ mod tests {
         let manifest = BackupManifest {
             schema_version: 5,
             exported_at: OffsetDateTime::now_utc(),
-            table_counts: HashMap::from([("users".into(), 3), ("teams".into(), 2)]),
+            table_counts: BTreeMap::from([("users".into(), 3), ("teams".into(), 2)]),
             app_version: "0.1.0".into(),
         };
 
@@ -146,7 +146,7 @@ mod tests {
         let manifest = BackupManifest {
             schema_version: 5,
             exported_at: OffsetDateTime::now_utc(),
-            table_counts: HashMap::from([("test_table".into(), 2)]),
+            table_counts: BTreeMap::from([("test_table".into(), 2)]),
             app_version: "0.1.0".into(),
         };
 

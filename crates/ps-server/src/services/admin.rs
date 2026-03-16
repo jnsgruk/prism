@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::pin::Pin;
 
 use ps_core::auth::{generate_token, hash_token};
@@ -52,7 +52,7 @@ impl AdminService for AdminServiceImpl {
 
             let user_count = repos.auth.count_users().await.map_err(db_err)?;
 
-            let mut table_counts = HashMap::new();
+            let mut table_counts = BTreeMap::new();
             #[allow(clippy::cast_possible_truncation)]
             {
                 table_counts.insert("source_configs".into(), source_count as i32);

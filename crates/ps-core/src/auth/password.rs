@@ -2,9 +2,7 @@ use crate::Error;
 
 /// Hash a password using Argon2id via the `password-auth` crate.
 pub fn hash_password(password: &str) -> Result<String, Error> {
-    password_auth::generate_hash(password)
-        .parse::<String>()
-        .map_err(|e| Error::Internal(format!("password hashing failed: {e}")))
+    Ok(password_auth::generate_hash(password))
 }
 
 /// Verify a password against a stored Argon2id hash.

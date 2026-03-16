@@ -18,7 +18,7 @@ use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
 use uuid::Uuid;
 
-use super::common::{db_err, require_auth};
+use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct AuthServiceImpl {
     repos: Repos,
@@ -27,6 +27,33 @@ pub struct AuthServiceImpl {
 impl AuthServiceImpl {
     pub fn new(repos: Repos) -> Self {
         Self { repos }
+    }
+
+    /// Create a session for a user, returning the raw token and expiry timestamp.
+    async fn create_user_session(
+        &self,
+        user_id: Uuid,
+        session_type: &str,
+    ) -> Result<(String, prost_types::Timestamp), Status> {
+        let raw_token = generate_token();
+        let token_hash = hash_token(&raw_token);
+        let session_id = Uuid::now_v7();
+        let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
+
+        self.repos
+            .auth
+            .create_session(
+                session_id,
+                user_id,
+                &token_hash,
+                session_type,
+                Some(expires_at),
+                None,
+            )
+            .await
+            .map_err(db_err)?;
+
+        Ok((raw_token, to_timestamp(expires_at)))
     }
 }
 
@@ -77,29 +104,11 @@ impl AuthService for AuthServiceImpl {
             .await
             .map_err(|e| Status::internal(format!("failed to create user: {e}")))?;
 
-        let raw_token = generate_token();
-        let token_hash = hash_token(&raw_token);
-        let session_id = Uuid::now_v7();
-        let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
-
-        self.repos
-            .auth
-            .create_session(
-                session_id,
-                user_id,
-                &token_hash,
-                "browser",
-                Some(expires_at),
-                None,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
+        let (session_token, _) = self.create_user_session(user_id, "browser").await?;
 
         info!(user_id = %user_id, username = %req.username, "initial admin user created");
 
-        Ok(Response::new(CompleteSetupResponse {
-            session_token: raw_token,
-        }))
+        Ok(Response::new(CompleteSetupResponse { session_token }))
     }
 
     async fn login(
@@ -123,32 +132,11 @@ impl AuthService for AuthServiceImpl {
         verify_password(&req.password, &user.password_hash)
             .map_err(|_| Status::unauthenticated("invalid credentials"))?;
 
-        let raw_token = generate_token();
-        let token_hash = hash_token(&raw_token);
-        let session_id = Uuid::now_v7();
-        let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
-
-        self.repos
-            .auth
-            .create_session(
-                session_id,
-                user.id,
-                &token_hash,
-                "browser",
-                Some(expires_at),
-                None,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
-
-        let timestamp = prost_types::Timestamp {
-            seconds: expires_at.unix_timestamp(),
-            nanos: 0,
-        };
+        let (session_token, expires_at) = self.create_user_session(user.id, "browser").await?;
 
         Ok(Response::new(LoginResponse {
-            session_token: raw_token,
-            expires_at: Some(timestamp),
+            session_token,
+            expires_at: Some(expires_at),
         }))
     }
 
@@ -199,13 +187,10 @@ impl AuthService for AuthServiceImpl {
             .read_manifest()
             .map_err(|e| Status::invalid_argument(format!("invalid backup: {e}")))?;
 
-        let exported_at = prost_types::Timestamp {
-            seconds: manifest.exported_at.unix_timestamp(),
-            nanos: 0,
-        };
+        let exported_at = to_timestamp(manifest.exported_at);
 
-        // Convert table_counts from HashMap<String, i32> to proto map
-        let table_counts: HashMap<String, i32> = manifest.table_counts;
+        // Convert BTreeMap to HashMap for proto map field
+        let table_counts: HashMap<String, i32> = manifest.table_counts.into_iter().collect();
 
         Ok(Response::new(PreviewBackupResponse {
             schema_version: manifest.schema_version,
@@ -251,7 +236,7 @@ impl AuthService for AuthServiceImpl {
 
         // For now, return the manifest info — full table restore will be
         // implemented when we have concrete table schemas to import into.
-        let tables_restored: HashMap<String, i32> = manifest.table_counts;
+        let tables_restored: HashMap<String, i32> = manifest.table_counts.into_iter().collect();
 
         // Create admin user for the restored instance with a random password
         let generated_password: String = rand::rng()
@@ -269,34 +254,13 @@ impl AuthService for AuthServiceImpl {
             .await
             .map_err(|e| Status::internal(format!("failed to create admin user: {e}")))?;
 
-        let raw_token = generate_token();
-        let token_hash = hash_token(&raw_token);
-        let session_id = Uuid::now_v7();
-        let expires_at = OffsetDateTime::now_utc() + time::Duration::days(7);
-
-        self.repos
-            .auth
-            .create_session(
-                session_id,
-                user_id,
-                &token_hash,
-                "browser",
-                Some(expires_at),
-                None,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("failed to create session: {e}")))?;
-
-        let timestamp = prost_types::Timestamp {
-            seconds: expires_at.unix_timestamp(),
-            nanos: 0,
-        };
+        let (session_token, expires_at) = self.create_user_session(user_id, "browser").await?;
 
         info!("backup restored, admin user created");
 
         Ok(Response::new(RestoreBackupResponse {
-            session_token: raw_token,
-            expires_at: Some(timestamp),
+            session_token,
+            expires_at: Some(expires_at),
             tables_restored,
             generated_password,
         }))
