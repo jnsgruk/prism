@@ -26,13 +26,16 @@ export const metricsKeys = {
     teamId: string,
     period: Period,
     filters: ContributionFilters,
-  ): readonly (string | number)[] => [
+  ): readonly (string | number | boolean)[] => [
     ...metricsKeys.all,
     "contributions",
     teamId,
     `${period.type}-${period.start}`,
     filters.contributionType ?? "",
     filters.state ?? "",
+    filters.search ?? "",
+    filters.sortField ?? "",
+    filters.sortDesc ?? true,
     filters.pageSize,
     filters.pageIndex,
   ],
@@ -41,6 +44,9 @@ export const metricsKeys = {
 export interface ContributionFilters {
   contributionType?: string;
   state?: string;
+  search?: string;
+  sortField?: string;
+  sortDesc?: boolean;
   pageSize: number;
   pageIndex: number;
 }
@@ -76,6 +82,9 @@ export const useListTeamContributions = (
         period,
         contributionType: filters.contributionType,
         state: filters.state,
+        search: filters.search,
+        sortField: filters.sortField,
+        sortDesc: filters.sortDesc,
         pageSize: filters.pageSize,
         pageIndex: filters.pageIndex,
       }),

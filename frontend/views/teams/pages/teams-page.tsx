@@ -325,7 +325,7 @@ const TeamsPage = (): React.ReactElement => {
                     <ChevronRight className="size-4" />
                   )}
                   <GitPullRequest className="size-4 text-muted-foreground" />
-                  <CardTitle>Merged PRs</CardTitle>
+                  <CardTitle>Pull Requests</CardTitle>
                   {currentMetrics && (
                     <Badge variant="secondary" className="ml-1">
                       {currentMetrics.throughput}

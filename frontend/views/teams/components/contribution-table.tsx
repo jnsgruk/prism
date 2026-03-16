@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { ExternalLink, Search } from "lucide-react";
+import { useRef, useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
@@ -16,7 +17,7 @@ const formatTimestamp = (ts?: Timestamp): string => {
   return (
     date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
     " " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
   );
 };
 
@@ -37,18 +38,27 @@ const stateBadgeVariant = (state: string): "default" | "secondary" | "destructiv
   }
 };
 
-const columns: ColumnDef<Contribution, unknown>[] = [
-  {
-    accessorKey: "title",
-    header: "Title",
-    cell: ({ row }) => (
+/** Extract PR/review number from platform_id like "owner/repo/pull/123" or "owner/repo/review/456". */
+const extractNumber = (platformId: string): string | null => {
+  const last = platformId.split("/").pop();
+  return last && /^\d+$/.test(last) ? last : null;
+};
+
+const prTitleColumn: ColumnDef<Contribution, unknown> = {
+  accessorKey: "title",
+  header: "PR",
+  cell: ({ row }) => {
+    const c = row.original;
+    const num = extractNumber(c.platformId);
+    const label = num ? `#${num}` : c.title || "\u2014";
+    return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate" title={row.original.title}>
-          {row.original.title || "\u2014"}
+        <span className="whitespace-nowrap" title={c.title}>
+          {label}
         </span>
-        {row.original.url && (
+        {c.url && (
           <a
-            href={row.original.url}
+            href={c.url}
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 text-muted-foreground hover:text-foreground"
@@ -58,72 +68,139 @@ const columns: ColumnDef<Contribution, unknown>[] = [
           </a>
         )}
       </div>
-    ),
-    enableSorting: false,
+    );
   },
-  {
-    accessorKey: "personName",
-    header: "Author",
-    enableSorting: false,
-  },
-  {
-    accessorKey: "repo",
-    header: "Repo",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.repo || "\u2014"}</span>
-    ),
-    enableSorting: false,
-  },
-  {
-    accessorKey: "state",
-    header: "State",
-    cell: ({ row }) =>
-      row.original.state ? (
-        <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px]">
-          {row.original.state}
-        </Badge>
-      ) : (
-        "\u2014"
-      ),
-    enableSorting: false,
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Created",
-    cell: ({ row }) => (
-      <span className="whitespace-nowrap text-muted-foreground">
-        {formatTimestamp(row.original.createdAt)}
+  enableSorting: false,
+};
+
+const reviewTitleColumn: ColumnDef<Contribution, unknown> = {
+  accessorKey: "title",
+  header: "Title",
+  cell: ({ row }) => (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="truncate" title={row.original.title}>
+        {row.original.title || "\u2014"}
       </span>
+      {row.original.url && (
+        <a
+          href={row.original.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="size-3" />
+        </a>
+      )}
+    </div>
+  ),
+  enableSorting: false,
+};
+
+const authorColumn: ColumnDef<Contribution, unknown> = {
+  id: "person_name",
+  accessorKey: "personName",
+  header: "Author",
+  enableSorting: true,
+};
+
+const repoColumn: ColumnDef<Contribution, unknown> = {
+  id: "repo",
+  accessorKey: "repo",
+  header: "Repo",
+  cell: ({ row }) => (
+    <span className="block max-w-30 truncate text-muted-foreground" title={row.original.repo}>
+      {row.original.repo || "\u2014"}
+    </span>
+  ),
+  enableSorting: true,
+};
+
+const prStateColumn: ColumnDef<Contribution, unknown> = {
+  id: "state",
+  accessorKey: "state",
+  header: "State",
+  cell: ({ row }) =>
+    row.original.state ? (
+      <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px] uppercase">
+        {row.original.state}
+      </Badge>
+    ) : (
+      "\u2014"
     ),
-    enableSorting: true,
+  enableSorting: true,
+};
+
+const reviewStateColumn: ColumnDef<Contribution, unknown> = {
+  id: "state",
+  accessorKey: "state",
+  header: "State",
+  cell: ({ row }) =>
+    row.original.state ? (
+      <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px]">
+        {row.original.state}
+      </Badge>
+    ) : (
+      "\u2014"
+    ),
+  enableSorting: true,
+};
+
+const createdAtColumn: ColumnDef<Contribution, unknown> = {
+  id: "created_at",
+  accessorKey: "createdAt",
+  header: "Created",
+  cell: ({ row }) => (
+    <span className="whitespace-nowrap text-muted-foreground">
+      {formatTimestamp(row.original.createdAt)}
+    </span>
+  ),
+  enableSorting: true,
+};
+
+const prStatsColumn: ColumnDef<Contribution, unknown> = {
+  id: "stats",
+  header: "Stats",
+  cell: ({ row }) => {
+    const c = row.original;
+    return c.additions > 0 || c.deletions > 0 ? (
+      <span className="whitespace-nowrap">
+        <span className="text-green-600">+{c.additions}</span>{" "}
+        <span className="text-red-600">-{c.deletions}</span>
+      </span>
+    ) : (
+      "\u2014"
+    );
   },
-  {
-    id: "stats",
-    header: "Stats",
-    cell: ({ row }) => {
-      const c = row.original;
-      if (c.contributionType === "pr_review") {
-        return c.reviewHours > 0 ? (
-          <span className="whitespace-nowrap">{c.reviewHours.toFixed(1)}h turnaround</span>
-        ) : (
-          "\u2014"
-        );
-      }
-      return c.additions > 0 || c.deletions > 0 ? (
-        <span className="whitespace-nowrap">
-          <span className="text-green-600">+{c.additions}</span>{" "}
-          <span className="text-red-600">-{c.deletions}</span>
-        </span>
-      ) : (
-        "\u2014"
-      );
-    },
-    enableSorting: false,
-  },
+  enableSorting: false,
+};
+
+type PrStateFilter = "all" | "merged" | "open" | "closed";
+type ReviewStateFilter = "all" | "APPROVED" | "COMMENTED" | "CHANGES_REQUESTED" | "DISMISSED";
+type StateFilter = PrStateFilter | ReviewStateFilter;
+
+const prStates: PrStateFilter[] = ["all", "merged", "open", "closed"];
+const reviewStates: ReviewStateFilter[] = [
+  "all",
+  "APPROVED",
+  "COMMENTED",
+  "CHANGES_REQUESTED",
+  "DISMISSED",
 ];
 
-type TypeFilter = "all" | "pull_request" | "pr_review";
-type StateFilter = "all" | "merged" | "open" | "closed";
+const stateLabel = (s: string): string => {
+  const labels: Record<string, string> = {
+    all: "All",
+    merged: "Merged",
+    open: "Open",
+    closed: "Closed",
+    APPROVED: "Approved",
+    COMMENTED: "Commented",
+    CHANGES_REQUESTED: "Changes Requested",
+    DISMISSED: "Dismissed",
+  };
+  return labels[s] ?? s;
+};
 
 export const ContributionTable = ({
   teamId,
@@ -136,19 +213,46 @@ export const ContributionTable = ({
   defaultContributionType?: string;
   defaultState?: string;
 }): React.ReactElement => {
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>(
-    (defaultContributionType as TypeFilter) ?? "all",
-  );
+  const isReview = defaultContributionType === "pr_review";
   const [stateFilter, setStateFilter] = useState<StateFilter>(
     (defaultState as StateFilter) ?? "all",
   );
-  const [pageSize, setPageSize] = useState(25);
+
+  const activeStates: StateFilter[] = isReview ? reviewStates : prStates;
+  const columns = useMemo(
+    (): ColumnDef<Contribution, unknown>[] =>
+      isReview
+        ? [reviewTitleColumn, authorColumn, repoColumn, reviewStateColumn, createdAtColumn]
+        : [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn],
+    [isReview],
+  );
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  // Debounce search input
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleSearchChange = (value: string): void => {
+    setSearch(value);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPageIndex(0);
+    }, 300);
+  };
+
+  const activeSortCol = sorting[0] as SortingState[number] | undefined;
+  const sortField = activeSortCol?.id;
+  const sortDesc = activeSortCol?.desc;
+
   const filters: ContributionFilters = {
-    contributionType: typeFilter === "all" ? undefined : typeFilter,
+    contributionType: defaultContributionType,
     state: stateFilter === "all" ? undefined : stateFilter,
+    search: debouncedSearch || undefined,
+    sortField,
+    sortDesc,
     pageSize,
     pageIndex,
   };
@@ -164,45 +268,33 @@ export const ContributionTable = ({
   return (
     <div className="space-y-3">
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Type</span>
-          <div className="flex gap-0.5">
-            {(["all", "pull_request", "pr_review"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTypeFilter(t);
-                  resetPage();
-                }}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  typeFilter === t
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {{ all: "All", pull_request: "PRs", pr_review: "Reviews" }[t]}
-              </button>
-            ))}
-          </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="h-8 w-48 pl-8 text-xs"
+          />
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">State</span>
           <div className="flex gap-0.5">
-            {(["all", "merged", "open", "closed"] as const).map((s) => (
+            {activeStates.map((s) => (
               <button
                 key={s}
                 onClick={() => {
                   setStateFilter(s);
                   resetPage();
                 }}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                   stateFilter === s
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                {s}
+                {stateLabel(s)}
               </button>
             ))}
           </div>
@@ -219,7 +311,10 @@ export const ContributionTable = ({
               columns={columns}
               data={contributions}
               sorting={sorting}
-              onSortingChange={setSorting}
+              onSortingChange={(updater) => {
+                setSorting(updater);
+                setPageIndex(0);
+              }}
             />
           </div>
           <DataTablePagination

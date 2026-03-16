@@ -71,7 +71,7 @@ const formatTimestamp = (ts?: { seconds: bigint }): string => {
   return (
     date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
     " " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
   );
 };
 
