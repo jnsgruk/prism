@@ -71,7 +71,7 @@ const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
 const instanceLabel = (platform: string): string => {
   const suffix = platform.replace(/^discourse-?/, "");
   if (!suffix) return platform;
-  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+  return suffix.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const topicTitleColumn: ColumnDef<Contribution, unknown> = {

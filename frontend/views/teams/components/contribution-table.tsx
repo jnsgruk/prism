@@ -190,8 +190,11 @@ const prStatsColumn: ColumnDef<Contribution, unknown> = {
 // Discourse columns
 // ---------------------------------------------------------------------------
 
-const instanceLabel = (platform: string): string =>
-  platform.startsWith("discourse-") ? platform.slice("discourse-".length) : platform;
+const instanceLabel = (platform: string): string => {
+  const suffix = platform.replace(/^discourse-?/, "");
+  if (!suffix) return platform;
+  return suffix.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "title",
