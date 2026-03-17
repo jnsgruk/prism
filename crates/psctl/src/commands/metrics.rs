@@ -5,6 +5,18 @@ use ps_proto::prism::v1::{
 
 use crate::client::Clients;
 
+fn find_team(teams: &[ps_proto::prism::v1::Team], name: &str) -> Option<String> {
+    for team in teams {
+        if team.name.eq_ignore_ascii_case(name) {
+            return Some(team.id.clone());
+        }
+        if let Some(id) = find_team(&team.children, name) {
+            return Some(id);
+        }
+    }
+    None
+}
+
 /// Resolve a team name to its UUID by searching the team tree.
 async fn resolve_team_id(clients: &mut Clients, name: &str) -> Result<String> {
     // Try parsing as UUID first
@@ -17,18 +29,6 @@ async fn resolve_team_id(clients: &mut Clients, name: &str) -> Result<String> {
         .get_team_tree(GetTeamTreeRequest {})
         .await?
         .into_inner();
-
-    fn find_team(teams: &[ps_proto::prism::v1::Team], name: &str) -> Option<String> {
-        for team in teams {
-            if team.name.eq_ignore_ascii_case(name) {
-                return Some(team.id.clone());
-            }
-            if let Some(id) = find_team(&team.children, name) {
-                return Some(id);
-            }
-        }
-        None
-    }
 
     find_team(&tree.roots, name).ok_or_else(|| anyhow::anyhow!("team not found: {name}"))
 }
