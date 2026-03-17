@@ -22,6 +22,7 @@ impl OrgRepo {
             SELECT p.id, $1
             FROM org.people p
             WHERE p.active = true
+              AND p.last_import_at IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1 FROM org.identity_resolutions ir
                   WHERE ir.person_id = p.id AND ir.platform = $1

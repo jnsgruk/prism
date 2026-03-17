@@ -429,7 +429,7 @@ impl OrgService for OrgServiceImpl {
                         && (s.source_type.is_discourse()
                             || s.source_type == ps_core::models::Platform::Jira)
                 })
-                .map(|s| s.name.clone())
+                .map(|s| s.source_type.to_string())
                 .collect();
 
             if !platforms.is_empty() {
