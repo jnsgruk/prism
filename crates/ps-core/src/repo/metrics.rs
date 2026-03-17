@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::{ContributionState, ContributionType, PeriodType};
+use crate::models::{ContributionState, ContributionType, PeriodType, Platform};
 use sqlx::PgPool;
 use time::Date;
 use uuid::Uuid;
@@ -30,7 +30,9 @@ pub struct TeamSnapshotRow {
 
 /// Raw contribution data needed for metrics computation.
 pub struct ContributionMetricRow {
+    pub id: Uuid,
     pub person_id: Option<Uuid>,
+    pub platform: Platform,
     pub platform_id: String,
     pub contribution_type: ContributionType,
     pub state: Option<ContributionState>,
@@ -38,6 +40,7 @@ pub struct ContributionMetricRow {
     pub closed_at: Option<time::OffsetDateTime>,
     pub metrics: serde_json::Value,
     pub metadata: serde_json::Value,
+    pub state_history: Option<serde_json::Value>,
 }
 
 impl MetricsRepo {
@@ -270,9 +273,10 @@ impl MetricsRepo {
                 SELECT t.id FROM org.teams t
                 JOIN team_tree tt ON t.parent_team_id = tt.id
             )
-            SELECT DISTINCT c.person_id, c.platform_id, c.contribution_type, c.state,
+            SELECT DISTINCT c.id, c.person_id, c.platform, c.platform_id,
+                   c.contribution_type, c.state,
                    c.created_at, c.closed_at,
-                   c.metrics, c.metadata
+                   c.metrics, c.metadata, c.state_history
             FROM activity.contributions c
             JOIN org.team_memberships tm ON tm.person_id = c.person_id
             JOIN team_tree tt ON tm.team_id = tt.id
@@ -293,18 +297,17 @@ impl MetricsRepo {
             .into_iter()
             .filter_map(|r| {
                 Some(ContributionMetricRow {
+                    id: r.id,
                     person_id: r.person_id,
+                    platform: r.platform.parse().ok()?,
                     platform_id: r.platform_id,
-                    contribution_type: match r.contribution_type.as_str() {
-                        "pull_request" => ContributionType::PullRequest,
-                        "pr_review" => ContributionType::PrReview,
-                        _ => return None,
-                    },
+                    contribution_type: r.contribution_type.parse().ok()?,
                     state: r.state.as_deref().and_then(ContributionState::from_str_opt),
                     created_at: r.created_at,
                     closed_at: r.closed_at,
                     metrics: r.metrics,
                     metadata: r.metadata,
+                    state_history: r.state_history,
                 })
             })
             .collect())

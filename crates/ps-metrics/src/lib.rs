@@ -256,6 +256,7 @@ pub fn period_boundaries(reference_date: Date, period_type: PeriodType) -> (Date
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ps_core::models::Platform;
     use time::macros::date;
 
     #[test]
@@ -359,7 +360,9 @@ mod tests {
         // Review for PR B was created at T=1h (matching pr_platform_id = "B")
         // Without proper filtering, PR A would incorrectly match Review-for-B
         let pr_a = ContributionMetricRow {
+            id: Uuid::now_v7(),
             person_id: Some(Uuid::nil()),
+            platform: Platform::Github,
             platform_id: "PR_A".into(),
             contribution_type: ContributionType::PullRequest,
             state: Some(ContributionState::Merged),
@@ -367,9 +370,12 @@ mod tests {
             closed_at: None,
             metrics: serde_json::json!({}),
             metadata: serde_json::json!({}),
+            state_history: None,
         };
         let pr_b = ContributionMetricRow {
+            id: Uuid::now_v7(),
             person_id: Some(Uuid::nil()),
+            platform: Platform::Github,
             platform_id: "PR_B".into(),
             contribution_type: ContributionType::PullRequest,
             state: Some(ContributionState::Merged),
@@ -377,9 +383,12 @@ mod tests {
             closed_at: None,
             metrics: serde_json::json!({}),
             metadata: serde_json::json!({}),
+            state_history: None,
         };
         let review_for_b = ContributionMetricRow {
+            id: Uuid::now_v7(),
             person_id: Some(Uuid::nil()),
+            platform: Platform::Github,
             platform_id: "REVIEW_1".into(),
             contribution_type: ContributionType::PrReview,
             state: Some(ContributionState::Approved),
@@ -387,6 +396,7 @@ mod tests {
             closed_at: None,
             metrics: serde_json::json!({}),
             metadata: serde_json::json!({"pr_platform_id": "PR_B"}),
+            state_history: None,
         };
 
         let contributions = vec![pr_a, pr_b, review_for_b];
@@ -403,7 +413,9 @@ mod tests {
         state: Option<ContributionState>,
     ) -> ContributionMetricRow {
         ContributionMetricRow {
+            id: Uuid::now_v7(),
             person_id: Some(Uuid::nil()),
+            platform: Platform::Github,
             platform_id: Uuid::now_v7().to_string(),
             contribution_type,
             state,
@@ -411,6 +423,7 @@ mod tests {
             closed_at: None,
             metrics: serde_json::json!({}),
             metadata: serde_json::json!({}),
+            state_history: None,
         }
     }
 }
