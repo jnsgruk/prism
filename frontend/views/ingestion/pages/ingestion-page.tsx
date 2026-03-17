@@ -44,6 +44,7 @@ const IngestionPage = (): React.ReactElement => {
 
   const { data: runs, isLoading: runsLoading } = useListRuns(undefined, {
     refetchInterval: runsInterval,
+    ingestionOnly: true,
   });
 
   if (sourcesLoading) {

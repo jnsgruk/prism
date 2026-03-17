@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -29,15 +30,18 @@ import { useListSources } from "@ps/hooks/use-config";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { RunDetailDialog } from "@/components/run-detail-dialog";
-import { formatTimestamp } from "@/lib/format";
+import { formatDuration, formatRelativeTime, formatTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-utils";
 import type { StatusFilter } from "@/lib/run-utils";
 import {
-  useCancelRun,
+  useCancelHandlerRun,
   useListHandlers,
   useListRuns,
   useTriggerHandler,
 } from "@/views/ingestion/hooks/use-ingestion";
+
+/** Strip the "Handler" suffix for display. */
+const displayName = (name: string): string => name.replace("Handler", "");
 
 const TriggerHandlerDialog = ({
   handler,
@@ -62,7 +66,7 @@ const TriggerHandlerDialog = ({
       {
         onSuccess: (resp) => {
           toast.success(
-            `Triggered ${handler.name}.${method} (${resp.invocationId.slice(0, 12)}...)`,
+            `Triggered ${displayName(handler.name)}.${method} (${resp.invocationId.slice(0, 12)}...)`,
           );
           onOpenChange(false);
         },
@@ -77,7 +81,7 @@ const TriggerHandlerDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Trigger {handler.name}</DialogTitle>
+          <DialogTitle>Trigger {displayName(handler.name)}</DialogTitle>
           <DialogDescription>{handler.description}</DialogDescription>
         </DialogHeader>
 
@@ -136,40 +140,111 @@ const TriggerHandlerDialog = ({
   );
 };
 
-const HandlerCard = ({ handler }: { handler: HandlerInfo }): React.ReactElement => {
+// ---------------------------------------------------------------------------
+// Handler card — mirrors SourceStatusRow pattern from the ingestion page
+// ---------------------------------------------------------------------------
+
+const HandlerCard = ({
+  handler,
+  onCancelRun,
+  cancelPending,
+}: {
+  handler: HandlerInfo;
+  onCancelRun: (runId: string) => void;
+  cancelPending: boolean;
+}): React.ReactElement => {
   const [triggerOpen, setTriggerOpen] = useState(false);
+  const isRunning = !!handler.activeRun;
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Cog className="size-5 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">{handler.name}</p>
-            <p className="text-xs text-muted-foreground">{handler.description}</p>
-            <div className="mt-1 flex gap-1">
-              {handler.methods.map((m) => (
-                <Badge key={m} variant="outline" className="text-xs">
-                  {m}
-                </Badge>
-              ))}
+      <div className="rounded-lg border bg-card">
+        <div className="flex items-start gap-6 p-5">
+          {/* Left: identity */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <Cog className="size-5 shrink-0 text-muted-foreground" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">{displayName(handler.name)}</p>
+                  {isRunning && (
+                    <Badge variant="default" className="gap-1 text-xs">
+                      <Loader2 className="size-3 animate-spin" />
+                      Running
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{handler.description}</p>
+                <div className="mt-1.5 flex gap-1">
+                  {handler.methods.map((m) => (
+                    <Badge key={m} variant="outline" className="text-xs">
+                      {m}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Right: actions */}
+          <div className="flex shrink-0 items-center gap-2">
+            {isRunning ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={cancelPending}
+                onClick={() => {
+                  if (handler.activeRun) onCancelRun(handler.activeRun.runId);
+                }}
+              >
+                {cancelPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Square className="mr-1.5 size-3.5" />
+                )}
+                Cancel
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setTriggerOpen(true)}>
+                <Play className="mr-1.5 size-3.5" />
+                Run
+              </Button>
+            )}
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setTriggerOpen(true)}>
-          <Play className="mr-1 size-3" />
-          Trigger
-        </Button>
+
+        {/* Active run info */}
+        {handler.activeRun && (
+          <>
+            <Separator />
+            <div className="flex gap-6 px-5 py-3 text-xs text-muted-foreground">
+              <span>
+                Method:{" "}
+                <span className="font-medium text-foreground">{handler.activeRun.method}</span>
+              </span>
+              {handler.activeRun.key && (
+                <span>
+                  Source:{" "}
+                  <span className="font-medium text-foreground">{handler.activeRun.key}</span>
+                </span>
+              )}
+              {handler.activeRun.startedAt && (
+                <span>Started {formatRelativeTime(handler.activeRun.startedAt)}</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
       <TriggerHandlerDialog handler={handler} open={triggerOpen} onOpenChange={setTriggerOpen} />
     </>
   );
 };
 
-const buildHandlerRunColumns = (
-  onCancel: (sourceName: string) => void,
-  cancelPending: boolean,
-): ColumnDef<HandlerRun, unknown>[] => [
+// ---------------------------------------------------------------------------
+// Run history table columns — handler-centric, never shows "_system"
+// ---------------------------------------------------------------------------
+
+const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "handlerName",
     header: "Handler",
@@ -178,7 +253,9 @@ const buildHandlerRunColumns = (
       const suffix = source && source !== "_system" ? ` \u2014 ${source}` : "";
       return (
         <div>
-          <span className="font-medium">{row.original.handlerName.replace("Handler", "")}</span>
+          <span className="font-medium">
+            {displayName(row.original.handlerName)}.{row.original.handlerMethod}
+          </span>
           {suffix && <span className="text-muted-foreground">{suffix}</span>}
         </div>
       );
@@ -192,37 +269,41 @@ const buildHandlerRunColumns = (
     ),
   },
   {
+    id: "duration",
+    header: "Duration",
+    cell: ({ row }): React.ReactElement => (
+      <span className="text-xs">
+        {formatDuration(row.original.startedAt, row.original.completedAt)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "itemsCollected",
+    header: () => <span className="block text-right">Items</span>,
+    cell: ({ row }): React.ReactElement => (
+      <span className="block text-right tabular-nums">
+        {row.original.itemsCollected.toLocaleString()}
+      </span>
+    ),
+  },
+  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }): React.ReactElement => {
       const cfg = statusConfig[row.original.status] ?? defaultStatus;
-      const isRunning = row.original.status === "running";
-
       return (
-        <div className="flex items-center gap-2">
-          <Badge variant={cfg.variant} className="gap-1">
-            {cfg.icon}
-            {cfg.label}
-          </Badge>
-          {isRunning && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="size-6 p-0 text-destructive hover:text-destructive"
-              disabled={cancelPending}
-              onClick={(e) => {
-                e.stopPropagation();
-                onCancel(row.original.sourceName);
-              }}
-            >
-              <Square className="size-3" />
-            </Button>
-          )}
-        </div>
+        <Badge variant={cfg.variant} className="gap-1">
+          {cfg.icon}
+          {cfg.label}
+        </Badge>
       );
     },
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Run history table
+// ---------------------------------------------------------------------------
 
 const HandlerRunsTable = ({
   runs,
@@ -236,21 +317,19 @@ const HandlerRunsTable = ({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
-  const cancelRun = useCancelRun();
+  const cancelRun = useCancelHandlerRun();
 
   const handleCancel = useCallback(
-    (sourceName: string) => {
-      cancelRun.mutate(sourceName, {
-        onSuccess: () => toast.success(`Cancelled run for ${sourceName}`),
+    (runId: string) => {
+      cancelRun.mutate(runId, {
+        onSuccess: () => {
+          toast.success("Run cancelled");
+          setSelectedRun(null);
+        },
         onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
       });
     },
     [cancelRun],
-  );
-
-  const columns = useMemo(
-    () => buildHandlerRunColumns(handleCancel, cancelRun.isPending),
-    [handleCancel, cancelRun.isPending],
   );
 
   useEffect(() => {
@@ -302,7 +381,7 @@ const HandlerRunsTable = ({
               size="sm"
               onClick={() => setHandlerFilter(h.name)}
             >
-              {h.name.replace("Handler", "")}
+              {displayName(h.name)}
             </Button>
           ))}
         </div>
@@ -338,7 +417,7 @@ const HandlerRunsTable = ({
         </div>
       </div>
 
-      <DataTable columns={columns} data={pageRuns} onRowClick={setSelectedRun} />
+      <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />
 
       <DataTablePagination
         totalCount={totalCount}
@@ -353,7 +432,7 @@ const HandlerRunsTable = ({
       {selectedRun && (
         <RunDetailDialog
           run={selectedRun}
-          title={selectedRun.handlerName}
+          title={`${displayName(selectedRun.handlerName)}.${selectedRun.handlerMethod}`}
           description={
             selectedRun.sourceName === "_system"
               ? "Run details"
@@ -363,15 +442,32 @@ const HandlerRunsTable = ({
           onOpenChange={(open) => {
             if (!open) setSelectedRun(null);
           }}
+          onCancel={handleCancel}
+          cancelPending={cancelRun.isPending}
         />
       )}
     </div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Main tab
+// ---------------------------------------------------------------------------
+
 export const HandlersTab = (): React.ReactElement => {
   const { data: handlers, isLoading: handlersLoading, error: handlersError } = useListHandlers();
   const { data: runs } = useListRuns(undefined, { refetchInterval: 5000 });
+  const cancelRun = useCancelHandlerRun();
+
+  const handleCancelFromCard = useCallback(
+    (runId: string) => {
+      cancelRun.mutate(runId, {
+        onSuccess: () => toast.success("Run cancelled"),
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
+      });
+    },
+    [cancelRun],
+  );
 
   return (
     <div className="space-y-6 pt-4">
@@ -391,9 +487,14 @@ export const HandlersTab = (): React.ReactElement => {
         )}
 
         {handlers && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {handlers.map((h) => (
-              <HandlerCard key={h.name} handler={h} />
+              <HandlerCard
+                key={h.name}
+                handler={h}
+                onCancelRun={handleCancelFromCard}
+                cancelPending={cancelRun.isPending}
+              />
             ))}
           </div>
         )}

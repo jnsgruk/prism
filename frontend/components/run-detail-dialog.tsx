@@ -1,11 +1,14 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Loader2, Square } from "lucide-react";
 
 import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
@@ -18,14 +21,19 @@ export const RunDetailDialog = ({
   description,
   open,
   onOpenChange,
+  onCancel,
+  cancelPending,
 }: {
   run: HandlerRun;
   title: string;
   description: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCancel?: (runId: string) => void;
+  cancelPending?: boolean;
 }): React.ReactElement => {
   const runConfig = statusConfig[run.status] ?? defaultStatus;
+  const isRunning = run.status === "running";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -85,6 +93,23 @@ export const RunDetailDialog = ({
             </div>
           )}
         </div>
+        {isRunning && onCancel && (
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={cancelPending}
+              onClick={() => onCancel(run.id)}
+            >
+              {cancelPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Square className="mr-1.5 size-3.5" />
+              )}
+              Cancel Run
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

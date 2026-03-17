@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
@@ -11,6 +12,7 @@ import { RunDetailDialog } from "@/components/run-detail-dialog";
 import { formatDuration, formatTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-utils";
 import type { StatusFilter } from "@/lib/run-utils";
+import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 
 const columns: ColumnDef<HandlerRun, unknown>[] = [
   {
@@ -68,6 +70,20 @@ export const RunHistoryPanel = ({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
+  const cancelRun = useCancelHandlerRun();
+
+  const handleCancel = useCallback(
+    (runId: string) => {
+      cancelRun.mutate(runId, {
+        onSuccess: () => {
+          toast.success("Run cancelled");
+          setSelectedRun(null);
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
+      });
+    },
+    [cancelRun],
+  );
 
   // Reset to first page when filters change.
   useEffect(() => {
@@ -181,6 +197,8 @@ export const RunHistoryPanel = ({
           onOpenChange={(open) => {
             if (!open) setSelectedRun(null);
           }}
+          onCancel={handleCancel}
+          cancelPending={cancelRun.isPending}
         />
       )}
     </section>

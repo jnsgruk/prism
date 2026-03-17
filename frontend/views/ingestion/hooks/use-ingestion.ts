@@ -3,6 +3,7 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
+  CancelHandlerRunResponse,
   CancelRunResponse,
   GetStatusResponse,
   HandlerInfo,
@@ -42,11 +43,16 @@ export const useIngestionStatus = (options?: {
 
 export const useListRuns = (
   sourceName?: string,
-  options?: { refetchInterval?: number | false; handlerName?: string },
+  options?: { refetchInterval?: number | false; handlerName?: string; ingestionOnly?: boolean },
 ): UseQueryResult<HandlerRun[], Error> =>
   useQuery({
     queryKey: handlersKeys.runs(sourceName, options?.handlerName),
-    queryFn: () => handlersClient.listRuns({ sourceName, handlerName: options?.handlerName }),
+    queryFn: () =>
+      handlersClient.listRuns({
+        sourceName,
+        handlerName: options?.handlerName,
+        ingestionOnly: options?.ingestionOnly ?? false,
+      }),
     select: (data): HandlerRun[] => data.runs,
     refetchInterval: options?.refetchInterval,
   });
@@ -112,6 +118,23 @@ export const useTriggerHandler = (): UseMutationResult<
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
       queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+    },
+  });
+};
+
+export const useCancelHandlerRun = (): UseMutationResult<
+  CancelHandlerRunResponse,
+  Error,
+  string
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) => handlersClient.cancelHandlerRun({ runId }),
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
+      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
+      await queryClient.refetchQueries({ queryKey: handlersKeys.handlers() });
     },
   });
 };
