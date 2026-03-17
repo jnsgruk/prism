@@ -198,12 +198,12 @@ const instanceLabel = (platform: string): string => {
 
 const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "title",
-  header: "Topic",
+  header: "Title",
   cell: ({ row }) => {
     const c = row.original;
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="block max-w-80 truncate" title={c.title}>
+        <span className="block max-w-60 truncate" title={c.title}>
           {c.title || "\u2014"}
         </span>
         {c.url && (
@@ -223,20 +223,28 @@ const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
+const discourseTypeLabel = (contributionType: string): string => {
+  if (contributionType === "discourse_topic") return "Topic";
+  if (contributionType === "discourse_like") return "Like";
+  return "Post";
+};
+
+const discourseTypeColumn: ColumnDef<Contribution, unknown> = {
+  id: "type",
+  header: "Type",
+  cell: ({ row }) => (
+    <Badge variant="outline" className="text-[10px] uppercase">
+      {discourseTypeLabel(row.original.contributionType)}
+    </Badge>
+  ),
+  enableSorting: false,
+};
+
 const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
   cell: ({ row }) => (
     <span className="text-muted-foreground">{instanceLabel(row.original.platform)}</span>
-  ),
-  enableSorting: false,
-};
-
-const discourseCategoryColumn: ColumnDef<Contribution, unknown> = {
-  id: "category",
-  header: "Category",
-  cell: ({ row }) => (
-    <span className="text-muted-foreground">{row.original.category || "\u2014"}</span>
   ),
   enableSorting: false,
 };
@@ -305,12 +313,12 @@ export const ContributionTable = ({
   const columns = useMemo((): ColumnDef<Contribution, unknown>[] => {
     if (isDiscourse) {
       return isPersonMode
-        ? [discourseTitleColumn, discourseInstanceColumn, createdAtColumn]
+        ? [discourseTitleColumn, discourseTypeColumn, discourseInstanceColumn, createdAtColumn]
         : [
             discourseTitleColumn,
+            discourseTypeColumn,
             discourseInstanceColumn,
             authorColumn,
-            discourseCategoryColumn,
             createdAtColumn,
           ];
     }

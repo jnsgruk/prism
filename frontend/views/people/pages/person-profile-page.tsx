@@ -348,9 +348,9 @@ const PersonProfilePage = (): React.ReactElement => {
 
             {/* Pull Requests — collapsible */}
             {(() => {
-              const githubCount =
-                profile.activityByPlatform.find((a) => a.platform === "github")
-                  ?.contributionCount ?? 0;
+              const github = profile.activityByPlatform.find((a) => a.platform === "github");
+              const prCount = github?.metrics["pull_request_count"] ?? 0;
+              const reviewCount = github?.metrics["pr_review_count"] ?? 0;
               const discourseCount = profile.activityByPlatform
                 .filter((a) => a.platform.startsWith("discourse"))
                 .reduce((sum, a) => sum + a.contributionCount, 0);
@@ -375,9 +375,9 @@ const PersonProfilePage = (): React.ReactElement => {
                           )}
                           <GitPullRequest className="size-4 text-muted-foreground" />
                           <CardTitle>Pull Requests</CardTitle>
-                          {githubCount > 0 && (
+                          {prCount > 0 && (
                             <Badge variant="secondary" className="ml-1">
-                              {githubCount}
+                              {prCount}
                             </Badge>
                           )}
                         </CollapsibleTrigger>
@@ -416,6 +416,11 @@ const PersonProfilePage = (): React.ReactElement => {
                           )}
                           <Clock className="size-4 text-muted-foreground" />
                           <CardTitle>Reviews</CardTitle>
+                          {reviewCount > 0 && (
+                            <Badge variant="secondary" className="ml-1">
+                              {reviewCount}
+                            </Badge>
+                          )}
                         </CollapsibleTrigger>
                       </CardHeader>
                       <CollapsibleContent>

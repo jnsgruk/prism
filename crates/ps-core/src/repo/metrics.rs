@@ -561,6 +561,8 @@ pub struct ListPersonContributionsParams<'a> {
 pub struct PersonActivityRow {
     pub platform: String,
     pub contribution_count: i32,
+    pub pull_request_count: i32,
+    pub pr_review_count: i32,
     pub avg_review_hours: Option<f64>,
     pub avg_cycle_time_hours: Option<f64>,
 }
@@ -980,6 +982,8 @@ impl MetricsRepo {
             SELECT
                 c.platform AS "platform!",
                 COUNT(*)::int AS "contribution_count!",
+                SUM(CASE WHEN c.contribution_type = 'pull_request' THEN 1 ELSE 0 END)::int AS "pull_request_count!",
+                SUM(CASE WHEN c.contribution_type = 'pr_review' THEN 1 ELSE 0 END)::int AS "pr_review_count!",
                 AVG(CASE WHEN c.metrics ? 'review_hours'
                     THEN (c.metrics->>'review_hours')::float8 END) AS avg_review_hours,
                 AVG(CASE WHEN c.metrics ? 'cycle_time_hours'
@@ -1004,6 +1008,8 @@ impl MetricsRepo {
             .map(|r| PersonActivityRow {
                 platform: r.platform,
                 contribution_count: r.contribution_count,
+                pull_request_count: r.pull_request_count,
+                pr_review_count: r.pr_review_count,
                 avg_review_hours: r.avg_review_hours,
                 avg_cycle_time_hours: r.avg_cycle_time_hours,
             })

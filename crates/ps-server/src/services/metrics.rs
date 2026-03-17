@@ -459,6 +459,11 @@ impl MetricsService for MetricsServiceImpl {
             .into_iter()
             .map(|a| {
                 let mut metrics = HashMap::new();
+                metrics.insert(
+                    "pull_request_count".to_string(),
+                    f64::from(a.pull_request_count),
+                );
+                metrics.insert("pr_review_count".to_string(), f64::from(a.pr_review_count));
                 if let Some(v) = a.avg_review_hours {
                     metrics.insert("avg_review_hours".to_string(), v);
                 }
