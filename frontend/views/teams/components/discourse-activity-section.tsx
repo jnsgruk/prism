@@ -63,16 +63,6 @@ const ChartTooltip = ({
 
 const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
 
-const formatTimestamp = (ts?: Timestamp): string => {
-  if (!ts) return "\u2014";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return (
-    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
-  );
-};
-
 // ---------------------------------------------------------------------------
 // Topics table columns
 // ---------------------------------------------------------------------------
@@ -120,16 +110,6 @@ const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const topicCategoryColumn: ColumnDef<Contribution, unknown> = {
-  id: "category",
-  accessorKey: "category",
-  header: "Category",
-  cell: ({ row }) => (
-    <span className="text-muted-foreground">{row.original.category || "\u2014"}</span>
-  ),
-  enableSorting: false,
-};
-
 const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   id: "person_name",
   accessorKey: "personName",
@@ -137,11 +117,10 @@ const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const topicPostsColumn: ColumnDef<Contribution, unknown> = {
-  id: "posts",
-  header: "Posts",
-  cell: ({ row }) => <span className="tabular-nums">{row.original.reviewCount || "\u2014"}</span>,
-  enableSorting: false,
+const formatShortDate = (ts?: Timestamp): string => {
+  if (!ts) return "\u2014";
+  const date = new Date(Number(ts.seconds) * 1000);
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
@@ -150,7 +129,7 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
   header: "Created",
   cell: ({ row }) => (
     <span className="whitespace-nowrap text-muted-foreground">
-      {formatTimestamp(row.original.createdAt)}
+      {formatShortDate(row.original.createdAt)}
     </span>
   ),
   enableSorting: true,
@@ -159,9 +138,7 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
 const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution, unknown>[] => [
   topicTitleColumn,
   ...(showInstance ? [topicInstanceColumn] : []),
-  topicCategoryColumn,
   topicAuthorColumn,
-  topicPostsColumn,
   topicCreatedColumn,
 ];
 
