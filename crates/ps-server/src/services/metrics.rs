@@ -5,14 +5,14 @@ use ps_core::repo::Repos;
 use ps_core::repo::metrics::ListContributionsParams;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
-    CompareTeamsRequest, CompareTeamsResponse, Contribution,
-    DiscourseInstanceMetrics as ProtoDiscourseInstanceMetrics, GetDiscourseActivityRequest,
-    GetDiscourseActivityResponse, GetFlowMetricsRequest, GetFlowMetricsResponse,
-    GetIndividualProfileRequest, GetIndividualProfileResponse, GetTeamMetricsRequest,
-    GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
+    CategoryCount, CompareTeamsRequest, CompareTeamsResponse, Contribution,
+    DiscourseActivityDataPoint, DiscourseInstanceMetrics as ProtoDiscourseInstanceMetrics,
+    GetDiscourseActivityRequest, GetDiscourseActivityResponse, GetFlowMetricsRequest,
+    GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
+    GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
     ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
     ListTeamContributionsResponse, Period, PeriodType, TeamMetrics, ThroughputDataPoint,
-    WipDataPoint,
+    TopContributor, WipDataPoint,
 };
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
@@ -418,10 +418,65 @@ impl MetricsService for MetricsServiceImpl {
         request: Request<GetDiscourseActivityRequest>,
     ) -> Result<Response<GetDiscourseActivityResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        // Full implementation in Step 3
-        Err(Status::unimplemented(
-            "GetDiscourseActivity not yet implemented",
-        ))
+        let req = request.into_inner();
+
+        let team_id: Uuid = req
+            .team_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        let period = req
+            .period
+            .ok_or_else(|| Status::invalid_argument("period required"))?;
+        let period_start = parse_date(&period.start)?;
+        let period_end = parse_date(&period.end)?;
+
+        let (categories, trend, contributors) = tokio::try_join!(
+            self.repos.metrics.get_discourse_category_distribution(
+                team_id,
+                period_start,
+                period_end
+            ),
+            self.repos
+                .metrics
+                .get_discourse_activity_trend(team_id, period_start, period_end),
+            self.repos
+                .metrics
+                .get_discourse_top_contributors(team_id, period_start, period_end),
+        )
+        .map_err(db_err)?;
+
+        Ok(Response::new(GetDiscourseActivityResponse {
+            category_distribution: categories
+                .into_iter()
+                .map(|c| CategoryCount {
+                    category: c.category,
+                    topics: c.topic_count,
+                    posts: c.post_count,
+                })
+                .collect(),
+            activity_trend: trend
+                .into_iter()
+                .map(|t| DiscourseActivityDataPoint {
+                    date: format_date(t.date),
+                    topics: t.topics,
+                    posts: t.posts,
+                    likes: t.likes,
+                    instance: String::new(),
+                })
+                .collect(),
+            top_contributors: contributors
+                .into_iter()
+                .map(|c| TopContributor {
+                    person_id: c.person_id.to_string(),
+                    name: c.name,
+                    topics: c.topics,
+                    posts: c.posts,
+                    likes_received: c.likes_received,
+                    solved: c.solved,
+                })
+                .collect(),
+        }))
     }
 
     async fn get_flow_metrics(
