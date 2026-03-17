@@ -37,8 +37,6 @@ pub(super) async fn fetch_batch_impl(
     if cur.page == 0 && cur.category_map.is_empty() {
         cur.category_map = build_category_map(&client).await.unwrap_or_default();
     }
-    let category_map = &cur.category_map;
-
     // Fetch the latest topics page.
     // If rate-limited, stop pagination gracefully with the items collected so far
     // rather than crashing the entire run.
@@ -58,7 +56,7 @@ pub(super) async fn fetch_batch_impl(
                     remaining: 0,
                     limit: 0,
                     reset_at: time::OffsetDateTime::now_utc()
-                        + time::Duration::seconds(retry_after_secs as i64),
+                        + time::Duration::seconds(retry_after_secs.cast_signed()),
                 }),
                 etag: None,
             });
@@ -87,65 +85,36 @@ pub(super) async fn fetch_batch_impl(
     }
 
     let mut items = Vec::new();
-    let mut reached_watermark = false;
 
-    for topic in topics {
-        // Check watermark — stop if we've reached topics older than our watermark.
-        // Pinned topics appear at the top of /latest.json regardless of their
-        // bumped_at timestamp.  Skip them from the watermark boundary check
-        // (they'd otherwise stop ingestion prematurely), but still skip old
-        // pinned topics we've already ingested.
-        let bumped_at = topic.bumped_at.as_deref().or(Some(&topic.created_at));
-        let older_than_watermark = matches!(
-            (&cur.watermark, bumped_at),
-            (Some(wm), Some(bumped)) if bumped <= wm.as_str()
-        );
-        if older_than_watermark {
-            if topic.pinned {
-                // Old pinned topic — skip it but keep scanning.
-                continue;
-            }
-            // Non-pinned topic older than watermark — we've reached the boundary.
-            reached_watermark = true;
-            break;
-        }
+    // Phase 1: Filter topics and collect those that need detail fetching.
+    let (filtered_topics, reached_watermark) = filter_topics(topics, &mut cur);
+    let category_map = &cur.category_map;
 
-        // Category filter
-        if !cur.category_ids.is_empty() {
-            if let Some(cat_id) = topic.category_id {
-                if !cur.category_ids.contains(&cat_id) {
-                    continue;
+    // Phase 2: Fetch topic details concurrently with capped parallelism.
+    let topic_ids: Vec<i64> = filtered_topics.iter().map(|t| t.id).collect();
+    let details: Vec<_> = stream::iter(topic_ids)
+        .map(|topic_id| {
+            let client = &client;
+            async move {
+                match client.topic(topic_id).await {
+                    Ok(detail) => Some((topic_id, detail)),
+                    Err(e) => {
+                        warn!(topic_id, "failed to fetch topic detail: {e}");
+                        None
+                    }
                 }
-            } else {
-                continue;
             }
-        }
+        })
+        .buffer_unordered(4)
+        .collect()
+        .await;
 
-        // Min posts filter
-        if topic.posts_count < cur.min_posts {
+    // Phase 3: Process fetched details into contribution items.
+    let detail_map: HashMap<i64, _> = details.into_iter().flatten().collect();
+
+    for topic in &filtered_topics {
+        let Some(detail) = detail_map.get(&topic.id) else {
             continue;
-        }
-
-        // Track max bumped_at for watermark advancement
-        if let Some(bumped) = bumped_at
-            && cur
-                .max_bumped_at
-                .as_ref()
-                .is_none_or(|current| bumped > current.as_str())
-        {
-            cur.max_bumped_at = Some(bumped.to_string());
-        }
-
-        // Fetch full topic detail to get posts
-        // TODO: use buffer_unordered(4) for concurrent topic fetching — currently
-        // sequential which is an N+1 pattern. Requires collecting filtered topics
-        // first, then fetching details concurrently, then processing results.
-        let detail = match client.topic(topic.id).await {
-            Ok(d) => d,
-            Err(e) => {
-                warn!(topic_id = topic.id, "failed to fetch topic detail: {e}");
-                continue;
-            }
         };
 
         let category_name = topic
@@ -393,6 +362,59 @@ async fn build_category_map(
         .into_iter()
         .map(|c: Category| (c.id, c.name))
         .collect())
+}
+
+/// Filter topics by watermark, category, and min-posts, updating the cursor's
+/// `max_bumped_at` along the way. Returns `(filtered_topics, reached_watermark)`.
+fn filter_topics<'a>(
+    topics: &'a [TopicSummary],
+    cur: &mut Cursor,
+) -> (Vec<&'a TopicSummary>, bool) {
+    let mut filtered = Vec::new();
+    for topic in topics {
+        // Pinned topics appear at the top regardless of bumped_at. Skip old
+        // pinned topics but don't treat them as the watermark boundary.
+        let bumped_at = topic.bumped_at.as_deref().or(Some(&topic.created_at));
+        let older_than_watermark = matches!(
+            (&cur.watermark, bumped_at),
+            (Some(wm), Some(bumped)) if bumped <= wm.as_str()
+        );
+        if older_than_watermark {
+            if topic.pinned {
+                continue;
+            }
+            return (filtered, true);
+        }
+
+        // Category filter
+        if !cur.category_ids.is_empty() {
+            if let Some(cat_id) = topic.category_id {
+                if !cur.category_ids.contains(&cat_id) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        // Min posts filter
+        if topic.posts_count < cur.min_posts {
+            continue;
+        }
+
+        // Track max bumped_at for watermark advancement
+        if let Some(bumped) = bumped_at
+            && cur
+                .max_bumped_at
+                .as_ref()
+                .is_none_or(|current| bumped > current.as_str())
+        {
+            cur.max_bumped_at = Some(bumped.to_string());
+        }
+
+        filtered.push(topic);
+    }
+    (filtered, false)
 }
 
 /// Parse a Discourse ISO 8601 datetime string.

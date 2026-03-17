@@ -407,6 +407,7 @@ impl HandlersService for HandlersServiceImpl {
             if req.key.is_empty() {
                 return Err(Status::invalid_argument("key (source name) is required"));
             }
+            validate_restate_identifier(&req.key)?;
             // Verify source exists and is enabled
             self.repos
                 .config
