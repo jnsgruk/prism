@@ -81,6 +81,23 @@ struct PendingPerson {
     email: Option<String>,
 }
 
+/// Journaled result from an HTTP lookup call, so Restate replay is
+/// deterministic regardless of live API behaviour.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+enum LookupResult {
+    Found(String),
+    NotFound,
+    RateLimited,
+}
+
+/// Journaled result from a username-existence probe.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+enum ProbeResult {
+    Exists,
+    NotFound,
+    RateLimited,
+}
+
 impl IdentityResolutionHandlerImpl {
     async fn create_run(&self, ctx: &Context<'_>) -> Result<Uuid, TerminalError> {
         let repos = self.state.repos.clone();
@@ -229,10 +246,8 @@ impl IdentityResolutionHandlerImpl {
         let mut resolved_count = 0i32;
 
         for person in &pending {
-            let result = self.resolve_person(ctx, &client, platform, person).await;
-
-            match result {
-                Ok(true) => {
+            match self.resolve_person(ctx, &client, platform, person).await {
+                Ok(Some(true)) => {
                     resolved_count += 1;
                     debug!(
                         source = %source.name,
@@ -240,23 +255,23 @@ impl IdentityResolutionHandlerImpl {
                         "resolved identity"
                     );
                 }
-                Ok(false) => {
+                Ok(Some(false)) => {
                     debug!(
                         source = %source.name,
                         person = %person.name,
                         "could not resolve identity"
                     );
                 }
+                Ok(None) => {
+                    // Rate limited — sleep and continue to next person.
+                    warn!(
+                        source = %source.name,
+                        resolved_count,
+                        "rate limited during resolution, sleeping 60s"
+                    );
+                    ctx.sleep(std::time::Duration::from_secs(60)).await?;
+                }
                 Err(e) => {
-                    if is_rate_limited(&e) {
-                        warn!(
-                            source = %source.name,
-                            resolved_count,
-                            "rate limited during resolution, sleeping 60s"
-                        );
-                        ctx.sleep(std::time::Duration::from_secs(60)).await?;
-                        continue;
-                    }
                     warn!(
                         source = %source.name,
                         person = %person.name,
@@ -362,33 +377,53 @@ impl IdentityResolutionHandlerImpl {
 
     /// Try to resolve a single person's identity on a Discourse platform.
     ///
-    /// Returns `Ok(true)` if resolved, `Ok(false)` if unresolved.
+    /// Returns `Ok(Some(true))` if resolved, `Ok(Some(false))` if unresolved,
+    /// or `Ok(None)` if rate-limited (caller should sleep and continue).
     async fn resolve_person(
         &self,
         ctx: &Context<'_>,
         client: &DiscourseClient,
         platform: &str,
         person: &PendingPerson,
-    ) -> Result<bool, TerminalError> {
+    ) -> Result<Option<bool>, TerminalError> {
         let person_id: Uuid = person
             .person_id
             .parse()
             .map_err(|e| TerminalError::new(format!("invalid person_id: {e}")))?;
 
         // Strategy 1: Admin API email lookup (preferred).
+        // Wrapped in ctx.run() so the result is journaled for deterministic replay.
         if let Some(email) = &person.email
             && !email.is_empty()
         {
-            // API call outside ctx.run() — idempotent, safe to replay.
-            let result = client
-                .admin_user_search(email)
-                .await
-                .map_err(|e| TerminalError::new(format!("discourse admin search failed: {e}")))?;
+            let c = client.clone();
+            let e = email.clone();
+            let result = ctx
+                .run(|| async move {
+                    match c.admin_user_search(&e).await {
+                        Ok(Some(username)) => Ok(Json::from(LookupResult::Found(username))),
+                        Ok(None) => Ok(Json::from(LookupResult::NotFound)),
+                        Err(err) if err.is_rate_limit() => {
+                            Ok(Json::from(LookupResult::RateLimited))
+                        }
+                        Err(err) => Err(TerminalError::new(format!(
+                            "discourse admin search failed: {err}"
+                        ))
+                        .into()),
+                    }
+                })
+                .name("email_lookup")
+                .await?
+                .into_inner();
 
-            if let Some(username) = result {
-                self.store_resolution(ctx, person_id, platform, &username)
-                    .await?;
-                return Ok(true);
+            match result {
+                LookupResult::Found(username) => {
+                    self.store_resolution(ctx, person_id, platform, &username)
+                        .await?;
+                    return Ok(Some(true));
+                }
+                LookupResult::RateLimited => return Ok(None),
+                LookupResult::NotFound => {}
             }
         }
 
@@ -396,21 +431,38 @@ impl IdentityResolutionHandlerImpl {
         let candidates = self.load_candidate_usernames(ctx, person_id).await?;
 
         for candidate in &candidates {
-            let exists = client
-                .user_exists(candidate)
-                .await
-                .map_err(|e| TerminalError::new(format!("discourse user probe failed: {e}")))?;
+            let c = client.clone();
+            let cand = candidate.clone();
+            let result = ctx
+                .run(|| async move {
+                    match c.user_exists(&cand).await {
+                        Ok(true) => Ok(Json::from(ProbeResult::Exists)),
+                        Ok(false) => Ok(Json::from(ProbeResult::NotFound)),
+                        Err(err) if err.is_rate_limit() => Ok(Json::from(ProbeResult::RateLimited)),
+                        Err(err) => Err(TerminalError::new(format!(
+                            "discourse user probe failed: {err}"
+                        ))
+                        .into()),
+                    }
+                })
+                .name("probe_username")
+                .await?
+                .into_inner();
 
-            if exists {
-                self.store_resolution(ctx, person_id, platform, candidate)
-                    .await?;
-                return Ok(true);
+            match result {
+                ProbeResult::Exists => {
+                    self.store_resolution(ctx, person_id, platform, candidate)
+                        .await?;
+                    return Ok(Some(true));
+                }
+                ProbeResult::RateLimited => return Ok(None),
+                ProbeResult::NotFound => {}
             }
         }
 
         // No match found.
         self.store_unresolved(ctx, person_id, platform).await?;
-        Ok(false)
+        Ok(Some(false))
     }
 
     async fn load_candidate_usernames(
@@ -531,10 +583,4 @@ impl IdentityResolutionHandlerImpl {
             }
         }
     }
-}
-
-/// Check if a `TerminalError` is caused by rate limiting.
-fn is_rate_limited(err: &TerminalError) -> bool {
-    let msg = err.to_string();
-    msg.contains("rate limit") || msg.contains("429")
 }

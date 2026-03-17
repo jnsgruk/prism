@@ -30,6 +30,11 @@ pub enum Error {
 }
 
 impl Error {
+    /// Check whether this error represents a rate-limit response.
+    pub fn is_rate_limit(&self) -> bool {
+        matches!(self, Self::RateLimit { .. })
+    }
+
     /// Check whether this error is a database unique-constraint violation.
     pub fn is_unique_violation(&self) -> bool {
         if let Self::Database(e) = self
