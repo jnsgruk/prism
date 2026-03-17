@@ -37,6 +37,9 @@ pub(crate) struct Cursor {
     pub(crate) max_bumped_at: Option<String>,
     /// Whether there are more pages to fetch.
     pub(crate) has_more: bool,
+    /// Category ID → name map, fetched once on page 0 and reused across pages.
+    #[serde(default)]
+    pub(crate) category_map: std::collections::HashMap<i64, String>,
 }
 
 #[async_trait]
@@ -75,6 +78,11 @@ impl Source for DiscourseSource {
     }
 
     fn initial_cursor(&self, plan: &IngestionPlan) -> String {
+        // Note: the DiscourseIngestionHandler uses build_discourse_cursor()
+        // instead of this method, which populates base_url, instance,
+        // category_ids, and min_posts from the source config. This default
+        // is a fallback that relies on fetch_batch_impl reading base_url
+        // from settings and extracting instance from the source name.
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
             page: 0,
@@ -84,6 +92,7 @@ impl Source for DiscourseSource {
             instance: String::new(),
             max_bumped_at: plan.watermark.clone(),
             has_more: true,
+            category_map: std::collections::HashMap::new(),
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }

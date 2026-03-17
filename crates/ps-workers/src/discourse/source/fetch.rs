@@ -33,15 +33,38 @@ pub(super) async fn fetch_batch_impl(
 
     let client = DiscourseClient::new(ctx.http_client.clone(), base_url, &api_key, &api_username);
 
-    // Fetch categories once for name resolution (only on first page).
-    let category_map = if cur.page == 0 {
-        build_category_map(&client).await.unwrap_or_default()
-    } else {
-        HashMap::new()
-    };
+    // Fetch categories once for name resolution (first page), then reuse from cursor.
+    if cur.page == 0 && cur.category_map.is_empty() {
+        cur.category_map = build_category_map(&client).await.unwrap_or_default();
+    }
+    let category_map = &cur.category_map;
 
-    // Fetch the latest topics page
-    let response = client.latest(cur.page).await?;
+    // Fetch the latest topics page.
+    // If rate-limited, stop pagination gracefully with the items collected so far
+    // rather than crashing the entire run.
+    let response = match client.latest(cur.page).await {
+        Ok(r) => r,
+        Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+            warn!(
+                source = ctx.source_config.name,
+                page = cur.page,
+                retry_after_secs,
+                "rate limited on Discourse latest page — stopping pagination"
+            );
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: None,
+                rate_limit: Some(ps_core::models::RateLimitInfo {
+                    remaining: 0,
+                    limit: 0,
+                    reset_at: time::OffsetDateTime::now_utc()
+                        + time::Duration::seconds(retry_after_secs as i64),
+                }),
+                etag: None,
+            });
+        }
+        Err(e) => return Err(e),
+    };
 
     let topics = &response.topic_list.topics;
     let has_more_pages = response.topic_list.more_topics_url.is_some();

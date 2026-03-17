@@ -92,7 +92,7 @@ impl DiscourseIngestionHandlerImpl {
 
         let initial_cursor = build_discourse_cursor(&config, &plan);
 
-        let (total_items, final_cursor) = self
+        let result = self
             .fetch_store_loop(
                 ctx,
                 run_id,
@@ -101,17 +101,33 @@ impl DiscourseIngestionHandlerImpl {
                 &initial_cursor,
                 ing_ctx.token.as_deref(),
             )
-            .await?;
+            .await;
 
-        if total_items > 0 {
-            self.advance_watermark(
-                ctx,
-                &config,
-                &final_cursor,
-                total_items,
-                ing_ctx.token.as_deref(),
-            )
-            .await?;
+        let (total_items, final_cursor) = match result {
+            Ok(v) => v,
+            Err(e) => {
+                let msg = e.to_string();
+                self.fail_run(ctx, run_id, source_name, &msg).await;
+                return Err(TerminalError::new(format!("ingestion failed: {msg}")));
+            }
+        };
+
+        if total_items > 0
+            && let Err(e) = self
+                .advance_watermark(
+                    ctx,
+                    &config,
+                    &final_cursor,
+                    total_items,
+                    ing_ctx.token.as_deref(),
+                )
+                .await
+        {
+            let msg = e.to_string();
+            self.fail_run(ctx, run_id, source_name, &msg).await;
+            return Err(TerminalError::new(format!(
+                "watermark advance failed: {msg}"
+            )));
         }
 
         self.complete_run(ctx, run_id, source_name, total_items)
@@ -536,6 +552,7 @@ fn build_discourse_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String
         instance,
         max_bumped_at: plan.watermark.clone(),
         has_more: true,
+        category_map: std::collections::HashMap::new(),
     };
 
     serde_json::to_string(&cursor).unwrap_or_default()
