@@ -429,10 +429,7 @@ const PersonProfilePage = (): React.ReactElement => {
                   </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <ContributionTable
-                        personId={personId}
-                        defaultContributionType="discourse_post"
-                      />
+                      <ContributionTable personId={personId} defaultPlatform="discourse-%" />
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

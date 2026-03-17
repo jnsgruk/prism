@@ -904,7 +904,7 @@ impl MetricsRepo {
             FROM activity.contributions c
             JOIN org.people p ON p.id = c.person_id
             WHERE c.person_id = $1
-              AND ($2::text IS NULL OR c.platform = $2)
+              AND ($2::text IS NULL OR c.platform LIKE $2)
               AND ($3::text IS NULL OR c.contribution_type = $3)
               AND ($4::date IS NULL OR c.created_at >= $4::date::timestamptz)
               AND ($9::text IS NULL OR c.state = $9)

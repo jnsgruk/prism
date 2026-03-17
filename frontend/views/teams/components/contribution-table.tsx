@@ -186,6 +186,62 @@ const prStatsColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
+// ---------------------------------------------------------------------------
+// Discourse columns
+// ---------------------------------------------------------------------------
+
+const instanceLabel = (platform: string): string =>
+  platform.startsWith("discourse-") ? platform.slice("discourse-".length) : platform;
+
+const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
+  accessorKey: "title",
+  header: "Topic",
+  cell: ({ row }) => {
+    const c = row.original;
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="block max-w-80 truncate" title={c.title}>
+          {c.title || "\u2014"}
+        </span>
+        {c.url && (
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="size-3" />
+          </a>
+        )}
+      </div>
+    );
+  },
+  enableSorting: false,
+};
+
+const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
+  id: "instance",
+  header: "Instance",
+  cell: ({ row }) => (
+    <span className="text-muted-foreground">{instanceLabel(row.original.platform)}</span>
+  ),
+  enableSorting: false,
+};
+
+const discourseCategoryColumn: ColumnDef<Contribution, unknown> = {
+  id: "category",
+  header: "Category",
+  cell: ({ row }) => (
+    <span className="text-muted-foreground">{row.original.category || "\u2014"}</span>
+  ),
+  enableSorting: false,
+};
+
+// ---------------------------------------------------------------------------
+// State filters
+// ---------------------------------------------------------------------------
+
 type PrStateFilter = "all" | "merged" | "open" | "closed";
 type ReviewStateFilter = "all" | "APPROVED" | "COMMENTED" | "CHANGES_REQUESTED" | "DISMISSED";
 type StateFilter = PrStateFilter | ReviewStateFilter;
@@ -219,26 +275,44 @@ export const ContributionTable = ({
   period,
   defaultContributionType,
   defaultState,
+  defaultPlatform,
 }: {
   teamId?: string;
   personId?: string;
   period?: Period;
   defaultContributionType?: string;
   defaultState?: string;
+  defaultPlatform?: string;
 }): React.ReactElement => {
   const isReview = defaultContributionType === "pr_review";
+  const isDiscourse =
+    (defaultContributionType?.startsWith("discourse") ?? false) ||
+    (defaultPlatform?.startsWith("discourse") ?? false);
   const [stateFilter, setStateFilter] = useState<StateFilter>(
     (defaultState as StateFilter) ?? "all",
   );
 
-  const activeStates: StateFilter[] = isReview ? reviewStates : prStates;
-  const columns = useMemo(
-    (): ColumnDef<Contribution, unknown>[] =>
-      isReview
-        ? [reviewTitleColumn, authorColumn, repoColumn, reviewStateColumn, createdAtColumn]
-        : [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn],
-    [isReview],
-  );
+  const activeStates: StateFilter[] = (() => {
+    if (isDiscourse) return [];
+    if (isReview) return reviewStates;
+    return prStates;
+  })();
+
+  const columns = useMemo((): ColumnDef<Contribution, unknown>[] => {
+    if (isDiscourse) {
+      return [
+        discourseTitleColumn,
+        discourseInstanceColumn,
+        authorColumn,
+        discourseCategoryColumn,
+        createdAtColumn,
+      ];
+    }
+    if (isReview) {
+      return [reviewTitleColumn, authorColumn, repoColumn, reviewStateColumn, createdAtColumn];
+    }
+    return [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn];
+  }, [isReview, isDiscourse]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
@@ -268,10 +342,12 @@ export const ContributionTable = ({
     sortDesc,
     pageSize,
     pageIndex,
+    platform: defaultPlatform,
   };
 
   const personFilters: PersonContributionFilters = {
-    contributionType: defaultContributionType,
+    contributionType: isDiscourse ? undefined : defaultContributionType,
+    platform: defaultPlatform,
     state: stateFilter === "all" ? undefined : stateFilter,
     search: debouncedSearch || undefined,
     sortField,
