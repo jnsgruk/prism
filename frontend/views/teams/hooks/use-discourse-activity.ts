@@ -12,9 +12,15 @@ export const useDiscourseActivity = (
   teamId: string,
   period: Period,
   enabled = true,
+  instance?: string,
 ): UseQueryResult<GetDiscourseActivityResponse, Error> =>
   useQuery({
-    queryKey: ["discourse-activity", teamId, `${period.type}-${period.start}`],
-    queryFn: () => metricsClient.getDiscourseActivity({ teamId, period }),
+    queryKey: ["discourse-activity", teamId, `${period.type}-${period.start}`, instance ?? "all"],
+    queryFn: () =>
+      metricsClient.getDiscourseActivity({
+        teamId,
+        period,
+        instance: instance || undefined,
+      }),
     enabled: !!teamId && enabled,
   });

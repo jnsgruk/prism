@@ -239,6 +239,8 @@ message WipDataPoint {
 message GetDiscourseActivityRequest {
   string team_id = 1;
   Period period = 2;
+  // Filter by Discourse instance (e.g. "discourse-ubuntu"). Empty = all instances.
+  optional string instance = 3;
 }
 
 message GetDiscourseActivityResponse {

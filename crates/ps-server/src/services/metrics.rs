@@ -431,18 +431,27 @@ impl MetricsService for MetricsServiceImpl {
         let period_start = parse_date(&period.start)?;
         let period_end = parse_date(&period.end)?;
 
+        let instance = req.instance.as_deref();
+
         let (categories, trend, contributors) = tokio::try_join!(
             self.repos.metrics.get_discourse_category_distribution(
                 team_id,
                 period_start,
-                period_end
+                period_end,
+                instance,
             ),
-            self.repos
-                .metrics
-                .get_discourse_activity_trend(team_id, period_start, period_end),
-            self.repos
-                .metrics
-                .get_discourse_top_contributors(team_id, period_start, period_end),
+            self.repos.metrics.get_discourse_activity_trend(
+                team_id,
+                period_start,
+                period_end,
+                instance
+            ),
+            self.repos.metrics.get_discourse_top_contributors(
+                team_id,
+                period_start,
+                period_end,
+                instance
+            ),
         )
         .map_err(db_err)?;
 
@@ -473,7 +482,7 @@ impl MetricsService for MetricsServiceImpl {
                     topics: c.topics,
                     posts: c.posts,
                     likes_received: c.likes_received,
-                    solved: c.solved,
+                    solved: 0,
                 })
                 .collect(),
         }))

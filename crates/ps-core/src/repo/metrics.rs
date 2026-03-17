@@ -362,7 +362,6 @@ pub struct DiscourseContributorRow {
     pub topics: i32,
     pub posts: i32,
     pub likes_received: i32,
-    pub solved: i32,
 }
 
 impl MetricsRepo {
@@ -372,6 +371,7 @@ impl MetricsRepo {
         team_id: Uuid,
         period_start: Date,
         period_end: Date,
+        instance: Option<&str>,
     ) -> Result<Vec<DiscourseCategoryRow>, Error> {
         let rows = sqlx::query!(
             r#"
@@ -393,6 +393,7 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post')
+              AND ($4::text IS NULL OR c.platform = $4)
             GROUP BY COALESCE(c.metrics->>'category', c.metadata->>'category', 'Uncategorized')
             ORDER BY "post_count!" DESC
             LIMIT 20
@@ -400,6 +401,7 @@ impl MetricsRepo {
             team_id,
             period_start,
             period_end,
+            instance,
         )
         .fetch_all(&self.pool)
         .await
@@ -421,6 +423,7 @@ impl MetricsRepo {
         team_id: Uuid,
         period_start: Date,
         period_end: Date,
+        instance: Option<&str>,
     ) -> Result<Vec<DiscourseActivityRow>, Error> {
         let rows = sqlx::query!(
             r#"
@@ -443,12 +446,14 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post', 'discourse_like')
+              AND ($4::text IS NULL OR c.platform = $4)
             GROUP BY c.created_at::date
             ORDER BY "date!" ASC
             "#,
             team_id,
             period_start,
             period_end,
+            instance,
         )
         .fetch_all(&self.pool)
         .await
@@ -471,6 +476,7 @@ impl MetricsRepo {
         team_id: Uuid,
         period_start: Date,
         period_end: Date,
+        instance: Option<&str>,
     ) -> Result<Vec<DiscourseContributorRow>, Error> {
         let rows = sqlx::query!(
             r#"
@@ -486,9 +492,7 @@ impl MetricsRepo {
                 SUM(CASE WHEN c.contribution_type = 'discourse_topic' THEN 1 ELSE 0 END)::int AS "topics!",
                 SUM(CASE WHEN c.contribution_type = 'discourse_post' THEN 1 ELSE 0 END)::int AS "posts!",
                 SUM(CASE WHEN c.contribution_type = 'discourse_post'
-                    THEN COALESCE((c.metrics->>'likes')::int, 0) ELSE 0 END)::int AS "likes_received!",
-                SUM(CASE WHEN c.contribution_type = 'discourse_topic'
-                    AND (c.metrics->>'solved')::boolean = true THEN 1 ELSE 0 END)::int AS "solved!"
+                    THEN COALESCE((c.metrics->>'likes')::int, 0) ELSE 0 END)::int AS "likes_received!"
             FROM activity.contributions c
             JOIN org.team_memberships tm ON tm.person_id = c.person_id
             JOIN team_tree tt ON tm.team_id = tt.id
@@ -498,13 +502,15 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post')
+              AND ($4::text IS NULL OR c.platform = $4)
             GROUP BY p.id, p.name
             ORDER BY (SUM(CASE WHEN c.contribution_type IN ('discourse_topic', 'discourse_post') THEN 1 ELSE 0 END)) DESC
-            LIMIT 20
+            LIMIT 50
             "#,
             team_id,
             period_start,
             period_end,
+            instance,
         )
         .fetch_all(&self.pool)
         .await
@@ -518,7 +524,6 @@ impl MetricsRepo {
                 topics: r.topics,
                 posts: r.posts,
                 likes_received: r.likes_received,
-                solved: r.solved,
             })
             .collect())
     }

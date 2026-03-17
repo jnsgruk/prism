@@ -13,7 +13,6 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   ThumbsUp,
-  CheckCircle,
 } from "lucide-react";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
@@ -80,12 +79,11 @@ export const TeamMetricCards = ({
   const discoursePosts = metrics?.discoursePosts ?? 0;
   const discourseReplies = metrics?.discourseReplies ?? 0;
   const discourseLikesGiven = metrics?.discourseLikesGiven ?? 0;
-  const discourseSolved = metrics?.discourseSolvedTopics ?? 0;
   const hasDiscourse = discourseTopics > 0 || discoursePosts > 0;
 
   // Build per-instance secondary text
   const instanceBreakdown = (
-    field: "topicsCreated" | "posts" | "likesGiven" | "solvedTopics",
+    field: "topicsCreated" | "posts" | "likesGiven",
   ): string | undefined => {
     const instances = metrics?.discourseByInstance ?? [];
     if (instances.length <= 1) return undefined;
@@ -154,7 +152,7 @@ export const TeamMetricCards = ({
           </div>
         )}
         {hasDiscourse && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-3 gap-4">
             <MetricCard
               icon={MessageSquarePlus}
               label="Topics Created"
@@ -175,13 +173,6 @@ export const TeamMetricCards = ({
               value={String(discourseLikesGiven)}
               secondary={instanceBreakdown("likesGiven")}
               description="Likes given by team members on Discourse."
-            />
-            <MetricCard
-              icon={CheckCircle}
-              label="Solved"
-              value={String(discourseSolved)}
-              secondary={instanceBreakdown("solvedTopics")}
-              description="Topics with accepted answers from team members."
             />
           </div>
         )}
