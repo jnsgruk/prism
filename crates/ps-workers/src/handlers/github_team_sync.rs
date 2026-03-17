@@ -226,6 +226,8 @@ impl GithubTeamSyncHandlerImpl {
 
         let mut synced_slugs = Vec::with_capacity(all_teams.len());
 
+        // Sequential store_team is required by Restate's journaling model —
+        // each side effect needs a unique name.
         for team in &all_teams {
             synced_slugs.push(team.slug.clone());
 

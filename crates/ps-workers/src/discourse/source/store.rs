@@ -62,18 +62,23 @@ pub(super) async fn store_batch_impl(
 
     // Backfill person_id on older Discourse contributions whose username
     // now has a known identity mapping (via metadata->>'username').
-    let platform_str = platform.to_string();
-    let backfilled = ctx
-        .repos
-        .activity
-        .backfill_discourse_person_ids(&platform_str)
-        .await?;
+    // Only worth running when this batch had unresolved usernames — that
+    // signals new identities may have been created since the last run
+    // (e.g. via identity resolution or directory import).
+    if unresolved > 0 {
+        let platform_str = platform.to_string();
+        let backfilled = ctx
+            .repos
+            .activity
+            .backfill_discourse_person_ids(&platform_str)
+            .await?;
 
-    if backfilled > 0 {
-        info!(
-            source = ctx.source_config.name,
-            backfilled, "backfilled person_id on older Discourse contributions"
-        );
+        if backfilled > 0 {
+            info!(
+                source = ctx.source_config.name,
+                backfilled, "backfilled person_id on older Discourse contributions"
+            );
+        }
     }
 
     if unresolved > 0 {

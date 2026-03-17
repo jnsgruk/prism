@@ -293,6 +293,7 @@ impl GitHubClient {
         Ok(result)
     }
 
+    /// Header clone cost is negligible given GitHub rate limits (~5000 req/hour).
     fn default_headers(&self) -> HeaderMap {
         self.headers.clone()
     }

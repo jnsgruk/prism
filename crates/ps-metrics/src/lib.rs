@@ -135,7 +135,9 @@ pub async fn compute_team_snapshot(
         })
         .await?;
 
-    // Populate snapshot_sources for traceability
+    // Populate snapshot_sources for traceability.
+    // Delete-then-insert is simpler than diffing and correct within a single
+    // snapshot computation.
     let contribution_ids: Vec<Uuid> = contributions.iter().map(|c| c.id).collect();
     repos.metrics.delete_snapshot_sources(snapshot_id).await?;
     repos

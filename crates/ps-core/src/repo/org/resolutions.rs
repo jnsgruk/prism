@@ -193,13 +193,23 @@ impl OrgRepo {
 
     /// Ensure resolution rows exist for all active people across multiple
     /// platforms.  Returns the total number of new rows inserted.
+    ///
+    /// Platforms are processed concurrently — each `ensure_resolution_rows`
+    /// call is an independent INSERT … WHERE NOT EXISTS that doesn't
+    /// conflict with other platforms.
     pub async fn ensure_resolution_rows_for_platforms(
         &self,
         platforms: &[String],
     ) -> Result<u64, Error> {
-        let mut total = 0u64;
+        let mut set = tokio::task::JoinSet::new();
         for platform in platforms {
-            total += self.ensure_resolution_rows(platform).await?;
+            let this = self.clone();
+            let platform = platform.clone();
+            set.spawn(async move { this.ensure_resolution_rows(&platform).await });
+        }
+        let mut total = 0u64;
+        while let Some(result) = set.join_next().await {
+            total += result.map_err(|e| Error::Internal(e.to_string()))??;
         }
         Ok(total)
     }

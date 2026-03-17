@@ -137,6 +137,9 @@ pub(super) async fn fetch_batch_impl(
         }
 
         // Fetch full topic detail to get posts
+        // TODO: use buffer_unordered(4) for concurrent topic fetching — currently
+        // sequential which is an N+1 pattern. Requires collecting filtered topics
+        // first, then fetching details concurrently, then processing results.
         let detail = match client.topic(topic.id).await {
             Ok(d) => d,
             Err(e) => {

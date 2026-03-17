@@ -41,7 +41,7 @@ impl<W: Write> BackupWriter<W> {
 
     /// Write a table's rows as a JSONL entry in the archive.
     pub fn write_table<T: Serialize>(&mut self, table_name: &str, rows: &[T]) -> Result<(), Error> {
-        let mut data = Vec::new();
+        let mut data = Vec::with_capacity(rows.len() * 256);
         for row in rows {
             serde_json::to_writer(&mut data, row).map_err(|e| {
                 Error::Backup(format!("failed to serialize row in {table_name}: {e}"))
