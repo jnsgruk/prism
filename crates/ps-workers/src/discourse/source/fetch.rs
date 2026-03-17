@@ -153,11 +153,16 @@ pub(super) async fn fetch_batch_impl(
             .and_then(|id| category_map.get(&id))
             .cloned();
 
-        // Create topic contribution
-        items.push(build_topic_input(topic, &cur, category_name.as_deref()));
+        // Create topic contribution — resolve the creator from post_number 1.
+        let mut topic_input = build_topic_input(topic, &cur, category_name.as_deref());
 
         // Create post contributions from the topic detail
         if let Some(ref post_stream) = detail.post_stream {
+            // The first post (post_number 1) is the topic creator.
+            if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
+                topic_input.platform_username = first_post.username.clone();
+            }
+
             for post in &post_stream.posts {
                 items.push(build_post_input(post, topic, &cur));
             }
@@ -169,6 +174,8 @@ pub(super) async fn fetch_batch_impl(
                 items.extend(like_items);
             }
         }
+
+        items.push(topic_input);
     }
 
     let stop = reached_watermark || !has_more_pages || cur.page >= MAX_PAGES_PER_RUN;
