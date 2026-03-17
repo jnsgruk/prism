@@ -34,22 +34,6 @@ const columns: ColumnDef<Person, unknown>[] = [
     ),
   },
   {
-    accessorKey: "email",
-    header: "Email",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.email || "\u2014"}</span>
-    ),
-  },
-  {
-    accessorKey: "level",
-    header: "Level",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.level || "\u2014"}</span>
-    ),
-  },
-  {
     accessorKey: "team_name",
     header: "Team",
     enableSorting: true,
@@ -62,17 +46,18 @@ const columns: ColumnDef<Person, unknown>[] = [
   },
   {
     id: "identities",
-    header: "Platforms",
+    header: "Identities",
     enableSorting: false,
-    cell: ({ row }) => (
-      <div className="flex flex-wrap gap-1">
-        {row.original.identities.map((id) => (
-          <Badge key={`${id.platform}-${id.username}`} variant="outline" className="text-[10px]">
-            {id.platform}
-          </Badge>
-        ))}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const count = row.original.identities.length;
+      return count > 0 ? (
+        <Badge variant="outline" className="text-[10px]">
+          {count} {count === 1 ? "identity" : "identities"}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">{"\u2014"}</span>
+      );
+    },
   },
 ];
 
