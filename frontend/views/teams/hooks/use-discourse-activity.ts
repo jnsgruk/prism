@@ -11,9 +11,10 @@ const metricsClient = createClient(MetricsService, transport);
 export const useDiscourseActivity = (
   teamId: string,
   period: Period,
+  enabled = true,
 ): UseQueryResult<GetDiscourseActivityResponse, Error> =>
   useQuery({
     queryKey: ["discourse-activity", teamId, `${period.type}-${period.start}`],
     queryFn: () => metricsClient.getDiscourseActivity({ teamId, period }),
-    enabled: !!teamId,
+    enabled: !!teamId && enabled,
   });

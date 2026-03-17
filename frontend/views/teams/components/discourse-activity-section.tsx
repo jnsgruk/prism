@@ -9,7 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, Loader2, MessageCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronDown, ChevronRight, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import {
   Area,
@@ -64,8 +65,8 @@ export const DiscourseActivitySection = ({
   const hasDiscourse = discourseTopics > 0 || discoursePosts > 0;
 
   // Only fetch when section is expanded
-  const { data, isLoading } = useDiscourseActivity(teamId, period);
   const enabled = open && hasDiscourse;
+  const { data, isLoading } = useDiscourseActivity(teamId, period, enabled);
 
   if (!hasDiscourse) return null;
 
@@ -97,148 +98,179 @@ export const DiscourseActivitySection = ({
         <CollapsibleContent>
           <CardContent className="space-y-6 pt-0">
             {isLoading && enabled && (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <div className="space-y-6">
+                <div>
+                  <Skeleton className="mb-3 h-4 w-32" />
+                  <Skeleton className="h-[250px] w-full" />
+                </div>
+                <div>
+                  <Skeleton className="mb-3 h-4 w-40" />
+                  <Skeleton className="h-[160px] w-full" />
+                </div>
+                <div>
+                  <Skeleton className="mb-3 h-4 w-36" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="mt-1 h-10 w-full" />
+                  <Skeleton className="mt-1 h-10 w-full" />
+                </div>
               </div>
             )}
 
-            {!isLoading && enabled && (
-              <>
-                {/* Activity trend chart */}
-                {activityTrend.length > 1 && (
-                  <div>
-                    <h4 className="mb-3 text-sm font-medium">Activity Trend</h4>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <AreaChart
-                        data={activityTrend}
-                        margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12 }}
-                          className="fill-muted-foreground"
-                        />
-                        <YAxis className="fill-muted-foreground" />
-                        <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-                        <Area
-                          type="monotone"
-                          dataKey="topics"
-                          name="Topics"
-                          stackId="1"
-                          fill="hsl(var(--primary))"
-                          stroke="hsl(var(--primary))"
-                          fillOpacity={0.6}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="posts"
-                          name="Posts"
-                          stackId="1"
-                          fill="hsl(var(--muted-foreground))"
-                          stroke="hsl(var(--muted-foreground))"
-                          fillOpacity={0.4}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="likes"
-                          name="Likes"
-                          stackId="1"
-                          fill="hsl(var(--accent-foreground))"
-                          stroke="hsl(var(--accent-foreground))"
-                          fillOpacity={0.2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+            {!isLoading &&
+              enabled &&
+              activityTrend.length === 0 &&
+              categories.length === 0 &&
+              contributors.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
+                  <MessageCircle className="size-10 text-muted-foreground" />
+                  <p className="mb-1 font-medium">No activity details</p>
+                  <p className="text-sm text-muted-foreground">
+                    Discourse activity exists but detailed breakdown is not yet available.
+                  </p>
+                </div>
+              )}
 
-                {/* Category distribution */}
-                {categories.length > 0 && (
-                  <div>
-                    <h4 className="mb-3 text-sm font-medium">Category Distribution</h4>
-                    <ResponsiveContainer
-                      width="100%"
-                      height={Math.min(categories.length * 32 + 40, 400)}
-                    >
-                      <BarChart
-                        data={categories.map((c) => ({
-                          name: c.category,
-                          posts: c.posts,
-                          topics: c.topics,
-                        }))}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                      >
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          className="stroke-border"
-                          horizontal={false}
-                        />
-                        <XAxis type="number" className="fill-muted-foreground" />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                          className="fill-muted-foreground"
-                          width={75}
-                        />
-                        <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-                        <Bar
-                          dataKey="posts"
-                          name="Posts"
-                          fill="hsl(var(--primary))"
-                          radius={[0, 4, 4, 0]}
-                          stackId="cat"
-                        />
-                        <Bar
-                          dataKey="topics"
-                          name="Topics"
-                          fill="hsl(var(--muted-foreground))"
-                          radius={[0, 4, 4, 0]}
-                          stackId="cat"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {/* Top contributors */}
-                {contributors.length > 0 && (
-                  <div>
-                    <h4 className="mb-3 text-sm font-medium">Top Contributors</h4>
-                    <div className="overflow-x-auto rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead className="text-right">Topics</TableHead>
-                            <TableHead className="text-right">Posts</TableHead>
-                            <TableHead className="text-right">Likes Received</TableHead>
-                            <TableHead className="text-right">Solved</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {contributors.map((c) => (
-                            <TableRow key={c.personId}>
-                              <TableCell className="font-medium">{c.name}</TableCell>
-                              <TableCell className="tabular-nums text-right">{c.topics}</TableCell>
-                              <TableCell className="tabular-nums text-right">{c.posts}</TableCell>
-                              <TableCell className="tabular-nums text-right">
-                                {c.likesReceived || "\u2014"}
-                              </TableCell>
-                              <TableCell className="tabular-nums text-right">
-                                {c.solved || "\u2014"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+            {!isLoading &&
+              enabled &&
+              (activityTrend.length > 0 || categories.length > 0 || contributors.length > 0) && (
+                <>
+                  {/* Activity trend chart */}
+                  {activityTrend.length > 1 && (
+                    <div>
+                      <h4 className="mb-3 text-sm font-medium">Activity Trend</h4>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart
+                          data={activityTrend}
+                          margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 12 }}
+                            className="fill-muted-foreground"
+                          />
+                          <YAxis className="fill-muted-foreground" />
+                          <Tooltip content={ChartTooltip} cursor={cursorStyle} />
+                          <Area
+                            type="monotone"
+                            dataKey="topics"
+                            name="Topics"
+                            stackId="1"
+                            fill="hsl(var(--primary))"
+                            stroke="hsl(var(--primary))"
+                            fillOpacity={0.6}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="posts"
+                            name="Posts"
+                            stackId="1"
+                            fill="hsl(var(--muted-foreground))"
+                            stroke="hsl(var(--muted-foreground))"
+                            fillOpacity={0.4}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="likes"
+                            name="Likes"
+                            stackId="1"
+                            fill="hsl(var(--accent-foreground))"
+                            stroke="hsl(var(--accent-foreground))"
+                            fillOpacity={0.2}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+
+                  {/* Category distribution */}
+                  {categories.length > 0 && (
+                    <div>
+                      <h4 className="mb-3 text-sm font-medium">Category Distribution</h4>
+                      <ResponsiveContainer
+                        width="100%"
+                        height={Math.min(categories.length * 32 + 40, 400)}
+                      >
+                        <BarChart
+                          data={categories.map((c) => ({
+                            name: c.category,
+                            posts: c.posts,
+                            topics: c.topics,
+                          }))}
+                          layout="vertical"
+                          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="stroke-border"
+                            horizontal={false}
+                          />
+                          <XAxis type="number" className="fill-muted-foreground" />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            tick={{ fontSize: 12 }}
+                            className="fill-muted-foreground"
+                            width={75}
+                          />
+                          <Tooltip content={ChartTooltip} cursor={cursorStyle} />
+                          <Bar
+                            dataKey="posts"
+                            name="Posts"
+                            fill="hsl(var(--primary))"
+                            radius={[0, 4, 4, 0]}
+                            stackId="cat"
+                          />
+                          <Bar
+                            dataKey="topics"
+                            name="Topics"
+                            fill="hsl(var(--muted-foreground))"
+                            radius={[0, 4, 4, 0]}
+                            stackId="cat"
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Top contributors */}
+                  {contributors.length > 0 && (
+                    <div>
+                      <h4 className="mb-3 text-sm font-medium">Top Contributors</h4>
+                      <div className="overflow-x-auto rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead className="text-right">Topics</TableHead>
+                              <TableHead className="text-right">Posts</TableHead>
+                              <TableHead className="text-right">Likes Received</TableHead>
+                              <TableHead className="text-right">Solved</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {contributors.map((c) => (
+                              <TableRow key={c.personId}>
+                                <TableCell className="font-medium">{c.name}</TableCell>
+                                <TableCell className="tabular-nums text-right">
+                                  {c.topics}
+                                </TableCell>
+                                <TableCell className="tabular-nums text-right">{c.posts}</TableCell>
+                                <TableCell className="tabular-nums text-right">
+                                  {c.likesReceived || "\u2014"}
+                                </TableCell>
+                                <TableCell className="tabular-nums text-right">
+                                  {c.solved || "\u2014"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
           </CardContent>
         </CollapsibleContent>
       </Card>
