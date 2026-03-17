@@ -119,7 +119,16 @@ impl OrgRepo {
         if let Some(tid) = params.team_id {
             idx += 1;
             binds.push(tid.to_string());
-            conditions.push(format!("tm.team_id = ${idx}::uuid"));
+            conditions.push(format!(
+                "tm.team_id IN (\
+                    WITH RECURSIVE team_tree AS (\
+                        SELECT id FROM org.teams WHERE id = ${idx}::uuid \
+                        UNION ALL \
+                        SELECT c.id FROM org.teams c \
+                        INNER JOIN team_tree tt ON c.parent_team_id = tt.id\
+                    ) SELECT id FROM team_tree\
+                )"
+            ));
         }
 
         if let Some(ref cursor) = params.page.cursor {

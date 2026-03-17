@@ -60,6 +60,7 @@ export const useListPeople = (): UseQueryResult<Person[], Error> =>
 export interface PeopleQueryParams {
   search?: string;
   filter?: string;
+  teamId?: string;
   pageSize: number;
   pageToken?: string;
   sortField?: string;
@@ -75,6 +76,7 @@ export const usePaginatedPeople = (
       orgClient.listPeople({
         search: params.search || undefined,
         filter: params.filter || undefined,
+        teamId: params.teamId || undefined,
         pagination: { pageSize: params.pageSize, pageToken: params.pageToken ?? "" },
         sort: params.sortField
           ? { field: params.sortField, descending: params.sortDesc ?? false }

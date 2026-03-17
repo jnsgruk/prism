@@ -1,11 +1,20 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert } from "@/components/ui/alert";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ChevronsUpDown, Search, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { Person } from "@ps/api/gen/prism/v1/org_pb";
@@ -13,9 +22,7 @@ import type { Person } from "@ps/api/gen/prism/v1/org_pb";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { PageHeader } from "@/components/page-header";
-import { usePaginatedPeople } from "@/views/teams/hooks/use-teams";
-
-type Filter = "all" | "unassigned" | "inactive";
+import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 
 const columns: ColumnDef<Person, unknown>[] = [
   {
@@ -63,13 +70,22 @@ const columns: ColumnDef<Person, unknown>[] = [
 
 const PeopleListPage = (): React.ReactElement => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [teamId, setTeamId] = useState<string | undefined>(undefined);
+  const [teamOpen, setTeamOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageTokens, setPageTokens] = useState<string[]>([""]);
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+
+  const { data: treeData } = useGetTeamTree();
+  const flatTeams = useMemo(() => flattenTree(treeData?.roots ?? []), [treeData?.roots]);
+
+  const selectedTeamName = useMemo(
+    () => flatTeams.find((ft) => ft.team.id === teamId)?.team.name,
+    [flatTeams, teamId],
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -81,14 +97,14 @@ const PeopleListPage = (): React.ReactElement => {
   useEffect(() => {
     setPageIndex(0);
     setPageTokens([""]);
-  }, [debouncedSearch, filter, pageSize, sorting]);
+  }, [debouncedSearch, teamId, pageSize, sorting]);
 
   const sortField = sorting[0]?.id;
   const sortDesc = sorting[0]?.desc ?? false;
 
   const { data, isLoading, isError, error } = usePaginatedPeople({
     search: debouncedSearch || undefined,
-    filter: filter === "all" ? undefined : filter,
+    teamId,
     pageSize,
     pageToken: pageTokens[pageIndex] ?? "",
     sortField,
@@ -132,29 +148,47 @@ const PeopleListPage = (): React.ReactElement => {
               className="h-8 w-64 pl-8 text-sm"
             />
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant={filter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("all")}
+          <Popover open={teamOpen} onOpenChange={setTeamOpen}>
+            <PopoverTrigger
+              render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between" />}
             >
-              All
-            </Button>
-            <Button
-              variant={filter === "unassigned" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("unassigned")}
-            >
-              Unassigned
-            </Button>
-            <Button
-              variant={filter === "inactive" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("inactive")}
-            >
-              Inactive
-            </Button>
-          </div>
+              <span className="truncate">{selectedTeamName ?? "All teams"}</span>
+              {teamId ? (
+                <X
+                  className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTeamId(undefined);
+                  }}
+                />
+              ) : (
+                <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search teams..." />
+                <CommandList>
+                  <CommandEmpty>No teams found.</CommandEmpty>
+                  <CommandGroup>
+                    {flatTeams.map((ft) => (
+                      <CommandItem
+                        key={ft.team.id}
+                        value={ft.team.name}
+                        data-checked={teamId === ft.team.id}
+                        onSelect={() => {
+                          setTeamId(teamId === ft.team.id ? undefined : ft.team.id);
+                          setTeamOpen(false);
+                        }}
+                      >
+                        <span style={{ paddingLeft: `${ft.depth * 12}px` }}>{ft.team.name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Loading */}
