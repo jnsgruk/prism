@@ -229,7 +229,10 @@ export const DiscourseActivitySection = ({
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue>
-                      {instanceFilter === "all" ? "All instances" : instanceFilter}
+                      {instanceFilter === "all"
+                        ? "All instances"
+                        : (discourseSources.find((s) => s.sourceType === instanceFilter)?.name ??
+                          instanceFilter)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
