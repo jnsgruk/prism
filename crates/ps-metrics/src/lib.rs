@@ -1,13 +1,17 @@
+mod flow;
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use futures::stream::{self, TryStreamExt};
-use ps_core::models::{ContributionState, ContributionType, PeriodType};
+use ps_core::models::{ContributionType, PeriodType};
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionMetricRow, SnapshotInput};
 use time::Date;
 use tracing::info;
 use uuid::Uuid;
+
+pub use flow::{Throughput, compute_cross_source_throughput};
 
 /// Review turnaround distribution: average + percentiles.
 #[derive(Debug, Clone, Copy)]
@@ -35,17 +39,32 @@ pub async fn compute_team_snapshot(
         .get_team_contributions(team_id, period_start, period_end)
         .await?;
 
-    let throughput = compute_throughput(&contributions);
+    let cross_throughput = flow::compute_cross_source_throughput(&contributions);
     let review = compute_review_turnaround(&contributions);
+    let avg_cycle_time_hours = flow::compute_cycle_time(&contributions);
+    let wip_avg = flow::compute_wip(&contributions, period_end);
+    let lead_time_hours = flow::compute_lead_time(&contributions);
+    let flow_efficiency = flow::compute_flow_efficiency(&contributions);
 
-    let raw_metrics = match review {
-        Some(r) => serde_json::json!({
-            "review_turnaround_p75_hours": r.p75,
-            "review_turnaround_p90_hours": r.p90,
-            "review_turnaround_p99_hours": r.p99,
-        }),
-        None => serde_json::json!({}),
-    };
+    let mut raw_metrics = serde_json::json!({
+        "throughput_by_source": cross_throughput.by_source,
+    });
+    if let Some(r) = &review
+        && let Some(obj) = raw_metrics.as_object_mut()
+    {
+        obj.insert(
+            "review_turnaround_p75_hours".into(),
+            serde_json::json!(r.p75),
+        );
+        obj.insert(
+            "review_turnaround_p90_hours".into(),
+            serde_json::json!(r.p90),
+        );
+        obj.insert(
+            "review_turnaround_p99_hours".into(),
+            serde_json::json!(r.p99),
+        );
+    }
 
     repos
         .metrics
@@ -55,12 +74,12 @@ pub async fn compute_team_snapshot(
             period_start,
             period_end,
             period_type,
-            throughput,
+            throughput: cross_throughput.total,
             avg_review_turnaround_hours: review.as_ref().map(|r| r.avg),
-            avg_cycle_time_hours: None,
-            wip_avg: None,
-            flow_efficiency: None,
-            lead_time_hours: None,
+            avg_cycle_time_hours,
+            wip_avg,
+            flow_efficiency,
+            lead_time_hours,
             raw_metrics,
         })
         .await?;
@@ -70,8 +89,12 @@ pub async fn compute_team_snapshot(
         %period_start,
         %period_end,
         %period_type,
-        throughput,
+        throughput = cross_throughput.total,
         avg_review_turnaround_hours = ?review.as_ref().map(|r| r.avg),
+        ?avg_cycle_time_hours,
+        ?wip_avg,
+        ?lead_time_hours,
+        ?flow_efficiency,
         "computed team snapshot"
     );
 
@@ -97,18 +120,6 @@ pub async fn compute_all_snapshots(
     let computed = team_ids.len() as i32;
     info!(computed, %period_type, %period_start, "computed all team snapshots");
     Ok(computed)
-}
-
-/// Count merged PRs in the contribution set.
-#[allow(clippy::cast_possible_wrap)] // contribution count never approaches i32::MAX
-fn compute_throughput(contributions: &[ContributionMetricRow]) -> i32 {
-    contributions
-        .iter()
-        .filter(|c| {
-            c.contribution_type == ContributionType::PullRequest
-                && c.state == Some(ContributionState::Merged)
-        })
-        .count() as i32
 }
 
 /// Hours from PR creation to first review: average + percentiles.
@@ -256,7 +267,7 @@ pub fn period_boundaries(reference_date: Date, period_type: PeriodType) -> (Date
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ps_core::models::Platform;
+    use ps_core::models::{ContributionState, Platform};
     use time::macros::date;
 
     #[test]
@@ -316,12 +327,16 @@ mod tests {
                 Some(ContributionState::Approved),
             ),
         ];
-        assert_eq!(compute_throughput(&contributions), 2);
+        // Only merged PRs count as throughput
+        assert_eq!(
+            flow::compute_cross_source_throughput(&contributions).total,
+            2
+        );
     }
 
     #[test]
     fn test_throughput_empty() {
-        assert_eq!(compute_throughput(&[]), 0);
+        assert_eq!(flow::compute_cross_source_throughput(&[]).total, 0);
     }
 
     #[test]
