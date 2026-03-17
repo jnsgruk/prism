@@ -17,8 +17,8 @@ pub(super) async fn fetch_batch_impl(
     let mut cur: Cursor = serde_json::from_str(cursor)
         .map_err(|e| ps_core::Error::Internal(format!("invalid cursor: {e}")))?;
 
-    let api_key = decrypt_api_key(ctx).await?;
-    let api_username = decrypt_api_username(ctx).await.unwrap_or_default();
+    let api_key = decrypt_api_key(ctx);
+    let api_username = decrypt_api_username(ctx);
 
     let settings = &ctx.source_config.settings;
     let base_url = settings

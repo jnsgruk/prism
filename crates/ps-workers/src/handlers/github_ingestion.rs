@@ -134,9 +134,10 @@ impl GithubIngestionHandlerImpl {
         IngestionContext {
             repos: self.state.repos.clone(),
             source_config: config.clone(),
-            secret_key: self.state.secret_key.clone(),
             http_client: self.state.http_client.clone(),
             token,
+            email: None,
+            api_username: None,
         }
     }
 
@@ -314,7 +315,6 @@ impl GithubIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let cur = cursor.to_string();
         let source_type = config.source_type.clone();
@@ -332,9 +332,10 @@ impl GithubIngestionHandlerImpl {
                     let ic = IngestionContext {
                         repos,
                         source_config: cfg,
-                        secret_key: sk,
                         http_client: http,
                         token: tok,
+                        email: None,
+                        api_username: None,
                     };
                     let result = src
                         .fetch_batch(&ic, &cur)
@@ -363,7 +364,6 @@ impl GithubIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let items = items.to_vec();
         let source_type = config.source_type.clone();
@@ -381,9 +381,10 @@ impl GithubIngestionHandlerImpl {
                     let ic = IngestionContext {
                         repos,
                         source_config: cfg,
-                        secret_key: sk,
                         http_client: http,
                         token: tok,
+                        email: None,
+                        api_username: None,
                     };
                     let count = src
                         .store_batch(&ic, &items)
@@ -409,7 +410,6 @@ impl GithubIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let wm = cursor.to_string();
         let source_type = config.source_type.clone();
@@ -426,9 +426,10 @@ impl GithubIngestionHandlerImpl {
                 let ic = IngestionContext {
                     repos,
                     source_config: cfg,
-                    secret_key: sk,
                     http_client: http,
                     token: tok,
+                    email: None,
+                    api_username: None,
                 };
                 let watermark = extract_watermark(&wm).unwrap_or_default();
                 src.advance_watermark(&ic, &watermark, total_items)

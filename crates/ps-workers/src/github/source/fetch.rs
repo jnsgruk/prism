@@ -51,7 +51,7 @@ async fn fetch_team_repos(
         );
     }
 
-    let token = decrypt_token(ctx).await?;
+    let token = decrypt_token(ctx)?;
     let client = build_graphql_client(ctx, &token);
 
     // Build search query with server-side updated filter.
@@ -228,7 +228,7 @@ async fn fetch_member_search(
         });
     }
 
-    let token = decrypt_token(ctx).await?;
+    let token = decrypt_token(ctx)?;
     let client = build_graphql_client(ctx, &token);
 
     // Build search query with a batch of usernames.

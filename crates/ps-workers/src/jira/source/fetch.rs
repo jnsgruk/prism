@@ -15,11 +15,10 @@ pub(super) async fn fetch_batch_impl(
     let mut cur: Cursor = serde_json::from_str(cursor)
         .map_err(|e| ps_core::Error::Internal(format!("invalid cursor: {e}")))?;
 
-    let token = decrypt_token(ctx).await?;
+    let token = decrypt_token(ctx)?;
 
     // For Cloud auth, we need the email for Basic auth.
-    // Inject it into settings so the client can pick it up.
-    let email = decrypt_email(ctx).await?;
+    let email = decrypt_email(ctx);
 
     let settings = &ctx.source_config.settings;
     let base_url = settings

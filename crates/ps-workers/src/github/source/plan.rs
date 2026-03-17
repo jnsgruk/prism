@@ -37,7 +37,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .unwrap_or_default();
 
-        let token = decrypt_token(ctx).await?;
+        let token = decrypt_token(ctx)?;
         let client = build_rest_client(ctx, &token);
 
         let discovered = repos::discover_repos(

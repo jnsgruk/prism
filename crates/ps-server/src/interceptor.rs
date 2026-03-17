@@ -6,8 +6,28 @@ use http::Request;
 use ps_core::repo::auth::AuthRepo;
 use tonic::Status;
 use tower::{Layer, Service};
-use tracing::warn;
+use tracing::{info, warn};
 use uuid::Uuid;
+
+/// Build an HTTP response that encodes a gRPC UNAUTHENTICATED error.
+///
+/// gRPC-over-HTTP uses HTTP 200 with status in trailers/headers. This lets
+/// the auth middleware reject requests without depending on tonic's body type.
+fn grpc_unauthenticated<B: Default>(message: &str) -> http::Response<B> {
+    let mut response = http::Response::new(B::default());
+    response.headers_mut().insert(
+        "content-type",
+        http::HeaderValue::from_static("application/grpc"),
+    );
+    // 16 = UNAUTHENTICATED in the gRPC status code space
+    response
+        .headers_mut()
+        .insert("grpc-status", http::HeaderValue::from_static("16"));
+    if let Ok(val) = http::HeaderValue::from_str(message) {
+        response.headers_mut().insert("grpc-message", val);
+    }
+    response
+}
 
 /// Context extracted from a validated session, attached to request extensions.
 #[derive(Debug, Clone)]
@@ -103,7 +123,7 @@ where
     S::Future: Send + 'static,
     S::Error: Send + 'static,
     ReqBody: Send + 'static,
-    ResBody: Send + 'static,
+    ResBody: Default + Send + 'static,
 {
     type Response = http::Response<ResBody>;
     type Error = S::Error;
@@ -137,11 +157,8 @@ where
                 .map(std::borrow::ToOwned::to_owned);
 
             let Some(token) = token else {
-                warn!(path, "rejected request: missing authorization header");
-                // Forward without AuthContext — require_auth() in handlers will
-                // reject with proper gRPC framing. We cannot construct a typed
-                // gRPC error response here due to the generic ResBody constraint.
-                return inner.call(req).await;
+                info!(path, "rejected request: missing authorization header");
+                return Ok(grpc_unauthenticated("missing authorization header"));
             };
 
             match validate_token(&auth_repo, &token).await {
@@ -149,10 +166,9 @@ where
                     req.extensions_mut().insert(ctx);
                     inner.call(req).await
                 }
-                Err(_status) => {
-                    // Forward without AuthContext — require_auth() in handlers
-                    // will return the appropriate gRPC error with correct framing.
-                    inner.call(req).await
+                Err(status) => {
+                    info!(path, status = %status.code(), "rejected request: {}", status.message());
+                    Ok(grpc_unauthenticated(status.message()))
                 }
             }
         })

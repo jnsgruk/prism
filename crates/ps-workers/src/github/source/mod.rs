@@ -156,28 +156,14 @@ pub(super) fn build_rest_client(
     super::client::GitHubClient::new(ctx.http_client.clone(), base_url, token)
 }
 
-/// Get the API token, using the pre-decrypted value from `IngestionContext`
-/// when available, falling back to DB lookup + decryption otherwise.
-pub(super) async fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
-    // Use pre-decrypted token if available (set once per run in the handler)
-    if let Some(ref token) = ctx.token {
-        return Ok(token.clone());
-    }
-
-    let encrypted = ctx
-        .repos
-        .config
-        .get_encrypted_secret(ctx.source_config.id, "api_token")
-        .await?
-        .ok_or_else(|| {
-            ps_core::Error::Validation("GitHub source has no api_token configured".into())
-        })?;
-
-    let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &encrypted)
-        .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-
-    String::from_utf8(decrypted)
-        .map_err(|e| ps_core::Error::Internal(format!("invalid token encoding: {e}")))
+/// Get the pre-decrypted API token from `IngestionContext`.
+///
+/// The token is decrypted once per run in the handler (outside Restate
+/// `ctx.run()` closures) to avoid journaling plaintext secrets.
+pub(super) fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
+    ctx.token.clone().ok_or_else(|| {
+        ps_core::Error::Validation("GitHub source has no api_token configured".into())
+    })
 }
 
 pub(super) fn serialise_cursor(cur: &Cursor) -> Result<String, ps_core::Error> {

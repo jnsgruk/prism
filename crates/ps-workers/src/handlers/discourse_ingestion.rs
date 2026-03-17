@@ -63,13 +63,16 @@ impl DiscourseIngestionHandlerImpl {
         };
         let run_id = self.create_run(ctx, source_name, method).await?;
 
-        // Decrypt API key once per run, outside ctx.run() to avoid journaling.
+        // Decrypt API key and username once per run, outside ctx.run() to avoid journaling.
         // API key is optional — Discourse public endpoints work without auth.
         let api_key = self
             .decrypt_source_secret_optional(config.id, "api_key")
             .await?;
+        let api_username = self
+            .decrypt_source_secret_optional(config.id, "api_username")
+            .await?;
 
-        let ing_ctx = self.ingestion_context(&config, api_key);
+        let ing_ctx = self.ingestion_context(&config, api_key, api_username);
 
         let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
@@ -153,13 +156,19 @@ impl DiscourseIngestionHandlerImpl {
         Ok(())
     }
 
-    fn ingestion_context(&self, config: &SourceConfig, token: Option<String>) -> IngestionContext {
+    fn ingestion_context(
+        &self,
+        config: &SourceConfig,
+        token: Option<String>,
+        api_username: Option<String>,
+    ) -> IngestionContext {
         IngestionContext {
             repos: self.state.repos.clone(),
             source_config: config.clone(),
-            secret_key: self.state.secret_key.clone(),
             http_client: self.state.http_client.clone(),
             token,
+            email: None,
+            api_username,
         }
     }
 
@@ -318,7 +327,6 @@ impl DiscourseIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let cur = cursor.to_string();
         let source_type = config.source_type.clone();
@@ -336,9 +344,10 @@ impl DiscourseIngestionHandlerImpl {
                     let ic = IngestionContext {
                         repos,
                         source_config: cfg,
-                        secret_key: sk,
                         http_client: http,
                         token: tok,
+                        email: None,
+                        api_username: None,
                     };
                     let result = src
                         .fetch_batch(&ic, &cur)
@@ -367,7 +376,6 @@ impl DiscourseIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let items = items.to_vec();
         let source_type = config.source_type.clone();
@@ -385,9 +393,10 @@ impl DiscourseIngestionHandlerImpl {
                     let ic = IngestionContext {
                         repos,
                         source_config: cfg,
-                        secret_key: sk,
                         http_client: http,
                         token: tok,
+                        email: None,
+                        api_username: None,
                     };
                     let count = src
                         .store_batch(&ic, &items)
@@ -413,7 +422,6 @@ impl DiscourseIngestionHandlerImpl {
         let repos = self.state.repos.clone();
         let http = self.state.http_client.clone();
         let cfg = config.clone();
-        let sk = self.state.secret_key.clone();
         let tok = token.map(String::from);
         let wm = cursor.to_string();
         let source_type = config.source_type.clone();
@@ -430,9 +438,10 @@ impl DiscourseIngestionHandlerImpl {
                 let ic = IngestionContext {
                     repos,
                     source_config: cfg,
-                    secret_key: sk,
                     http_client: http,
                     token: tok,
+                    email: None,
+                    api_username: None,
                 };
                 let watermark = extract_watermark(&wm).unwrap_or_default();
                 src.advance_watermark(&ic, &watermark, total_items)

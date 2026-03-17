@@ -455,6 +455,7 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
+        validate_restate_identifier(&req.source_name)?;
 
         // Verify source exists and is enabled, and get the source type for routing
         let source = self
@@ -497,6 +498,7 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
+        validate_restate_identifier(&req.source_name)?;
         if req.since_date.is_empty() {
             return Err(Status::invalid_argument("since_date is required"));
         }
@@ -598,6 +600,7 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
+        validate_restate_identifier(&req.source_name)?;
 
         // Verify source exists and is enabled
         self.repos

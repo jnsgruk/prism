@@ -86,48 +86,21 @@ impl Source for JiraSource {
     }
 }
 
-/// Decrypt the Jira API token from the source config secrets.
-pub(crate) async fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
-    if let Some(ref token) = ctx.token {
-        return Ok(token.clone());
-    }
-
-    let encrypted = ctx
-        .repos
-        .config
-        .get_encrypted_secret(ctx.source_config.id, "api_token")
-        .await?
-        .ok_or_else(|| {
-            ps_core::Error::Validation("Jira source has no api_token configured".into())
-        })?;
-
-    let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &encrypted)
-        .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-
-    String::from_utf8(decrypted)
-        .map_err(|e| ps_core::Error::Internal(format!("invalid token encoding: {e}")))
+/// Get the pre-decrypted Jira API token from `IngestionContext`.
+///
+/// The token is decrypted once per run in the handler (outside Restate
+/// `ctx.run()` closures) to avoid journaling plaintext secrets.
+pub(crate) fn decrypt_token(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
+    ctx.token
+        .clone()
+        .ok_or_else(|| ps_core::Error::Validation("Jira source has no api_token configured".into()))
 }
 
-/// Decrypt the Jira email secret (used for Cloud Basic auth).
-pub(crate) async fn decrypt_email(
-    ctx: &IngestionContext,
-) -> Result<Option<String>, ps_core::Error> {
-    let encrypted = ctx
-        .repos
-        .config
-        .get_encrypted_secret(ctx.source_config.id, "email")
-        .await?;
-
-    match encrypted {
-        Some(enc) => {
-            let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &enc)
-                .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-            let email = String::from_utf8(decrypted)
-                .map_err(|e| ps_core::Error::Internal(format!("invalid email encoding: {e}")))?;
-            Ok(Some(email))
-        }
-        None => Ok(None),
-    }
+/// Get the pre-decrypted Jira email from `IngestionContext`.
+///
+/// Returns `None` if no email was configured (e.g. Server/DC mode).
+pub(crate) fn decrypt_email(ctx: &IngestionContext) -> Option<String> {
+    ctx.email.clone()
 }
 
 pub(crate) fn serialise_cursor(cur: &Cursor) -> Result<String, ps_core::Error> {

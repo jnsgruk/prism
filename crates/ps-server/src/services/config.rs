@@ -11,7 +11,7 @@ use ps_proto::prism::v1::{
     UpdateSourceRequest, UpdateSourceResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -317,8 +317,11 @@ impl ConfigService for ConfigServiceImpl {
             return Err(Status::not_found("source not found"));
         }
 
-        let encrypted = crypto::encrypt(&self.secret_key, req.secret_value.as_bytes())
-            .map_err(|e| Status::internal(format!("encryption error: {e}")))?;
+        let encrypted =
+            crypto::encrypt(&self.secret_key, req.secret_value.as_bytes()).map_err(|e| {
+                error!(error = %e, "secret encryption failed");
+                Status::internal("internal error")
+            })?;
 
         let secret_id = Uuid::now_v7();
 

@@ -133,7 +133,7 @@ impl AdminService for AdminServiceImpl {
                 Some(&req.name),
             )
             .await
-            .map_err(|e| Status::internal(format!("failed to create token: {e}")))?;
+            .map_err(db_err)?;
 
         info!(token_id = %token_id, name = %req.name, "API token created");
 

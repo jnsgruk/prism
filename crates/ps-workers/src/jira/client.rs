@@ -11,6 +11,27 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::debug;
 
+/// Validate a Jira issue key (e.g., `PROJ-123`) before interpolating into URLs.
+fn validate_jira_key(key: &str) -> Result<&str, ps_core::Error> {
+    let mut parts = key.splitn(2, '-');
+    let project = parts.next().unwrap_or("");
+    let number = parts.next().unwrap_or("");
+    let valid = !project.is_empty()
+        && project
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        && project.starts_with(|c: char| c.is_ascii_uppercase())
+        && !number.is_empty()
+        && number.chars().all(|c| c.is_ascii_digit());
+    if valid {
+        Ok(key)
+    } else {
+        Err(ps_core::Error::Validation(format!(
+            "invalid Jira issue key: {key:?}"
+        )))
+    }
+}
+
 /// Jira REST API client.
 pub struct JiraClient {
     http: reqwest::Client,
@@ -237,6 +258,7 @@ impl JiraClient {
 
     /// Fetch a single issue with changelog expanded.
     pub async fn get_issue_with_changelog(&self, key: &str) -> Result<JiraIssue, ps_core::Error> {
+        let key = validate_jira_key(key)?;
         let url = format!(
             "{}/rest/api/3/issue/{}?expand=changelog",
             self.base_url, key

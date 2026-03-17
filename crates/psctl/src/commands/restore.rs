@@ -88,12 +88,11 @@ pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
     println!("Restore complete.");
     if !response.generated_password.is_empty() {
         eprintln!(
-            "  Generated admin password (change immediately): {}",
+            "  Generated admin password: {}",
             response.generated_password
         );
+        eprintln!("  (change this password immediately via the web UI)");
     }
-    // Print session token to stderr to avoid capture in redirected output
-    eprintln!("  Session token (sensitive): {}", response.session_token);
 
     if !response.tables_restored.is_empty() {
         println!("  Tables restored:");

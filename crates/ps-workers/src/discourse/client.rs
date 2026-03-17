@@ -7,6 +7,21 @@
 use serde::Deserialize;
 use tracing::debug;
 
+/// Validate a Discourse username before interpolating into URLs.
+fn validate_discourse_username(username: &str) -> Result<&str, ps_core::Error> {
+    let valid = !username.is_empty()
+        && username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-');
+    if valid {
+        Ok(username)
+    } else {
+        Err(ps_core::Error::Validation(format!(
+            "invalid Discourse username: {username:?}"
+        )))
+    }
+}
+
 /// Discourse REST API client.
 #[derive(Clone)]
 pub struct DiscourseClient {
@@ -396,6 +411,7 @@ impl DiscourseClient {
     ///
     /// Returns `true` if the user exists (200 response), `false` on 404.
     pub async fn user_exists(&self, username: &str) -> Result<bool, ps_core::Error> {
+        let username = validate_discourse_username(username)?;
         let url = format!("{}/u/{}.json", self.base_url, username);
 
         let req = self

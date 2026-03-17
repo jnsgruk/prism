@@ -15,7 +15,7 @@ use rand::distr::Alphanumeric;
 use time::OffsetDateTime;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use super::common::{db_err, require_auth, to_timestamp};
@@ -92,8 +92,10 @@ impl AuthService for AuthServiceImpl {
             return Err(Status::failed_precondition("setup already complete"));
         }
 
-        let password_hash = hash_password(&req.password)
-            .map_err(|e| Status::internal(format!("password hashing failed: {e}")))?;
+        let password_hash = hash_password(&req.password).map_err(|e| {
+            error!(error = %e, "password hashing failed");
+            Status::internal("internal error")
+        })?;
 
         let user_id = Uuid::now_v7();
         self.repos
@@ -106,7 +108,7 @@ impl AuthService for AuthServiceImpl {
                 ps_core::models::Role::Admin,
             )
             .await
-            .map_err(|e| Status::internal(format!("failed to create user: {e}")))?;
+            .map_err(db_err)?;
 
         let (session_token, _) = self.create_user_session(user_id, "browser").await?;
 
@@ -260,8 +262,10 @@ impl AuthService for AuthServiceImpl {
             .take(24)
             .map(char::from)
             .collect();
-        let password_hash = hash_password(&generated_password)
-            .map_err(|e| Status::internal(format!("password hashing failed: {e}")))?;
+        let password_hash = hash_password(&generated_password).map_err(|e| {
+            error!(error = %e, "password hashing failed");
+            Status::internal("internal error")
+        })?;
 
         let user_id = Uuid::now_v7();
         self.repos
@@ -274,7 +278,7 @@ impl AuthService for AuthServiceImpl {
                 ps_core::models::Role::Admin,
             )
             .await
-            .map_err(|e| Status::internal(format!("failed to create admin user: {e}")))?;
+            .map_err(db_err)?;
 
         let (session_token, expires_at) = self.create_user_session(user_id, "browser").await?;
 

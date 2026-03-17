@@ -4,17 +4,22 @@ use crate::repo::Repos;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use zeroize::Zeroizing;
 
 /// Shared context provided to every source adapter during ingestion.
+///
+/// All secrets are pre-decrypted once at the start of the ingestion run
+/// (outside Restate `ctx.run()` closures) so that plaintext material is
+/// never journaled by the Restate runtime.
 pub struct IngestionContext {
     pub repos: Repos,
     pub source_config: SourceConfig,
-    pub secret_key: Zeroizing<[u8; 32]>,
     pub http_client: reqwest::Client,
-    /// Pre-decrypted API token. Populated once at the start of an ingestion
-    /// run to avoid repeated decryption per batch.
+    /// Pre-decrypted API token (GitHub PAT, Jira API token, Discourse API key).
     pub token: Option<String>,
+    /// Pre-decrypted email for Jira Cloud Basic auth.
+    pub email: Option<String>,
+    /// Pre-decrypted API username for Discourse.
+    pub api_username: Option<String>,
 }
 
 /// Known metric fields for a contribution. Stored as JSONB in the database.

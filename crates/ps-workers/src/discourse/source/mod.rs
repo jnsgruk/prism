@@ -98,49 +98,21 @@ impl Source for DiscourseSource {
     }
 }
 
-/// Decrypt the Discourse API key from the source config secrets.
+/// Get the pre-decrypted Discourse API key from `IngestionContext`.
 ///
 /// Returns an empty string if no API key is configured — Discourse public
 /// endpoints work without authentication (with stricter rate limits).
-pub(crate) async fn decrypt_api_key(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
-    if let Some(ref token) = ctx.token {
-        return Ok(token.clone());
-    }
-
-    let encrypted = ctx
-        .repos
-        .config
-        .get_encrypted_secret(ctx.source_config.id, "api_key")
-        .await?;
-
-    match encrypted {
-        Some(enc) => {
-            let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &enc)
-                .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-            String::from_utf8(decrypted)
-                .map_err(|e| ps_core::Error::Internal(format!("invalid api_key encoding: {e}")))
-        }
-        None => Ok(String::new()),
-    }
+pub(crate) fn decrypt_api_key(ctx: &IngestionContext) -> String {
+    ctx.token.clone().unwrap_or_default()
 }
 
-/// Decrypt the optional Discourse API username from secrets.
-pub(crate) async fn decrypt_api_username(ctx: &IngestionContext) -> Result<String, ps_core::Error> {
-    let encrypted = ctx
-        .repos
-        .config
-        .get_encrypted_secret(ctx.source_config.id, "api_username")
-        .await?;
-
-    match encrypted {
-        Some(enc) => {
-            let decrypted = ps_core::crypto::decrypt(&ctx.secret_key, &enc)
-                .map_err(|e| ps_core::Error::Encryption(e.to_string()))?;
-            String::from_utf8(decrypted)
-                .map_err(|e| ps_core::Error::Internal(format!("invalid api_username: {e}")))
-        }
-        None => Ok("system".to_string()),
-    }
+/// Get the pre-decrypted Discourse API username from `IngestionContext`.
+///
+/// Defaults to `"system"` if not configured.
+pub(crate) fn decrypt_api_username(ctx: &IngestionContext) -> String {
+    ctx.api_username
+        .clone()
+        .unwrap_or_else(|| "system".to_string())
 }
 
 pub(crate) fn serialise_cursor(cur: &Cursor) -> Result<String, ps_core::Error> {
