@@ -5,9 +5,11 @@ use ps_core::repo::Repos;
 use ps_core::repo::metrics::ListContributionsParams;
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
-    CompareTeamsRequest, CompareTeamsResponse, Contribution, GetFlowMetricsRequest,
-    GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
-    GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
+    CompareTeamsRequest, CompareTeamsResponse, Contribution,
+    DiscourseInstanceMetrics as ProtoDiscourseInstanceMetrics, GetDiscourseActivityRequest,
+    GetDiscourseActivityResponse, GetFlowMetricsRequest, GetFlowMetricsResponse,
+    GetIndividualProfileRequest, GetIndividualProfileResponse, GetTeamMetricsRequest,
+    GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
     ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
     ListTeamContributionsResponse, Period, PeriodType, TeamMetrics, ThroughputDataPoint,
     WipDataPoint,
@@ -71,6 +73,25 @@ fn json_i32(v: &serde_json::Value, key: &str) -> i32 {
 }
 
 fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics {
+    // Parse per-instance Discourse breakdown from raw_metrics JSON
+    let discourse_by_instance = s
+        .raw_metrics
+        .get("discourse_by_instance")
+        .and_then(|v| v.as_object())
+        .map(|obj| {
+            obj.iter()
+                .map(|(instance, v)| ProtoDiscourseInstanceMetrics {
+                    instance: instance.clone(),
+                    topics_created: json_i32(v, "topics_created"),
+                    posts: json_i32(v, "posts"),
+                    replies: json_i32(v, "replies"),
+                    likes_given: json_i32(v, "likes_given"),
+                    solved_topics: json_i32(v, "solved_topics"),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     TeamMetrics {
         team_id: s.team_id.to_string(),
         team_name: s.team_name,
@@ -91,6 +112,14 @@ fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics 
         flow_efficiency: s.flow_efficiency.unwrap_or(0.0),
         lead_time_hours: s.lead_time_hours.unwrap_or(0.0),
         source_platforms: s.source_platforms.clone(),
+        discourse_topics_created: json_i32(&s.raw_metrics, "discourse_topics_created"),
+        discourse_posts: json_i32(&s.raw_metrics, "discourse_posts"),
+        discourse_replies: json_i32(&s.raw_metrics, "discourse_replies"),
+        discourse_likes_given: json_i32(&s.raw_metrics, "discourse_likes_given"),
+        discourse_likes_received: json_i32(&s.raw_metrics, "discourse_likes_received"),
+        discourse_solved_topics: json_i32(&s.raw_metrics, "discourse_solved_topics"),
+        discourse_active_participants: json_i32(&s.raw_metrics, "discourse_active_participants"),
+        discourse_by_instance,
     }
 }
 
@@ -164,18 +193,7 @@ impl MetricsService for MetricsServiceImpl {
                     team_id: team.id.to_string(),
                     team_name: team.name,
                     period: Some(period),
-                    throughput: 0,
-                    avg_review_turnaround_hours: 0.0,
-                    member_count: team.member_count,
-                    review_turnaround_p75_hours: 0.0,
-                    review_turnaround_p90_hours: 0.0,
-                    review_turnaround_p99_hours: 0.0,
-                    raw_metrics: HashMap::default(),
-                    avg_cycle_time_hours: 0.0,
-                    wip_avg: 0.0,
-                    flow_efficiency: 0.0,
-                    lead_time_hours: 0.0,
-                    source_platforms: Vec::new(),
+                    ..TeamMetrics::default()
                 }
             }
         } else if let Some(s) = snapshot {
@@ -262,18 +280,8 @@ impl MetricsService for MetricsServiceImpl {
                     team_id: team.id.to_string(),
                     team_name: team.name,
                     period: Some(period.clone()),
-                    throughput: 0,
-                    avg_review_turnaround_hours: 0.0,
                     member_count: team.member_count,
-                    review_turnaround_p75_hours: 0.0,
-                    review_turnaround_p90_hours: 0.0,
-                    review_turnaround_p99_hours: 0.0,
-                    raw_metrics: HashMap::default(),
-                    avg_cycle_time_hours: 0.0,
-                    wip_avg: 0.0,
-                    flow_efficiency: 0.0,
-                    lead_time_hours: 0.0,
-                    source_platforms: Vec::new(),
+                    ..TeamMetrics::default()
                 });
             }
         }
@@ -402,6 +410,17 @@ impl MetricsService for MetricsServiceImpl {
         let _ctx = require_auth(&request)?;
         Err(Status::unimplemented(
             "ListPersonContributions not yet implemented",
+        ))
+    }
+
+    async fn get_discourse_activity(
+        &self,
+        request: Request<GetDiscourseActivityRequest>,
+    ) -> Result<Response<GetDiscourseActivityResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        // Full implementation in Step 3
+        Err(Status::unimplemented(
+            "GetDiscourseActivity not yet implemented",
         ))
     }
 

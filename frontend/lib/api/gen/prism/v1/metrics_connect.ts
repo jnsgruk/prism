@@ -6,6 +6,8 @@
 import {
   CompareTeamsRequest,
   CompareTeamsResponse,
+  GetDiscourseActivityRequest,
+  GetDiscourseActivityResponse,
   GetFlowMetricsRequest,
   GetFlowMetricsResponse,
   GetIndividualProfileRequest,
@@ -90,6 +92,17 @@ export const MetricsService = {
       name: "GetFlowMetrics",
       I: GetFlowMetricsRequest,
       O: GetFlowMetricsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Discourse activity drilldown (leaf-team level)
+     *
+     * @generated from rpc prism.v1.MetricsService.GetDiscourseActivity
+     */
+    getDiscourseActivity: {
+      name: "GetDiscourseActivity",
+      I: GetDiscourseActivityRequest,
+      O: GetDiscourseActivityResponse,
       kind: MethodKind.Unary,
     },
   },

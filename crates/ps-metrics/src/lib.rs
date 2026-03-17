@@ -1,3 +1,4 @@
+mod discourse;
 mod flow;
 
 use std::cmp::Ordering;
@@ -11,6 +12,7 @@ use time::Date;
 use tracing::info;
 use uuid::Uuid;
 
+pub use discourse::{DiscourseInstanceMetrics, DiscourseMetrics, compute_discourse_metrics};
 pub use flow::{Throughput, compute_cross_source_throughput};
 
 /// Review turnaround distribution: average + percentiles.
@@ -46,6 +48,8 @@ pub async fn compute_team_snapshot(
     let lead_time_hours = flow::compute_lead_time(&contributions);
     let flow_efficiency = flow::compute_flow_efficiency(&contributions);
 
+    let discourse = discourse::compute_discourse_metrics(&contributions);
+
     let mut raw_metrics = serde_json::json!({
         "throughput_by_source": cross_throughput.by_source,
     });
@@ -63,6 +67,53 @@ pub async fn compute_team_snapshot(
         obj.insert(
             "review_turnaround_p99_hours".into(),
             serde_json::json!(r.p99),
+        );
+    }
+    if let Some(d) = &discourse
+        && let Some(obj) = raw_metrics.as_object_mut()
+    {
+        obj.insert(
+            "discourse_topics_created".into(),
+            serde_json::json!(d.topics_created),
+        );
+        obj.insert("discourse_posts".into(), serde_json::json!(d.posts));
+        obj.insert("discourse_replies".into(), serde_json::json!(d.replies));
+        obj.insert(
+            "discourse_likes_given".into(),
+            serde_json::json!(d.likes_given),
+        );
+        obj.insert(
+            "discourse_likes_received".into(),
+            serde_json::json!(d.likes_received),
+        );
+        obj.insert(
+            "discourse_solved_topics".into(),
+            serde_json::json!(d.solved_topics),
+        );
+        obj.insert(
+            "discourse_active_participants".into(),
+            serde_json::json!(d.active_participants),
+        );
+        // Per-instance breakdown
+        let by_instance: HashMap<&str, serde_json::Value> = d
+            .by_instance
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.as_str(),
+                    serde_json::json!({
+                        "topics_created": v.topics_created,
+                        "posts": v.posts,
+                        "replies": v.replies,
+                        "likes_given": v.likes_given,
+                        "solved_topics": v.solved_topics,
+                    }),
+                )
+            })
+            .collect();
+        obj.insert(
+            "discourse_by_instance".into(),
+            serde_json::json!(by_instance),
         );
     }
 

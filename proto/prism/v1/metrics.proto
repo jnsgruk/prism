@@ -14,6 +14,9 @@ service MetricsService {
   rpc GetIndividualProfile(GetIndividualProfileRequest) returns (GetIndividualProfileResponse);
   rpc ListPersonContributions(ListPersonContributionsRequest) returns (ListPersonContributionsResponse);
   rpc GetFlowMetrics(GetFlowMetricsRequest) returns (GetFlowMetricsResponse);
+
+  // Discourse activity drilldown (leaf-team level)
+  rpc GetDiscourseActivity(GetDiscourseActivityRequest) returns (GetDiscourseActivityResponse);
 }
 
 enum PeriodType {
@@ -47,6 +50,25 @@ message TeamMetrics {
   float lead_time_hours = 14;
   // Platforms contributing data to this snapshot
   repeated string source_platforms = 15;
+
+  // Discourse activity metrics
+  int32 discourse_topics_created = 16;
+  int32 discourse_posts = 17;
+  int32 discourse_replies = 18;
+  int32 discourse_likes_given = 19;
+  int32 discourse_likes_received = 20;
+  int32 discourse_solved_topics = 21;
+  int32 discourse_active_participants = 22;
+  repeated DiscourseInstanceMetrics discourse_by_instance = 23;
+}
+
+message DiscourseInstanceMetrics {
+  string instance = 1;
+  int32 topics_created = 2;
+  int32 posts = 3;
+  int32 replies = 4;
+  int32 likes_given = 5;
+  int32 solved_topics = 6;
 }
 
 message GetTeamMetricsRequest {
@@ -208,4 +230,43 @@ message ThroughputDataPoint {
 message WipDataPoint {
   string date = 1;
   double wip = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Discourse activity drilldown
+// ---------------------------------------------------------------------------
+
+message GetDiscourseActivityRequest {
+  string team_id = 1;
+  Period period = 2;
+}
+
+message GetDiscourseActivityResponse {
+  repeated CategoryCount category_distribution = 1;
+  repeated DiscourseActivityDataPoint activity_trend = 2;
+  repeated TopContributor top_contributors = 3;
+}
+
+message CategoryCount {
+  string category = 1;
+  int32 topics = 2;
+  int32 posts = 3;
+}
+
+message DiscourseActivityDataPoint {
+  string date = 1;
+  int32 topics = 2;
+  int32 posts = 3;
+  int32 likes = 4;
+  // Optional per-instance filter
+  string instance = 5;
+}
+
+message TopContributor {
+  string person_id = 1;
+  string name = 2;
+  int32 topics = 3;
+  int32 posts = 4;
+  int32 likes_received = 5;
+  int32 solved = 6;
 }
