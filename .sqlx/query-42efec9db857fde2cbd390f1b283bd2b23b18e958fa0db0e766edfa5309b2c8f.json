@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                c.platform AS \"platform!\",\n                COUNT(*)::int AS \"contribution_count!\",\n                SUM(CASE WHEN c.contribution_type = 'pull_request' THEN 1 ELSE 0 END)::int AS \"pull_request_count!\",\n                SUM(CASE WHEN c.contribution_type = 'pr_review' THEN 1 ELSE 0 END)::int AS \"pr_review_count!\",\n                AVG(CASE WHEN c.metrics ? 'review_hours'\n                    THEN (c.metrics->>'review_hours')::float8 END) AS avg_review_hours,\n                AVG(CASE WHEN c.metrics ? 'cycle_time_hours'\n                    THEN (c.metrics->>'cycle_time_hours')::float8 END) AS avg_cycle_time_hours\n            FROM activity.contributions c\n            WHERE c.person_id = $1\n              AND c.created_at >= $2::date::timestamptz\n              AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz\n            GROUP BY c.platform\n            ORDER BY \"contribution_count!\" DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "platform!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "contribution_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "pull_request_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "pr_review_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "avg_review_hours",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "avg_cycle_time_hours",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "42efec9db857fde2cbd390f1b283bd2b23b18e958fa0db0e766edfa5309b2c8f"
+}
