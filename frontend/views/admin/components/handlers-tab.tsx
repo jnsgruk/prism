@@ -29,7 +29,7 @@ import { useListSources } from "@ps/hooks/use-config";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { RunDetailDialog } from "@/components/run-detail-dialog";
-import { formatDuration, formatTimestamp } from "@/lib/format";
+import { formatTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-utils";
 import type { StatusFilter } from "@/lib/run-utils";
 import {
@@ -173,25 +173,16 @@ const buildHandlerRunColumns = (
   {
     accessorKey: "handlerName",
     header: "Handler",
-    cell: ({ row }): React.ReactElement => (
-      <span className="font-medium">{row.original.handlerName}</span>
-    ),
-  },
-  {
-    accessorKey: "handlerMethod",
-    header: "Method",
-    cell: ({ row }): React.ReactElement => (
-      <span className="text-xs">{row.original.handlerMethod}</span>
-    ),
-  },
-  {
-    accessorKey: "sourceName",
-    header: "Source",
-    cell: ({ row }): React.ReactElement => (
-      <span className="text-xs">
-        {row.original.sourceName === "_system" ? "\u2014" : row.original.sourceName}
-      </span>
-    ),
+    cell: ({ row }): React.ReactElement => {
+      const source = row.original.sourceName;
+      const suffix = source && source !== "_system" ? ` \u2014 ${source}` : "";
+      return (
+        <div>
+          <span className="font-medium">{row.original.handlerName.replace("Handler", "")}</span>
+          {suffix && <span className="text-muted-foreground">{suffix}</span>}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "startedAt",
@@ -201,30 +192,11 @@ const buildHandlerRunColumns = (
     ),
   },
   {
-    id: "duration",
-    header: "Duration",
-    cell: ({ row }): React.ReactElement => (
-      <span className="text-xs">
-        {formatDuration(row.original.startedAt, row.original.completedAt)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "itemsCollected",
-    header: (): React.ReactElement => <span className="block text-right">Items</span>,
-    cell: ({ row }): React.ReactElement => (
-      <span className="block text-right tabular-nums">
-        {row.original.itemsCollected.toLocaleString()}
-      </span>
-    ),
-  },
-  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }): React.ReactElement => {
       const cfg = statusConfig[row.original.status] ?? defaultStatus;
       const isRunning = row.original.status === "running";
-      const canCancel = isRunning && row.original.sourceName !== "_system";
 
       return (
         <div className="flex items-center gap-2">
@@ -232,7 +204,7 @@ const buildHandlerRunColumns = (
             {cfg.icon}
             {cfg.label}
           </Badge>
-          {canCancel && (
+          {isRunning && (
             <Button
               variant="ghost"
               size="sm"
