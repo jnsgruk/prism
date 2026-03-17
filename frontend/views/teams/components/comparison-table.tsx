@@ -1,25 +1,51 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipContentProps): React.ReactElement | null => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+      <p className="mb-1 font-medium">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.name} className="text-muted-foreground">
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 import { MetricsRow } from "@/views/teams/components/metrics-row";
 import { SortableHeader } from "@/views/teams/components/sortable-header";
 import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
-import { teamTypeBadgeVariant, teamTypeLabel } from "@/views/teams/hooks/use-teams";
+
+const discourseEngagement = (m: TeamMetrics): number =>
+  m.discourseLikesGiven + m.discourseLikesReceived;
 
 export const ComparisonTable = ({
   childMetrics,
   selectedTeam,
+  sourcePlatforms = [],
 }: {
   childMetrics: TeamMetrics[];
   selectedTeam: Team;
+  sourcePlatforms?: string[];
 }): React.ReactElement => {
   const [sortField, setSortField] = useState<SortField>("throughput");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const hasDiscourse = sourcePlatforms.some((p) => p.startsWith("discourse-"));
 
   const toggleSort = (field: SortField): void => {
     if (sortField === field) {
@@ -49,6 +75,12 @@ export const ComparisonTable = ({
           return dir * (a.wipAvg - b.wipAvg);
         case "leadTime":
           return dir * (a.leadTimeHours - b.leadTimeHours);
+        case "discourseTopics":
+          return dir * (a.discourseTopicsCreated - b.discourseTopicsCreated);
+        case "discoursePosts":
+          return dir * (a.discoursePosts - b.discoursePosts);
+        case "discourseEngagement":
+          return dir * (discourseEngagement(a) - discourseEngagement(b));
         default:
           return 0;
       }
@@ -76,7 +108,6 @@ export const ComparisonTable = ({
                 <SortableHeader field="name" current={sortField} dir={sortDir} onSort={toggleSort}>
                   Team
                 </SortableHeader>
-                <TableHead className="w-20">Type</TableHead>
                 <SortableHeader
                   field="throughput"
                   current={sortField}
@@ -112,6 +143,36 @@ export const ComparisonTable = ({
                 >
                   Lead Time
                 </SortableHeader>
+                {hasDiscourse && (
+                  <SortableHeader
+                    field="discourseTopics"
+                    current={sortField}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  >
+                    Topics
+                  </SortableHeader>
+                )}
+                {hasDiscourse && (
+                  <SortableHeader
+                    field="discoursePosts"
+                    current={sortField}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  >
+                    Posts
+                  </SortableHeader>
+                )}
+                {hasDiscourse && (
+                  <SortableHeader
+                    field="discourseEngagement"
+                    current={sortField}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  >
+                    Engagement
+                  </SortableHeader>
+                )}
                 <SortableHeader
                   field="members"
                   current={sortField}
@@ -129,9 +190,8 @@ export const ComparisonTable = ({
                   <MetricsRow
                     key={m.teamId}
                     metrics={m}
-                    teamType={childTeam ? teamTypeLabel(childTeam.teamType) : undefined}
-                    teamTypeBadge={childTeam ? teamTypeBadgeVariant(childTeam.teamType) : undefined}
                     hasChildren={(childTeam?.children.length ?? 0) > 0}
+                    showDiscourse={hasDiscourse}
                   />
                 );
               })}
@@ -143,6 +203,18 @@ export const ComparisonTable = ({
       <Card>
         <CardHeader>
           <CardTitle>Throughput by Team</CardTitle>
+          <CardDescription className="flex items-center gap-2">
+            Merged pull requests and P75 review turnaround per child team.
+            {sourcePlatforms.length > 0 && (
+              <span className="inline-flex gap-1">
+                {sourcePlatforms.map((p) => (
+                  <Badge key={p} variant="outline" className="px-1.5 py-0 text-[10px]">
+                    {p}
+                  </Badge>
+                ))}
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -151,12 +223,8 @@ export const ComparisonTable = ({
               <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
               <YAxis className="fill-muted-foreground" />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "var(--radius)",
-                  color: "hsl(var(--popover-foreground))",
-                }}
+                content={ChartTooltip}
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
               />
               <Bar
                 dataKey="throughput"

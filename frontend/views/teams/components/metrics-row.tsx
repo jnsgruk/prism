@@ -10,14 +10,12 @@ const fmtFloat = (v: number): string => (v > 0 ? v.toFixed(1) : "\u2014");
 
 export const MetricsRow = ({
   metrics,
-  teamType,
-  teamTypeBadge,
   hasChildren,
+  showDiscourse = false,
 }: {
   metrics: TeamMetrics;
-  teamType: string | undefined;
-  teamTypeBadge: "default" | "secondary" | "outline" | "destructive" | undefined;
   hasChildren: boolean;
+  showDiscourse?: boolean;
 }): React.ReactElement => {
   const navigate = useNavigate();
   return (
@@ -28,24 +26,8 @@ export const MetricsRow = ({
       <TableCell className="font-medium">
         <span className="flex items-center gap-2">
           {metrics.teamName}
-          {metrics.sourcePlatforms.length > 0 && (
-            <span className="flex gap-0.5">
-              {metrics.sourcePlatforms.map((p) => (
-                <Badge key={p} variant="outline" className="px-1 py-0 text-[9px]">
-                  {p}
-                </Badge>
-              ))}
-            </span>
-          )}
           {hasChildren && <ChevronRight className="size-3 text-muted-foreground" />}
         </span>
-      </TableCell>
-      <TableCell>
-        {teamType && teamTypeBadge && (
-          <Badge variant={teamTypeBadge} className="text-[10px]">
-            {teamType}
-          </Badge>
-        )}
       </TableCell>
       <TableCell>
         <Badge variant={metrics.throughput > 0 ? "default" : "secondary"}>
@@ -56,6 +38,17 @@ export const MetricsRow = ({
       <TableCell className="tabular-nums">{fmtHours(metrics.avgCycleTimeHours)}</TableCell>
       <TableCell className="tabular-nums">{fmtFloat(metrics.wipAvg)}</TableCell>
       <TableCell className="tabular-nums">{fmtHours(metrics.leadTimeHours)}</TableCell>
+      {showDiscourse && (
+        <TableCell className="tabular-nums">{metrics.discourseTopicsCreated || "\u2014"}</TableCell>
+      )}
+      {showDiscourse && (
+        <TableCell className="tabular-nums">{metrics.discoursePosts || "\u2014"}</TableCell>
+      )}
+      {showDiscourse && (
+        <TableCell className="tabular-nums">
+          {metrics.discourseLikesGiven + metrics.discourseLikesReceived || "\u2014"}
+        </TableCell>
+      )}
       <TableCell>{metrics.memberCount}</TableCell>
     </TableRow>
   );
