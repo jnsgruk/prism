@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Bar,
   BarChart,
@@ -12,18 +13,47 @@ import {
 } from "recharts";
 
 import type { GetFlowMetricsResponse } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "var(--radius)",
-  color: "hsl(var(--popover-foreground))",
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipContentProps): React.ReactElement | null => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+      <p className="mb-1 font-medium">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.name} className="text-muted-foreground">
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
+
+const SourceBadges = ({ platforms }: { platforms: string[] }): React.ReactElement | null => {
+  if (platforms.length === 0) return null;
+  return (
+    <span className="inline-flex gap-1">
+      {platforms.map((p) => (
+        <Badge key={p} variant="outline" className="px-1.5 py-0 text-[10px]">
+          {p}
+        </Badge>
+      ))}
+    </span>
+  );
 };
 
 export const ThroughputTrendChart = ({
   flowMetrics,
+  sourcePlatforms = [],
 }: {
   flowMetrics: GetFlowMetricsResponse | undefined;
+  sourcePlatforms?: string[];
 }): React.ReactElement | null => {
   const data = (flowMetrics?.throughputTrend ?? []).map((t) => ({
     date: t.date,
@@ -36,6 +66,10 @@ export const ThroughputTrendChart = ({
     <Card>
       <CardHeader>
         <CardTitle>Throughput Trend</CardTitle>
+        <CardDescription className="flex items-center gap-2">
+          Merged pull requests per period, showing delivery pace over time.
+          <SourceBadges platforms={sourcePlatforms} />
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={250}>
@@ -43,7 +77,7 @@ export const ThroughputTrendChart = ({
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
             <YAxis className="fill-muted-foreground" />
-            <Tooltip contentStyle={tooltipStyle} />
+            <Tooltip content={ChartTooltip} cursor={cursorStyle} />
             <Bar
               dataKey="count"
               name="Completed items"
@@ -59,8 +93,10 @@ export const ThroughputTrendChart = ({
 
 export const WipTrendChart = ({
   flowMetrics,
+  sourcePlatforms = [],
 }: {
   flowMetrics: GetFlowMetricsResponse | undefined;
+  sourcePlatforms?: string[];
 }): React.ReactElement | null => {
   const data = (flowMetrics?.wipTrend ?? []).map((w) => ({
     date: w.date,
@@ -73,6 +109,10 @@ export const WipTrendChart = ({
     <Card>
       <CardHeader>
         <CardTitle>WIP Trend</CardTitle>
+        <CardDescription className="flex items-center gap-2">
+          Average open pull requests (work in progress) per period.
+          <SourceBadges platforms={sourcePlatforms} />
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={250}>
@@ -80,7 +120,7 @@ export const WipTrendChart = ({
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
             <YAxis className="fill-muted-foreground" />
-            <Tooltip contentStyle={tooltipStyle} />
+            <Tooltip content={ChartTooltip} cursor={cursorStyle} />
             <Line
               type="monotone"
               dataKey="wip"

@@ -18,6 +18,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
 import { ComparisonTable } from "@/views/teams/components/comparison-table";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
+import { DiscourseActivitySection } from "@/views/teams/components/discourse-activity-section";
 import {
   buildPeriod,
   defaultPeriodKey,
@@ -128,26 +129,33 @@ const TeamsPage = (): React.ReactElement => {
           />
         )}
 
-        {/* Source platform badges */}
-        {currentMetrics && currentMetrics.sourcePlatforms.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Sources:</span>
-            {currentMetrics.sourcePlatforms.map((p) => (
-              <Badge key={p} variant="outline">
-                {p}
-              </Badge>
-            ))}
-          </div>
-        )}
-
         {/* Child teams comparison table — right after cards */}
         {selectedTeam && (childMetrics?.length ?? 0) > 0 && (
-          <ComparisonTable childMetrics={childMetrics ?? []} selectedTeam={selectedTeam} />
+          <ComparisonTable
+            childMetrics={childMetrics ?? []}
+            selectedTeam={selectedTeam}
+            sourcePlatforms={currentMetrics?.sourcePlatforms}
+          />
         )}
 
         {/* Trend charts — throughput + WIP */}
-        <ThroughputTrendChart flowMetrics={flowMetrics} />
-        <WipTrendChart flowMetrics={flowMetrics} />
+        <ThroughputTrendChart
+          flowMetrics={flowMetrics}
+          sourcePlatforms={currentMetrics?.sourcePlatforms}
+        />
+        <WipTrendChart
+          flowMetrics={flowMetrics}
+          sourcePlatforms={currentMetrics?.sourcePlatforms}
+        />
+
+        {/* Discourse Activity — collapsible, lazy-loaded */}
+        {selectedTeam && (
+          <DiscourseActivitySection
+            teamId={effectiveTeamId}
+            period={period}
+            metrics={currentMetrics}
+          />
+        )}
 
         {/* Pull Requests — collapsible */}
         {selectedTeam && (
