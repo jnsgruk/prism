@@ -234,7 +234,7 @@ const HandlerRunsTable = ({
   const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
   const [handlerFilter, setHandlerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const cancelRun = useCancelRun();
 
