@@ -298,21 +298,28 @@ export const ContributionTable = ({
     return prStates;
   })();
 
+  const isPersonMode = !!personId;
   const columns = useMemo((): ColumnDef<Contribution, unknown>[] => {
     if (isDiscourse) {
-      return [
-        discourseTitleColumn,
-        discourseInstanceColumn,
-        authorColumn,
-        discourseCategoryColumn,
-        createdAtColumn,
-      ];
+      return isPersonMode
+        ? [discourseTitleColumn, discourseInstanceColumn, createdAtColumn]
+        : [
+            discourseTitleColumn,
+            discourseInstanceColumn,
+            authorColumn,
+            discourseCategoryColumn,
+            createdAtColumn,
+          ];
     }
     if (isReview) {
-      return [reviewTitleColumn, authorColumn, repoColumn, reviewStateColumn, createdAtColumn];
+      return isPersonMode
+        ? [reviewTitleColumn, repoColumn, reviewStateColumn, createdAtColumn]
+        : [reviewTitleColumn, authorColumn, repoColumn, reviewStateColumn, createdAtColumn];
     }
-    return [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn];
-  }, [isReview, isDiscourse]);
+    return isPersonMode
+      ? [prTitleColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn]
+      : [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn];
+  }, [isReview, isDiscourse, isPersonMode]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
@@ -355,8 +362,6 @@ export const ContributionTable = ({
     pageSize,
     pageIndex,
   };
-
-  const isPersonMode = !!personId;
 
   // Both hooks must always be called (React rules of hooks).
   // Use a dummy period for the team hook when in person mode to avoid
