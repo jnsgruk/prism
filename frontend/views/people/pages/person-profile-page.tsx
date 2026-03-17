@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock,
   GitPullRequest,
+  KeyRound,
   Loader2,
   MessageSquare,
   TrendingUp,
@@ -255,6 +256,7 @@ const PersonProfilePage = (): React.ReactElement => {
   const [prsOpen, setPrsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [discourseOpen, setDiscourseOpen] = useState(false);
+  const [identitiesOpen, setIdentitiesOpen] = useState(false);
 
   const { data: profile, isLoading, error } = useGetIndividualProfile(personId ?? "", period);
 
@@ -326,17 +328,6 @@ const PersonProfilePage = (): React.ReactElement => {
         {/* Profile content */}
         {profile && !isLoading && (
           <>
-            {/* Platform identities */}
-            {profile.identities.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {profile.identities.map((id) => (
-                  <Badge key={`${id.platform}-${id.username}`} variant="outline">
-                    {id.platform}: {id.username}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
             {/* Metric cards */}
             <ProfileMetricCards profile={profile} />
 
@@ -473,6 +464,53 @@ const PersonProfilePage = (): React.ReactElement => {
                 </>
               );
             })()}
+
+            {/* Identities — collapsible */}
+            {profile.identities.length > 0 && (
+              <Collapsible open={identitiesOpen} onOpenChange={setIdentitiesOpen}>
+                <Card>
+                  <CardHeader
+                    className="cursor-pointer"
+                    onClick={() => setIdentitiesOpen(!identitiesOpen)}
+                  >
+                    <CollapsibleTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 text-left"
+                        />
+                      }
+                    >
+                      {identitiesOpen ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronRight className="size-4" />
+                      )}
+                      <KeyRound className="size-4 text-muted-foreground" />
+                      <CardTitle>Identities</CardTitle>
+                      <Badge variant="secondary" className="ml-1">
+                        {profile.identities.length}
+                      </Badge>
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="space-y-1">
+                        {profile.identities.map((id) => (
+                          <div
+                            key={`${id.platform}-${id.username}`}
+                            className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                          >
+                            <span className="font-medium capitalize">{id.platform}</span>
+                            <span className="text-muted-foreground">{id.username}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
           </>
         )}
       </div>
