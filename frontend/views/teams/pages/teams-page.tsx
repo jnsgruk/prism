@@ -107,6 +107,12 @@ const TeamsPage = (): React.ReactElement => {
           return dir * (a.reviewTurnaroundP75Hours - b.reviewTurnaroundP75Hours);
         case "members":
           return dir * (a.memberCount - b.memberCount);
+        case "cycleTime":
+          return dir * (a.avgCycleTimeHours - b.avgCycleTimeHours);
+        case "wip":
+          return dir * (a.wipAvg - b.wipAvg);
+        case "leadTime":
+          return dir * (a.leadTimeHours - b.leadTimeHours);
         default:
           return 0;
       }
@@ -207,7 +213,31 @@ const TeamsPage = (): React.ReactElement => {
                         dir={sortDir}
                         onSort={toggleSort}
                       >
-                        Review P75 (hrs)
+                        Review P75
+                      </SortableHeader>
+                      <SortableHeader
+                        field="cycleTime"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Cycle Time
+                      </SortableHeader>
+                      <SortableHeader
+                        field="wip"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        WIP
+                      </SortableHeader>
+                      <SortableHeader
+                        field="leadTime"
+                        current={sortField}
+                        dir={sortDir}
+                        onSort={toggleSort}
+                      >
+                        Lead Time
                       </SortableHeader>
                       <SortableHeader
                         field="members"
@@ -242,7 +272,7 @@ const TeamsPage = (): React.ReactElement => {
 
             <Card>
               <CardHeader>
-                <CardTitle>PR Throughput by Team</CardTitle>
+                <CardTitle>Throughput by Team</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -264,7 +294,7 @@ const TeamsPage = (): React.ReactElement => {
                     />
                     <Bar
                       dataKey="throughput"
-                      name="Merged PRs"
+                      name="Throughput"
                       fill="hsl(var(--primary))"
                       radius={[4, 4, 0, 0]}
                     />

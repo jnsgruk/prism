@@ -1,7 +1,14 @@
 import { TableHead } from "@/components/ui/table";
 import { ArrowUpDown } from "lucide-react";
 
-export type SortField = "name" | "throughput" | "reviewP75" | "members";
+export type SortField =
+  | "name"
+  | "throughput"
+  | "reviewP75"
+  | "members"
+  | "cycleTime"
+  | "wip"
+  | "leadTime";
 export type SortDir = "asc" | "desc";
 
 export const SortableHeader = ({
