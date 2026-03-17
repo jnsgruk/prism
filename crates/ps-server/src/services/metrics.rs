@@ -89,7 +89,7 @@ fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics 
         wip_avg: s.wip_avg.unwrap_or(0.0),
         flow_efficiency: s.flow_efficiency.unwrap_or(0.0),
         lead_time_hours: s.lead_time_hours.unwrap_or(0.0),
-        source_platforms: Vec::new(),
+        source_platforms: s.source_platforms.clone(),
     }
 }
 

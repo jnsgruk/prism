@@ -66,7 +66,7 @@ pub async fn compute_team_snapshot(
         );
     }
 
-    repos
+    let snapshot_id = repos
         .metrics
         .upsert_snapshot(&SnapshotInput {
             id: Uuid::now_v7(),
@@ -82,6 +82,14 @@ pub async fn compute_team_snapshot(
             lead_time_hours,
             raw_metrics,
         })
+        .await?;
+
+    // Populate snapshot_sources for traceability
+    let contribution_ids: Vec<Uuid> = contributions.iter().map(|c| c.id).collect();
+    repos.metrics.delete_snapshot_sources(snapshot_id).await?;
+    repos
+        .metrics
+        .insert_snapshot_sources(snapshot_id, &contribution_ids)
         .await?;
 
     info!(

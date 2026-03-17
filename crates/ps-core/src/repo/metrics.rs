@@ -26,6 +26,7 @@ pub struct TeamSnapshotRow {
     pub flow_efficiency: Option<f32>,
     pub lead_time_hours: Option<f32>,
     pub raw_metrics: serde_json::Value,
+    pub source_platforms: Vec<String>,
 }
 
 /// Raw contribution data needed for metrics computation.
@@ -88,21 +89,29 @@ impl MetricsRepo {
         .await
         .map_err(Error::from)?;
 
-        Ok(row.map(|r| TeamSnapshotRow {
-            id: r.id,
-            team_id: r.team_id,
-            team_name: r.team_name,
-            member_count: r.member_count,
-            period_start: r.period_start,
-            period_end: r.period_end,
-            period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
-            throughput: r.throughput,
-            avg_review_turnaround_hours: r.avg_review_turnaround_hours,
-            avg_cycle_time_hours: r.avg_cycle_time_hours,
-            wip_avg: r.wip_avg,
-            flow_efficiency: r.flow_efficiency,
-            lead_time_hours: r.lead_time_hours,
-            raw_metrics: r.raw_metrics,
+        let snapshot = match row {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        let source_platforms = self.get_snapshot_source_platforms(snapshot.id).await?;
+
+        Ok(Some(TeamSnapshotRow {
+            id: snapshot.id,
+            team_id: snapshot.team_id,
+            team_name: snapshot.team_name,
+            member_count: snapshot.member_count,
+            period_start: snapshot.period_start,
+            period_end: snapshot.period_end,
+            period_type: PeriodType::from_str_opt(&snapshot.period_type).unwrap_or(period_type),
+            throughput: snapshot.throughput,
+            avg_review_turnaround_hours: snapshot.avg_review_turnaround_hours,
+            avg_cycle_time_hours: snapshot.avg_cycle_time_hours,
+            wip_avg: snapshot.wip_avg,
+            flow_efficiency: snapshot.flow_efficiency,
+            lead_time_hours: snapshot.lead_time_hours,
+            raw_metrics: snapshot.raw_metrics,
+            source_platforms,
         }))
     }
 
@@ -154,23 +163,32 @@ impl MetricsRepo {
         .await
         .map_err(Error::from)?;
 
+        let snapshot_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let source_map = self
+            .get_bulk_snapshot_source_platforms(&snapshot_ids)
+            .await?;
+
         Ok(rows
             .into_iter()
-            .map(|r| TeamSnapshotRow {
-                id: r.id,
-                team_id: r.team_id,
-                team_name: r.team_name,
-                member_count: r.member_count,
-                period_start: r.period_start,
-                period_end: r.period_end,
-                period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
-                throughput: r.throughput,
-                avg_review_turnaround_hours: r.avg_review_turnaround_hours,
-                avg_cycle_time_hours: r.avg_cycle_time_hours,
-                wip_avg: r.wip_avg,
-                flow_efficiency: r.flow_efficiency,
-                lead_time_hours: r.lead_time_hours,
-                raw_metrics: r.raw_metrics,
+            .map(|r| {
+                let source_platforms = source_map.get(&r.id).cloned().unwrap_or_default();
+                TeamSnapshotRow {
+                    id: r.id,
+                    team_id: r.team_id,
+                    team_name: r.team_name,
+                    member_count: r.member_count,
+                    period_start: r.period_start,
+                    period_end: r.period_end,
+                    period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
+                    throughput: r.throughput,
+                    avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+                    avg_cycle_time_hours: r.avg_cycle_time_hours,
+                    wip_avg: r.wip_avg,
+                    flow_efficiency: r.flow_efficiency,
+                    lead_time_hours: r.lead_time_hours,
+                    raw_metrics: r.raw_metrics,
+                    source_platforms,
+                }
             })
             .collect())
     }
@@ -201,7 +219,10 @@ impl MetricsRepo {
     }
 
     /// Upsert a team snapshot (used by metrics computation).
-    pub async fn upsert_snapshot(&self, snap: &SnapshotInput) -> Result<(), Error> {
+    ///
+    /// Returns the actual snapshot ID (which may differ from `snap.id` if an
+    /// existing row was updated via the ON CONFLICT clause).
+    pub async fn upsert_snapshot(&self, snap: &SnapshotInput) -> Result<Uuid, Error> {
         let id = snap.id;
         let team_id = snap.team_id;
         let period_start = snap.period_start;
@@ -214,7 +235,7 @@ impl MetricsRepo {
         let flow_efficiency = snap.flow_efficiency;
         let lead_time_hours = snap.lead_time_hours;
         let raw_metrics = &snap.raw_metrics;
-        sqlx::query!(
+        let row = sqlx::query_scalar!(
             r#"
             INSERT INTO metrics.team_snapshots (
                 id, team_id, period_start, period_end, period_type,
@@ -234,6 +255,7 @@ impl MetricsRepo {
                 lead_time_hours = EXCLUDED.lead_time_hours,
                 raw_metrics = EXCLUDED.raw_metrics,
                 computed_at = now()
+            RETURNING id
             "#,
             id,
             team_id,
@@ -248,11 +270,11 @@ impl MetricsRepo {
             lead_time_hours,
             raw_metrics,
         )
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(Error::from)?;
 
-        Ok(())
+        Ok(row)
     }
 
     /// Get contributions for a team's members within a date range.
@@ -455,6 +477,157 @@ pub struct PeriodRow {
     pub start: Date,
     pub end: Date,
     pub period_type: PeriodType,
+}
+
+use std::collections::HashMap;
+
+impl MetricsRepo {
+    /// Record which contributions fed into a snapshot (traceability).
+    pub async fn insert_snapshot_sources(
+        &self,
+        snapshot_id: Uuid,
+        contribution_ids: &[Uuid],
+    ) -> Result<(), Error> {
+        if contribution_ids.is_empty() {
+            return Ok(());
+        }
+        sqlx::query!(
+            r#"
+            INSERT INTO metrics.snapshot_sources (snapshot_id, contribution_id)
+            SELECT $1, UNNEST($2::uuid[])
+            ON CONFLICT DO NOTHING
+            "#,
+            snapshot_id,
+            contribution_ids,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+        Ok(())
+    }
+
+    /// Remove existing snapshot source links (for re-computation).
+    pub async fn delete_snapshot_sources(&self, snapshot_id: Uuid) -> Result<(), Error> {
+        sqlx::query!(
+            "DELETE FROM metrics.snapshot_sources WHERE snapshot_id = $1",
+            snapshot_id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+        Ok(())
+    }
+
+    /// Get distinct platforms contributing to a snapshot.
+    async fn get_snapshot_source_platforms(&self, snapshot_id: Uuid) -> Result<Vec<String>, Error> {
+        let rows = sqlx::query_scalar!(
+            r#"
+            SELECT DISTINCT c.platform AS "platform!"
+            FROM metrics.snapshot_sources ss
+            JOIN activity.contributions c ON c.id = ss.contribution_id
+            WHERE ss.snapshot_id = $1
+            ORDER BY c.platform
+            "#,
+            snapshot_id,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+        Ok(rows)
+    }
+
+    /// Get distinct platforms for multiple snapshots in bulk.
+    async fn get_bulk_snapshot_source_platforms(
+        &self,
+        snapshot_ids: &[Uuid],
+    ) -> Result<HashMap<Uuid, Vec<String>>, Error> {
+        if snapshot_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let rows = sqlx::query!(
+            r#"
+            SELECT ss.snapshot_id, c.platform
+            FROM metrics.snapshot_sources ss
+            JOIN activity.contributions c ON c.id = ss.contribution_id
+            WHERE ss.snapshot_id = ANY($1)
+            GROUP BY ss.snapshot_id, c.platform
+            ORDER BY ss.snapshot_id, c.platform
+            "#,
+            snapshot_ids,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let mut map: HashMap<Uuid, Vec<String>> = HashMap::new();
+        for r in rows {
+            map.entry(r.snapshot_id).or_default().push(r.platform);
+        }
+        Ok(map)
+    }
+
+    /// Get the last N snapshots for a team and period type (for trend data).
+    pub async fn get_snapshot_history(
+        &self,
+        team_id: Uuid,
+        period_type: PeriodType,
+        limit: i32,
+    ) -> Result<Vec<TeamSnapshotRow>, Error> {
+        let period_type_str = period_type.as_str();
+        let rows = sqlx::query!(
+            r#"
+            WITH RECURSIVE team_tree AS (
+                SELECT id FROM org.teams WHERE id = $1
+                UNION ALL
+                SELECT ch.id FROM org.teams ch
+                JOIN team_tree tt ON ch.parent_team_id = tt.id
+            )
+            SELECT ts.id, ts.team_id, t.name AS team_name,
+                   (SELECT COUNT(DISTINCT tm.person_id)::int
+                    FROM org.team_memberships tm
+                    JOIN team_tree tt ON tm.team_id = tt.id
+                    WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE) AS "member_count!",
+                   ts.period_start, ts.period_end, ts.period_type,
+                   ts.throughput, ts.avg_review_turnaround_hours,
+                   ts.avg_cycle_time_hours, ts.wip_avg,
+                   ts.flow_efficiency, ts.lead_time_hours,
+                   ts.raw_metrics AS "raw_metrics!"
+            FROM metrics.team_snapshots ts
+            JOIN org.teams t ON t.id = ts.team_id
+            WHERE ts.team_id = $1
+              AND ts.period_type = $2
+            ORDER BY ts.period_start DESC
+            LIMIT $3
+            "#,
+            team_id,
+            period_type_str,
+            i64::from(limit),
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamSnapshotRow {
+                id: r.id,
+                team_id: r.team_id,
+                team_name: r.team_name,
+                member_count: r.member_count,
+                period_start: r.period_start,
+                period_end: r.period_end,
+                period_type: PeriodType::from_str_opt(&r.period_type).unwrap_or(period_type),
+                throughput: r.throughput,
+                avg_review_turnaround_hours: r.avg_review_turnaround_hours,
+                avg_cycle_time_hours: r.avg_cycle_time_hours,
+                wip_avg: r.wip_avg,
+                flow_efficiency: r.flow_efficiency,
+                lead_time_hours: r.lead_time_hours,
+                raw_metrics: r.raw_metrics,
+                source_platforms: Vec::new(), // not needed for trend data
+            })
+            .collect())
+    }
 }
 
 /// Input for upserting a team snapshot.
