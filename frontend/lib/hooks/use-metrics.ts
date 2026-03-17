@@ -108,6 +108,8 @@ export interface PersonContributionFilters {
   sortDesc?: boolean;
   pageSize: number;
   pageIndex: number;
+  state?: string;
+  search?: string;
 }
 
 export const useGetIndividualProfile = (
@@ -132,6 +134,8 @@ export const useListPersonContributions = (
       filters.platform ?? "",
       filters.contributionType ?? "",
       filters.since ?? "",
+      filters.state ?? "",
+      filters.search ?? "",
       filters.sortField ?? "",
       filters.sortDesc ?? true,
       filters.pageSize,
@@ -143,6 +147,8 @@ export const useListPersonContributions = (
         platform: filters.platform,
         contributionType: filters.contributionType,
         since: filters.since,
+        state: filters.state,
+        search: filters.search,
         sortField: filters.sortField,
         sortDesc: filters.sortDesc,
         pageSize: filters.pageSize,

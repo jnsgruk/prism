@@ -114,6 +114,11 @@ const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   id: "person_name",
   accessorKey: "personName",
   header: "Author",
+  cell: ({ row }) => (
+    <span className="block max-w-40 truncate" title={row.original.personName}>
+      {row.original.personName}
+    </span>
+  ),
   enableSorting: true,
 };
 
@@ -244,7 +249,11 @@ const nameColumn: ColumnDef<TopContributor, unknown> = {
   id: "name",
   accessorKey: "name",
   header: "Name",
-  cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+  cell: ({ row }) => (
+    <span className="block max-w-40 truncate font-medium" title={row.original.name}>
+      {row.original.name}
+    </span>
+  ),
   enableSorting: true,
 };
 

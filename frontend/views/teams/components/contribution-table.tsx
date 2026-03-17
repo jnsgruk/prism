@@ -8,8 +8,12 @@ import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
-import type { Contribution, ContributionFilters } from "@/lib/hooks/use-metrics";
-import { useListTeamContributions } from "@/lib/hooks/use-metrics";
+import type {
+  Contribution,
+  ContributionFilters,
+  PersonContributionFilters,
+} from "@/lib/hooks/use-metrics";
+import { useListTeamContributions, useListPersonContributions } from "@/lib/hooks/use-metrics";
 
 const formatTimestamp = (ts?: Timestamp): string => {
   if (!ts) return "\u2014";
@@ -101,6 +105,11 @@ const authorColumn: ColumnDef<Contribution, unknown> = {
   id: "person_name",
   accessorKey: "personName",
   header: "Author",
+  cell: ({ row }) => (
+    <span className="block max-w-40 truncate" title={row.original.personName}>
+      {row.original.personName}
+    </span>
+  ),
   enableSorting: true,
 };
 
@@ -204,12 +213,14 @@ const stateLabel = (s: string): string => {
 
 export const ContributionTable = ({
   teamId,
+  personId,
   period,
   defaultContributionType,
   defaultState,
 }: {
-  teamId: string;
-  period: Period;
+  teamId?: string;
+  personId?: string;
+  period?: Period;
   defaultContributionType?: string;
   defaultState?: string;
 }): React.ReactElement => {
@@ -247,7 +258,7 @@ export const ContributionTable = ({
   const sortField = activeSortCol?.id;
   const sortDesc = activeSortCol?.desc;
 
-  const filters: ContributionFilters = {
+  const teamFilters: ContributionFilters = {
     contributionType: defaultContributionType,
     state: stateFilter === "all" ? undefined : stateFilter,
     search: debouncedSearch || undefined,
@@ -257,7 +268,22 @@ export const ContributionTable = ({
     pageIndex,
   };
 
-  const { data, isLoading } = useListTeamContributions(teamId, period, filters);
+  const personFilters: PersonContributionFilters = {
+    contributionType: defaultContributionType,
+    state: stateFilter === "all" ? undefined : stateFilter,
+    search: debouncedSearch || undefined,
+    sortField,
+    sortDesc,
+    pageSize,
+    pageIndex,
+  };
+
+  const teamQuery = useListTeamContributions(teamId ?? "", period!, teamFilters);
+  const personQuery = useListPersonContributions(personId ?? "", personFilters);
+
+  const isPersonMode = !!personId;
+  const data = isPersonMode ? personQuery.data : teamQuery.data;
+  const isLoading = isPersonMode ? personQuery.isLoading : teamQuery.isLoading;
 
   const contributions = data?.contributions ?? [];
   const totalCount = data?.totalCount ?? 0;

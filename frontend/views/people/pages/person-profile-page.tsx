@@ -1,25 +1,26 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useState, useRef, useMemo } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   Activity,
   BarChart3,
-  ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  GitPullRequest,
   Loader2,
-  Search,
+  MessageSquare,
   TrendingUp,
   Users,
 } from "lucide-react";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Breadcrumb,
@@ -29,45 +30,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import {
   PeriodSelector,
   buildPeriod,
   defaultPeriodKey,
 } from "@/views/teams/components/period-selector";
-import type { Contribution, GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
-import { useGetIndividualProfile, useListPersonContributions } from "@/lib/hooks/use-metrics";
-import type { PersonContributionFilters } from "@/lib/hooks/use-metrics";
+import { ContributionTable } from "@/views/teams/components/contribution-table";
+import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
+import { useGetIndividualProfile } from "@/lib/hooks/use-metrics";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const formatTimestamp = (ts?: Timestamp): string => {
-  if (!ts) return "\u2014";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return (
-    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " +
-    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
-  );
-};
-
-const stateBadgeVariant = (state: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (state.toLowerCase()) {
-    case "merged":
-    case "approved":
-      return "default";
-    case "open":
-      return "outline";
-    case "closed":
-    case "changes_requested":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-};
 
 const fmtFloat = (v: number): string => (v > 0 ? v.toFixed(1) : "\u2014");
 const fmtPercent = (v: number): string => `${Math.round(v * 100)}%`;
@@ -270,207 +244,6 @@ const PeerContextPanel = ({
 };
 
 // ---------------------------------------------------------------------------
-// Contributions table (person-scoped)
-// ---------------------------------------------------------------------------
-
-const titleColumn: ColumnDef<Contribution, unknown> = {
-  accessorKey: "title",
-  header: "Title",
-  cell: ({ row }) => {
-    const c = row.original;
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate" title={c.title}>
-          {c.title || "\u2014"}
-        </span>
-        {c.url && (
-          <a
-            href={c.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="size-3" />
-          </a>
-        )}
-      </div>
-    );
-  },
-  enableSorting: false,
-};
-
-const platformColumn: ColumnDef<Contribution, unknown> = {
-  id: "platform",
-  accessorKey: "platform",
-  header: "Platform",
-  cell: ({ row }) => (
-    <Badge variant="secondary" className="text-[10px]">
-      {row.original.platform}
-    </Badge>
-  ),
-  enableSorting: true,
-};
-
-const typeColumn: ColumnDef<Contribution, unknown> = {
-  accessorKey: "contributionType",
-  header: "Type",
-  cell: ({ row }) => (
-    <span className="text-xs text-muted-foreground">{row.original.contributionType}</span>
-  ),
-  enableSorting: false,
-};
-
-const stateColumn: ColumnDef<Contribution, unknown> = {
-  id: "state",
-  accessorKey: "state",
-  header: "State",
-  cell: ({ row }) =>
-    row.original.state ? (
-      <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px] uppercase">
-        {row.original.state}
-      </Badge>
-    ) : (
-      "\u2014"
-    ),
-  enableSorting: true,
-};
-
-const createdColumn: ColumnDef<Contribution, unknown> = {
-  id: "created_at",
-  accessorKey: "createdAt",
-  header: "Created",
-  cell: ({ row }) => (
-    <span className="whitespace-nowrap text-muted-foreground">
-      {formatTimestamp(row.original.createdAt)}
-    </span>
-  ),
-  enableSorting: true,
-};
-
-const columns: ColumnDef<Contribution, unknown>[] = [
-  titleColumn,
-  platformColumn,
-  typeColumn,
-  stateColumn,
-  createdColumn,
-];
-
-const PersonContributions = ({ personId }: { personId: string }): React.ReactElement => {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [platformFilter, setPlatformFilter] = useState<string>("");
-  const [pageSize, setPageSize] = useState(10);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [sorting, setSorting] = useState<SortingState>([]);
-
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const handleSearchChange = (value: string): void => {
-    setSearch(value);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPageIndex(0);
-    }, 300);
-  };
-
-  const activeSortCol = sorting[0] as SortingState[number] | undefined;
-
-  const filters: PersonContributionFilters = {
-    platform: platformFilter || undefined,
-    sortField: activeSortCol?.id,
-    sortDesc: activeSortCol?.desc,
-    pageSize,
-    pageIndex,
-  };
-
-  const { data, isLoading } = useListPersonContributions(personId, filters);
-
-  // Client-side title search filter
-  const contributions = useMemo(() => {
-    const items = data?.contributions ?? [];
-    if (!debouncedSearch) return items;
-    const q = debouncedSearch.toLowerCase();
-    return items.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.platform.toLowerCase().includes(q) ||
-        c.contributionType.toLowerCase().includes(q),
-    );
-  }, [data?.contributions, debouncedSearch]);
-
-  const totalCount = data?.totalCount ?? 0;
-  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="h-8 w-48 pl-8 text-xs"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Platform</span>
-          <div className="flex gap-0.5">
-            {["", "github", "jira"].map((p) => (
-              <button
-                key={p}
-                onClick={() => {
-                  setPlatformFilter(p);
-                  setPageIndex(0);
-                }}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  platformFilter === p
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {p || "All"}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Loading contributions...</p>
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-md border">
-            <DataTable
-              columns={columns}
-              data={contributions}
-              sorting={sorting}
-              onSortingChange={(updater) => {
-                setSorting(updater);
-                setPageIndex(0);
-              }}
-            />
-          </div>
-          <DataTablePagination
-            totalCount={totalCount}
-            pageSize={pageSize}
-            pageIndex={pageIndex}
-            hasNextPage={hasNextPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPageIndex(0);
-            }}
-            onPreviousPage={() => setPageIndex((i) => Math.max(0, i - 1))}
-            onNextPage={() => setPageIndex((i) => i + 1)}
-          />
-        </>
-      )}
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -479,6 +252,9 @@ const PersonProfilePage = (): React.ReactElement => {
   const navigate = useNavigate();
   const [periodKey, setPeriodKey] = useState(defaultPeriodKey);
   const period = buildPeriod(periodKey);
+  const [prsOpen, setPrsOpen] = useState(true);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [discourseOpen, setDiscourseOpen] = useState(false);
 
   const { data: profile, isLoading, error } = useGetIndividualProfile(personId ?? "", period);
 
@@ -570,16 +346,98 @@ const PersonProfilePage = (): React.ReactElement => {
             {/* Peer context */}
             <PeerContextPanel profile={profile} />
 
-            {/* Contributions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Contributions</CardTitle>
-                <CardDescription>All contributions across platforms</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PersonContributions personId={personId} />
-              </CardContent>
-            </Card>
+            {/* Pull Requests — collapsible */}
+            <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {prsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <GitPullRequest className="size-4 text-muted-foreground" />
+                    <CardTitle>Pull Requests</CardTitle>
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <ContributionTable
+                      personId={personId}
+                      defaultContributionType="pull_request"
+                      defaultState="merged"
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+
+            {/* Reviews — collapsible */}
+            <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {reviewsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <Clock className="size-4 text-muted-foreground" />
+                    <CardTitle>Reviews</CardTitle>
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <ContributionTable personId={personId} defaultContributionType="pr_review" />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+
+            {/* Discourse — collapsible, only if person has discourse activity */}
+            {profile.activityByPlatform.some((a) => a.platform.startsWith("discourse")) && (
+              <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
+                <Card>
+                  <CardHeader
+                    className="cursor-pointer"
+                    onClick={() => setDiscourseOpen(!discourseOpen)}
+                  >
+                    <CollapsibleTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 text-left"
+                        />
+                      }
+                    >
+                      {discourseOpen ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronRight className="size-4" />
+                      )}
+                      <MessageSquare className="size-4 text-muted-foreground" />
+                      <CardTitle>Discourse</CardTitle>
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <ContributionTable
+                        personId={personId}
+                        defaultContributionType="discourse_post"
+                      />
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
           </>
         )}
       </div>
