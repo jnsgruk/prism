@@ -15,7 +15,7 @@ const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page")
 
 export const App = (): React.ReactElement => (
   <AppShell>
-    <Suspense>
+    <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/teams" element={<TeamsPage />} />

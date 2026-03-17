@@ -1,16 +1,14 @@
-import path from "node:path";
-
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     environment: "happy-dom",
     setupFiles: ["./vitest.setup.ts"],
-  },
-  resolve: {
-    alias: {
-      "@ps": path.resolve(__dirname, "./lib"),
-      "@": path.resolve(__dirname, "."),
-    },
   },
 });
