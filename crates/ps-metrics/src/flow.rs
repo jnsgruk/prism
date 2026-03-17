@@ -7,6 +7,30 @@ use ps_core::models::{ContributionState, ContributionType};
 use ps_core::repo::metrics::ContributionMetricRow;
 use time::Date;
 
+/// Extract hours from completed Jira tickets that have a positive value for
+/// the given metric key (e.g. `"cycle_time_hours"` or `"lead_time_hours"`).
+fn completed_jira_metric_hours(
+    contributions: &[ContributionMetricRow],
+    metric_key: &str,
+) -> Vec<f64> {
+    contributions
+        .iter()
+        .filter(|c| {
+            c.contribution_type == ContributionType::JiraTicket
+                && matches!(
+                    c.state,
+                    Some(ContributionState::Closed | ContributionState::Merged)
+                )
+        })
+        .filter_map(|c| {
+            c.metrics
+                .get(metric_key)
+                .and_then(serde_json::Value::as_f64)
+                .filter(|&h| h > 0.0)
+        })
+        .collect()
+}
+
 /// Cross-source throughput: total completed items + per-source breakdown.
 pub struct Throughput {
     pub total: i32,
@@ -18,22 +42,7 @@ pub struct Throughput {
 /// Uses the pre-computed `cycle_time_hours` field stored during Jira ingestion.
 #[allow(clippy::cast_precision_loss)]
 pub fn compute_cycle_time(contributions: &[ContributionMetricRow]) -> Option<f32> {
-    let cycle_times: Vec<f64> = contributions
-        .iter()
-        .filter(|c| {
-            c.contribution_type == ContributionType::JiraTicket
-                && matches!(
-                    c.state,
-                    Some(ContributionState::Closed | ContributionState::Merged)
-                )
-        })
-        .filter_map(|c| {
-            c.metrics
-                .get("cycle_time_hours")
-                .and_then(serde_json::Value::as_f64)
-                .filter(|&h| h > 0.0)
-        })
-        .collect();
+    let cycle_times = completed_jira_metric_hours(contributions, "cycle_time_hours");
 
     if cycle_times.is_empty() {
         return None;
@@ -58,12 +67,10 @@ pub fn compute_wip(contributions: &[ContributionMetricRow], period_end: Date) ->
     let wip_count = contributions
         .iter()
         .filter(|c| {
-            let is_wip = match c.contribution_type {
-                ContributionType::JiraTicket => c.state == Some(ContributionState::InProgress),
-                ContributionType::PullRequest => c.state == Some(ContributionState::Open),
-                _ => false,
-            };
-            is_wip
+            (matches!(c.contribution_type, ContributionType::JiraTicket)
+                && c.state == Some(ContributionState::InProgress)
+                || matches!(c.contribution_type, ContributionType::PullRequest)
+                    && c.state == Some(ContributionState::Open))
                 && c.created_at < period_end_dt
                 && c.closed_at.is_none_or(|closed| closed >= period_end_dt)
         })
@@ -82,37 +89,22 @@ pub fn compute_wip(contributions: &[ContributionMetricRow], period_end: Date) ->
 /// - For completed Jira tickets: uses pre-computed `cycle_time_hours`
 #[allow(clippy::cast_precision_loss)]
 pub fn compute_lead_time(contributions: &[ContributionMetricRow]) -> Option<f32> {
-    let mut lead_times: Vec<f64> = Vec::new();
+    // Merged PR lead times: closed_at - created_at
+    let pr_lead_times = contributions
+        .iter()
+        .filter(|c| {
+            c.contribution_type == ContributionType::PullRequest
+                && c.state == Some(ContributionState::Merged)
+        })
+        .filter_map(|c| {
+            let hours = (c.closed_at? - c.created_at).whole_seconds() as f64 / 3600.0;
+            (hours > 0.0).then_some(hours)
+        });
 
-    for c in contributions {
-        match c.contribution_type {
-            ContributionType::PullRequest if c.state == Some(ContributionState::Merged) => {
-                let Some(closed_at) = c.closed_at else {
-                    continue;
-                };
-                let hours = (closed_at - c.created_at).whole_seconds() as f64 / 3600.0;
-                if hours > 0.0 {
-                    lead_times.push(hours);
-                }
-            }
-            ContributionType::JiraTicket
-                if matches!(
-                    c.state,
-                    Some(ContributionState::Closed | ContributionState::Merged)
-                ) =>
-            {
-                if let Some(hours) = c
-                    .metrics
-                    .get("cycle_time_hours")
-                    .and_then(serde_json::Value::as_f64)
-                    .filter(|&h| h > 0.0)
-                {
-                    lead_times.push(hours);
-                }
-            }
-            _ => {}
-        }
-    }
+    // Completed Jira ticket lead times from stored metric
+    let jira_lead_times = completed_jira_metric_hours(contributions, "cycle_time_hours");
+
+    let lead_times: Vec<f64> = pr_lead_times.chain(jira_lead_times).collect();
 
     if lead_times.is_empty() {
         return None;

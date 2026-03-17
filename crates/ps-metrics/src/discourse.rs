@@ -44,16 +44,15 @@ pub fn compute_discourse_metrics(
     let mut by_instance: HashMap<String, DiscourseInstanceMetrics> = HashMap::new();
 
     for c in contributions {
-        let instance = match &c.platform {
-            ps_core::models::Platform::Discourse(name) => name.clone(),
-            _ => continue,
+        let ps_core::models::Platform::Discourse(instance) = &c.platform else {
+            continue;
         };
 
         if let Some(pid) = c.person_id {
             participants.insert(pid);
         }
 
-        let inst = by_instance.entry(instance).or_default();
+        let inst = by_instance.entry(instance.clone()).or_default();
 
         match c.contribution_type {
             ContributionType::DiscourseTopic => {
@@ -87,7 +86,8 @@ pub fn compute_discourse_metrics(
                     .metrics
                     .get("likes")
                     .and_then(serde_json::Value::as_i64)
-                    .unwrap_or(0) as i32;
+                    .and_then(|n| i32::try_from(n).ok())
+                    .unwrap_or(0);
                 likes_received += post_likes;
             }
             ContributionType::DiscourseLike => {
@@ -110,7 +110,7 @@ pub fn compute_discourse_metrics(
         likes_given,
         likes_received,
         solved_topics,
-        active_participants: participants.len() as i32,
+        active_participants: i32::try_from(participants.len()).unwrap_or(i32::MAX),
         by_instance,
     })
 }

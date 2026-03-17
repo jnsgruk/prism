@@ -8,6 +8,7 @@ use futures::stream::{self, TryStreamExt};
 use ps_core::models::{ContributionType, PeriodType};
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionMetricRow, SnapshotInput};
+use serde::Serialize;
 use time::Date;
 use tracing::info;
 use uuid::Uuid;
@@ -22,6 +23,44 @@ pub struct ReviewTurnaround {
     pub p75: f32,
     pub p90: f32,
     pub p99: f32,
+}
+
+/// Structured representation of the raw metrics JSON blob stored in snapshots.
+#[derive(Serialize)]
+struct RawMetrics {
+    throughput_by_source: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    review_turnaround_p75_hours: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    review_turnaround_p90_hours: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    review_turnaround_p99_hours: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_topics_created: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_posts: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_replies: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_likes_given: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_likes_received: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_solved_topics: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_active_participants: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discourse_by_instance: Option<HashMap<String, RawInstanceMetrics>>,
+}
+
+/// Per-instance Discourse metrics for the raw JSON blob.
+#[derive(Serialize)]
+struct RawInstanceMetrics {
+    topics_created: i32,
+    posts: i32,
+    replies: i32,
+    likes_given: i32,
+    solved_topics: i32,
 }
 
 /// Compute and store metrics for a single team and period.
@@ -50,72 +89,38 @@ pub async fn compute_team_snapshot(
 
     let discourse = discourse::compute_discourse_metrics(&contributions);
 
-    let mut raw_metrics = serde_json::json!({
-        "throughput_by_source": cross_throughput.by_source,
-    });
-    if let Some(r) = &review
-        && let Some(obj) = raw_metrics.as_object_mut()
-    {
-        obj.insert(
-            "review_turnaround_p75_hours".into(),
-            serde_json::json!(r.p75),
-        );
-        obj.insert(
-            "review_turnaround_p90_hours".into(),
-            serde_json::json!(r.p90),
-        );
-        obj.insert(
-            "review_turnaround_p99_hours".into(),
-            serde_json::json!(r.p99),
-        );
-    }
-    if let Some(d) = &discourse
-        && let Some(obj) = raw_metrics.as_object_mut()
-    {
-        obj.insert(
-            "discourse_topics_created".into(),
-            serde_json::json!(d.topics_created),
-        );
-        obj.insert("discourse_posts".into(), serde_json::json!(d.posts));
-        obj.insert("discourse_replies".into(), serde_json::json!(d.replies));
-        obj.insert(
-            "discourse_likes_given".into(),
-            serde_json::json!(d.likes_given),
-        );
-        obj.insert(
-            "discourse_likes_received".into(),
-            serde_json::json!(d.likes_received),
-        );
-        obj.insert(
-            "discourse_solved_topics".into(),
-            serde_json::json!(d.solved_topics),
-        );
-        obj.insert(
-            "discourse_active_participants".into(),
-            serde_json::json!(d.active_participants),
-        );
-        // Per-instance breakdown
-        let by_instance: HashMap<&str, serde_json::Value> = d
-            .by_instance
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.as_str(),
-                    serde_json::json!({
-                        "topics_created": v.topics_created,
-                        "posts": v.posts,
-                        "replies": v.replies,
-                        "likes_given": v.likes_given,
-                        "solved_topics": v.solved_topics,
-                    }),
-                )
-            })
-            .collect();
-        obj.insert(
-            "discourse_by_instance".into(),
-            serde_json::json!(by_instance),
-        );
-    }
+    let raw = RawMetrics {
+        throughput_by_source: cross_throughput.by_source,
+        review_turnaround_p75_hours: review.as_ref().map(|r| r.p75),
+        review_turnaround_p90_hours: review.as_ref().map(|r| r.p90),
+        review_turnaround_p99_hours: review.as_ref().map(|r| r.p99),
+        discourse_topics_created: discourse.as_ref().map(|d| d.topics_created),
+        discourse_posts: discourse.as_ref().map(|d| d.posts),
+        discourse_replies: discourse.as_ref().map(|d| d.replies),
+        discourse_likes_given: discourse.as_ref().map(|d| d.likes_given),
+        discourse_likes_received: discourse.as_ref().map(|d| d.likes_received),
+        discourse_solved_topics: discourse.as_ref().map(|d| d.solved_topics),
+        discourse_active_participants: discourse.as_ref().map(|d| d.active_participants),
+        discourse_by_instance: discourse.as_ref().map(|d| {
+            d.by_instance
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        RawInstanceMetrics {
+                            topics_created: v.topics_created,
+                            posts: v.posts,
+                            replies: v.replies,
+                            likes_given: v.likes_given,
+                            solved_topics: v.solved_topics,
+                        },
+                    )
+                })
+                .collect()
+        }),
+    };
+    let raw_metrics =
+        serde_json::to_value(&raw).map_err(|e| ps_core::Error::Internal(e.to_string()))?;
 
     let snapshot_id = repos
         .metrics
@@ -177,8 +182,8 @@ pub async fn compute_all_snapshots(
         })
         .await?;
 
-    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-    let computed = team_ids.len() as i32;
+    let computed =
+        i32::try_from(team_ids.len()).map_err(|e| ps_core::Error::Internal(e.to_string()))?;
     info!(computed, %period_type, %period_start, "computed all team snapshots");
     Ok(computed)
 }

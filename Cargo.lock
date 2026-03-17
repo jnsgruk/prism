@@ -2259,6 +2259,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "ps-core",
+ "serde",
  "serde_json",
  "sqlx",
  "time",
