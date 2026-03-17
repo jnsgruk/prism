@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM metrics.snapshot_sources WHERE snapshot_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a0443a124d2d997ae1c18f30b9d3a47c8bb0a18c2683efdff278ce8b208bbf17"
+}

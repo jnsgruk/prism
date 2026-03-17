@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO metrics.snapshot_sources (snapshot_id, contribution_id)\n            SELECT $1, UNNEST($2::uuid[])\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "73dfba0b314e70a2dfd02b7e791e564110ca4070c38424d419fcd7402fec4c9d"
+}

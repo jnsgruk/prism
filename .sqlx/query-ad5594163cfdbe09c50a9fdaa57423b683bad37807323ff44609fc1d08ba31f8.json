@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams WHERE id = $1\n                UNION ALL\n                SELECT ch.id FROM org.teams ch\n                JOIN team_tree tt ON ch.parent_team_id = tt.id\n            )\n            SELECT ts.id, ts.team_id, t.name AS team_name,\n                   (SELECT COUNT(DISTINCT tm.person_id)::int\n                    FROM org.team_memberships tm\n                    JOIN team_tree tt ON tm.team_id = tt.id\n                    WHERE tm.end_date IS NULL OR tm.end_date > CURRENT_DATE) AS \"member_count!\",\n                   ts.period_start, ts.period_end, ts.period_type,\n                   ts.throughput, ts.avg_review_turnaround_hours,\n                   ts.avg_cycle_time_hours, ts.wip_avg,\n                   ts.flow_efficiency, ts.lead_time_hours,\n                   ts.raw_metrics AS \"raw_metrics!\"\n            FROM metrics.team_snapshots ts\n            JOIN org.teams t ON t.id = ts.team_id\n            WHERE ts.team_id = $1\n              AND ts.period_type = $2\n            ORDER BY ts.period_start DESC\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "team_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "member_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "period_start",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "period_end",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "period_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "throughput",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "avg_review_turnaround_hours",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 9,
+        "name": "avg_cycle_time_hours",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 10,
+        "name": "wip_avg",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 11,
+        "name": "flow_efficiency",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 12,
+        "name": "lead_time_hours",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 13,
+        "name": "raw_metrics!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "ad5594163cfdbe09c50a9fdaa57423b683bad37807323ff44609fc1d08ba31f8"
+}

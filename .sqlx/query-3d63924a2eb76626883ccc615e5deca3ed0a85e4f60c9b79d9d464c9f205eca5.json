@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT c.platform AS \"platform!\"\n            FROM metrics.snapshot_sources ss\n            JOIN activity.contributions c ON c.id = ss.contribution_id\n            WHERE ss.snapshot_id = $1\n            ORDER BY c.platform\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "platform!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3d63924a2eb76626883ccc615e5deca3ed0a85e4f60c9b79d9d464c9f205eca5"
+}

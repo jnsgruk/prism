@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT ss.snapshot_id, c.platform\n            FROM metrics.snapshot_sources ss\n            JOIN activity.contributions c ON c.id = ss.contribution_id\n            WHERE ss.snapshot_id = ANY($1)\n            GROUP BY ss.snapshot_id, c.platform\n            ORDER BY ss.snapshot_id, c.platform\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "snapshot_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "platform",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "31198ea9dabe041fa356a7130c2d22e3c16a3cf4ec0cca605f717f7fe78637e9"
+}

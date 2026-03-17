@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO metrics.team_snapshots (\n                id, team_id, period_start, period_end, period_type,\n                throughput, avg_review_turnaround_hours,\n                avg_cycle_time_hours, wip_avg, flow_efficiency, lead_time_hours,\n                raw_metrics, computed_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())\n            ON CONFLICT (team_id, period_start, period_type)\n            DO UPDATE SET\n                period_end = EXCLUDED.period_end,\n                throughput = EXCLUDED.throughput,\n                avg_review_turnaround_hours = EXCLUDED.avg_review_turnaround_hours,\n                avg_cycle_time_hours = EXCLUDED.avg_cycle_time_hours,\n                wip_avg = EXCLUDED.wip_avg,\n                flow_efficiency = EXCLUDED.flow_efficiency,\n                lead_time_hours = EXCLUDED.lead_time_hours,\n                raw_metrics = EXCLUDED.raw_metrics,\n                computed_at = now()\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date",
+        "Text",
+        "Int4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6b3c5e96165091f50af1f047aaa71b7d76bd3933fd08830607f04806f8433507"
+}
