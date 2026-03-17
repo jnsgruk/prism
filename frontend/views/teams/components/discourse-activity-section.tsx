@@ -74,14 +74,20 @@ const instanceLabel = (platform: string): string => {
   return suffix.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
+const discourseTypeLabel = (contributionType: string): string => {
+  if (contributionType === "discourse_topic") return "Topic";
+  if (contributionType === "discourse_like") return "Like";
+  return "Post";
+};
+
 const topicTitleColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "title",
-  header: "Topic",
+  header: "Title",
   cell: ({ row }) => {
     const c = row.original;
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="block max-w-80 truncate" title={c.title}>
+        <span className="block max-w-48 truncate" title={c.title}>
           {c.title || "\u2014"}
         </span>
         {c.url && (
@@ -101,6 +107,17 @@ const topicTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
+const topicTypeColumn: ColumnDef<Contribution, unknown> = {
+  id: "type",
+  header: "Type",
+  cell: ({ row }) => (
+    <Badge variant="outline" className="text-[10px] uppercase">
+      {discourseTypeLabel(row.original.contributionType)}
+    </Badge>
+  ),
+  enableSorting: false,
+};
+
 const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
@@ -115,7 +132,7 @@ const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "personName",
   header: "Author",
   cell: ({ row }) => (
-    <span className="block max-w-40 truncate" title={row.original.personName}>
+    <span className="block max-w-28 truncate" title={row.original.personName}>
       {row.original.personName}
     </span>
   ),
@@ -142,6 +159,7 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
 
 const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution, unknown>[] => [
   topicTitleColumn,
+  topicTypeColumn,
   ...(showInstance ? [topicInstanceColumn] : []),
   topicAuthorColumn,
   topicCreatedColumn,
@@ -179,7 +197,7 @@ const DiscourseTopicsTable = ({
   const activeSortCol = sorting[0] as SortingState[number] | undefined;
 
   const filters: ContributionFilters = {
-    contributionType: "discourse_topic",
+    contributionType: "discourse_%",
     search: debouncedSearch || undefined,
     sortField: activeSortCol?.id,
     sortDesc: activeSortCol?.desc,
@@ -201,7 +219,7 @@ const DiscourseTopicsTable = ({
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search topics..."
+            placeholder="Search..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="h-8 w-48 pl-8 text-xs"
@@ -518,7 +536,7 @@ export const DiscourseActivitySection = ({
 
                 {/* Topics table (server-side paginated) */}
                 <div>
-                  <h4 className="mb-3 text-sm font-medium">Topics</h4>
+                  <h4 className="mb-3 text-sm font-medium">Contributions</h4>
                   <DiscourseTopicsTable teamId={teamId} period={period} platform={instance} />
                 </div>
 

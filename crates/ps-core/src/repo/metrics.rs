@@ -634,7 +634,7 @@ impl MetricsRepo {
             JOIN org.people p ON p.id = c.person_id
             WHERE c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
-              AND ($4::text IS NULL OR c.contribution_type = $4)
+              AND ($4::text IS NULL OR c.contribution_type LIKE $4)
               AND ($5::text IS NULL OR c.state = $5)
               AND ($8::text IS NULL OR (
                   c.title ILIKE '%' || $8 || '%'
@@ -907,7 +907,7 @@ impl MetricsRepo {
             JOIN org.people p ON p.id = c.person_id
             WHERE c.person_id = $1
               AND ($2::text IS NULL OR c.platform LIKE $2)
-              AND ($3::text IS NULL OR c.contribution_type = $3)
+              AND ($3::text IS NULL OR c.contribution_type LIKE $3)
               AND ($4::date IS NULL OR c.created_at >= $4::date::timestamptz)
               AND ($9::text IS NULL OR c.state = $9)
               AND ($10::text IS NULL OR (
