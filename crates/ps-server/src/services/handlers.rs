@@ -135,6 +135,7 @@ impl HandlersServiceImpl {
         let resp = match self
             .http_client
             .post(&url)
+            .header("Accept", "application/json")
             .json(&serde_json::json!({ "query": query }))
             .send()
             .await
@@ -153,7 +154,10 @@ impl HandlersServiceImpl {
 
         let body: serde_json::Value = match resp.json().await {
             Ok(v) => v,
-            Err(_) => return true,
+            Err(e) => {
+                warn!(error = %e, "failed to parse Restate admin response as JSON");
+                return true;
+            }
         };
 
         // If no rows, invocation doesn't exist
@@ -258,6 +262,7 @@ impl HandlersServiceImpl {
         let resp = match self
             .http_client
             .post(&url)
+            .header("Accept", "application/json")
             .json(&serde_json::json!({ "query": query }))
             .send()
             .await
