@@ -108,6 +108,8 @@ message ListTeamContributionsRequest {
   optional bool sort_desc = 8;
   // Free-text search across title, author, and repo.
   optional string search = 9;
+  // Filter by platform: "github", "discourse-ubuntu", etc.
+  optional string platform = 10;
 }
 
 message Contribution {
@@ -127,6 +129,8 @@ message Contribution {
   int32 review_count = 14;
   float review_hours = 15;
   string repo = 16;
+  // Category name (e.g. Discourse category, Jira project).
+  string category = 17;
 }
 
 message ListTeamContributionsResponse {

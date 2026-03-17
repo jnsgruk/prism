@@ -12,14 +12,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { ChevronDown, ChevronRight, MessageCircle, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
 import { useRef, useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -27,11 +26,22 @@ import {
   YAxis,
 } from "recharts";
 
-import type { Period, TeamMetrics, TopContributor } from "@ps/api/gen/prism/v1/metrics_pb";
+import type {
+  Contribution,
+  Period,
+  TeamMetrics,
+  TopContributor,
+} from "@ps/api/gen/prism/v1/metrics_pb";
+import type { ContributionFilters } from "@/lib/hooks/use-metrics";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { useListSources } from "@/lib/hooks/use-config";
+import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
 
 const ChartTooltip = ({
   active,
@@ -53,7 +63,186 @@ const ChartTooltip = ({
 
 const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
 
-// --- Contributor table columns ---
+const formatTimestamp = (ts?: Timestamp): string => {
+  if (!ts) return "\u2014";
+  const date = new Date(Number(ts.seconds) * 1000);
+  return (
+    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " +
+    date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Topics table columns
+// ---------------------------------------------------------------------------
+
+const topicTitleColumn: ColumnDef<Contribution, unknown> = {
+  accessorKey: "title",
+  header: "Topic",
+  cell: ({ row }) => {
+    const c = row.original;
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate" title={c.title}>
+          {c.title || "\u2014"}
+        </span>
+        {c.url && (
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="size-3" />
+          </a>
+        )}
+      </div>
+    );
+  },
+  enableSorting: false,
+};
+
+const topicCategoryColumn: ColumnDef<Contribution, unknown> = {
+  id: "category",
+  accessorKey: "category",
+  header: "Category",
+  cell: ({ row }) => (
+    <span className="text-muted-foreground">{row.original.category || "\u2014"}</span>
+  ),
+  enableSorting: false,
+};
+
+const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
+  id: "person_name",
+  accessorKey: "personName",
+  header: "Author",
+  enableSorting: true,
+};
+
+const topicPostsColumn: ColumnDef<Contribution, unknown> = {
+  id: "posts",
+  header: "Posts",
+  cell: ({ row }) => <span className="tabular-nums">{row.original.reviewCount || "\u2014"}</span>,
+  enableSorting: false,
+};
+
+const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
+  id: "created_at",
+  accessorKey: "createdAt",
+  header: "Created",
+  cell: ({ row }) => (
+    <span className="whitespace-nowrap text-muted-foreground">
+      {formatTimestamp(row.original.createdAt)}
+    </span>
+  ),
+  enableSorting: true,
+};
+
+const topicColumns: ColumnDef<Contribution, unknown>[] = [
+  topicTitleColumn,
+  topicCategoryColumn,
+  topicAuthorColumn,
+  topicPostsColumn,
+  topicCreatedColumn,
+];
+
+// ---------------------------------------------------------------------------
+// Topics table sub-component (server-side pagination)
+// ---------------------------------------------------------------------------
+
+const DiscourseTopicsTable = ({
+  teamId,
+  period,
+  platform,
+}: {
+  teamId: string;
+  period: Period;
+  platform?: string;
+}): React.ReactElement => {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleSearchChange = (value: string): void => {
+    setSearch(value);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPageIndex(0);
+    }, 300);
+  };
+
+  const activeSortCol = sorting[0] as SortingState[number] | undefined;
+
+  const filters: ContributionFilters = {
+    contributionType: "discourse_topic",
+    search: debouncedSearch || undefined,
+    sortField: activeSortCol?.id,
+    sortDesc: activeSortCol?.desc,
+    pageSize,
+    pageIndex,
+    platform,
+  };
+
+  const { data, isLoading } = useListTeamContributions(teamId, period, filters);
+  const topics = data?.contributions ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search topics..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="h-8 w-48 pl-8 text-xs"
+          />
+        </div>
+      </div>
+      {isLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Loading topics...</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-md border">
+            <DataTable
+              columns={topicColumns}
+              data={topics}
+              sorting={sorting}
+              onSortingChange={(updater) => {
+                setSorting(updater);
+                setPageIndex(0);
+              }}
+            />
+          </div>
+          <DataTablePagination
+            totalCount={totalCount}
+            pageSize={pageSize}
+            pageIndex={pageIndex}
+            hasNextPage={hasNextPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPageIndex(0);
+            }}
+            onPreviousPage={() => setPageIndex((i) => Math.max(0, i - 1))}
+            onNextPage={() => setPageIndex((i) => i + 1)}
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Contributor table columns + sorting helper
+// ---------------------------------------------------------------------------
 
 const nameColumn: ColumnDef<TopContributor, unknown> = {
   id: "name",
@@ -63,7 +252,7 @@ const nameColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const topicsColumn: ColumnDef<TopContributor, unknown> = {
+const contributorTopicsColumn: ColumnDef<TopContributor, unknown> = {
   id: "topics",
   accessorKey: "topics",
   header: "Topics",
@@ -71,7 +260,7 @@ const topicsColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const postsColumn: ColumnDef<TopContributor, unknown> = {
+const contributorPostsColumn: ColumnDef<TopContributor, unknown> = {
   id: "posts",
   accessorKey: "posts",
   header: "Posts",
@@ -91,18 +280,16 @@ const likesColumn: ColumnDef<TopContributor, unknown> = {
 
 const contributorColumns: ColumnDef<TopContributor, unknown>[] = [
   nameColumn,
-  topicsColumn,
-  postsColumn,
+  contributorTopicsColumn,
+  contributorPostsColumn,
   likesColumn,
 ];
-
-// --- Sorting helper ---
 
 const sortContributors = (data: TopContributor[], sorting: SortingState): TopContributor[] => {
   const col = sorting[0];
   if (!col) return data;
   const { id, desc } = col;
-  const sorted = data.toSorted((a, b) => {
+  return data.toSorted((a, b) => {
     let cmp = 0;
     switch (id) {
       case "name":
@@ -120,8 +307,11 @@ const sortContributors = (data: TopContributor[], sorting: SortingState): TopCon
     }
     return desc ? -cmp : cmp;
   });
-  return sorted;
 };
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export const DiscourseActivitySection = ({
   teamId,
@@ -135,20 +325,20 @@ export const DiscourseActivitySection = ({
   const [open, setOpen] = useState(false);
   const [instanceFilter, setInstanceFilter] = useState("all");
 
-  // Contributor table state
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [pageSize, setPageSize] = useState(10);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // Contributor table state (client-side)
+  const [contribSearch, setContribSearch] = useState("");
+  const [debouncedContribSearch, setDebouncedContribSearch] = useState("");
+  const [contribPageSize, setContribPageSize] = useState(10);
+  const [contribPageIndex, setContribPageIndex] = useState(0);
+  const [contribSorting, setContribSorting] = useState<SortingState>([]);
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const handleSearchChange = (value: string): void => {
-    setSearch(value);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPageIndex(0);
+  const contribSearchRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleContribSearch = (value: string): void => {
+    setContribSearch(value);
+    clearTimeout(contribSearchRef.current);
+    contribSearchRef.current = setTimeout(() => {
+      setDebouncedContribSearch(value);
+      setContribPageIndex(0);
     }, 300);
   };
 
@@ -177,27 +367,22 @@ export const DiscourseActivitySection = ({
     likes: t.likes,
   }));
 
-  const categories = data?.categoryDistribution ?? [];
   const allContributors = data?.topContributors ?? [];
 
-  // Client-side search filtering
-  const searchLower = debouncedSearch.toLowerCase();
-  const filteredContributors = debouncedSearch
+  // Client-side contributor filtering / sorting / pagination
+  const searchLower = debouncedContribSearch.toLowerCase();
+  const filteredContributors = debouncedContribSearch
     ? allContributors.filter((c) => c.name.toLowerCase().includes(searchLower))
     : allContributors;
-
-  // Client-side sorting
-  const sortedContributors = sortContributors(filteredContributors, sorting);
-
-  // Client-side pagination
-  const totalCount = sortedContributors.length;
+  const sortedContributors = sortContributors(filteredContributors, contribSorting);
+  const contribTotal = sortedContributors.length;
   const paginatedContributors = sortedContributors.slice(
-    pageIndex * pageSize,
-    (pageIndex + 1) * pageSize,
+    contribPageIndex * contribPageSize,
+    (contribPageIndex + 1) * contribPageSize,
   );
-  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
+  const contribHasNext = (contribPageIndex + 1) * contribPageSize < contribTotal;
 
-  const resetPage = (): void => setPageIndex(0);
+  const resetContribPage = (): void => setContribPageIndex(0);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -224,7 +409,7 @@ export const DiscourseActivitySection = ({
                   value={instanceFilter}
                   onValueChange={(v) => {
                     if (v !== null) setInstanceFilter(v);
-                    resetPage();
+                    resetContribPage();
                   }}
                 >
                   <SelectTrigger className="w-48">
@@ -254,10 +439,6 @@ export const DiscourseActivitySection = ({
                   <Skeleton className="h-[250px] w-full" />
                 </div>
                 <div>
-                  <Skeleton className="mb-3 h-4 w-40" />
-                  <Skeleton className="h-[160px] w-full" />
-                </div>
-                <div>
                   <Skeleton className="mb-3 h-4 w-36" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="mt-1 h-10 w-full" />
@@ -269,7 +450,6 @@ export const DiscourseActivitySection = ({
             {!isLoading &&
               enabled &&
               activityTrend.length === 0 &&
-              categories.length === 0 &&
               allContributors.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
                   <MessageCircle className="size-10 text-muted-foreground" />
@@ -280,151 +460,105 @@ export const DiscourseActivitySection = ({
                 </div>
               )}
 
-            {!isLoading &&
-              enabled &&
-              (activityTrend.length > 0 || categories.length > 0 || allContributors.length > 0) && (
-                <>
-                  {/* Activity trend chart */}
-                  {activityTrend.length > 1 && (
-                    <div>
-                      <h4 className="mb-3 text-sm font-medium">Activity Trend</h4>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart
-                          data={activityTrend}
-                          margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fontSize: 12 }}
-                            className="fill-muted-foreground"
-                          />
-                          <YAxis className="fill-muted-foreground" />
-                          <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-                          <Area
-                            type="monotone"
-                            dataKey="topics"
-                            name="Topics"
-                            stackId="1"
-                            fill="hsl(var(--primary))"
-                            stroke="hsl(var(--primary))"
-                            fillOpacity={0.6}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="posts"
-                            name="Posts"
-                            stackId="1"
-                            fill="hsl(var(--muted-foreground))"
-                            stroke="hsl(var(--muted-foreground))"
-                            fillOpacity={0.4}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="likes"
-                            name="Likes"
-                            stackId="1"
-                            fill="hsl(var(--accent-foreground))"
-                            stroke="hsl(var(--accent-foreground))"
-                            fillOpacity={0.2}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Category distribution */}
-                  {categories.length > 0 && (
-                    <div>
-                      <h4 className="mb-3 text-sm font-medium">Category Distribution</h4>
-                      <ResponsiveContainer
-                        width="100%"
-                        height={Math.min(categories.length * 32 + 40, 400)}
+            {!isLoading && enabled && (activityTrend.length > 0 || allContributors.length > 0) && (
+              <>
+                {/* Activity trend chart */}
+                {activityTrend.length > 1 && (
+                  <div>
+                    <h4 className="mb-3 text-sm font-medium">Activity Trend</h4>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <AreaChart
+                        data={activityTrend}
+                        margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
                       >
-                        <BarChart
-                          data={categories.map((c) => ({
-                            name: c.category,
-                            posts: c.posts,
-                            topics: c.topics,
-                          }))}
-                          layout="vertical"
-                          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            className="stroke-border"
-                            horizontal={false}
-                          />
-                          <XAxis type="number" className="fill-muted-foreground" />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            tick={{ fontSize: 12 }}
-                            className="fill-muted-foreground"
-                            width={75}
-                          />
-                          <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-                          <Bar
-                            dataKey="posts"
-                            name="Posts"
-                            fill="hsl(var(--primary))"
-                            radius={[0, 4, 4, 0]}
-                            stackId="cat"
-                          />
-                          <Bar
-                            dataKey="topics"
-                            name="Topics"
-                            fill="hsl(var(--muted-foreground))"
-                            radius={[0, 4, 4, 0]}
-                            stackId="cat"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          className="fill-muted-foreground"
+                        />
+                        <YAxis className="fill-muted-foreground" />
+                        <Tooltip content={ChartTooltip} cursor={cursorStyle} />
+                        <Area
+                          type="monotone"
+                          dataKey="topics"
+                          name="Topics"
+                          stackId="1"
+                          fill="hsl(var(--primary))"
+                          stroke="hsl(var(--primary))"
+                          fillOpacity={0.6}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="posts"
+                          name="Posts"
+                          stackId="1"
+                          fill="hsl(var(--muted-foreground))"
+                          stroke="hsl(var(--muted-foreground))"
+                          fillOpacity={0.4}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="likes"
+                          name="Likes"
+                          stackId="1"
+                          fill="hsl(var(--accent-foreground))"
+                          stroke="hsl(var(--accent-foreground))"
+                          fillOpacity={0.2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
-                  {/* Top contributors */}
-                  {allContributors.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium">Top Contributors</h4>
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            placeholder="Search..."
-                            value={search}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="h-8 w-48 pl-8 text-xs"
-                          />
-                        </div>
-                      </div>
-                      <div className="overflow-x-auto rounded-md border">
-                        <DataTable
-                          columns={contributorColumns}
-                          data={paginatedContributors}
-                          sorting={sorting}
-                          onSortingChange={(updater) => {
-                            setSorting(updater);
-                            setPageIndex(0);
-                          }}
+                {/* Topics table (server-side paginated) */}
+                <div>
+                  <h4 className="mb-3 text-sm font-medium">Topics</h4>
+                  <DiscourseTopicsTable teamId={teamId} period={period} platform={instance} />
+                </div>
+
+                {/* Top contributors (client-side) */}
+                {allContributors.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">Top Contributors</h4>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search..."
+                          value={contribSearch}
+                          onChange={(e) => handleContribSearch(e.target.value)}
+                          className="h-8 w-48 pl-8 text-xs"
                         />
                       </div>
-                      <DataTablePagination
-                        totalCount={totalCount}
-                        pageSize={pageSize}
-                        pageIndex={pageIndex}
-                        hasNextPage={hasNextPage}
-                        onPageSizeChange={(size) => {
-                          setPageSize(size);
-                          resetPage();
+                    </div>
+                    <div className="overflow-x-auto rounded-md border">
+                      <DataTable
+                        columns={contributorColumns}
+                        data={paginatedContributors}
+                        sorting={contribSorting}
+                        onSortingChange={(updater) => {
+                          setContribSorting(updater);
+                          setContribPageIndex(0);
                         }}
-                        onPreviousPage={() => setPageIndex((i) => Math.max(0, i - 1))}
-                        onNextPage={() => setPageIndex((i) => i + 1)}
                       />
                     </div>
-                  )}
-                </>
-              )}
+                    <DataTablePagination
+                      totalCount={contribTotal}
+                      pageSize={contribPageSize}
+                      pageIndex={contribPageIndex}
+                      hasNextPage={contribHasNext}
+                      onPageSizeChange={(size) => {
+                        setContribPageSize(size);
+                        resetContribPage();
+                      }}
+                      onPreviousPage={() => setContribPageIndex((i) => Math.max(0, i - 1))}
+                      onNextPage={() => setContribPageIndex((i) => i + 1)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Card>

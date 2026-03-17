@@ -335,6 +335,7 @@ impl MetricsService for MetricsServiceImpl {
         let search = req.search.as_deref().filter(|s| !s.is_empty());
         let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
         let sort_desc = req.sort_desc.unwrap_or(true);
+        let platform = req.platform.as_deref().filter(|s| !s.is_empty());
 
         let (rows, total_count) = self
             .repos
@@ -350,6 +351,7 @@ impl MetricsService for MetricsServiceImpl {
                 sort_desc,
                 page_size,
                 offset,
+                platform,
             })
             .await
             .map_err(db_err)?;
@@ -366,6 +368,24 @@ impl MetricsService for MetricsServiceImpl {
                         _ => String::new(),
                     }
                 };
+                // For discourse contributions, map post_count to review_count
+                // and extract category from metrics.
+                let is_discourse = r.platform.is_discourse();
+                let review_count = if is_discourse {
+                    json_i32(&r.metrics, "post_count")
+                } else {
+                    json_i32(&r.metrics, "review_count")
+                };
+                let category = if is_discourse {
+                    r.metrics
+                        .get("category")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string()
+                } else {
+                    String::new()
+                };
+
                 Contribution {
                     id: r.id.to_string(),
                     person_name: r.person_name,
@@ -380,9 +400,10 @@ impl MetricsService for MetricsServiceImpl {
                     additions: json_i32(&r.metrics, "additions"),
                     deletions: json_i32(&r.metrics, "deletions"),
                     changed_files: json_i32(&r.metrics, "changed_files"),
-                    review_count: json_i32(&r.metrics, "review_count"),
+                    review_count,
                     review_hours: json_f32(&r.metrics, "review_hours"),
                     repo,
+                    category,
                 }
             })
             .collect();

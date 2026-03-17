@@ -32,6 +32,7 @@ export const metricsKeys = {
       filters.sortDesc ?? true,
       filters.pageSize,
       filters.pageIndex,
+      filters.platform ?? "",
     ] as const,
 };
 
@@ -43,6 +44,7 @@ export interface ContributionFilters {
   sortDesc?: boolean;
   pageSize: number;
   pageIndex: number;
+  platform?: string;
 }
 
 export const useCompareTeams = (
@@ -81,6 +83,7 @@ export const useListTeamContributions = (
         sortDesc: filters.sortDesc,
         pageSize: filters.pageSize,
         pageIndex: filters.pageIndex,
+        platform: filters.platform,
       }),
     enabled: teamId.length > 0,
   });

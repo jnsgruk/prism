@@ -541,6 +541,7 @@ pub struct ListContributionsParams<'a> {
     pub sort_desc: bool,
     pub page_size: i32,
     pub offset: i32,
+    pub platform: Option<&'a str>,
 }
 
 /// A detailed contribution row for drill-down display.
@@ -580,6 +581,7 @@ impl MetricsRepo {
         let offset = params.offset;
         let escaped_search = params.search.map(super::escape_like);
         let search = escaped_search.as_deref();
+        let platform = params.platform;
         let rows = sqlx::query!(
             r#"
             WITH RECURSIVE team_tree AS (
@@ -608,6 +610,7 @@ impl MetricsRepo {
                   OR p.name ILIKE '%' || $8 || '%'
                   OR c.metadata->>'repo' ILIKE '%' || $8 || '%'
               ))
+              AND ($11::text IS NULL OR c.platform = $11)
             ORDER BY
               CASE WHEN $9 = 'person_name' AND NOT $10 THEN p.name END ASC NULLS LAST,
               CASE WHEN $9 = 'person_name' AND $10 THEN p.name END DESC NULLS LAST,
@@ -629,6 +632,7 @@ impl MetricsRepo {
             search,
             sort_field,
             sort_desc,
+            platform,
         )
         .fetch_all(&self.pool)
         .await
