@@ -44,9 +44,19 @@ export const RunDetailDialog = ({
               </Badge>
             </div>
             <div>
+              <p className="text-xs text-muted-foreground">Method</p>
+              <p className="font-medium">{run.handlerMethod}</p>
+            </div>
+            <div>
               <p className="text-xs text-muted-foreground">Items collected</p>
               <p className="font-medium">{run.itemsCollected.toLocaleString()}</p>
             </div>
+            {run.sourceName && run.sourceName !== "_system" && (
+              <div>
+                <p className="text-xs text-muted-foreground">Source</p>
+                <p className="font-medium">{run.sourceName}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-muted-foreground">Started</p>
               <p>{formatFullTimestamp(run.startedAt)}</p>

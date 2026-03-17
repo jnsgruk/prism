@@ -353,7 +353,7 @@ const HandlerRunsTable = ({
       {selectedRun && (
         <RunDetailDialog
           run={selectedRun}
-          title={`${selectedRun.handlerName}.${selectedRun.handlerMethod}`}
+          title={selectedRun.handlerName}
           description={
             selectedRun.sourceName === "_system"
               ? "Run details"
