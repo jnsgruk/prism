@@ -18,7 +18,15 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Activity, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
+import {
+  Activity,
+  ChevronsUpDown,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
@@ -32,6 +40,7 @@ type User = {
 const NAV_ITEMS = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Teams", href: "/teams", icon: Users },
+  { title: "People", href: "/people", icon: UserRound },
   { title: "Ingestion", href: "/ingestion", icon: Activity },
 ];
 
