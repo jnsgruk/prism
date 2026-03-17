@@ -77,6 +77,13 @@ const formatTimestamp = (ts?: Timestamp): string => {
 // Topics table columns
 // ---------------------------------------------------------------------------
 
+/** Extract friendly instance name from platform string (e.g. "discourse-ubuntu" → "Ubuntu"). */
+const instanceLabel = (platform: string): string => {
+  const suffix = platform.replace(/^discourse-?/, "");
+  if (!suffix) return platform;
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+};
+
 const topicTitleColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "title",
   header: "Topic",
@@ -84,7 +91,7 @@ const topicTitleColumn: ColumnDef<Contribution, unknown> = {
     const c = row.original;
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate" title={c.title}>
+        <span className="block max-w-80 truncate" title={c.title}>
           {c.title || "\u2014"}
         </span>
         {c.url && (
@@ -101,6 +108,15 @@ const topicTitleColumn: ColumnDef<Contribution, unknown> = {
       </div>
     );
   },
+  enableSorting: false,
+};
+
+const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
+  id: "instance",
+  header: "Instance",
+  cell: ({ row }) => (
+    <span className="text-muted-foreground">{instanceLabel(row.original.platform)}</span>
+  ),
   enableSorting: false,
 };
 
@@ -140,8 +156,9 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const topicColumns: ColumnDef<Contribution, unknown>[] = [
+const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution, unknown>[] => [
   topicTitleColumn,
+  ...(showInstance ? [topicInstanceColumn] : []),
   topicCategoryColumn,
   topicAuthorColumn,
   topicPostsColumn,
@@ -189,6 +206,8 @@ const DiscourseTopicsTable = ({
     platform,
   };
 
+  const columns = useMemo(() => buildTopicColumns(!platform), [platform]);
+
   const { data, isLoading } = useListTeamContributions(teamId, period, filters);
   const topics = data?.contributions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -213,7 +232,7 @@ const DiscourseTopicsTable = ({
         <>
           <div className="overflow-x-auto rounded-md border">
             <DataTable
-              columns={topicColumns}
+              columns={columns}
               data={topics}
               sorting={sorting}
               onSortingChange={(updater) => {
