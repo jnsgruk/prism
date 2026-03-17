@@ -392,7 +392,6 @@ impl ActivityRepo {
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
               AND ($2::text IS NULL OR handler_name = $2)
-              AND handler_name LIKE '%IngestionHandler'
             ORDER BY started_at DESC
             LIMIT 100
             "#,
