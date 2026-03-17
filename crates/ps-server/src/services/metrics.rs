@@ -486,6 +486,7 @@ impl MetricsService for MetricsServiceImpl {
                     metrics.insert(
                         "throughput".to_string(),
                         Percentile {
+                            #[allow(clippy::cast_precision_loss)]
                             value: count as f64,
                             percentile,
                         },

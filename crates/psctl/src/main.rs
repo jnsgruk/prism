@@ -74,6 +74,32 @@ enum Command {
         #[arg(long, default_value = "month")]
         period: String,
     },
+
+    /// List people in the organisation
+    People {
+        /// Filter by team name or ID
+        #[arg(long)]
+        team: Option<String>,
+
+        /// Show only unresolved/unassigned identities
+        #[arg(long)]
+        unresolved: bool,
+    },
+
+    /// List contributions for a person
+    Contributions {
+        /// Person ID (UUID)
+        #[arg(long)]
+        person: String,
+
+        /// Filter by platform (e.g. github, jira)
+        #[arg(long)]
+        platform: Option<String>,
+
+        /// Only contributions since this date (YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -94,5 +120,16 @@ async fn main() -> Result<()> {
         Command::Backup { output } => commands::backup(&mut clients, output).await,
         Command::Restore { file } => commands::restore(&mut clients, &file).await,
         Command::Metrics { team, period } => commands::metrics(&mut clients, &team, &period).await,
+        Command::People { team, unresolved } => {
+            commands::people(&mut clients, team.as_deref(), unresolved).await
+        }
+        Command::Contributions {
+            person,
+            platform,
+            since,
+        } => {
+            commands::contributions(&mut clients, &person, platform.as_deref(), since.as_deref())
+                .await
+        }
     }
 }

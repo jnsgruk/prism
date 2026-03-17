@@ -89,9 +89,8 @@ impl MetricsRepo {
         .await
         .map_err(Error::from)?;
 
-        let snapshot = match row {
-            Some(r) => r,
-            None => return Ok(None),
+        let Some(snapshot) = row else {
+            return Ok(None);
         };
 
         let source_platforms = self.get_snapshot_source_platforms(snapshot.id).await?;
@@ -1036,9 +1035,8 @@ impl MetricsRepo {
         .await
         .map_err(Error::from)?;
 
-        let person_count = match row.person_count {
-            Some(c) => c,
-            None => return Ok(None),
+        let Some(person_count) = row.person_count else {
+            return Ok(None);
         };
 
         let peer_count = row.peer_count;
