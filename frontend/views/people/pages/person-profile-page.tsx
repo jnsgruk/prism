@@ -2,8 +2,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import {
   ArrowLeft,
-  Activity,
-  BarChart3,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -11,18 +9,13 @@ import {
   KeyRound,
   Loader2,
   MessageSquare,
-  TrendingUp,
-  Users,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -37,216 +30,10 @@ import {
   defaultPeriodKey,
 } from "@/views/teams/components/period-selector";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
-import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
 import { useGetIndividualProfile } from "@/lib/hooks/use-metrics";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const fmtFloat = (v: number): string => (v > 0 ? v.toFixed(1) : "\u2014");
-const fmtPercent = (v: number): string => `${Math.round(v * 100)}%`;
-
-// ---------------------------------------------------------------------------
-// Chart tooltip
-// ---------------------------------------------------------------------------
-
-const ChartTooltip = ({
-  active,
-  payload,
-  label,
-}: TooltipContentProps): React.ReactElement | null => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
-      <p className="mb-1 font-medium">{label}</p>
-      {payload.map((entry) => (
-        <p key={entry.name} className="text-muted-foreground">
-          {entry.name}: {entry.value}
-        </p>
-      ))}
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Metric cards
-// ---------------------------------------------------------------------------
-
-const MetricCard = ({
-  label,
-  value,
-  icon: Icon,
-  description,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  description?: string;
-}): React.ReactElement => (
-  <Card>
-    <CardContent className="flex items-center gap-3 p-4">
-      <div className="rounded-md bg-muted p-2">
-        <Icon className="size-4 text-muted-foreground" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-2xl font-semibold leading-none">{value}</p>
-        <div className="mt-1 flex items-center gap-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          {description && (
-            <UITooltip>
-              <TooltipTrigger render={<button type="button" className="inline-flex shrink-0" />}>
-                <Activity className="size-3 text-muted-foreground/50" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-64">
-                {description}
-              </TooltipContent>
-            </UITooltip>
-          )}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const ProfileMetricCards = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement => {
-  const totalContributions = profile.activityByPlatform.reduce(
-    (sum, a) => sum + a.contributionCount,
-    0,
-  );
-  const platformCount = profile.activityByPlatform.length;
-  const peerPercentile = profile.peerContext?.metrics["throughput"];
-
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <MetricCard
-        label="Contributions"
-        value={String(totalContributions)}
-        icon={Activity}
-        description="Total contributions across all platforms in this period"
-      />
-      <MetricCard label="Platforms active" value={String(platformCount)} icon={BarChart3} />
-      {peerPercentile ? (
-        <MetricCard
-          label="Peer percentile"
-          value={fmtPercent(peerPercentile.percentile)}
-          icon={TrendingUp}
-          description={`Throughput percentile among ${profile.peerContext?.peerCount ?? 0} ${profile.peerContext?.level ?? ""} peers`}
-        />
-      ) : (
-        <MetricCard label="Peer percentile" value="\u2014" icon={TrendingUp} />
-      )}
-      <MetricCard label="Identities" value={String(profile.identities.length)} icon={Users} />
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Activity by platform chart
-// ---------------------------------------------------------------------------
-
-const ActivityChart = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement | null => {
-  if (profile.activityByPlatform.length === 0) return null;
-
-  const data = profile.activityByPlatform.map((a) => ({
-    platform: a.platform,
-    count: a.contributionCount,
-  }));
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Activity by platform</CardTitle>
-        <CardDescription>Contribution counts per platform in this period</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis dataKey="platform" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-            <YAxis className="fill-muted-foreground" allowDecimals={false} />
-            <Tooltip content={ChartTooltip} cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }} />
-            <Bar
-              dataKey="count"
-              name="Contributions"
-              fill="hsl(var(--primary))"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-        {/* Per-platform key metrics */}
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.activityByPlatform.map((a) => (
-            <div key={a.platform} className="rounded-md border px-3 py-2">
-              <p className="text-sm font-medium">{a.platform}</p>
-              <p className="text-xs text-muted-foreground">
-                {a.contributionCount} contribution{a.contributionCount !== 1 ? "s" : ""}
-                {a.metrics["avg_review_hours"] != null &&
-                  ` \u00b7 avg review ${fmtFloat(a.metrics["avg_review_hours"])}h`}
-                {a.metrics["avg_cycle_time_hours"] != null &&
-                  ` \u00b7 avg cycle ${fmtFloat(a.metrics["avg_cycle_time_hours"])}h`}
-              </p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Peer context panel
-// ---------------------------------------------------------------------------
-
-const PeerContextPanel = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement | null => {
-  const peer = profile.peerContext;
-  if (!peer || peer.peerCount === 0) return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Peer context</CardTitle>
-        <CardDescription>
-          Compared to {peer.peerCount} other {peer.level} peers in this period
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {Object.entries(peer.metrics).map(([name, p]) => (
-            <div
-              key={name}
-              className="flex items-center justify-between rounded-md border px-3 py-2"
-            >
-              <span className="text-sm capitalize">{name.replace(/_/g, " ")}</span>
-              <div className="flex items-center gap-2">
-                <span className="tabular-nums text-sm font-medium">{fmtFloat(p.value)}</span>
-                <Badge variant="secondary" className="text-[10px]">
-                  {fmtPercent(p.percentile)} percentile
-                </Badge>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
+import { ActivityChart } from "@/views/people/components/activity-chart";
+import { PeerContextPanel } from "@/views/people/components/peer-context-panel";
 
 const PersonProfilePage = (): React.ReactElement => {
   const { personId } = useParams<{ personId: string }>();
@@ -269,6 +56,14 @@ const PersonProfilePage = (): React.ReactElement => {
   }
 
   const description = [profile?.teamName, profile?.level].filter(Boolean).join(" \u00b7 ");
+
+  const github = profile?.activityByPlatform.find((a) => a.platform === "github");
+  const prCount = github?.metrics["pull_request_count"] ?? 0;
+  const reviewCount = github?.metrics["pr_review_count"] ?? 0;
+  const discourseCount =
+    profile?.activityByPlatform
+      .filter((a) => a.platform.startsWith("discourse"))
+      .reduce((sum, a) => sum + a.contributionCount, 0) ?? 0;
 
   return (
     <>
@@ -338,132 +133,107 @@ const PersonProfilePage = (): React.ReactElement => {
             <PeerContextPanel profile={profile} />
 
             {/* Pull Requests — collapsible */}
-            {(() => {
-              const github = profile.activityByPlatform.find((a) => a.platform === "github");
-              const prCount = github?.metrics["pull_request_count"] ?? 0;
-              const reviewCount = github?.metrics["pr_review_count"] ?? 0;
-              const discourseCount = profile.activityByPlatform
-                .filter((a) => a.platform.startsWith("discourse"))
-                .reduce((sum, a) => sum + a.contributionCount, 0);
+            <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {prsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <GitPullRequest className="size-4 text-muted-foreground" />
+                    <CardTitle>Pull Requests</CardTitle>
+                    {prCount > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {prCount}
+                      </Badge>
+                    )}
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <ContributionTable
+                      personId={personId}
+                      defaultContributionType="pull_request"
+                      defaultState="merged"
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
-              return (
-                <>
-                  <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
-                    <Card>
-                      <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
-                        <CollapsibleTrigger
-                          render={
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 text-left"
-                            />
-                          }
-                        >
-                          {prsOpen ? (
-                            <ChevronDown className="size-4" />
-                          ) : (
-                            <ChevronRight className="size-4" />
-                          )}
-                          <GitPullRequest className="size-4 text-muted-foreground" />
-                          <CardTitle>Pull Requests</CardTitle>
-                          {prCount > 0 && (
-                            <Badge variant="secondary" className="ml-1">
-                              {prCount}
-                            </Badge>
-                          )}
-                        </CollapsibleTrigger>
-                      </CardHeader>
-                      <CollapsibleContent>
-                        <CardContent className="pt-0">
-                          <ContributionTable
-                            personId={personId}
-                            defaultContributionType="pull_request"
-                            defaultState="merged"
-                          />
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
+            {/* Reviews — collapsible */}
+            <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {reviewsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <Clock className="size-4 text-muted-foreground" />
+                    <CardTitle>Reviews</CardTitle>
+                    {reviewCount > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {reviewCount}
+                      </Badge>
+                    )}
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <ContributionTable personId={personId} defaultContributionType="pr_review" />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
-                  {/* Reviews — collapsible */}
-                  <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
-                    <Card>
-                      <CardHeader
-                        className="cursor-pointer"
-                        onClick={() => setReviewsOpen(!reviewsOpen)}
-                      >
-                        <CollapsibleTrigger
-                          render={
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 text-left"
-                            />
-                          }
-                        >
-                          {reviewsOpen ? (
-                            <ChevronDown className="size-4" />
-                          ) : (
-                            <ChevronRight className="size-4" />
-                          )}
-                          <Clock className="size-4 text-muted-foreground" />
-                          <CardTitle>Reviews</CardTitle>
-                          {reviewCount > 0 && (
-                            <Badge variant="secondary" className="ml-1">
-                              {reviewCount}
-                            </Badge>
-                          )}
-                        </CollapsibleTrigger>
-                      </CardHeader>
-                      <CollapsibleContent>
-                        <CardContent className="pt-0">
-                          <ContributionTable
-                            personId={personId}
-                            defaultContributionType="pr_review"
-                          />
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
-
-                  {/* Discourse — collapsible, only if person has discourse activity */}
-                  {discourseCount > 0 && (
-                    <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
-                      <Card>
-                        <CardHeader
-                          className="cursor-pointer"
-                          onClick={() => setDiscourseOpen(!discourseOpen)}
-                        >
-                          <CollapsibleTrigger
-                            render={
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 text-left"
-                              />
-                            }
-                          >
-                            {discourseOpen ? (
-                              <ChevronDown className="size-4" />
-                            ) : (
-                              <ChevronRight className="size-4" />
-                            )}
-                            <MessageSquare className="size-4 text-muted-foreground" />
-                            <CardTitle>Discourse</CardTitle>
-                            <Badge variant="secondary" className="ml-1">
-                              {discourseCount}
-                            </Badge>
-                          </CollapsibleTrigger>
-                        </CardHeader>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
-                            <ContributionTable personId={personId} defaultPlatform="discourse-%" />
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  )}
-                </>
-              );
-            })()}
+            {/* Discourse — collapsible, only if person has discourse activity */}
+            {discourseCount > 0 && (
+              <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
+                <Card>
+                  <CardHeader
+                    className="cursor-pointer"
+                    onClick={() => setDiscourseOpen(!discourseOpen)}
+                  >
+                    <CollapsibleTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 text-left"
+                        />
+                      }
+                    >
+                      {discourseOpen ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronRight className="size-4" />
+                      )}
+                      <MessageSquare className="size-4 text-muted-foreground" />
+                      <CardTitle>Discourse</CardTitle>
+                      <Badge variant="secondary" className="ml-1">
+                        {discourseCount}
+                      </Badge>
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <ContributionTable personId={personId} defaultPlatform="discourse-%" />
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
 
             {/* Identities — collapsible */}
             {profile.identities.length > 0 && (

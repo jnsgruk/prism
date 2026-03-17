@@ -12,8 +12,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
+import { instanceLabel } from "@/lib/format-metrics";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
-import { useRef, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
@@ -33,51 +36,25 @@ import type {
   TopContributor,
 } from "@ps/api/gen/prism/v1/metrics_pb";
 import type { ContributionFilters } from "@/lib/hooks/use-metrics";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { useListSources } from "@/lib/hooks/use-config";
 import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
 
 // ---------------------------------------------------------------------------
-// Shared
-// ---------------------------------------------------------------------------
-
-const ChartTooltip = ({
-  active,
-  payload,
-  label,
-}: TooltipContentProps): React.ReactElement | null => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
-      <p className="mb-1 font-medium">{label}</p>
-      {payload.map((entry) => (
-        <p key={entry.name} className="text-muted-foreground">
-          {entry.name}: {entry.value}
-        </p>
-      ))}
-    </div>
-  );
-};
-
-const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
-
-// ---------------------------------------------------------------------------
 // Topics table columns
 // ---------------------------------------------------------------------------
-
-/** Extract friendly instance name from platform string (e.g. "discourse-ubuntu" → "Ubuntu"). */
-const instanceLabel = (platform: string): string => {
-  const suffix = platform.replace(/^discourse-?/, "");
-  if (!suffix) return platform;
-  return suffix.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-};
 
 const discourseTypeLabel = (contributionType: string): string => {
   if (contributionType === "discourse_topic") return "Topic";
   if (contributionType === "discourse_like") return "Like";
   return "Post";
+};
+
+const formatShortDate = (ts?: Timestamp): string => {
+  if (!ts) return "\u2014";
+  const date = new Date(Number(ts.seconds) * 1000);
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 const topicTitleColumn: ColumnDef<Contribution, unknown> = {
@@ -139,12 +116,6 @@ const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const formatShortDate = (ts?: Timestamp): string => {
-  if (!ts) return "\u2014";
-  const date = new Date(Number(ts.seconds) * 1000);
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-};
-
 const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
   id: "created_at",
   accessorKey: "createdAt",
@@ -179,20 +150,10 @@ const DiscourseTopicsTable = ({
   platform?: string;
 }): React.ReactElement => {
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
-
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const handleSearchChange = (value: string): void => {
-    setSearch(value);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPageIndex(0);
-    }, 300);
-  };
 
   const activeSortCol = sorting[0] as SortingState[number] | undefined;
 
@@ -221,7 +182,10 @@ const DiscourseTopicsTable = ({
           <Input
             placeholder="Search..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPageIndex(0);
+            }}
             className="h-8 w-48 pl-8 text-xs"
           />
         </div>
@@ -350,20 +314,10 @@ export const DiscourseActivitySection = ({
 
   // Contributor table state (client-side)
   const [contribSearch, setContribSearch] = useState("");
-  const [debouncedContribSearch, setDebouncedContribSearch] = useState("");
+  const debouncedContribSearch = useDebouncedValue(contribSearch);
   const [contribPageSize, setContribPageSize] = useState(10);
   const [contribPageIndex, setContribPageIndex] = useState(0);
   const [contribSorting, setContribSorting] = useState<SortingState>([]);
-
-  const contribSearchRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const handleContribSearch = (value: string): void => {
-    setContribSearch(value);
-    clearTimeout(contribSearchRef.current);
-    contribSearchRef.current = setTimeout(() => {
-      setDebouncedContribSearch(value);
-      setContribPageIndex(0);
-    }, 300);
-  };
 
   const discourseTopics = metrics?.discourseTopicsCreated ?? 0;
   const discoursePosts = metrics?.discoursePosts ?? 0;
@@ -383,12 +337,16 @@ export const DiscourseActivitySection = ({
 
   if (!hasDiscourse) return null;
 
-  const activityTrend = (data?.activityTrend ?? []).map((t) => ({
-    date: t.date,
-    topics: t.topics,
-    posts: t.posts,
-    likes: t.likes,
-  }));
+  const activityTrend = useMemo(
+    () =>
+      (data?.activityTrend ?? []).map((t) => ({
+        date: t.date,
+        topics: t.topics,
+        posts: t.posts,
+        likes: t.likes,
+      })),
+    [data?.activityTrend],
+  );
 
   const allContributors = data?.topContributors ?? [];
 
@@ -550,7 +508,10 @@ export const DiscourseActivitySection = ({
                         <Input
                           placeholder="Search..."
                           value={contribSearch}
-                          onChange={(e) => handleContribSearch(e.target.value)}
+                          onChange={(e) => {
+                            setContribSearch(e.target.value);
+                            resetContribPage();
+                          }}
                           className="h-8 w-48 pl-8 text-xs"
                         />
                       </div>
