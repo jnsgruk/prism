@@ -3,46 +3,37 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, ChevronDown, ChevronRight, Clock, GitPullRequest, Users } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  GitPullRequest,
+  Loader2,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 
-import { useCompareTeams } from "@/lib/hooks/use-metrics";
+import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
+import { ComparisonTable } from "@/views/teams/components/comparison-table";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
-import { MetricsRow } from "@/views/teams/components/metrics-row";
 import {
   buildPeriod,
   defaultPeriodKey,
   PeriodSelector,
 } from "@/views/teams/components/period-selector";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
-import { SortableHeader } from "@/views/teams/components/sortable-header";
-import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
-import { TeamSelector } from "@/views/teams/components/team-selector";
-import {
-  findTeam,
-  teamTypeBadgeVariant,
-  teamTypeLabel,
-  useGetTeam,
-  useGetTeamTree,
-} from "@/views/teams/hooks/use-teams";
+import { ThroughputTrendChart, WipTrendChart } from "@/views/teams/components/trend-charts";
+import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
 
 const TeamsPage = (): React.ReactElement => {
+  const { teamId } = useParams<{ teamId: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedTeamId = searchParams.get("team");
   const periodKey = searchParams.get("period") ?? defaultPeriodKey;
-
-  const setSelectedTeamId = (id: string): void => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("team", id);
-      return next;
-    });
-  };
 
   const setPeriodKey = (key: string): void => {
     setSearchParams((prev) => {
@@ -52,23 +43,26 @@ const TeamsPage = (): React.ReactElement => {
     });
   };
 
-  const [sortField, setSortField] = useState<SortField>("throughput");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-
   const period = useMemo(() => buildPeriod(periodKey), [periodKey]);
 
   const { data: tree, isLoading: treeLoading, error: treeError } = useGetTeamTree();
-
   const roots = useMemo(() => tree?.roots ?? [], [tree]);
 
-  // Default to first root if no team selected
-  const effectiveTeamId = selectedTeamId ?? roots[0]?.id ?? "";
+  // Redirect /teams (no ID) to the first root team
+  const firstRoot = roots[0];
+  useEffect(() => {
+    if (!teamId && firstRoot) {
+      navigate(`/teams/${firstRoot.id}`, { replace: true });
+    }
+  }, [teamId, firstRoot, navigate]);
+
+  const effectiveTeamId = teamId ?? roots[0]?.id ?? "";
   const selectedTeam = useMemo(
     () => (effectiveTeamId ? findTeam(roots, effectiveTeamId) : undefined),
     [roots, effectiveTeamId],
   );
 
-  // Fetch children metrics
+  // Fetch children metrics for comparison table
   const childIds = useMemo(() => selectedTeam?.children.map((c) => c.id) ?? [], [selectedTeam]);
   const {
     data: childMetrics,
@@ -76,59 +70,16 @@ const TeamsPage = (): React.ReactElement => {
     error: metricsError,
   } = useCompareTeams(childIds, period);
 
-  // Also fetch the selected team's own metrics for the summary cards
+  // Fetch the selected team's own metrics
   const teamIdArray = useMemo(() => (effectiveTeamId ? [effectiveTeamId] : []), [effectiveTeamId]);
   const { data: parentMetrics } = useCompareTeams(teamIdArray, period);
   const currentMetrics = parentMetrics?.[0];
 
-  // Fetch members for the selected team
+  // Flow metrics for trend charts
+  const { data: flowMetrics } = useGetFlowMetrics(effectiveTeamId, period);
+
+  // Fetch members
   const { data: teamDetail } = useGetTeam(effectiveTeamId);
-
-  const toggleSort = (field: SortField): void => {
-    if (sortField === field) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDir("desc");
-    }
-  };
-
-  const sortedMetrics = useMemo(() => {
-    if (!childMetrics) return [];
-    const sorted = [...childMetrics];
-    const dir = sortDir === "asc" ? 1 : -1;
-    sorted.sort((a, b) => {
-      switch (sortField) {
-        case "name":
-          return dir * a.teamName.localeCompare(b.teamName);
-        case "throughput":
-          return dir * (a.throughput - b.throughput);
-        case "reviewP75":
-          return dir * (a.reviewTurnaroundP75Hours - b.reviewTurnaroundP75Hours);
-        case "members":
-          return dir * (a.memberCount - b.memberCount);
-        case "cycleTime":
-          return dir * (a.avgCycleTimeHours - b.avgCycleTimeHours);
-        case "wip":
-          return dir * (a.wipAvg - b.wipAvg);
-        case "leadTime":
-          return dir * (a.leadTimeHours - b.leadTimeHours);
-        default:
-          return 0;
-      }
-    });
-    return sorted;
-  }, [childMetrics, sortField, sortDir]);
-
-  const chartData = useMemo(
-    () =>
-      sortedMetrics.map((m) => ({
-        name: m.teamName,
-        throughput: m.throughput,
-        reviewP75Hours: Math.round(m.reviewTurnaroundP75Hours * 10) / 10,
-      })),
-    [sortedMetrics],
-  );
 
   const isLoading = treeLoading || metricsLoading;
   const error = treeError ?? metricsError;
@@ -138,30 +89,25 @@ const TeamsPage = (): React.ReactElement => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
   const members = teamDetail?.members ?? [];
+  const teamName = selectedTeam?.name ?? currentMetrics?.teamName ?? "Teams";
 
   return (
     <>
-      <PageHeader
-        title="Teams"
-        description="Organisation hierarchy and team performance"
-        actions={
-          <TeamSelector roots={roots} selectedTeam={selectedTeam} onSelect={setSelectedTeamId} />
-        }
-      />
+      <PageHeader title={teamName} description="Team performance and contributions" />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
-        {/* Navigation: period selector, breadcrumbs (when nested) */}
+        {/* Navigation: period selector, breadcrumbs */}
         <div className="space-y-3">
           <PeriodSelector value={periodKey} onChange={setPeriodKey} />
           {effectiveTeamId && roots.length > 0 && (
-            <TeamBreadcrumb
-              roots={roots}
-              selectedTeamId={effectiveTeamId}
-              onSelect={setSelectedTeamId}
-            />
+            <TeamBreadcrumb roots={roots} selectedTeamId={effectiveTeamId} />
           )}
         </div>
 
-        {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+        {isLoading && (
+          <div className="flex items-center justify-center p-12">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
 
         {error && (
           <Alert variant="destructive">
@@ -182,147 +128,39 @@ const TeamsPage = (): React.ReactElement => {
           />
         )}
 
-        {/* Child teams comparison table */}
-        {sortedMetrics.length > 0 && (
-          <>
-            <Card>
-              <CardContent className="overflow-x-auto p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <SortableHeader
-                        field="name"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Team
-                      </SortableHeader>
-                      <TableHead className="w-20">Type</TableHead>
-                      <SortableHeader
-                        field="throughput"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Merged PRs
-                      </SortableHeader>
-                      <SortableHeader
-                        field="reviewP75"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Review P75
-                      </SortableHeader>
-                      <SortableHeader
-                        field="cycleTime"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Cycle Time
-                      </SortableHeader>
-                      <SortableHeader
-                        field="wip"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        WIP
-                      </SortableHeader>
-                      <SortableHeader
-                        field="leadTime"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Lead Time
-                      </SortableHeader>
-                      <SortableHeader
-                        field="members"
-                        current={sortField}
-                        dir={sortDir}
-                        onSort={toggleSort}
-                      >
-                        Members
-                      </SortableHeader>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedMetrics.map((m) => {
-                      const childTeam = selectedTeam?.children.find((c) => c.id === m.teamId);
-                      return (
-                        <MetricsRow
-                          key={m.teamId}
-                          metrics={m}
-                          teamType={childTeam ? teamTypeLabel(childTeam.teamType) : undefined}
-                          teamTypeBadge={
-                            childTeam ? teamTypeBadgeVariant(childTeam.teamType) : undefined
-                          }
-                          hasChildren={(childTeam?.children.length ?? 0) > 0}
-                          onSelect={() => setSelectedTeamId(m.teamId)}
-                        />
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Throughput by Team</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 12 }}
-                      className="fill-muted-foreground"
-                    />
-                    <YAxis className="fill-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                        color: "hsl(var(--popover-foreground))",
-                      }}
-                    />
-                    <Bar
-                      dataKey="throughput"
-                      name="Throughput"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="reviewP75Hours"
-                      name="Review P75 (hrs)"
-                      fill="hsl(var(--muted-foreground))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </>
+        {/* Source platform badges */}
+        {currentMetrics && currentMetrics.sourcePlatforms.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sources:</span>
+            {currentMetrics.sourcePlatforms.map((p) => (
+              <Badge key={p} variant="outline">
+                {p}
+              </Badge>
+            ))}
+          </div>
         )}
 
+        {/* Child teams comparison table — right after cards */}
+        {selectedTeam && (childMetrics?.length ?? 0) > 0 && (
+          <ComparisonTable childMetrics={childMetrics ?? []} selectedTeam={selectedTeam} />
+        )}
+
+        {/* Trend charts — throughput + WIP */}
+        <ThroughputTrendChart flowMetrics={flowMetrics} />
+        <WipTrendChart flowMetrics={flowMetrics} />
+
         {/* No children message for leaf teams */}
-        {selectedTeam && !hasChildren && !isLoading && sortedMetrics.length === 0 && (
+        {selectedTeam && !hasChildren && !isLoading && (childMetrics?.length ?? 0) === 0 && (
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">
-                This is a leaf team with no sub-teams. Member details are shown below.
+                This is a leaf team with no sub-teams. Contributions and members are shown below.
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Merged PRs — collapsible */}
+        {/* Pull Requests — collapsible */}
         {selectedTeam && (
           <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
             <Card>
@@ -410,11 +248,8 @@ const TeamsPage = (): React.ReactElement => {
                 >
                   {hasChildren && membersOpen && <ChevronDown className="size-4" />}
                   {hasChildren && !membersOpen && <ChevronRight className="size-4" />}
+                  <Users className="size-4 text-muted-foreground" />
                   <CardTitle>Members ({members.length})</CardTitle>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="size-3" />
-                    {selectedTeam.name}
-                  </span>
                 </CollapsibleTrigger>
               </CardHeader>
               <CollapsibleContent>
