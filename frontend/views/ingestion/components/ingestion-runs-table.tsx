@@ -10,8 +10,8 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { RunDetailDialog } from "@/components/run-detail-dialog";
 import { formatDuration, formatTimestamp } from "@/lib/format";
-import { defaultStatus, statusConfig } from "@/lib/run-utils";
-import type { StatusFilter } from "@/lib/run-utils";
+import { defaultStatus, statusConfig } from "@/lib/run-status";
+import type { StatusFilter } from "@/lib/run-status";
 import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 
 const columns: ColumnDef<HandlerRun, unknown>[] = [

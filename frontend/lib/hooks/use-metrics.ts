@@ -16,17 +16,19 @@ import { transport } from "@ps/api/transport";
 
 const metricsClient = createClient(MetricsService, transport);
 
+const periodKey = (period: Period): string => `${period.type}-${period.start}`;
+
 export const metricsKeys = {
   all: ["metrics"] as const,
   compare: (teamIds: string[], period: Period) =>
-    [...metricsKeys.all, "compare", ...teamIds, `${period.type}-${period.start}`] as const,
+    [...metricsKeys.all, "compare", ...teamIds, periodKey(period)] as const,
   periods: () => [...metricsKeys.all, "periods"] as const,
   contributions: (teamId: string, period: Period, filters: ContributionFilters) =>
     [
       ...metricsKeys.all,
       "contributions",
       teamId,
-      `${period.type}-${period.start}`,
+      periodKey(period),
       filters.contributionType ?? "",
       filters.state ?? "",
       filters.search ?? "",
@@ -35,6 +37,25 @@ export const metricsKeys = {
       filters.pageSize,
       filters.pageIndex,
       filters.platform ?? "",
+    ] as const,
+  flow: (teamId: string, period: Period) =>
+    [...metricsKeys.all, "flow", teamId, periodKey(period)] as const,
+  individual: (personId: string, period: Period) =>
+    [...metricsKeys.all, "individual", personId, periodKey(period)] as const,
+  personContributions: (personId: string, filters: PersonContributionFilters) =>
+    [
+      ...metricsKeys.all,
+      "person-contributions",
+      personId,
+      filters.platform ?? "",
+      filters.contributionType ?? "",
+      filters.since ?? "",
+      filters.state ?? "",
+      filters.search ?? "",
+      filters.sortField ?? "",
+      filters.sortDesc ?? true,
+      filters.pageSize,
+      filters.pageIndex,
     ] as const,
 };
 
@@ -95,7 +116,7 @@ export const useGetFlowMetrics = (
   period: Period,
 ): UseQueryResult<GetFlowMetricsResponse, Error> =>
   useQuery({
-    queryKey: [...metricsKeys.all, "flow", teamId, `${period.type}-${period.start}`],
+    queryKey: metricsKeys.flow(teamId, period),
     queryFn: () => metricsClient.getFlowMetrics({ teamId, period }),
     enabled: teamId.length > 0,
   });
@@ -117,7 +138,7 @@ export const useGetIndividualProfile = (
   period: Period,
 ): UseQueryResult<GetIndividualProfileResponse, Error> =>
   useQuery({
-    queryKey: [...metricsKeys.all, "individual", personId, `${period.type}-${period.start}`],
+    queryKey: metricsKeys.individual(personId, period),
     queryFn: () => metricsClient.getIndividualProfile({ personId, period }),
     enabled: personId.length > 0,
   });
@@ -127,20 +148,7 @@ export const useListPersonContributions = (
   filters: PersonContributionFilters,
 ): UseQueryResult<ListPersonContributionsResponse, Error> =>
   useQuery({
-    queryKey: [
-      ...metricsKeys.all,
-      "person-contributions",
-      personId,
-      filters.platform ?? "",
-      filters.contributionType ?? "",
-      filters.since ?? "",
-      filters.state ?? "",
-      filters.search ?? "",
-      filters.sortField ?? "",
-      filters.sortDesc ?? true,
-      filters.pageSize,
-      filters.pageIndex,
-    ],
+    queryKey: metricsKeys.personContributions(personId, filters),
     queryFn: () =>
       metricsClient.listPersonContributions({
         personId,

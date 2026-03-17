@@ -1,6 +1,8 @@
 import { AlertCircle, Ban, CheckCircle2, Loader2 } from "lucide-react";
 import { createElement } from "react";
 
+export type StatusFilter = "all" | "completed" | "failed" | "cancelled" | "running";
+
 export type StatusStyle = {
   label: string;
   variant: "default" | "secondary" | "destructive";
@@ -13,7 +15,7 @@ export const defaultStatus: StatusStyle = {
   icon: createElement(Loader2, { className: "size-3 animate-spin" }),
 };
 
-export const statusConfig: Record<string, StatusStyle> = {
+export const statusConfig = {
   completed: {
     label: "Completed",
     variant: "secondary",
@@ -30,6 +32,4 @@ export const statusConfig: Record<string, StatusStyle> = {
     icon: createElement(Ban, { className: "size-3" }),
   },
   running: defaultStatus,
-};
-
-export type StatusFilter = "all" | "completed" | "failed" | "cancelled" | "running";
+} satisfies Record<Exclude<StatusFilter, "all">, StatusStyle> as Record<string, StatusStyle>;

@@ -1,148 +1,26 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { ColumnDef } from "@tanstack/react-table";
 import { AlertCircle, Cog, Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 
-import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
-import { useListSources } from "@ps/hooks/use-config";
+import type { HandlerInfo } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { RunDetailDialog } from "@/components/run-detail-dialog";
-import { formatDuration, formatRelativeTime, formatTimestamp } from "@/lib/format";
-import { defaultStatus, statusConfig } from "@/lib/run-utils";
-import type { StatusFilter } from "@/lib/run-utils";
+import { formatRelativeTime } from "@/lib/format";
 import {
   useCancelHandlerRun,
   useListHandlers,
   useListRuns,
-  useTriggerHandler,
 } from "@/views/ingestion/hooks/use-ingestion";
+
+import { HandlerRunsTable } from "@/views/admin/components/handler-runs-table";
+import { TriggerHandlerDialog } from "@/views/admin/components/trigger-handler-dialog";
 
 /** Strip the "Handler" suffix for display. */
 const displayName = (name: string): string => name.replace("Handler", "");
-
-const TriggerHandlerDialog = ({
-  handler,
-  open,
-  onOpenChange,
-}: {
-  handler: HandlerInfo;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}): React.ReactElement => {
-  const { data: sources } = useListSources();
-  const trigger = useTriggerHandler();
-  const [method, setMethod] = useState(handler.methods[0] ?? "");
-  const [sourceName, setSourceName] = useState("");
-
-  const needsSource = handler.requiresKey;
-
-  const handleTrigger = (): void => {
-    if ((needsSource && !sourceName) || !method) return;
-    trigger.mutate(
-      { handlerName: handler.name, method, key: sourceName },
-      {
-        onSuccess: (resp) => {
-          toast.success(
-            `Triggered ${displayName(handler.name)}.${method} (${resp.invocationId.slice(0, 12)}...)`,
-          );
-          onOpenChange(false);
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Failed to trigger handler");
-        },
-      },
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Trigger {displayName(handler.name)}</DialogTitle>
-          <DialogDescription>{handler.description}</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Method</label>
-            <Select value={method} onValueChange={(v) => v !== null && setMethod(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {handler.methods.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {needsSource && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Source</label>
-              <Select value={sourceName} onValueChange={(v) => v !== null && setSourceName(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a source..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sources?.map((s) => (
-                    <SelectItem key={s.id} value={s.name}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-          <Button
-            onClick={handleTrigger}
-            disabled={(needsSource && !sourceName) || !method || trigger.isPending}
-          >
-            {trigger.isPending ? (
-              <Loader2 className="mr-1 size-4 animate-spin" />
-            ) : (
-              <Play className="mr-1 size-4" />
-            )}
-            Trigger
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Handler card — mirrors SourceStatusRow pattern from the ingestion page
-// ---------------------------------------------------------------------------
 
 const HandlerCard = ({
   handler,
@@ -240,226 +118,12 @@ const HandlerCard = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// Run history table columns — handler-centric, never shows "_system"
-// ---------------------------------------------------------------------------
-
-const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
-  {
-    accessorKey: "handlerName",
-    header: "Handler",
-    cell: ({ row }): React.ReactElement => {
-      const source = row.original.sourceName;
-      const suffix = source && source !== "_system" ? ` \u2014 ${source}` : "";
-      return (
-        <div>
-          <span className="font-medium">
-            {displayName(row.original.handlerName)}.{row.original.handlerMethod}
-          </span>
-          {suffix && <span className="text-muted-foreground">{suffix}</span>}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "startedAt",
-    header: "Started",
-    cell: ({ row }): React.ReactElement => (
-      <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>
-    ),
-  },
-  {
-    id: "duration",
-    header: "Duration",
-    cell: ({ row }): React.ReactElement => (
-      <span className="text-xs">
-        {formatDuration(row.original.startedAt, row.original.completedAt)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "itemsCollected",
-    header: () => <span className="block text-right">Items</span>,
-    cell: ({ row }): React.ReactElement => (
-      <span className="block text-right tabular-nums">
-        {row.original.itemsCollected.toLocaleString()}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }): React.ReactElement => {
-      const cfg = statusConfig[row.original.status] ?? defaultStatus;
-      return (
-        <Badge variant={cfg.variant} className="gap-1">
-          {cfg.icon}
-          {cfg.label}
-        </Badge>
-      );
-    },
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Run history table
-// ---------------------------------------------------------------------------
-
-const HandlerRunsTable = ({
-  runs,
-  handlers,
-}: {
-  runs: HandlerRun[];
-  handlers: HandlerInfo[];
-}): React.ReactElement => {
-  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
-  const [handlerFilter, setHandlerFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [pageSize, setPageSize] = useState(10);
-  const [pageIndex, setPageIndex] = useState(0);
-  const cancelRun = useCancelHandlerRun();
-
-  const handleCancel = useCallback(
-    (runId: string) => {
-      cancelRun.mutate(runId, {
-        onSuccess: () => {
-          toast.success("Run cancelled");
-          setSelectedRun(null);
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
-      });
-    },
-    [cancelRun],
-  );
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [handlerFilter, statusFilter, pageSize]);
-
-  const filteredRuns = useMemo(() => {
-    let result = runs;
-    if (handlerFilter !== "all") {
-      result = result.filter((r) => r.handlerName === handlerFilter);
-    }
-    if (statusFilter !== "all") {
-      result = result.filter((r) => r.status === statusFilter);
-    }
-    return result;
-  }, [runs, handlerFilter, statusFilter]);
-
-  const totalCount = filteredRuns.length;
-  const pageRuns = filteredRuns.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
-  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
-
-  const handleNextPage = useCallback(() => {
-    setPageIndex((i) => i + 1);
-  }, []);
-
-  const handlePrevPage = useCallback(() => {
-    setPageIndex((i) => Math.max(0, i - 1));
-  }, []);
-
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          <Button
-            variant={handlerFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setHandlerFilter("all")}
-          >
-            All handlers
-          </Button>
-          {handlers.map((h) => (
-            <Button
-              key={h.name}
-              variant={handlerFilter === h.name ? "default" : "outline"}
-              size="sm"
-              onClick={() => setHandlerFilter(h.name)}
-            >
-              {displayName(h.name)}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant={statusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={statusFilter === "completed" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("completed")}
-          >
-            Completed
-          </Button>
-          <Button
-            variant={statusFilter === "failed" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("failed")}
-          >
-            Failed
-          </Button>
-          <Button
-            variant={statusFilter === "running" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("running")}
-          >
-            Running
-          </Button>
-        </div>
-      </div>
-
-      <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />
-
-      <DataTablePagination
-        totalCount={totalCount}
-        pageSize={pageSize}
-        pageIndex={pageIndex}
-        hasNextPage={hasNextPage}
-        onPageSizeChange={handlePageSizeChange}
-        onPreviousPage={handlePrevPage}
-        onNextPage={handleNextPage}
-      />
-
-      {selectedRun && (
-        <RunDetailDialog
-          run={selectedRun}
-          title={`${displayName(selectedRun.handlerName)}.${selectedRun.handlerMethod}`}
-          description={
-            selectedRun.sourceName === "_system"
-              ? "Run details"
-              : `Source: ${selectedRun.sourceName}`
-          }
-          open={!!selectedRun}
-          onOpenChange={(open) => {
-            if (!open) setSelectedRun(null);
-          }}
-          onCancel={handleCancel}
-          cancelPending={cancelRun.isPending}
-        />
-      )}
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Main tab
-// ---------------------------------------------------------------------------
-
 export const HandlersTab = (): React.ReactElement => {
   const { data: handlers, isLoading: handlersLoading, error: handlersError } = useListHandlers();
   const { data: runs } = useListRuns(undefined, { refetchInterval: 5000 });
   const cancelRun = useCancelHandlerRun();
 
-  const handleCancelFromCard = useCallback(
+  const handleCancel = useCallback(
     (runId: string) => {
       cancelRun.mutate(runId, {
         onSuccess: () => toast.success("Run cancelled"),
@@ -492,7 +156,7 @@ export const HandlersTab = (): React.ReactElement => {
               <HandlerCard
                 key={h.name}
                 handler={h}
-                onCancelRun={handleCancelFromCard}
+                onCancelRun={handleCancel}
                 cancelPending={cancelRun.isPending}
               />
             ))}
@@ -506,7 +170,12 @@ export const HandlersTab = (): React.ReactElement => {
           <CardTitle className="text-base">Run History</CardTitle>
         </CardHeader>
         <CardContent>
-          <HandlerRunsTable runs={runs ?? []} handlers={handlers ?? []} />
+          <HandlerRunsTable
+            runs={runs ?? []}
+            handlers={handlers ?? []}
+            onCancelRun={handleCancel}
+            cancelPending={cancelRun.isPending}
+          />
         </CardContent>
       </Card>
     </div>

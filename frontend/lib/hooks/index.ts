@@ -20,8 +20,18 @@ export {
   useCompareTeams,
   useListPeriods,
   useListTeamContributions,
+  useGetFlowMetrics,
+  useGetIndividualProfile,
+  useListPersonContributions,
   metricsKeys,
   PeriodType,
 } from "./use-metrics";
-export type { ContributionFilters, Contribution } from "./use-metrics";
+export type {
+  ContributionFilters,
+  PersonContributionFilters,
+  Contribution,
+  GetFlowMetricsResponse,
+  GetIndividualProfileResponse,
+} from "./use-metrics";
 export { useIsMobile } from "./use-mobile";
+export { useDebouncedValue } from "./use-debounced-value";

@@ -13,7 +13,7 @@ import { Loader2, Square } from "lucide-react";
 import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
 import { formatDuration, formatFullTimestamp } from "@/lib/format";
-import { defaultStatus, statusConfig } from "@/lib/run-utils";
+import { defaultStatus, statusConfig } from "@/lib/run-status";
 
 export const RunDetailDialog = ({
   run,
