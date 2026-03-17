@@ -628,9 +628,53 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
+        // Reconcile: verify each "active" run is actually alive in Restate
+        let mut verified_runs = Vec::new();
+        for run in &active_runs {
+            if run.source_name == "_system" {
+                // System handlers don't have invocation IDs — trust the DB
+                verified_runs.push(run);
+                continue;
+            }
+
+            // Check if the source has a stored invocation ID
+            let inv_id = self
+                .repos
+                .activity
+                .get_current_invocation_id(&run.source_name)
+                .await
+                .ok()
+                .flatten();
+
+            match inv_id {
+                Some(id) if self.is_invocation_alive(&id).await => {
+                    verified_runs.push(run);
+                }
+                _ => {
+                    // Stale — cancel in DB
+                    warn!(
+                        source = %run.source_name,
+                        handler = %run.handler_name,
+                        "reconciling stale handler run in ListHandlers",
+                    );
+                    let _ = self
+                        .repos
+                        .activity
+                        .cancel_active_runs_with_reason(
+                            &run.source_name,
+                            "Cancelled — invocation no longer active in Restate",
+                        )
+                        .await;
+                }
+            }
+        }
+
         let mut handlers = known_handlers();
         for handler in &mut handlers {
-            if let Some(run) = active_runs.iter().find(|r| r.handler_name == handler.name) {
+            if let Some(run) = verified_runs
+                .iter()
+                .find(|r| r.handler_name == handler.name)
+            {
                 handler.active_run = Some(ActiveRun {
                     run_id: run.id.to_string(),
                     method: run.handler_method.clone(),
