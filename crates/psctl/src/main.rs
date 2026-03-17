@@ -64,6 +64,16 @@ enum Command {
         /// Path to .ps-backup file
         file: String,
     },
+
+    /// Show team metrics (flow, DORA, review turnaround)
+    Metrics {
+        /// Team name or ID
+        team: String,
+
+        /// Period type: week, month, or quarter
+        #[arg(long, default_value = "month")]
+        period: String,
+    },
 }
 
 #[tokio::main]
@@ -83,5 +93,6 @@ async fn main() -> Result<()> {
         }
         Command::Backup { output } => commands::backup(&mut clients, output).await,
         Command::Restore { file } => commands::restore(&mut clients, &file).await,
+        Command::Metrics { team, period } => commands::metrics(&mut clients, &team, &period).await,
     }
 }

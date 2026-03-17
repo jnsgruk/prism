@@ -1,4 +1,5 @@
 mod backup;
+mod metrics;
 mod restore;
 mod runs;
 mod sources;
@@ -6,6 +7,7 @@ mod status;
 mod trigger;
 
 pub use backup::backup;
+pub use metrics::metrics;
 pub use restore::restore;
 pub use runs::runs;
 pub use sources::sources;
