@@ -149,17 +149,6 @@ const TeamsPage = (): React.ReactElement => {
         <ThroughputTrendChart flowMetrics={flowMetrics} />
         <WipTrendChart flowMetrics={flowMetrics} />
 
-        {/* No children message for leaf teams */}
-        {selectedTeam && !hasChildren && !isLoading && (childMetrics?.length ?? 0) === 0 && (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">
-                This is a leaf team with no sub-teams. Contributions and members are shown below.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Pull Requests — collapsible */}
         {selectedTeam && (
           <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
