@@ -246,34 +246,34 @@ The collapsible section lazily fetches the `GetDiscourseActivity` data only when
 ## Implementation Order
 
 ### Step 1: Metrics computation + snapshot storage
-- [ ] Add `ps-metrics/src/discourse.rs` with `compute_discourse_metrics`
-- [ ] Wire into `compute_team_snapshot` in `ps-metrics/src/lib.rs`
-- [ ] Map Discourse metrics from `raw_metrics` JSON into `TeamMetrics` proto fields
-- [ ] Add new proto fields to `TeamMetrics`
-- [ ] `buf generate`
+- [x] Add `ps-metrics/src/discourse.rs` with `compute_discourse_metrics`
+- [x] Wire into `compute_team_snapshot` in `ps-metrics/src/lib.rs`
+- [x] Map Discourse metrics from `raw_metrics` JSON into `TeamMetrics` proto fields
+- [x] Add new proto fields to `TeamMetrics`
+- [x] `buf generate`
 
 ### Step 2: Discourse metric cards + comparison columns
-- [ ] Update `TeamMetricCards` with conditional Discourse row
-- [ ] Add Discourse columns to `ComparisonTable`
-- [ ] Wire through existing `useCompareTeams` data (no new RPCs)
+- [x] Update `TeamMetricCards` with conditional Discourse row
+- [x] Add Discourse columns to `ComparisonTable`
+- [x] Wire through existing `useCompareTeams` data (no new RPCs)
 
 ### Step 3: Discourse activity RPC + leaf-team drilldown
-- [ ] Add repo queries (category distribution, activity trend, top contributors)
-- [ ] Add `GetDiscourseActivity` proto definition + RPC
-- [ ] Implement `MetricsService::get_discourse_activity`
-- [ ] `buf generate`, `cargo sqlx prepare`
+- [x] Add repo queries (category distribution, activity trend, top contributors)
+- [x] Add `GetDiscourseActivity` proto definition + RPC
+- [x] Implement `MetricsService::get_discourse_activity`
+- [x] `buf generate`, `cargo sqlx prepare`
 
 ### Step 4: Frontend Discourse activity section
-- [ ] New `DiscourseActivitySection` component in `views/teams/components/`
-- [ ] Activity trend chart (stacked area)
-- [ ] Category distribution chart (horizontal bar)
-- [ ] Top contributors table
-- [ ] Instance tab filtering
-- [ ] Hook for `GetDiscourseActivity`
+- [x] New `DiscourseActivitySection` component in `views/teams/components/`
+- [x] Activity trend chart (stacked area)
+- [x] Category distribution → replaced with server-paginated topics table
+- [x] Top contributors table
+- [x] Instance tab filtering
+- [x] Hook for `GetDiscourseActivity`
 
 ### Step 5: Polish
-- [ ] Empty states when no Discourse sources configured
-- [ ] Loading skeletons for lazy-loaded section
+- [x] Empty states when no Discourse sources configured
+- [x] Loading skeletons for lazy-loaded section
 - [ ] Tooltip descriptions for all new metric cards
 
 ## Dependencies
