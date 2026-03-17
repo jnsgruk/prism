@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import { fmtHours } from "@/lib/format-metrics";
 
 const MetricCard = ({
   label,
@@ -55,8 +56,6 @@ const MetricCard = ({
     </CardContent>
   </Card>
 );
-
-const formatHours = (h: number): string => (h > 0 ? `${h.toFixed(1)}h` : "\u2014");
 
 export const TeamMetricCards = ({
   metrics,
@@ -106,8 +105,8 @@ export const TeamMetricCards = ({
           <MetricCard
             icon={Clock}
             label="Review Turnaround (P75)"
-            value={formatHours(p75)}
-            secondary={p75 > 0 ? `P90 ${formatHours(p90)} · P99 ${formatHours(p99)}` : undefined}
+            value={fmtHours(p75)}
+            secondary={p75 > 0 ? `P90 ${fmtHours(p90)} · P99 ${fmtHours(p99)}` : undefined}
             description="Time from PR ready-for-review to first review, 75th percentile."
           />
           <MetricCard
@@ -128,7 +127,7 @@ export const TeamMetricCards = ({
             <MetricCard
               icon={Timer}
               label="Avg Cycle Time"
-              value={formatHours(cycleTime)}
+              value={fmtHours(cycleTime)}
               description="Average time from first commit to PR merge."
             />
             <MetricCard
@@ -140,7 +139,7 @@ export const TeamMetricCards = ({
             <MetricCard
               icon={ArrowRight}
               label="Lead Time"
-              value={formatHours(leadTime)}
+              value={fmtHours(leadTime)}
               description="Average time from issue creation to PR merge."
             />
             <MetricCard

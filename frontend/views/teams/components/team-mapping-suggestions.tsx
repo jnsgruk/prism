@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronRight, GitBranch, Lightbulb, X } from "lucid
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { z } from "zod";
 import type { TeamMappingSuggestion } from "@ps/api/gen/prism/v1/org_pb";
 
 import {
@@ -15,10 +16,15 @@ import { useGetTeamMappingSuggestions } from "@/views/teams/hooks/use-teams";
 
 const STORAGE_KEY = "prism:suggestions-collapsed";
 
+const collapsedSchema = z.array(z.string());
+
 const getCollapsedTeams = (): Set<string> => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
+    if (raw) {
+      const parsed = collapsedSchema.safeParse(JSON.parse(raw));
+      if (parsed.success) return new Set(parsed.data);
+    }
   } catch {
     // ignore
   }

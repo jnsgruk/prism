@@ -12,9 +12,11 @@ import {
   type OnChangeFn,
   type SortingState,
   flexRender,
-  getCoreRowModel,
+  getCoreRowModel as createCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+
+const coreRowModel = createCoreRowModel();
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
@@ -36,7 +38,7 @@ export const DataTable = <TData,>({
     columns,
     state: { sorting: sorting ?? [] },
     onSortingChange,
-    getCoreRowModel: getCoreRowModel(),
+    getCoreRowModel: coreRowModel,
     manualSorting: true,
   });
 

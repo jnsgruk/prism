@@ -59,6 +59,16 @@ const UserInitials = ({ name }: { name: string }): React.ReactElement => {
   );
 };
 
+const UserInfoBlock = ({ user }: { user: User }): React.ReactElement => (
+  <>
+    <UserInitials name={user.displayName} />
+    <div className="grid flex-1 text-left text-sm leading-tight">
+      <span className="truncate font-semibold">{user.displayName}</span>
+      <span className="truncate text-xs text-muted-foreground">{user.username}</span>
+    </div>
+  </>
+);
+
 export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -121,20 +131,12 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                   />
                 }
               >
-                <UserInitials name={user.displayName} />
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.displayName}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user.username}</span>
-                </div>
+                <UserInfoBlock user={user} />
                 <ChevronsUpDown className="ml-auto size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" side="top" align="start" sideOffset={4}>
                 <div className="flex items-center gap-2 px-2 py-1.5">
-                  <UserInitials name={user.displayName} />
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user.displayName}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.username}</span>
-                  </div>
+                  <UserInfoBlock user={user} />
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem render={<Link to="/admin" />}>

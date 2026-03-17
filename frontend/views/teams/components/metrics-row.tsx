@@ -4,9 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-
-const fmtHours = (h: number): string => (h > 0 ? `${h.toFixed(1)}h` : "\u2014");
-const fmtFloat = (v: number): string => (v > 0 ? v.toFixed(1) : "\u2014");
+import { fmtFloat, fmtHours } from "@/lib/format-metrics";
 
 export const MetricsRow = ({
   metrics,

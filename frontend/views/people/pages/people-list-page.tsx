@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -12,68 +11,30 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert } from "@/components/ui/alert";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 import { ChevronsUpDown, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import type { Person } from "@ps/api/gen/prism/v1/org_pb";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { PageHeader } from "@/components/page-header";
+import {
+  personNameColumn,
+  personTeamColumn,
+  personIdentitiesColumn,
+} from "@/views/people/components/person-columns";
 import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 
-const columns: ColumnDef<Person, unknown>[] = [
-  {
-    accessorKey: "name",
-    header: "Name",
-    enableSorting: true,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <span className="font-medium">{row.original.name}</span>
-        {!row.original.active && (
-          <Badge variant="destructive" className="text-[10px]">
-            Inactive
-          </Badge>
-        )}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "team_name",
-    header: "Team",
-    enableSorting: true,
-    cell: ({ row }) =>
-      row.original.teamName ? (
-        <Badge variant="secondary">{row.original.teamName}</Badge>
-      ) : (
-        <span className="text-muted-foreground">{"\u2014"}</span>
-      ),
-  },
-  {
-    id: "identities",
-    header: "Identities",
-    enableSorting: false,
-    cell: ({ row }) => {
-      const count = row.original.identities.length;
-      return count > 0 ? (
-        <Badge variant="outline" className="text-[10px]">
-          {count} {count === 1 ? "identity" : "identities"}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground">{"\u2014"}</span>
-      );
-    },
-  },
-];
+const columns = [personNameColumn, personTeamColumn, personIdentitiesColumn];
 
 const PeopleListPage = (): React.ReactElement => {
   const navigate = useNavigate();
   const [teamId, setTeamId] = useState<string | undefined>(undefined);
   const [teamOpen, setTeamOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageTokens, setPageTokens] = useState<string[]>([""]);
@@ -86,13 +47,6 @@ const PeopleListPage = (): React.ReactElement => {
     () => flatTeams.find((ft) => ft.team.id === teamId)?.team.name,
     [flatTeams, teamId],
   );
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return (): void => {
-      clearTimeout(timer);
-    };
-  }, [search]);
 
   useEffect(() => {
     setPageIndex(0);

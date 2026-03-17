@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import type { GitHubTeam } from "@ps/api/gen/prism/v1/org_pb";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,16 +27,9 @@ export const GithubTeamPickerDialog = ({
   alreadyAssigned: string[];
 }): React.ReactElement => {
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const { data: allTeams, isLoading } = useListGithubTeams(debouncedSearch || undefined);
   const assign = useAssignGithubTeam();
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return (): void => {
-      clearTimeout(timer);
-    };
-  }, [search]);
 
   const available = allTeams?.filter((t) => !alreadyAssigned.includes(t.id)) ?? [];
 

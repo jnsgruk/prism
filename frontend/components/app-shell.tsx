@@ -67,7 +67,7 @@ export const AppShell = ({
 
   return (
     <SidebarProvider>
-      <AppSidebar user={user!} />
+      <AppSidebar user={user ?? { displayName: "", username: "" }} />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   );

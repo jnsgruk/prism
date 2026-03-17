@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { ExternalLink, Search } from "lucide-react";
-import { useRef, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
@@ -16,6 +16,8 @@ import type {
   PersonContributionFilters,
 } from "@/lib/hooks/use-metrics";
 import { useListTeamContributions, useListPersonContributions } from "@/lib/hooks/use-metrics";
+import { instanceLabel } from "@/lib/format-metrics";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 const formatTimestamp = (ts?: Timestamp): string => {
   if (!ts) return "\u2014";
@@ -190,12 +192,6 @@ const prStatsColumn: ColumnDef<Contribution, unknown> = {
 // Discourse columns
 // ---------------------------------------------------------------------------
 
-const instanceLabel = (platform: string): string => {
-  const suffix = platform.replace(/^discourse-?/, "");
-  if (!suffix) return platform;
-  return suffix.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-};
-
 const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "title",
   header: "Title",
@@ -257,6 +253,20 @@ type PrStateFilter = "all" | "merged" | "open" | "closed";
 type ReviewStateFilter = "all" | "APPROVED" | "COMMENTED" | "CHANGES_REQUESTED" | "DISMISSED";
 type StateFilter = PrStateFilter | ReviewStateFilter;
 
+const allStateFilters = new Set<string>([
+  "all",
+  "merged",
+  "open",
+  "closed",
+  "APPROVED",
+  "COMMENTED",
+  "CHANGES_REQUESTED",
+  "DISMISSED",
+]);
+
+const parseStateFilter = (value?: string): StateFilter =>
+  value && allStateFilters.has(value) ? (value as StateFilter) : "all";
+
 const prStates: PrStateFilter[] = ["all", "merged", "open", "closed"];
 const reviewStates: ReviewStateFilter[] = [
   "all",
@@ -299,9 +309,7 @@ export const ContributionTable = ({
   const isDiscourse =
     (defaultContributionType?.startsWith("discourse") ?? false) ||
     (defaultPlatform?.startsWith("discourse") ?? false);
-  const [stateFilter, setStateFilter] = useState<StateFilter>(
-    (defaultState as StateFilter) ?? "all",
-  );
+  const [stateFilter, setStateFilter] = useState<StateFilter>(parseStateFilter(defaultState));
 
   const activeStates: StateFilter[] = (() => {
     if (isDiscourse) return [];
@@ -332,21 +340,10 @@ export const ContributionTable = ({
       : [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn];
   }, [isReview, isDiscourse, isPersonMode]);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
-
-  // Debounce search input
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const handleSearchChange = (value: string): void => {
-    setSearch(value);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPageIndex(0);
-    }, 300);
-  };
 
   const activeSortCol = sorting[0] as SortingState[number] | undefined;
   const sortField = activeSortCol?.id;
@@ -406,7 +403,10 @@ export const ContributionTable = ({
           <Input
             placeholder="Search..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPageIndex(0);
+            }}
             className="h-8 w-48 pl-8 text-xs"
           />
         </div>

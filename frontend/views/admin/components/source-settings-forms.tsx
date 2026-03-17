@@ -13,7 +13,7 @@ import { X } from "lucide-react";
 import { useState } from "react";
 
 import type { JsonObject } from "@bufbuild/protobuf";
-import { cn } from "@ps/cn";
+import { Switch } from "@/components/ui/switch";
 
 const toStringArray = (val: unknown): string[] => {
   if (!Array.isArray(val)) return [];
@@ -151,21 +151,10 @@ const GitHubSettingsForm = ({
             Skip archived repositories during discovery.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => update({ exclude_archived: !excludeArchived })}
-          className={cn(
-            "relative h-5 w-9 rounded-full transition-colors",
-            excludeArchived ? "bg-green-500" : "bg-muted",
-          )}
-        >
-          <span
-            className={cn(
-              "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
-              excludeArchived ? "left-[18px]" : "left-0.5",
-            )}
-          />
-        </button>
+        <Switch
+          checked={excludeArchived}
+          onCheckedChange={(checked) => update({ exclude_archived: checked })}
+        />
       </div>
 
       {/* Exclude repos */}

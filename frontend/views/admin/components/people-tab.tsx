@@ -1,5 +1,4 @@
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,14 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 import type { Person, Team } from "@ps/api/gen/prism/v1/org_pb";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { personNameColumn, personTeamColumn } from "@/views/people/components/person-columns";
 import {
   useUpdatePerson,
   useDeactivatePerson,
@@ -41,36 +42,13 @@ import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-team
 
 type Filter = "all" | "unassigned" | "inactive";
 
-const columns: ColumnDef<Person, unknown>[] = [
-  {
-    accessorKey: "name",
-    header: "Name",
-    enableSorting: true,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <span className="font-medium">{row.original.name}</span>
-        {!row.original.active && <Badge variant="destructive">Inactive</Badge>}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "team_name",
-    header: "Team",
-    enableSorting: true,
-    cell: ({ row }) =>
-      row.original.teamName ? (
-        <Badge variant="secondary">{row.original.teamName}</Badge>
-      ) : (
-        <span className="text-muted-foreground">&mdash;</span>
-      ),
-  },
-];
+const columns = [personNameColumn, personTeamColumn];
 
 export const PeopleTab = (): React.ReactElement => {
   const { data: tree } = useGetTeamTree();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageTokens, setPageTokens] = useState<string[]>([""]);
@@ -78,14 +56,6 @@ export const PeopleTab = (): React.ReactElement => {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
-
-  // Debounce search input.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return (): void => {
-      clearTimeout(timer);
-    };
-  }, [search]);
 
   // Reset to first page when filters change.
   useEffect(() => {

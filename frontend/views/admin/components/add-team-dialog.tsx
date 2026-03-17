@@ -32,6 +32,12 @@ const teamTypeOptions = [
   { value: String(TeamType.SQUAD), label: "Squad" },
 ];
 
+const validTeamTypes = new Map<string, TeamType>([
+  [String(TeamType.GROUP), TeamType.GROUP],
+  [String(TeamType.TEAM), TeamType.TEAM],
+  [String(TeamType.SQUAD), TeamType.SQUAD],
+]);
+
 interface AddTeamDialogProps {
   teams: Team[];
   open: boolean;
@@ -62,7 +68,7 @@ export const AddTeamDialog = ({
     createTeam.mutate(
       {
         name,
-        teamType: Number(teamType) as TeamType,
+        teamType: validTeamTypes.get(teamType) ?? TeamType.TEAM,
         orgName: teams[0]?.orgName ?? "",
         leadId: leadId || undefined,
         parentTeamId: parentTeamId || undefined,

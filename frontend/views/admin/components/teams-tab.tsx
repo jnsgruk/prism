@@ -9,6 +9,7 @@ import {
 import { Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 import type { Team } from "@ps/api/gen/prism/v1/org_pb";
 
@@ -27,6 +28,7 @@ export const TeamsTab = (): React.ReactElement => {
   const selectedTeamId = searchParams.get("team");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
 
   const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
 
@@ -46,9 +48,7 @@ export const TeamsTab = (): React.ReactElement => {
   );
 
   const handleDelete = (team: Team): void => {
-    if (confirm(`Delete team "${team.name}" and all sub-teams?`)) {
-      deleteTeam.mutate(team.id);
-    }
+    setDeletingTeam(team);
   };
 
   return (
@@ -93,6 +93,19 @@ export const TeamsTab = (): React.ReactElement => {
       </Sheet>
 
       <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+
+      {deletingTeam && (
+        <ConfirmDialog
+          open={!!deletingTeam}
+          onOpenChange={(open) => {
+            if (!open) setDeletingTeam(null);
+          }}
+          title={`Delete "${deletingTeam.name}"?`}
+          description="This will permanently delete the team and all sub-teams. This action cannot be undone."
+          confirmLabel="Delete"
+          onConfirm={() => deleteTeam.mutate(deletingTeam.id)}
+        />
+      )}
 
       {editingTeam && (
         <EditTeamDialog

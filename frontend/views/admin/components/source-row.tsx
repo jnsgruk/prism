@@ -1,12 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Key, Loader2, Plug, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
-import { cn } from "@ps/cn";
 
 import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
 import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
@@ -18,6 +19,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
   const testConnection = useTestConnection();
   const triggerTeamSync = useTriggerTeamSync();
   const [showEdit, setShowEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
@@ -29,31 +31,19 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
   };
 
   const handleDelete = (): void => {
-    if (confirm(`Delete source "${source.name}"?`)) {
-      deleteSource.mutate(source.id);
-    }
+    deleteSource.mutate(source.id);
   };
 
   return (
     <>
       <div className="flex items-center justify-between rounded-lg border px-4 py-3">
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleToggleEnabled}
+          <Switch
+            checked={source.enabled}
+            onCheckedChange={handleToggleEnabled}
             disabled={updateSource.isPending}
-            className={cn(
-              "relative h-5 w-9 rounded-full transition-colors",
-              source.enabled ? "bg-green-500" : "bg-muted",
-            )}
-            title={source.enabled ? "Disable source" : "Enable source"}
-          >
-            <span
-              className={cn(
-                "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
-                source.enabled ? "left-[18px]" : "left-0.5",
-              )}
-            />
-          </button>
+            aria-label={source.enabled ? "Disable source" : "Enable source"}
+          />
 
           <div>
             <p className="text-sm font-medium">{source.name}</p>
@@ -132,7 +122,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteSource.isPending}
             title="Delete source"
             className="hover:text-destructive"
@@ -143,6 +133,14 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
       </div>
 
       <EditSourceDialog source={source} open={showEdit} onOpenChange={setShowEdit} />
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={`Delete "${source.name}"?`}
+        description="This will permanently remove the source and all associated configuration. This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+      />
     </>
   );
 };
