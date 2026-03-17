@@ -4,6 +4,8 @@
 // @ts-nocheck
 
 import {
+  CancelHandlerRunRequest,
+  CancelHandlerRunResponse,
   CancelRunRequest,
   CancelRunResponse,
   GetStatusRequest,
@@ -101,6 +103,15 @@ export const HandlersService = {
       name: "TriggerHandler",
       I: TriggerHandlerRequest,
       O: TriggerHandlerResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.HandlersService.CancelHandlerRun
+     */
+    cancelHandlerRun: {
+      name: "CancelHandlerRun",
+      I: CancelHandlerRunRequest,
+      O: CancelHandlerRunResponse,
       kind: MethodKind.Unary,
     },
   },

@@ -15,6 +15,7 @@ service HandlersService {
   // Generic handler management
   rpc ListHandlers(ListHandlersRequest) returns (ListHandlersResponse);
   rpc TriggerHandler(TriggerHandlerRequest) returns (TriggerHandlerResponse);
+  rpc CancelHandlerRun(CancelHandlerRunRequest) returns (CancelHandlerRunResponse);
 }
 
 enum SourceState {
@@ -59,6 +60,8 @@ message GetStatusResponse {
 message ListRunsRequest {
   optional string source_name = 1;
   optional string handler_name = 2;
+  // When true, exclude system handler runs (identity resolution, metrics compute).
+  bool ingestion_only = 3;
 }
 
 message ListRunsResponse {
@@ -92,11 +95,19 @@ message TriggerTeamSyncResponse {}
 
 // Generic handler management
 
+message ActiveRun {
+  string run_id = 1;
+  string method = 2;
+  optional string key = 3;
+  google.protobuf.Timestamp started_at = 4;
+}
+
 message HandlerInfo {
   string name = 1;
   repeated string methods = 2;
   string description = 3;
   bool requires_key = 4;
+  optional ActiveRun active_run = 5;
 }
 
 message ListHandlersRequest {}
@@ -115,3 +126,9 @@ message TriggerHandlerRequest {
 message TriggerHandlerResponse {
   string invocation_id = 1;
 }
+
+message CancelHandlerRunRequest {
+  string run_id = 1;
+}
+
+message CancelHandlerRunResponse {}

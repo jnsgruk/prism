@@ -5,11 +5,12 @@ use ps_core::repo::Repos;
 use ps_core::repo::activity::SourceStatusRow;
 use ps_proto::prism::v1::handlers_service_server::HandlersService;
 use ps_proto::prism::v1::{
-    CancelRunRequest, CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerInfo,
-    HandlerRun, ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse,
-    SourceState, SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse,
-    TriggerHandlerRequest, TriggerHandlerResponse, TriggerRunRequest, TriggerRunResponse,
-    TriggerTeamSyncRequest, TriggerTeamSyncResponse,
+    ActiveRun, CancelHandlerRunRequest, CancelHandlerRunResponse, CancelRunRequest,
+    CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerInfo, HandlerRun,
+    ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse, SourceState,
+    SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest,
+    TriggerHandlerResponse, TriggerRunRequest, TriggerRunResponse, TriggerTeamSyncRequest,
+    TriggerTeamSyncResponse,
 };
 use regex::Regex;
 use tonic::{Request, Response, Status};
@@ -81,6 +82,7 @@ fn known_handlers() -> Vec<HandlerInfo> {
             methods: methods.iter().map(|m| (*m).to_string()).collect(),
             description: (*description).into(),
             requires_key: *requires_key,
+            active_run: None,
         })
         .collect()
 }
@@ -406,7 +408,11 @@ impl HandlersService for HandlersServiceImpl {
         let rows = self
             .repos
             .activity
-            .list_runs(filter_name.as_deref(), filter_handler.as_deref())
+            .list_runs(
+                filter_name.as_deref(),
+                filter_handler.as_deref(),
+                req.ingestion_only,
+            )
             .await
             .map_err(db_err)?;
 
@@ -610,9 +616,30 @@ impl HandlersService for HandlersServiceImpl {
     ) -> Result<Response<ListHandlersResponse>, Status> {
         let _ctx = require_auth(&request)?;
 
-        Ok(Response::new(ListHandlersResponse {
-            handlers: known_handlers(),
-        }))
+        let active_runs = self
+            .repos
+            .activity
+            .get_active_handler_runs()
+            .await
+            .map_err(db_err)?;
+
+        let mut handlers = known_handlers();
+        for handler in &mut handlers {
+            if let Some(run) = active_runs.iter().find(|r| r.handler_name == handler.name) {
+                handler.active_run = Some(ActiveRun {
+                    run_id: run.id.to_string(),
+                    method: run.handler_method.clone(),
+                    key: if run.source_name == "_system" {
+                        None
+                    } else {
+                        Some(run.source_name.clone())
+                    },
+                    started_at: Some(to_timestamp(run.started_at)),
+                });
+            }
+        }
+
+        Ok(Response::new(ListHandlersResponse { handlers }))
     }
 
     async fn trigger_handler(
@@ -695,6 +722,80 @@ impl HandlersService for HandlersServiceImpl {
         );
 
         Ok(Response::new(TriggerHandlerResponse { invocation_id }))
+    }
+
+    async fn cancel_handler_run(
+        &self,
+        request: Request<CancelHandlerRunRequest>,
+    ) -> Result<Response<CancelHandlerRunResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.run_id.is_empty() {
+            return Err(Status::invalid_argument("run_id is required"));
+        }
+
+        let run_id: uuid::Uuid = req
+            .run_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid run_id"))?;
+
+        // Look up the run to find its source and invocation info
+        let run = self
+            .repos
+            .activity
+            .get_run(run_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("run not found"))?;
+
+        if run.status != ps_core::models::IngestionStatus::Running {
+            return Err(Status::failed_precondition("run is not active"));
+        }
+
+        // Try to cancel via Restate if this is a source-based handler
+        if run.source_name == "_system" {
+            // For system handlers, just cancel the specific run in the DB
+            self.repos
+                .activity
+                .cancel_run_by_id(run_id)
+                .await
+                .map_err(db_err)?;
+        } else {
+            // Try stored invocation ID first
+            if let Some(inv_id) = self
+                .repos
+                .activity
+                .get_current_invocation_id(&run.source_name)
+                .await
+                .map_err(db_err)?
+            {
+                self.cancel_restate_invocation(&run.source_name, &inv_id)
+                    .await;
+            }
+
+            // Also query Restate for any active invocations
+            if let Some(active_ids) = self.query_active_invocations(&run.source_name).await {
+                for id in &active_ids {
+                    self.cancel_restate_invocation(&run.source_name, id).await;
+                }
+            }
+
+            self.repos
+                .activity
+                .cancel_active_runs(&run.source_name)
+                .await
+                .map_err(db_err)?;
+        }
+
+        info!(
+            run_id = %req.run_id,
+            handler = %run.handler_name,
+            source = %run.source_name,
+            "cancelled handler run",
+        );
+
+        Ok(Response::new(CancelHandlerRunResponse {}))
     }
 }
 

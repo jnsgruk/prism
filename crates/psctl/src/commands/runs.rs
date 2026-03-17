@@ -10,6 +10,7 @@ pub async fn runs(clients: &mut Clients, source: Option<String>) -> Result<()> {
         .list_runs(ListRunsRequest {
             source_name: source,
             handler_name: None,
+            ingestion_only: false,
         })
         .await?
         .into_inner();

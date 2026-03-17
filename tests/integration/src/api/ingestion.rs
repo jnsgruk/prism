@@ -69,6 +69,7 @@ define_api_test!(list_runs_empty, |server| async move {
     let mut req = Request::new(ListRunsRequest {
         source_name: None,
         handler_name: None,
+        ingestion_only: false,
     });
     auth(&mut req, &token);
 
@@ -97,6 +98,7 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
     let mut req = Request::new(ListRunsRequest {
         source_name: Some("src-a".into()),
         handler_name: None,
+        ingestion_only: false,
     });
     auth(&mut req, &token);
 
@@ -108,6 +110,7 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
     let mut req = Request::new(ListRunsRequest {
         source_name: None,
         handler_name: None,
+        ingestion_only: false,
     });
     auth(&mut req, &token);
 

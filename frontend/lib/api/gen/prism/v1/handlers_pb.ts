@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/handlers.proto.
  */
 export const file_prism_v1_handlers: GenFile /*@__PURE__*/ = fileDesc(
-  "ChdwcmlzbS92MS9oYW5kbGVycy5wcm90bxIIcHJpc20udjEigQMKDFNvdXJjZVN0YXR1cxIMCgRuYW1lGAEgASgJEhMKC3NvdXJjZV90eXBlGAIgASgJEiQKBXN0YXRlGAMgASgOMhUucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkIKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIpLnByaXNtLnYxLlNvdXJjZVN0YXR1cy5SYXRlTGltaXRJbmZvRW50cnkSFQoNcHJvZ3Jlc3NfanNvbhgIIAEoCRo0ChJSYXRlTGltaXRJbmZvRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUILCglfbGFzdF9ydW5CCwoJX25leHRfcnVuIswCCgpIYW5kbGVyUnVuEgoKAmlkGAEgASgJEhMKC3NvdXJjZV9uYW1lGAIgASgJEi4KCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjUKDGNvbXBsZXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARIOCgZzdGF0dXMYBSABKAkSFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEhoKDWVycm9yX21lc3NhZ2UYByABKAlIAYgBARIgChhyYXRlX2xpbWl0X3dhaXRzX3NlY29uZHMYCCABKAUSFAoMaGFuZGxlcl9uYW1lGAkgASgJEhYKDmhhbmRsZXJfbWV0aG9kGAogASgJQg8KDV9jb21wbGV0ZWRfYXRCEAoOX2Vycm9yX21lc3NhZ2UiEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgdzb3VyY2VzGAEgAygLMhYucHJpc20udjEuU291cmNlU3RhdHVzImcKD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIjYKEExpc3RSdW5zUmVzcG9uc2USIgoEcnVucxgBIAMoCzIULnByaXNtLnYxLkhhbmRsZXJSdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSInChBDYW5jZWxSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhMKEUNhbmNlbFJ1blJlc3BvbnNlIi0KFlRyaWdnZXJUZWFtU3luY1JlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiGQoXVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2UiVwoLSGFuZGxlckluZm8SDAoEbmFtZRgBIAEoCRIPCgdtZXRob2RzGAIgAygJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhQKDHJlcXVpcmVzX2tleRgEIAEoCCIVChNMaXN0SGFuZGxlcnNSZXF1ZXN0Ij8KFExpc3RIYW5kbGVyc1Jlc3BvbnNlEicKCGhhbmRsZXJzGAEgAygLMhUucHJpc20udjEuSGFuZGxlckluZm8ibAoVVHJpZ2dlckhhbmRsZXJSZXF1ZXN0EhQKDGhhbmRsZXJfbmFtZRgBIAEoCRIOCgZtZXRob2QYAiABKAkSCwoDa2V5GAMgASgJEhQKB3BheWxvYWQYBCABKAlIAIgBAUIKCghfcGF5bG9hZCIvChZUcmlnZ2VySGFuZGxlclJlc3BvbnNlEhUKDWludm9jYXRpb25faWQYASABKAkqkQEKC1NvdXJjZVN0YXRlEhwKGFNPVVJDRV9TVEFURV9VTlNQRUNJRklFRBAAEhUKEVNPVVJDRV9TVEFURV9JRExFEAESGwoXU09VUkNFX1NUQVRFX0NPTExFQ1RJTkcQAhIYChRTT1VSQ0VfU1RBVEVfV0FJVElORxADEhYKElNPVVJDRV9TVEFURV9FUlJPUhAEMv0ECg9IYW5kbGVyc1NlcnZpY2USRAoJR2V0U3RhdHVzEhoucHJpc20udjEuR2V0U3RhdHVzUmVxdWVzdBobLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkEKCExpc3RSdW5zEhkucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GhoucHJpc20udjEuTGlzdFJ1bnNSZXNwb25zZRJHCgpUcmlnZ2VyUnVuEhsucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaHC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USVgoPVHJpZ2dlckJhY2tmaWxsEiAucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVxdWVzdBohLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlEkQKCUNhbmNlbFJ1bhIaLnByaXNtLnYxLkNhbmNlbFJ1blJlcXVlc3QaGy5wcmlzbS52MS5DYW5jZWxSdW5SZXNwb25zZRJWCg9UcmlnZ2VyVGVhbVN5bmMSIC5wcmlzbS52MS5UcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0GiEucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2USTQoMTGlzdEhhbmRsZXJzEh0ucHJpc20udjEuTGlzdEhhbmRsZXJzUmVxdWVzdBoeLnByaXNtLnYxLkxpc3RIYW5kbGVyc1Jlc3BvbnNlElMKDlRyaWdnZXJIYW5kbGVyEh8ucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXF1ZXN0GiAucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXNwb25zZWIGcHJvdG8z",
+  "ChdwcmlzbS92MS9oYW5kbGVycy5wcm90bxIIcHJpc20udjEigQMKDFNvdXJjZVN0YXR1cxIMCgRuYW1lGAEgASgJEhMKC3NvdXJjZV90eXBlGAIgASgJEiQKBXN0YXRlGAMgASgOMhUucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkIKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIpLnByaXNtLnYxLlNvdXJjZVN0YXR1cy5SYXRlTGltaXRJbmZvRW50cnkSFQoNcHJvZ3Jlc3NfanNvbhgIIAEoCRo0ChJSYXRlTGltaXRJbmZvRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUILCglfbGFzdF9ydW5CCwoJX25leHRfcnVuIswCCgpIYW5kbGVyUnVuEgoKAmlkGAEgASgJEhMKC3NvdXJjZV9uYW1lGAIgASgJEi4KCnN0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjUKDGNvbXBsZXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARIOCgZzdGF0dXMYBSABKAkSFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEhoKDWVycm9yX21lc3NhZ2UYByABKAlIAYgBARIgChhyYXRlX2xpbWl0X3dhaXRzX3NlY29uZHMYCCABKAUSFAoMaGFuZGxlcl9uYW1lGAkgASgJEhYKDmhhbmRsZXJfbWV0aG9kGAogASgJQg8KDV9jb21wbGV0ZWRfYXRCEAoOX2Vycm9yX21lc3NhZ2UiEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgdzb3VyY2VzGAEgAygLMhYucHJpc20udjEuU291cmNlU3RhdHVzIn8KD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBEhYKDmluZ2VzdGlvbl9vbmx5GAMgASgIQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIjYKEExpc3RSdW5zUmVzcG9uc2USIgoEcnVucxgBIAMoCzIULnByaXNtLnYxLkhhbmRsZXJSdW4iKAoRVHJpZ2dlclJ1blJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiFAoSVHJpZ2dlclJ1blJlc3BvbnNlIkEKFlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkSEgoKc2luY2VfZGF0ZRgCIAEoCSIZChdUcmlnZ2VyQmFja2ZpbGxSZXNwb25zZSInChBDYW5jZWxSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhMKEUNhbmNlbFJ1blJlc3BvbnNlIi0KFlRyaWdnZXJUZWFtU3luY1JlcXVlc3QSEwoLc291cmNlX25hbWUYASABKAkiGQoXVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2UidQoJQWN0aXZlUnVuEg4KBnJ1bl9pZBgBIAEoCRIOCgZtZXRob2QYAiABKAkSEAoDa2V5GAMgASgJSACIAQESLgoKc3RhcnRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBgoEX2tleSKUAQoLSGFuZGxlckluZm8SDAoEbmFtZRgBIAEoCRIPCgdtZXRob2RzGAIgAygJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhQKDHJlcXVpcmVzX2tleRgEIAEoCBIsCgphY3RpdmVfcnVuGAUgASgLMhMucHJpc20udjEuQWN0aXZlUnVuSACIAQFCDQoLX2FjdGl2ZV9ydW4iFQoTTGlzdEhhbmRsZXJzUmVxdWVzdCI/ChRMaXN0SGFuZGxlcnNSZXNwb25zZRInCghoYW5kbGVycxgBIAMoCzIVLnByaXNtLnYxLkhhbmRsZXJJbmZvImwKFVRyaWdnZXJIYW5kbGVyUmVxdWVzdBIUCgxoYW5kbGVyX25hbWUYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA2tleRgDIAEoCRIUCgdwYXlsb2FkGAQgASgJSACIAQFCCgoIX3BheWxvYWQiLwoWVHJpZ2dlckhhbmRsZXJSZXNwb25zZRIVCg1pbnZvY2F0aW9uX2lkGAEgASgJIikKF0NhbmNlbEhhbmRsZXJSdW5SZXF1ZXN0Eg4KBnJ1bl9pZBgBIAEoCSIaChhDYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UqkQEKC1NvdXJjZVN0YXRlEhwKGFNPVVJDRV9TVEFURV9VTlNQRUNJRklFRBAAEhUKEVNPVVJDRV9TVEFURV9JRExFEAESGwoXU09VUkNFX1NUQVRFX0NPTExFQ1RJTkcQAhIYChRTT1VSQ0VfU1RBVEVfV0FJVElORxADEhYKElNPVVJDRV9TVEFURV9FUlJPUhAEMtgFCg9IYW5kbGVyc1NlcnZpY2USRAoJR2V0U3RhdHVzEhoucHJpc20udjEuR2V0U3RhdHVzUmVxdWVzdBobLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkEKCExpc3RSdW5zEhkucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GhoucHJpc20udjEuTGlzdFJ1bnNSZXNwb25zZRJHCgpUcmlnZ2VyUnVuEhsucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaHC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USVgoPVHJpZ2dlckJhY2tmaWxsEiAucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVxdWVzdBohLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlEkQKCUNhbmNlbFJ1bhIaLnByaXNtLnYxLkNhbmNlbFJ1blJlcXVlc3QaGy5wcmlzbS52MS5DYW5jZWxSdW5SZXNwb25zZRJWCg9UcmlnZ2VyVGVhbVN5bmMSIC5wcmlzbS52MS5UcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0GiEucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2USTQoMTGlzdEhhbmRsZXJzEh0ucHJpc20udjEuTGlzdEhhbmRsZXJzUmVxdWVzdBoeLnByaXNtLnYxLkxpc3RIYW5kbGVyc1Jlc3BvbnNlElMKDlRyaWdnZXJIYW5kbGVyEh8ucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXF1ZXN0GiAucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXNwb25zZRJZChBDYW5jZWxIYW5kbGVyUnVuEiEucHJpc20udjEuQ2FuY2VsSGFuZGxlclJ1blJlcXVlc3QaIi5wcmlzbS52MS5DYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2ViBnByb3RvMw",
   [file_google_protobuf_timestamp],
 );
 
@@ -182,6 +182,13 @@ export type ListRunsRequest = Message<"prism.v1.ListRunsRequest"> & {
    * @generated from field: optional string handler_name = 2;
    */
   handlerName?: string;
+
+  /**
+   * When true, exclude system handler runs (identity resolution, metrics compute).
+   *
+   * @generated from field: bool ingestion_only = 3;
+   */
+  ingestionOnly: boolean;
 };
 
 /**
@@ -342,6 +349,40 @@ export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> 
   messageDesc(file_prism_v1_handlers, 13);
 
 /**
+ * @generated from message prism.v1.ActiveRun
+ */
+export type ActiveRun = Message<"prism.v1.ActiveRun"> & {
+  /**
+   * @generated from field: string run_id = 1;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: string method = 2;
+   */
+  method: string;
+
+  /**
+   * @generated from field: optional string key = 3;
+   */
+  key?: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 4;
+   */
+  startedAt?: Timestamp;
+};
+
+/**
+ * Describes the message prism.v1.ActiveRun.
+ * Use `create(ActiveRunSchema)` to create a new message.
+ */
+export const ActiveRunSchema: GenMessage<ActiveRun> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_handlers,
+  14,
+);
+
+/**
  * @generated from message prism.v1.HandlerInfo
  */
 export type HandlerInfo = Message<"prism.v1.HandlerInfo"> & {
@@ -364,6 +405,11 @@ export type HandlerInfo = Message<"prism.v1.HandlerInfo"> & {
    * @generated from field: bool requires_key = 4;
    */
   requiresKey: boolean;
+
+  /**
+   * @generated from field: optional prism.v1.ActiveRun active_run = 5;
+   */
+  activeRun?: ActiveRun;
 };
 
 /**
@@ -372,7 +418,7 @@ export type HandlerInfo = Message<"prism.v1.HandlerInfo"> & {
  */
 export const HandlerInfoSchema: GenMessage<HandlerInfo> /*@__PURE__*/ = messageDesc(
   file_prism_v1_handlers,
-  14,
+  15,
 );
 
 /**
@@ -386,7 +432,7 @@ export type ListHandlersRequest = Message<"prism.v1.ListHandlersRequest"> & {};
  */
 export const ListHandlersRequestSchema: GenMessage<ListHandlersRequest> /*@__PURE__*/ = messageDesc(
   file_prism_v1_handlers,
-  15,
+  16,
 );
 
 /**
@@ -404,7 +450,7 @@ export type ListHandlersResponse = Message<"prism.v1.ListHandlersResponse"> & {
  * Use `create(ListHandlersResponseSchema)` to create a new message.
  */
 export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_handlers, 16);
+  messageDesc(file_prism_v1_handlers, 17);
 
 /**
  * @generated from message prism.v1.TriggerHandlerRequest
@@ -436,7 +482,7 @@ export type TriggerHandlerRequest = Message<"prism.v1.TriggerHandlerRequest"> & 
  * Use `create(TriggerHandlerRequestSchema)` to create a new message.
  */
 export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_handlers, 17);
+  messageDesc(file_prism_v1_handlers, 18);
 
 /**
  * @generated from message prism.v1.TriggerHandlerResponse
@@ -453,7 +499,36 @@ export type TriggerHandlerResponse = Message<"prism.v1.TriggerHandlerResponse"> 
  * Use `create(TriggerHandlerResponseSchema)` to create a new message.
  */
 export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_handlers, 18);
+  messageDesc(file_prism_v1_handlers, 19);
+
+/**
+ * @generated from message prism.v1.CancelHandlerRunRequest
+ */
+export type CancelHandlerRunRequest = Message<"prism.v1.CancelHandlerRunRequest"> & {
+  /**
+   * @generated from field: string run_id = 1;
+   */
+  runId: string;
+};
+
+/**
+ * Describes the message prism.v1.CancelHandlerRunRequest.
+ * Use `create(CancelHandlerRunRequestSchema)` to create a new message.
+ */
+export const CancelHandlerRunRequestSchema: GenMessage<CancelHandlerRunRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_handlers, 20);
+
+/**
+ * @generated from message prism.v1.CancelHandlerRunResponse
+ */
+export type CancelHandlerRunResponse = Message<"prism.v1.CancelHandlerRunResponse"> & {};
+
+/**
+ * Describes the message prism.v1.CancelHandlerRunResponse.
+ * Use `create(CancelHandlerRunResponseSchema)` to create a new message.
+ */
+export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_handlers, 21);
 
 /**
  * @generated from enum prism.v1.SourceState
@@ -562,5 +637,13 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerHandlerRequestSchema;
     output: typeof TriggerHandlerResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.HandlersService.CancelHandlerRun
+   */
+  cancelHandlerRun: {
+    methodKind: "unary";
+    input: typeof CancelHandlerRunRequestSchema;
+    output: typeof CancelHandlerRunResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_handlers, 0);
