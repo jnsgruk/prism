@@ -1,9 +1,6 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext};
-use ps_core::models::Platform;
 use tracing::{debug, info};
 use uuid::Uuid;
-
-use super::extract_instance;
 
 pub(super) async fn store_batch_impl(
     ctx: &IngestionContext,
@@ -13,8 +10,12 @@ pub(super) async fn store_batch_impl(
         return Ok(0);
     }
 
-    let instance = extract_instance(&ctx.source_config.name);
-    let platform = Platform::Discourse(instance);
+    // Use the source_type directly — it's already the correct Platform value
+    // (e.g. Platform::Discourse("charmhub")) parsed from the DB source_type
+    // column. Previously we derived this from the display name via
+    // extract_instance(), which produced a case mismatch (e.g. "Charmhub"
+    // vs "charmhub") causing identity lookups to return zero results.
+    let platform = ctx.source_config.source_type.clone();
 
     // Collect unique usernames for resolve-only identity lookup.
     // We only attribute contributions to people already known in the system
