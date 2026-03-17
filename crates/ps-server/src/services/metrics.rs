@@ -9,7 +9,8 @@ use ps_proto::prism::v1::{
     GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
     GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
     ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
-    ListTeamContributionsResponse, Period, PeriodType, TeamMetrics,
+    ListTeamContributionsResponse, Period, PeriodType, TeamMetrics, ThroughputDataPoint,
+    WipDataPoint,
 };
 use time::macros::format_description;
 use time::{Date, OffsetDateTime};
@@ -409,6 +410,103 @@ impl MetricsService for MetricsServiceImpl {
         request: Request<GetFlowMetricsRequest>,
     ) -> Result<Response<GetFlowMetricsResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        Err(Status::unimplemented("GetFlowMetrics not yet implemented"))
+        let req = request.into_inner();
+
+        let team_id: Uuid = req
+            .team_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid team_id"))?;
+
+        let period = req
+            .period
+            .ok_or_else(|| Status::invalid_argument("period required"))?;
+        let period_type_val = parse_period_type(period.r#type)?;
+        let period_start = parse_date(&period.start)?;
+        let period_end = parse_date(&period.end)?;
+        let today = OffsetDateTime::now_utc().date();
+        let is_open = period_end >= today;
+
+        // Recompute if open period or no snapshot exists
+        let snapshot = self
+            .repos
+            .metrics
+            .get_team_snapshot(team_id, period_start, period_type_val)
+            .await
+            .map_err(db_err)?;
+
+        if snapshot.is_none() || is_open {
+            let _ = ps_metrics::compute_team_snapshot(
+                &self.repos,
+                team_id,
+                period_start,
+                period_end,
+                period_type_val,
+            )
+            .await;
+        }
+
+        let current = self
+            .repos
+            .metrics
+            .get_team_snapshot(team_id, period_start, period_type_val)
+            .await
+            .map_err(db_err)?;
+
+        // Fetch historical snapshots for trend data
+        let history_limit = match period_type_val {
+            ps_core::models::PeriodType::Week => 12,
+            ps_core::models::PeriodType::Month => 6,
+            ps_core::models::PeriodType::Quarter => 4,
+        };
+
+        let history = self
+            .repos
+            .metrics
+            .get_snapshot_history(team_id, period_type_val, history_limit)
+            .await
+            .map_err(db_err)?;
+
+        let throughput_trend: Vec<ThroughputDataPoint> = history
+            .iter()
+            .rev() // oldest first
+            .map(|s| ThroughputDataPoint {
+                date: format_date(s.period_start),
+                count: s.throughput.unwrap_or(0),
+                source: String::new(),
+            })
+            .collect();
+
+        let wip_trend: Vec<WipDataPoint> = history
+            .iter()
+            .rev()
+            .map(|s| WipDataPoint {
+                date: format_date(s.period_start),
+                wip: f64::from(s.wip_avg.unwrap_or(0.0)),
+            })
+            .collect();
+
+        let response = if let Some(s) = current {
+            GetFlowMetricsResponse {
+                avg_cycle_time_hours: f64::from(s.avg_cycle_time_hours.unwrap_or(0.0)),
+                wip_average: f64::from(s.wip_avg.unwrap_or(0.0)),
+                throughput: s.throughput.unwrap_or(0),
+                flow_efficiency: f64::from(s.flow_efficiency.unwrap_or(0.0)),
+                lead_time_hours: f64::from(s.lead_time_hours.unwrap_or(0.0)),
+                throughput_trend,
+                wip_trend,
+            }
+        } else {
+            GetFlowMetricsResponse {
+                avg_cycle_time_hours: 0.0,
+                wip_average: 0.0,
+                throughput: 0,
+                flow_efficiency: 0.0,
+                lead_time_hours: 0.0,
+                throughput_trend,
+                wip_trend,
+            }
+        };
+
+        Ok(Response::new(response))
     }
 }
