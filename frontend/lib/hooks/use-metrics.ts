@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import type {
   Contribution,
+  GetFlowMetricsResponse,
   ListTeamContributionsResponse,
   Period,
   TeamMetrics,
@@ -84,5 +85,15 @@ export const useListTeamContributions = (
     enabled: teamId.length > 0,
   });
 
-export type { Contribution };
+export const useGetFlowMetrics = (
+  teamId: string,
+  period: Period,
+): UseQueryResult<GetFlowMetricsResponse, Error> =>
+  useQuery({
+    queryKey: [...metricsKeys.all, "flow", teamId, `${period.type}-${period.start}`],
+    queryFn: () => metricsClient.getFlowMetrics({ teamId, period }),
+    enabled: teamId.length > 0,
+  });
+
+export type { Contribution, GetFlowMetricsResponse };
 export { PeriodType };

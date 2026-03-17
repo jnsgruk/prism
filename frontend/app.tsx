@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 
 const DashboardPage = lazy(() => import("@/views/dashboard/pages/dashboard-page"));
 const TeamsPage = lazy(() => import("@/views/teams/pages/teams-page"));
+const TeamDetailPage = lazy(() => import("@/views/teams/pages/team-detail-page"));
 const AdminPage = lazy(() => import("@/views/admin/pages/admin-page"));
 const IngestionPage = lazy(() => import("@/views/ingestion/pages/ingestion-page"));
 const LoginPage = lazy(() => import("@/views/login/pages/login-page"));
@@ -17,6 +18,7 @@ export const App = (): React.ReactElement => (
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/teams/:teamId" element={<TeamDetailPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/ingestion" element={<IngestionPage />} />
         <Route path="/login" element={<LoginPage />} />

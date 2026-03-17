@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ChevronRight } from "lucide-react";
+import { Link } from "react-router";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
 
@@ -23,7 +24,13 @@ export const MetricsRow = ({
   <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onSelect}>
     <TableCell className="font-medium">
       <span className="flex items-center gap-2">
-        {metrics.teamName}
+        <Link
+          to={`/teams/${metrics.teamId}`}
+          className="hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {metrics.teamName}
+        </Link>
         {metrics.sourcePlatforms.length > 0 && (
           <span className="flex gap-0.5">
             {metrics.sourcePlatforms.map((p) => (
