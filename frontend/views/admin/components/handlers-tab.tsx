@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Cog, Loader2, Play } from "lucide-react";
+import { AlertCircle, Cog, Loader2, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 
 import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
@@ -33,6 +33,7 @@ import { formatDuration, formatTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-utils";
 import type { StatusFilter } from "@/lib/run-utils";
 import {
+  useCancelRun,
   useListHandlers,
   useListRuns,
   useTriggerHandler,
@@ -165,21 +166,28 @@ const HandlerCard = ({ handler }: { handler: HandlerInfo }): React.ReactElement 
   );
 };
 
-const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
+const buildHandlerRunColumns = (
+  onCancel: (sourceName: string) => void,
+  cancelPending: boolean,
+): ColumnDef<HandlerRun, unknown>[] => [
   {
     accessorKey: "handlerName",
     header: "Handler",
-    cell: ({ row }) => <span className="font-medium">{row.original.handlerName}</span>,
+    cell: ({ row }): React.ReactElement => (
+      <span className="font-medium">{row.original.handlerName}</span>
+    ),
   },
   {
     accessorKey: "handlerMethod",
     header: "Method",
-    cell: ({ row }) => <span className="text-xs">{row.original.handlerMethod}</span>,
+    cell: ({ row }): React.ReactElement => (
+      <span className="text-xs">{row.original.handlerMethod}</span>
+    ),
   },
   {
     accessorKey: "sourceName",
     header: "Source",
-    cell: ({ row }) => (
+    cell: ({ row }): React.ReactElement => (
       <span className="text-xs">
         {row.original.sourceName === "_system" ? "\u2014" : row.original.sourceName}
       </span>
@@ -188,12 +196,14 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "startedAt",
     header: "Started",
-    cell: ({ row }) => <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>,
+    cell: ({ row }): React.ReactElement => (
+      <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>
+    ),
   },
   {
     id: "duration",
     header: "Duration",
-    cell: ({ row }) => (
+    cell: ({ row }): React.ReactElement => (
       <span className="text-xs">
         {formatDuration(row.original.startedAt, row.original.completedAt)}
       </span>
@@ -201,8 +211,8 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   },
   {
     accessorKey: "itemsCollected",
-    header: () => <span className="block text-right">Items</span>,
-    cell: ({ row }) => (
+    header: (): React.ReactElement => <span className="block text-right">Items</span>,
+    cell: ({ row }): React.ReactElement => (
       <span className="block text-right tabular-nums">
         {row.original.itemsCollected.toLocaleString()}
       </span>
@@ -211,13 +221,32 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => {
+    cell: ({ row }): React.ReactElement => {
       const cfg = statusConfig[row.original.status] ?? defaultStatus;
+      const isRunning = row.original.status === "running";
+      const canCancel = isRunning && row.original.sourceName !== "_system";
+
       return (
-        <Badge variant={cfg.variant} className="gap-1">
-          {cfg.icon}
-          {cfg.label}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={cfg.variant} className="gap-1">
+            {cfg.icon}
+            {cfg.label}
+          </Badge>
+          {canCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="size-6 p-0 text-destructive hover:text-destructive"
+              disabled={cancelPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancel(row.original.sourceName);
+              }}
+            >
+              <Square className="size-3" />
+            </Button>
+          )}
+        </div>
       );
     },
   },
@@ -235,6 +264,22 @@ const HandlerRunsTable = ({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
+  const cancelRun = useCancelRun();
+
+  const handleCancel = useCallback(
+    (sourceName: string) => {
+      cancelRun.mutate(sourceName, {
+        onSuccess: () => toast.success(`Cancelled run for ${sourceName}`),
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
+      });
+    },
+    [cancelRun],
+  );
+
+  const columns = useMemo(
+    () => buildHandlerRunColumns(handleCancel, cancelRun.isPending),
+    [handleCancel, cancelRun.isPending],
+  );
 
   useEffect(() => {
     setPageIndex(0);
@@ -321,7 +366,7 @@ const HandlerRunsTable = ({
         </div>
       </div>
 
-      <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />
+      <DataTable columns={columns} data={pageRuns} onRowClick={setSelectedRun} />
 
       <DataTablePagination
         totalCount={totalCount}
