@@ -266,9 +266,11 @@ const TeamsPage = (): React.ReactElement => {
                 <CardContent className="pt-0">
                   <div className="space-y-2">
                     {members.map((person) => (
-                      <div
+                      <button
                         key={person.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded border px-4 py-3"
+                        type="button"
+                        onClick={() => navigate(`/people/${person.id}`)}
+                        className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded border px-4 py-3 text-left hover:bg-muted/50"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{person.name}</p>
@@ -283,7 +285,7 @@ const TeamsPage = (): React.ReactElement => {
                             </Badge>
                           ))}
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </CardContent>

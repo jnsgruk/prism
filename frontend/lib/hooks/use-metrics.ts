@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import type {
   Contribution,
   GetFlowMetricsResponse,
+  GetIndividualProfileResponse,
+  ListPersonContributionsResponse,
   ListTeamContributionsResponse,
   Period,
   TeamMetrics,
@@ -98,5 +100,56 @@ export const useGetFlowMetrics = (
     enabled: teamId.length > 0,
   });
 
-export type { Contribution, GetFlowMetricsResponse };
+export interface PersonContributionFilters {
+  platform?: string;
+  contributionType?: string;
+  since?: string;
+  sortField?: string;
+  sortDesc?: boolean;
+  pageSize: number;
+  pageIndex: number;
+}
+
+export const useGetIndividualProfile = (
+  personId: string,
+  period: Period,
+): UseQueryResult<GetIndividualProfileResponse, Error> =>
+  useQuery({
+    queryKey: [...metricsKeys.all, "individual", personId, `${period.type}-${period.start}`],
+    queryFn: () => metricsClient.getIndividualProfile({ personId, period }),
+    enabled: personId.length > 0,
+  });
+
+export const useListPersonContributions = (
+  personId: string,
+  filters: PersonContributionFilters,
+): UseQueryResult<ListPersonContributionsResponse, Error> =>
+  useQuery({
+    queryKey: [
+      ...metricsKeys.all,
+      "person-contributions",
+      personId,
+      filters.platform ?? "",
+      filters.contributionType ?? "",
+      filters.since ?? "",
+      filters.sortField ?? "",
+      filters.sortDesc ?? true,
+      filters.pageSize,
+      filters.pageIndex,
+    ],
+    queryFn: () =>
+      metricsClient.listPersonContributions({
+        personId,
+        platform: filters.platform,
+        contributionType: filters.contributionType,
+        since: filters.since,
+        sortField: filters.sortField,
+        sortDesc: filters.sortDesc,
+        pageSize: filters.pageSize,
+        pageIndex: filters.pageIndex,
+      }),
+    enabled: personId.length > 0,
+  });
+
+export type { Contribution, GetFlowMetricsResponse, GetIndividualProfileResponse };
 export { PeriodType };
