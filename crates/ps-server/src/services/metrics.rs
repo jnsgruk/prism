@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use futures::stream::TryStreamExt;
 use ps_core::repo::Repos;
-use ps_core::repo::metrics::ListContributionsParams;
+use ps_core::repo::metrics::{ListContributionsParams, ListPersonContributionsParams};
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
     CategoryCount, CompareTeamsRequest, CompareTeamsResponse, Contribution,
@@ -11,7 +11,8 @@ use ps_proto::prism::v1::{
     GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
     GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
     ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
-    ListTeamContributionsResponse, Period, PeriodType, TeamMetrics, ThroughputDataPoint,
+    ListTeamContributionsResponse, PeerComparison, Percentile, Period, PeriodType,
+    PlatformActivitySummary, PlatformIdentityInfo, TeamMetrics, ThroughputDataPoint,
     TopContributor, WipDataPoint,
 };
 use time::macros::format_description;
@@ -419,9 +420,103 @@ impl MetricsService for MetricsServiceImpl {
         request: Request<GetIndividualProfileRequest>,
     ) -> Result<Response<GetIndividualProfileResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        Err(Status::unimplemented(
-            "GetIndividualProfile not yet implemented",
-        ))
+        let req = request.into_inner();
+
+        let person_id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+        let period = req
+            .period
+            .ok_or_else(|| Status::invalid_argument("period required"))?;
+        let period_start = parse_date(&period.start)?;
+        let period_end = parse_date(&period.end)?;
+
+        let person = self
+            .repos
+            .org
+            .get_person(person_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("person not found"))?;
+
+        let identities = self
+            .repos
+            .org
+            .get_identities_for_people(&[person_id])
+            .await
+            .map_err(db_err)?;
+
+        let activity = self
+            .repos
+            .metrics
+            .get_person_activity_summary(person_id, period_start, period_end)
+            .await
+            .map_err(db_err)?;
+
+        let activity_by_platform: Vec<PlatformActivitySummary> = activity
+            .into_iter()
+            .map(|a| {
+                let mut metrics = HashMap::new();
+                if let Some(v) = a.avg_review_hours {
+                    metrics.insert("avg_review_hours".to_string(), v);
+                }
+                if let Some(v) = a.avg_cycle_time_hours {
+                    metrics.insert("avg_cycle_time_hours".to_string(), v);
+                }
+                PlatformActivitySummary {
+                    platform: a.platform,
+                    contribution_count: a.contribution_count,
+                    metrics,
+                }
+            })
+            .collect();
+
+        // Compute peer context if the person has a level set
+        let peer_context = if let Some(ref level) = person.level {
+            match self
+                .repos
+                .metrics
+                .compute_peer_percentiles(person_id, level, period_start, period_end)
+                .await
+            {
+                Ok(Some((count, percentile, peer_count))) => {
+                    let mut metrics = HashMap::new();
+                    metrics.insert(
+                        "throughput".to_string(),
+                        Percentile {
+                            value: count as f64,
+                            percentile,
+                        },
+                    );
+                    Some(PeerComparison {
+                        level: level.clone(),
+                        peer_count,
+                        metrics,
+                    })
+                }
+                Ok(None) | Err(_) => None,
+            }
+        } else {
+            None
+        };
+
+        Ok(Response::new(GetIndividualProfileResponse {
+            person_id: person.id.to_string(),
+            name: person.name,
+            team_name: person.team_name.unwrap_or_default(),
+            level: person.level.unwrap_or_default(),
+            identities: identities
+                .into_iter()
+                .map(|i| PlatformIdentityInfo {
+                    platform: i.platform,
+                    username: i.platform_username,
+                })
+                .collect(),
+            activity_by_platform,
+            peer_context,
+        }))
     }
 
     async fn list_person_contributions(
@@ -429,9 +524,96 @@ impl MetricsService for MetricsServiceImpl {
         request: Request<ListPersonContributionsRequest>,
     ) -> Result<Response<ListPersonContributionsResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        Err(Status::unimplemented(
-            "ListPersonContributions not yet implemented",
-        ))
+        let req = request.into_inner();
+
+        let person_id: Uuid = req
+            .person_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+        let page_size = if req.page_size > 0 { req.page_size } else { 25 };
+        let offset = req.page_index * page_size;
+
+        let platform = req.platform.as_deref().filter(|s| !s.is_empty());
+        let contribution_type = req.contribution_type.as_deref().filter(|s| !s.is_empty());
+        let since = req
+            .since
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .map(parse_date)
+            .transpose()?;
+        let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
+        let sort_desc = req.sort_desc.unwrap_or(true);
+
+        let (rows, total_count) = self
+            .repos
+            .metrics
+            .list_person_contributions(&ListPersonContributionsParams {
+                person_id,
+                platform,
+                contribution_type,
+                since,
+                sort_field,
+                sort_desc,
+                page_size,
+                offset,
+            })
+            .await
+            .map_err(db_err)?;
+
+        let contributions = rows
+            .into_iter()
+            .map(|r| {
+                let repo = if let Some(s) = r.metadata.get("repo").and_then(|v| v.as_str()) {
+                    s.to_string()
+                } else {
+                    match r.platform_id.splitn(3, '/').collect::<Vec<_>>().as_slice() {
+                        [owner, repo, ..] => format!("{owner}/{repo}"),
+                        _ => String::new(),
+                    }
+                };
+                let is_discourse = r.platform.is_discourse();
+                let review_count = if is_discourse {
+                    json_i32(&r.metrics, "post_count")
+                } else {
+                    json_i32(&r.metrics, "review_count")
+                };
+                let category = if is_discourse {
+                    r.metrics
+                        .get("category")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string()
+                } else {
+                    String::new()
+                };
+
+                Contribution {
+                    id: r.id.to_string(),
+                    person_name: r.person_name,
+                    platform: r.platform.to_string(),
+                    contribution_type: r.contribution_type.to_string(),
+                    platform_id: r.platform_id,
+                    title: r.title.unwrap_or_default(),
+                    url: r.url.unwrap_or_default(),
+                    state: r.state.map(|s| s.to_string()).unwrap_or_default(),
+                    created_at: Some(to_timestamp(r.created_at)),
+                    closed_at: r.closed_at.map(to_timestamp),
+                    additions: json_i32(&r.metrics, "additions"),
+                    deletions: json_i32(&r.metrics, "deletions"),
+                    changed_files: json_i32(&r.metrics, "changed_files"),
+                    review_count,
+                    review_hours: json_f32(&r.metrics, "review_hours"),
+                    repo,
+                    category,
+                }
+            })
+            .collect();
+
+        Ok(Response::new(ListPersonContributionsResponse {
+            contributions,
+            total_count: total_count as i32,
+        }))
     }
 
     async fn get_discourse_activity(
