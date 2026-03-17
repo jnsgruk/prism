@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo, useState } from "react";
@@ -203,17 +202,8 @@ export const ComparisonTable = ({
       <Card>
         <CardHeader>
           <CardTitle>Throughput by Team</CardTitle>
-          <CardDescription className="flex items-center gap-2">
+          <CardDescription>
             Merged pull requests and P75 review turnaround per child team.
-            {sourcePlatforms.length > 0 && (
-              <span className="inline-flex gap-1">
-                {sourcePlatforms.map((p) => (
-                  <Badge key={p} variant="outline" className="px-1.5 py-0 text-[10px]">
-                    {p}
-                  </Badge>
-                ))}
-              </span>
-            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

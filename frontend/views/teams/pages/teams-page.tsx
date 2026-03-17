@@ -152,14 +152,8 @@ const TeamsPage = (): React.ReactElement => {
         )}
 
         {/* Trend charts — throughput + WIP */}
-        <ThroughputTrendChart
-          flowMetrics={flowMetrics}
-          sourcePlatforms={currentMetrics?.sourcePlatforms}
-        />
-        <WipTrendChart
-          flowMetrics={flowMetrics}
-          sourcePlatforms={currentMetrics?.sourcePlatforms}
-        />
+        <ThroughputTrendChart flowMetrics={flowMetrics} />
+        <WipTrendChart flowMetrics={flowMetrics} />
 
         {/* Discourse Activity — collapsible, lazy-loaded */}
         {selectedTeam && (

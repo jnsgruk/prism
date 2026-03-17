@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Bar,
@@ -35,25 +34,10 @@ const ChartTooltip = ({
 
 const cursorStyle = { fill: "hsl(var(--muted))", opacity: 0.5 };
 
-const SourceBadges = ({ platforms }: { platforms: string[] }): React.ReactElement | null => {
-  if (platforms.length === 0) return null;
-  return (
-    <span className="inline-flex gap-1">
-      {platforms.map((p) => (
-        <Badge key={p} variant="outline" className="px-1.5 py-0 text-[10px]">
-          {p}
-        </Badge>
-      ))}
-    </span>
-  );
-};
-
 export const ThroughputTrendChart = ({
   flowMetrics,
-  sourcePlatforms = [],
 }: {
   flowMetrics: GetFlowMetricsResponse | undefined;
-  sourcePlatforms?: string[];
 }): React.ReactElement | null => {
   const data = (flowMetrics?.throughputTrend ?? []).map((t) => ({
     date: t.date,
@@ -66,9 +50,8 @@ export const ThroughputTrendChart = ({
     <Card>
       <CardHeader>
         <CardTitle>Throughput Trend</CardTitle>
-        <CardDescription className="flex items-center gap-2">
+        <CardDescription>
           Merged pull requests per period, showing delivery pace over time.
-          <SourceBadges platforms={sourcePlatforms} />
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -93,10 +76,8 @@ export const ThroughputTrendChart = ({
 
 export const WipTrendChart = ({
   flowMetrics,
-  sourcePlatforms = [],
 }: {
   flowMetrics: GetFlowMetricsResponse | undefined;
-  sourcePlatforms?: string[];
 }): React.ReactElement | null => {
   const data = (flowMetrics?.wipTrend ?? []).map((w) => ({
     date: w.date,
@@ -109,10 +90,7 @@ export const WipTrendChart = ({
     <Card>
       <CardHeader>
         <CardTitle>WIP Trend</CardTitle>
-        <CardDescription className="flex items-center gap-2">
-          Average open pull requests (work in progress) per period.
-          <SourceBadges platforms={sourcePlatforms} />
-        </CardDescription>
+        <CardDescription>Average open pull requests (work in progress) per period.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={250}>
