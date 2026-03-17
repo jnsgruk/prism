@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET completed_at = now(), status = 'cancelled', error_message = 'Cancelled by user'\n            WHERE id = $1\n              AND completed_at IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a90042ce57bc5d308dcf9da4652cd844dbe7579107af698358cee82536441ac0"
+}
