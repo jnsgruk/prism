@@ -1,11 +1,15 @@
-use ps_core::ingestion::{ContributionInput, IngestionContext, IngestionPlan};
+use ps_core::ingestion::IngestionPlan;
 use ps_core::models::{RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
 use super::identity_resolution::IdentityResolutionHandlerClient;
+use super::ingestion_common::{
+    advance_watermark, build_ingestion_context, complete_ingestion_run, create_ingestion_run,
+    decrypt_optional_secret, fail_ingestion_run, fetch_batch, load_source_config, store_batch,
+};
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
 
@@ -50,7 +54,7 @@ impl DiscourseIngestionHandlerImpl {
         source_name: &str,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        let config = self.load_config(ctx, source_name).await?;
+        let config = load_source_config(ctx, &self.state.repos, source_name).await?;
 
         let source = registry::create_source(&config.source_type).ok_or_else(|| {
             TerminalError::new(format!("unsupported source type: {}", config.source_type))
@@ -61,24 +65,27 @@ impl DiscourseIngestionHandlerImpl {
         } else {
             "run_ingestion"
         };
-        let run_id = self.create_run(ctx, source_name, method).await?;
+        let run_id = create_ingestion_run(
+            ctx,
+            &self.state.repos,
+            source_name,
+            "DiscourseIngestionHandler",
+            method,
+        )
+        .await?;
 
         // Decrypt API key and username once per run, outside ctx.run() to avoid journaling.
         // API key is optional — Discourse public endpoints work without auth.
-        let api_key = self
-            .decrypt_source_secret_optional(config.id, "api_key")
-            .await?;
-        let api_username = self
-            .decrypt_source_secret_optional(config.id, "api_username")
-            .await?;
+        let api_key = decrypt_optional_secret(&self.state, config.id, "api_key").await?;
+        let api_username = decrypt_optional_secret(&self.state, config.id, "api_username").await?;
 
-        let ing_ctx = self.ingestion_context(&config, api_key, api_username);
+        let ing_ctx = build_ingestion_context(&self.state, &config, api_key, None, api_username);
 
         let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
             Err(e) => {
                 let msg = e.to_string();
-                self.fail_run(ctx, run_id, source_name, &msg).await;
+                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
                 return Err(TerminalError::new(format!("plan failed: {msg}")));
             }
         };
@@ -110,31 +117,31 @@ impl DiscourseIngestionHandlerImpl {
             Ok(v) => v,
             Err(e) => {
                 let msg = e.to_string();
-                self.fail_run(ctx, run_id, source_name, &msg).await;
+                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
                 return Err(TerminalError::new(format!("ingestion failed: {msg}")));
             }
         };
 
         if total_items > 0
-            && let Err(e) = self
-                .advance_watermark(
-                    ctx,
-                    &config,
-                    &final_cursor,
-                    total_items,
-                    ing_ctx.token.as_deref(),
-                )
-                .await
+            && let Err(e) = advance_watermark(
+                ctx,
+                &self.state,
+                &config,
+                &final_cursor,
+                total_items,
+                ing_ctx.token.as_deref(),
+                "max_bumped_at",
+            )
+            .await
         {
             let msg = e.to_string();
-            self.fail_run(ctx, run_id, source_name, &msg).await;
+            fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
             return Err(TerminalError::new(format!(
                 "watermark advance failed: {msg}"
             )));
         }
 
-        self.complete_run(ctx, run_id, source_name, total_items)
-            .await;
+        complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
 
         if total_items > 0 {
             info!(source = source_name, "triggering metrics recomputation");
@@ -156,101 +163,6 @@ impl DiscourseIngestionHandlerImpl {
         Ok(())
     }
 
-    fn ingestion_context(
-        &self,
-        config: &SourceConfig,
-        token: Option<String>,
-        api_username: Option<String>,
-    ) -> IngestionContext {
-        IngestionContext {
-            repos: self.state.repos.clone(),
-            source_config: config.clone(),
-            http_client: self.state.http_client.clone(),
-            token,
-            email: None,
-            api_username,
-        }
-    }
-
-    /// Decrypt an optional secret.  Returns `None` if the secret is not configured.
-    async fn decrypt_source_secret_optional(
-        &self,
-        source_id: uuid::Uuid,
-        key: &str,
-    ) -> Result<Option<String>, TerminalError> {
-        let encrypted = self
-            .state
-            .repos
-            .config
-            .get_encrypted_secret(source_id, key)
-            .await
-            .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
-        match encrypted {
-            Some(enc) => {
-                let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &enc)
-                    .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
-                let s = String::from_utf8(decrypted)
-                    .map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))?;
-                Ok(Some(s))
-            }
-            None => Ok(None),
-        }
-    }
-
-    async fn load_config(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_name: &str,
-    ) -> Result<SourceConfig, TerminalError> {
-        let repos = self.state.repos.clone();
-        let name = source_name.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let name = name.clone();
-                async move {
-                    let config = super::load_source_config(&repos, &name)
-                        .await
-                        .map_err(TerminalError::new)?;
-                    Ok(Json::from(config))
-                }
-            })
-            .name("load_config")
-            .await?
-            .into_inner())
-    }
-
-    async fn create_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_name: &str,
-        method: &str,
-    ) -> Result<Uuid, TerminalError> {
-        let repos = self.state.repos.clone();
-        let sn = source_name.to_string();
-        let method_owned = method.to_string();
-        ctx.run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            let method_owned = method_owned.clone();
-            async move {
-                let id = Uuid::now_v7();
-                repos
-                    .activity
-                    .create_run(id, &sn, "DiscourseIngestionHandler", &method_owned)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(id.to_string()))
-            }
-        })
-        .name("create_run")
-        .await?
-        .into_inner()
-        .parse()
-        .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
-    }
-
     #[allow(clippy::too_many_arguments)]
     async fn fetch_store_loop(
         &self,
@@ -266,12 +178,12 @@ impl DiscourseIngestionHandlerImpl {
         let mut topics_fetched = 0u32;
 
         loop {
-            let batch = self.fetch_batch(ctx, config, &cursor, token).await?;
+            let batch = fetch_batch(ctx, &self.state, config, &cursor, token).await?;
 
             topics_fetched += batch.items.len() as u32;
 
             if !batch.items.is_empty() {
-                let stored = self.store_batch(ctx, config, &batch.items, token).await?;
+                let stored = store_batch(ctx, &self.state, config, &batch.items, token).await?;
                 total_items += stored;
 
                 info!(
@@ -316,217 +228,6 @@ impl DiscourseIngestionHandlerImpl {
 
         Ok((total_items, cursor))
     }
-
-    async fn fetch_batch(
-        &self,
-        ctx: &ObjectContext<'_>,
-        config: &SourceConfig,
-        cursor: &str,
-        token: Option<&str>,
-    ) -> Result<SerFetchResult, TerminalError> {
-        let repos = self.state.repos.clone();
-        let http = self.state.http_client.clone();
-        let cfg = config.clone();
-        let tok = token.map(String::from);
-        let cur = cursor.to_string();
-        let source_type = config.source_type.clone();
-
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let http = http.clone();
-                let cfg = cfg.clone();
-                let cur = cur.clone();
-                let source_type = source_type.clone();
-                async move {
-                    let src = registry::create_source(&source_type)
-                        .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                    let ic = IngestionContext {
-                        repos,
-                        source_config: cfg,
-                        http_client: http,
-                        token: tok,
-                        email: None,
-                        api_username: None,
-                    };
-                    let result = src
-                        .fetch_batch(&ic, &cur)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
-
-                    Ok(Json::from(SerFetchResult {
-                        items: result.items,
-                        next_cursor: result.next_cursor,
-                        rate_limit: result.rate_limit,
-                    }))
-                }
-            })
-            .name("fetch_batch")
-            .await?
-            .into_inner())
-    }
-
-    async fn store_batch(
-        &self,
-        ctx: &ObjectContext<'_>,
-        config: &SourceConfig,
-        items: &[ContributionInput],
-        token: Option<&str>,
-    ) -> Result<i32, TerminalError> {
-        let repos = self.state.repos.clone();
-        let http = self.state.http_client.clone();
-        let cfg = config.clone();
-        let tok = token.map(String::from);
-        let items = items.to_vec();
-        let source_type = config.source_type.clone();
-
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let http = http.clone();
-                let cfg = cfg.clone();
-                let items = items.clone();
-                let source_type = source_type.clone();
-                async move {
-                    let src = registry::create_source(&source_type)
-                        .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                    let ic = IngestionContext {
-                        repos,
-                        source_config: cfg,
-                        http_client: http,
-                        token: tok,
-                        email: None,
-                        api_username: None,
-                    };
-                    let count = src
-                        .store_batch(&ic, &items)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("store failed: {e}")))?;
-                    #[allow(clippy::cast_possible_wrap)]
-                    Ok(Json::from(count as i32))
-                }
-            })
-            .name("store_batch")
-            .await?
-            .into_inner())
-    }
-
-    async fn advance_watermark(
-        &self,
-        ctx: &ObjectContext<'_>,
-        config: &SourceConfig,
-        cursor: &str,
-        total_items: i32,
-        token: Option<&str>,
-    ) -> Result<(), TerminalError> {
-        let repos = self.state.repos.clone();
-        let http = self.state.http_client.clone();
-        let cfg = config.clone();
-        let tok = token.map(String::from);
-        let wm = cursor.to_string();
-        let source_type = config.source_type.clone();
-
-        ctx.run(|| {
-            let repos = repos.clone();
-            let http = http.clone();
-            let cfg = cfg.clone();
-            let wm = wm.clone();
-            let source_type = source_type.clone();
-            async move {
-                let src = registry::create_source(&source_type)
-                    .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                let ic = IngestionContext {
-                    repos,
-                    source_config: cfg,
-                    http_client: http,
-                    token: tok,
-                    email: None,
-                    api_username: None,
-                };
-                let watermark = extract_watermark(&wm).unwrap_or_default();
-                src.advance_watermark(&ic, &watermark, total_items)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("advance failed: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("advance_watermark")
-        .await?;
-
-        Ok(())
-    }
-
-    async fn complete_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        source_name: &str,
-        items_collected: i32,
-    ) {
-        let repos = self.state.repos.clone();
-        let sn = source_name.to_string();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let sn = sn.clone();
-                async move {
-                    repos
-                        .activity
-                        .complete_run(run_id, items_collected)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    repos
-                        .activity
-                        .clear_current_invocation_id(&sn)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("complete_run")
-            .await;
-
-        if let Err(e) = result {
-            error!(source = source_name, "failed to update run status: {e}");
-        }
-    }
-
-    async fn fail_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        source_name: &str,
-        error_msg: &str,
-    ) {
-        let repos = self.state.repos.clone();
-        let err = error_msg.to_string();
-        let sn = source_name.to_string();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let err = err.clone();
-                let sn = sn.clone();
-                async move {
-                    repos
-                        .activity
-                        .fail_run(run_id, &err)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    repos
-                        .activity
-                        .clear_current_invocation_id(&sn)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("fail_run")
-            .await;
-
-        if let Err(e) = result {
-            error!(source = source_name, "failed to update run status: {e}");
-        }
-    }
 }
 
 /// Build the initial Discourse cursor with full config.
@@ -565,24 +266,6 @@ fn build_discourse_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String
     };
 
     serde_json::to_string(&cursor).unwrap_or_default()
-}
-
-/// Serialisable fetch result for Restate journaling.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct SerFetchResult {
-    items: Vec<ContributionInput>,
-    next_cursor: Option<String>,
-    #[serde(default)]
-    rate_limit: Option<RateLimitInfo>,
-}
-
-/// Extract the `max_bumped_at` field from a serialised cursor JSON.
-fn extract_watermark(cursor_json: &str) -> Option<String> {
-    serde_json::from_str::<serde_json::Value>(cursor_json)
-        .ok()?
-        .get("max_bumped_at")?
-        .as_str()
-        .map(String::from)
 }
 
 /// Build a structured progress JSON for the Discourse ingestion run.

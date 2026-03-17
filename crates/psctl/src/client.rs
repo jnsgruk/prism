@@ -10,25 +10,16 @@ pub struct AuthInterceptor {
     token: Option<String>,
 }
 
+type AuthedChannel = tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>;
+
 /// Pre-constructed gRPC clients for all services, with auth interceptor.
 pub struct Clients {
-    pub admin: AdminServiceClient<
-        tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>,
-    >,
-    pub auth: AuthServiceClient<
-        tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>,
-    >,
-    pub config: ConfigServiceClient<
-        tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>,
-    >,
-    pub handlers: HandlersServiceClient<
-        tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>,
-    >,
-    pub metrics: MetricsServiceClient<
-        tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>,
-    >,
-    pub org:
-        OrgServiceClient<tonic::service::interceptor::InterceptedService<Channel, AuthInterceptor>>,
+    pub admin: AdminServiceClient<AuthedChannel>,
+    pub auth: AuthServiceClient<AuthedChannel>,
+    pub config: ConfigServiceClient<AuthedChannel>,
+    pub handlers: HandlersServiceClient<AuthedChannel>,
+    pub metrics: MetricsServiceClient<AuthedChannel>,
+    pub org: OrgServiceClient<AuthedChannel>,
 }
 
 impl tonic::service::Interceptor for AuthInterceptor {

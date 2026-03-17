@@ -35,6 +35,20 @@ pub fn duration_between(
     }
 }
 
+/// Truncate a string to `max` characters (not bytes), appending an ellipsis
+/// if truncated. Safe for multi-byte UTF-8.
+pub fn truncate(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let end = s
+            .char_indices()
+            .nth(max.saturating_sub(1))
+            .map_or(0, |(i, _)| i);
+        format!("{}\u{2026}", &s[..end])
+    }
+}
+
 pub fn source_state(state: i32) -> &'static str {
     match ps_proto::prism::v1::SourceState::try_from(state) {
         Ok(ps_proto::prism::v1::SourceState::Idle) => "idle",

@@ -2,8 +2,7 @@ use std::fmt::Write as _;
 
 use ps_core::models::RateLimitInfo;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue, LINK, USER_AGENT};
-use time::OffsetDateTime;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use super::types::{GitHubPr, GitHubRepo, GitHubReview, GitHubTeam, GitHubTeamRepo, GitHubUser};
 
@@ -327,36 +326,10 @@ fn parse_next_page(link: &str) -> Option<u32> {
     None
 }
 
-/// Parse GitHub rate limit headers into a `RateLimitInfo`.
+use super::parse_rate_limit_headers;
+
 fn parse_rate_limit(headers: &HeaderMap) -> RateLimitInfo {
-    let remaining = headers
-        .get("x-ratelimit-remaining")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-
-    let limit = headers
-        .get("x-ratelimit-limit")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-
-    let reset_epoch: i64 = headers
-        .get("x-ratelimit-reset")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-
-    let reset_at = OffsetDateTime::from_unix_timestamp(reset_epoch).unwrap_or_else(|e| {
-        warn!("invalid rate limit reset timestamp {reset_epoch}: {e}");
-        OffsetDateTime::now_utc()
-    });
-
-    RateLimitInfo {
-        remaining,
-        limit,
-        reset_at,
-    }
+    parse_rate_limit_headers(headers)
 }
 
 /// Errors from the GitHub API client.

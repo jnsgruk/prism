@@ -62,10 +62,4 @@ pub async fn contributions(
     Ok(())
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}\u{2026}", &s[..max - 1])
-    }
-}
+use crate::format::truncate;
