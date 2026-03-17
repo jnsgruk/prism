@@ -545,6 +545,8 @@ impl MetricsService for MetricsServiceImpl {
             .transpose()?;
         let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
         let sort_desc = req.sort_desc.unwrap_or(true);
+        let state = req.state.as_deref().filter(|s| !s.is_empty());
+        let search = req.search.as_deref().filter(|s| !s.is_empty());
 
         let (rows, total_count) = self
             .repos
@@ -558,6 +560,8 @@ impl MetricsService for MetricsServiceImpl {
                 sort_desc,
                 page_size,
                 offset,
+                state,
+                search,
             })
             .await
             .map_err(db_err)?;

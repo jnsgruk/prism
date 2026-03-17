@@ -21,6 +21,8 @@ pub async fn contributions(
             page_index: 0,
             sort_field: None,
             sort_desc: Some(true),
+            state: None,
+            search: None,
         })
         .await?
         .into_inner();

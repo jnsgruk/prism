@@ -553,6 +553,8 @@ pub struct ListPersonContributionsParams<'a> {
     pub sort_desc: bool,
     pub page_size: i32,
     pub offset: i32,
+    pub state: Option<&'a str>,
+    pub search: Option<&'a str>,
 }
 
 /// Activity summary for a person grouped by platform.
@@ -888,6 +890,9 @@ impl MetricsRepo {
         let sort_desc = params.sort_desc;
         let page_size = params.page_size;
         let offset = params.offset;
+        let state = params.state;
+        let escaped_search = params.search.map(super::escape_like);
+        let search = escaped_search.as_deref();
 
         let rows = sqlx::query!(
             r#"
@@ -902,11 +907,18 @@ impl MetricsRepo {
               AND ($2::text IS NULL OR c.platform = $2)
               AND ($3::text IS NULL OR c.contribution_type = $3)
               AND ($4::date IS NULL OR c.created_at >= $4::date::timestamptz)
+              AND ($9::text IS NULL OR c.state = $9)
+              AND ($10::text IS NULL OR (
+                  c.title ILIKE '%' || $10 || '%'
+                  OR c.metadata->>'repo' ILIKE '%' || $10 || '%'
+              ))
             ORDER BY
               CASE WHEN $7 = 'platform' AND NOT $8 THEN c.platform END ASC NULLS LAST,
               CASE WHEN $7 = 'platform' AND $8 THEN c.platform END DESC NULLS LAST,
               CASE WHEN $7 = 'state' AND NOT $8 THEN c.state END ASC NULLS LAST,
               CASE WHEN $7 = 'state' AND $8 THEN c.state END DESC NULLS LAST,
+              CASE WHEN $7 = 'repo' AND NOT $8 THEN c.metadata->>'repo' END ASC NULLS LAST,
+              CASE WHEN $7 = 'repo' AND $8 THEN c.metadata->>'repo' END DESC NULLS LAST,
               CASE WHEN COALESCE($7, 'created_at') = 'created_at' AND NOT $8 THEN c.created_at END ASC,
               CASE WHEN COALESCE($7, 'created_at') = 'created_at' AND $8 THEN c.created_at END DESC
             LIMIT $5 OFFSET $6
@@ -919,6 +931,8 @@ impl MetricsRepo {
             offset as i64,
             sort_field,
             sort_desc,
+            state,
+            search,
         )
         .fetch_all(&self.pool)
         .await

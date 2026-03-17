@@ -198,6 +198,10 @@ message ListPersonContributionsRequest {
   int32 page_index = 6;
   optional string sort_field = 7;
   optional bool sort_desc = 8;
+  // Filter by state: "merged", "open", "closed", "in_progress", "APPROVED", etc.
+  optional string state = 9;
+  // Free-text search across title and repo.
+  optional string search = 10;
 }
 
 message ListPersonContributionsResponse {
