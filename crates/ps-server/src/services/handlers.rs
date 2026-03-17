@@ -177,22 +177,23 @@ impl HandlersServiceImpl {
     /// invocations are no longer running. Mutates the slice in-place so
     /// callers see corrected `has_active_run` values.
     async fn reconcile_stale_runs(&self, sources: &mut [SourceStatusRow]) {
-        // Collect (index, invocation_id) pairs for sources that need checking
-        let checks: Vec<(usize, String)> = sources
-            .iter()
-            .enumerate()
-            .filter_map(|(i, s)| {
-                if !s.has_active_run {
-                    return None;
-                }
-                match &s.current_invocation_id {
-                    Some(id) if !id.is_empty() => Some((i, id.clone())),
-                    _ => None,
-                }
-            })
-            .collect();
+        // Collect sources that need checking, split into two groups:
+        // 1. Sources with an invocation ID — verify against Restate
+        // 2. Sources with no invocation ID — inherently stale, cancel immediately
+        let mut checks: Vec<(usize, String)> = Vec::new();
+        let mut orphaned: Vec<usize> = Vec::new();
 
-        // Check all invocations in parallel (read-only HTTP GETs)
+        for (i, s) in sources.iter().enumerate() {
+            if !s.has_active_run {
+                continue;
+            }
+            match &s.current_invocation_id {
+                Some(id) if !id.is_empty() => checks.push((i, id.clone())),
+                _ => orphaned.push(i),
+            }
+        }
+
+        // Check all invocations with IDs in parallel (read-only HTTP calls)
         let alive_results: Vec<(usize, bool)> = futures::future::join_all(
             checks
                 .iter()
@@ -200,18 +201,22 @@ impl HandlersServiceImpl {
         )
         .await;
 
-        // Process stale results sequentially (writes to DB + in-memory mutation)
-        for (idx, alive) in alive_results {
-            if alive {
-                continue;
-            }
+        // Combine: dead invocations + orphaned (no invocation ID at all)
+        let stale_indices: Vec<usize> = alive_results
+            .into_iter()
+            .filter(|(_, alive)| !alive)
+            .map(|(idx, _)| idx)
+            .chain(orphaned)
+            .collect();
 
+        // Process stale results sequentially (writes to DB + in-memory mutation)
+        for idx in stale_indices {
             let Some(source) = sources.get_mut(idx) else {
                 continue;
             };
             warn!(
                 source = %source.name,
-                invocation_id = source.current_invocation_id.as_deref().unwrap_or(""),
+                invocation_id = source.current_invocation_id.as_deref().unwrap_or("(none)"),
                 "reconciling stale run — Restate invocation no longer active",
             );
 
