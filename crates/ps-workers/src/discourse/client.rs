@@ -8,6 +8,7 @@ use serde::Deserialize;
 use tracing::debug;
 
 /// Discourse REST API client.
+#[derive(Clone)]
 pub struct DiscourseClient {
     http: reqwest::Client,
     base_url: String,
@@ -83,13 +84,37 @@ pub struct Post {
     pub post_number: i32,
     pub reply_count: i32,
     #[serde(default)]
-    pub like_count: i32,
+    like_count: Option<i32>,
+    /// `actions_summary` contains per-action-type counts; action type 2 = like.
+    #[serde(default)]
+    actions_summary: Vec<ActionSummary>,
     pub created_at: String,
     pub updated_at: Option<String>,
     pub raw: Option<String>,
     /// If this post is a reply, the post number it replies to.
     #[serde(default)]
     pub reply_to_post_number: Option<i32>,
+}
+
+impl Post {
+    /// Effective like count: prefer `like_count` when present, fall back to
+    /// `actions_summary` type-2 count (some Discourse instances return
+    /// `like_count: null`).
+    pub fn likes(&self) -> i32 {
+        self.like_count.filter(|&c| c > 0).unwrap_or_else(|| {
+            self.actions_summary
+                .iter()
+                .find(|a| a.id == 2)
+                .map_or(0, |a| a.count)
+        })
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ActionSummary {
+    id: i32,
+    #[serde(default)]
+    count: i32,
 }
 
 // ---------------------------------------------------------------------------
@@ -340,9 +365,14 @@ impl DiscourseClient {
 
         Self::handle_rate_limit(&resp)?;
 
-        // 403 means the API key lacks admin scope — not an error, just
-        // means this strategy is unavailable.
-        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+        // 403 means the API key lacks admin scope, 404 means the admin
+        // endpoint is not reachable (common on instances with no API key
+        // where the route simply doesn't exist for anonymous users).
+        // Either way this strategy is unavailable — fall through.
+        if matches!(
+            resp.status(),
+            reqwest::StatusCode::FORBIDDEN | reqwest::StatusCode::NOT_FOUND
+        ) {
             return Ok(None);
         }
 

@@ -259,7 +259,7 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
     let metrics_data = DiscoursePostData {
         topic_id: post.topic_id,
         reply_count: post.reply_count,
-        likes: post.like_count,
+        likes: post.likes(),
         post_number: post.post_number,
         reply_to_post_number: post.reply_to_post_number,
         is_reply,
@@ -296,7 +296,7 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
     }
 }
 
-/// Fetch likers for all posts with `like_count > 0` in a topic, with capped
+/// Fetch likers for all liked posts in a topic, with capped
 /// concurrency, and return the resulting `ContributionInput` items.
 async fn fetch_likes_for_posts(
     client: &DiscourseClient,
@@ -304,7 +304,7 @@ async fn fetch_likes_for_posts(
     topic: &TopicSummary,
     cur: &Cursor,
 ) -> Vec<ContributionInput> {
-    let likeable_posts: Vec<Post> = posts.iter().filter(|p| p.like_count > 0).cloned().collect();
+    let likeable_posts: Vec<Post> = posts.iter().filter(|p| p.likes() > 0).cloned().collect();
 
     if likeable_posts.is_empty() {
         return vec![];
