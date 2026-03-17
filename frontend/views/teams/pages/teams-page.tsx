@@ -27,6 +27,7 @@ import {
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
+import { TeamSelector } from "@/views/teams/components/team-selector";
 import { ThroughputTrendChart, WipTrendChart } from "@/views/teams/components/trend-charts";
 import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
 
@@ -94,7 +95,19 @@ const TeamsPage = (): React.ReactElement => {
 
   return (
     <>
-      <PageHeader title={teamName} description="Team performance and contributions" />
+      <PageHeader
+        title={teamName}
+        description="Team performance and contributions"
+        actions={
+          roots.length > 0 && (
+            <TeamSelector
+              roots={roots}
+              selectedTeam={selectedTeam}
+              onSelect={(id) => navigate(`/teams/${id}`)}
+            />
+          )
+        }
+      />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
         {/* Navigation: period selector, breadcrumbs */}
         <div className="space-y-3">
