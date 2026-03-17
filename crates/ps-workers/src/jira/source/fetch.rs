@@ -96,14 +96,12 @@ pub(super) async fn fetch_batch_impl(
             let updated_str = updated
                 .format(&time::format_description::well_known::Rfc3339)
                 .unwrap_or_default();
-            match cur.max_updated_at {
-                Some(ref current) if updated_str > *current => {
-                    cur.max_updated_at = Some(updated_str);
-                }
-                None => {
-                    cur.max_updated_at = Some(updated_str);
-                }
-                _ => {}
+            if cur
+                .max_updated_at
+                .as_ref()
+                .is_none_or(|current| updated_str > *current)
+            {
+                cur.max_updated_at = Some(updated_str);
             }
         }
     }
@@ -274,9 +272,15 @@ fn compute_cycle_time(state_history: Option<&serde_json::Value>) -> Option<f64> 
     let mut done_at: Option<time::OffsetDateTime> = None;
 
     for t in transitions {
-        let state = t.get("state")?.as_str()?;
-        let at_str = t.get("at")?.as_str()?;
-        let at = parse_jira_datetime(at_str).ok()?;
+        let Some(state) = t.get("state").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(at_str) = t.get("at").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Ok(at) = parse_jira_datetime(at_str) else {
+            continue;
+        };
 
         // We check for common in-progress and done status names.
         // A more robust approach would check status categories, but the

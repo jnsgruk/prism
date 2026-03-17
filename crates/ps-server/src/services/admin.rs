@@ -110,7 +110,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         request: Request<CreateApiTokenRequest>,
     ) -> Result<Response<CreateApiTokenResponse>, Status> {
-        let _ctx = require_admin(&request)?;
+        let ctx = require_admin(&request)?;
         let req = request.into_inner();
 
         if req.name.is_empty() {
@@ -120,7 +120,7 @@ impl AdminService for AdminServiceImpl {
         let raw_token = generate_token();
         let token_hash = hash_token(&raw_token);
         let token_id = Uuid::now_v7();
-        let user_id = _ctx.user_id;
+        let user_id = ctx.user_id;
 
         self.repos
             .auth

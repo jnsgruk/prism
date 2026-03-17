@@ -1,17 +1,6 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
-
-/// Context extracted from a validated session token, attached to requests
-/// by the auth interceptor.
-#[derive(Debug, Clone)]
-pub struct AuthContext {
-    pub user_id: Uuid,
-    pub username: String,
-    pub display_name: String,
-    pub role: String,
-}
 
 /// Generate a cryptographically random 256-bit session token, base64url-encoded.
 pub fn generate_token() -> String {

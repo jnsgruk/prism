@@ -127,16 +127,13 @@ pub(super) async fn fetch_batch_impl(
         }
 
         // Track max bumped_at for watermark advancement
-        if let Some(bumped) = bumped_at {
-            match cur.max_bumped_at {
-                Some(ref current) if bumped > current.as_str() => {
-                    cur.max_bumped_at = Some(bumped.to_string());
-                }
-                None => {
-                    cur.max_bumped_at = Some(bumped.to_string());
-                }
-                _ => {}
-            }
+        if let Some(bumped) = bumped_at
+            && cur
+                .max_bumped_at
+                .as_ref()
+                .is_none_or(|current| bumped > current.as_str())
+        {
+            cur.max_bumped_at = Some(bumped.to_string());
         }
 
         // Fetch full topic detail to get posts

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ps_proto::prism::v1::handlers_service_server::HandlersService;
 use ps_proto::prism::v1::{
@@ -226,6 +226,7 @@ impl HandlersService for HandlersServiceImpl {
         // Collect invocation IDs to cancel: start with the stored one, then
         // also query Restate for any active invocations on this virtual object
         // (covers cases where the stored ID is stale or missing).
+        let mut seen = HashSet::new();
         let mut ids_to_cancel = Vec::new();
 
         if let Some(id) = self
@@ -235,13 +236,14 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?
         {
+            seen.insert(id.clone());
             ids_to_cancel.push(id);
         }
 
         // Query Restate admin for active invocations on this virtual object
         if let Some(active_ids) = self.query_active_invocations(&req.source_name).await {
             for id in active_ids {
-                if !ids_to_cancel.contains(&id) {
+                if seen.insert(id.clone()) {
                     ids_to_cancel.push(id);
                 }
             }

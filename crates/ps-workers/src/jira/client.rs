@@ -10,6 +10,7 @@ use reqwest::header::AUTHORIZATION;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::debug;
+use zeroize::Zeroizing;
 
 /// Validate a Jira issue key (e.g., `PROJ-123`) before interpolating into URLs.
 fn validate_jira_key(key: &str) -> Result<&str, ps_core::Error> {
@@ -36,7 +37,7 @@ fn validate_jira_key(key: &str) -> Result<&str, ps_core::Error> {
 pub struct JiraClient {
     http: reqwest::Client,
     base_url: String,
-    auth_header: String,
+    auth_header: Zeroizing<String>,
 }
 
 /// A page of search results from the Jira JQL search endpoint.
@@ -175,7 +176,7 @@ impl JiraClient {
         Self {
             http,
             base_url,
-            auth_header,
+            auth_header: Zeroizing::new(auth_header),
         }
     }
 
@@ -213,7 +214,7 @@ impl JiraClient {
         let resp = self
             .http
             .get(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.as_str())
             .timeout(std::time::Duration::from_secs(30))
             .query(&query_params)
             .send()
@@ -267,7 +268,7 @@ impl JiraClient {
         let resp = self
             .http
             .get(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.as_str())
             .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
@@ -305,7 +306,7 @@ impl JiraClient {
         let resp = self
             .http
             .get(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.as_str())
             .send()
             .await
             .map_err(|e| ps_core::Error::Internal(format!("jira connection test failed: {e}")))?;

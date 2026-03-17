@@ -86,14 +86,12 @@ async fn fetch_team_repos(
         };
 
         // Track max_updated_at for watermark advancement.
-        match cur.max_updated_at {
-            Some(ref max) if updated_at > max => {
-                cur.max_updated_at = Some(updated_at.clone());
-            }
-            None => {
-                cur.max_updated_at = Some(updated_at.clone());
-            }
-            _ => {}
+        if cur
+            .max_updated_at
+            .as_ref()
+            .is_none_or(|max| updated_at > max)
+        {
+            cur.max_updated_at = Some(updated_at.clone());
         }
 
         items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
@@ -283,16 +281,13 @@ async fn fetch_member_search(
         cross_repo_count += 1;
 
         // Track max_updated_at.
-        if let Some(ref updated_at) = search_pr.updated_at {
-            match cur.max_updated_at {
-                Some(ref max) if updated_at > max => {
-                    cur.max_updated_at = Some(updated_at.clone());
-                }
-                None => {
-                    cur.max_updated_at = Some(updated_at.clone());
-                }
-                _ => {}
-            }
+        if let Some(ref updated_at) = search_pr.updated_at
+            && cur
+                .max_updated_at
+                .as_ref()
+                .is_none_or(|max| updated_at > max)
+        {
+            cur.max_updated_at = Some(updated_at.clone());
         }
 
         items.extend(search_pr_to_contributions(owner, repo, search_pr)?);

@@ -53,12 +53,20 @@ fn format_date(d: Date) -> String {
     d.format(DATE_FMT).unwrap_or_else(|_| d.to_string())
 }
 
+/// Extract an f32 metric from `raw_metrics` JSON.
+///
+/// Truncating `f64 as f32` is acceptable here: metric values (hours,
+/// percentages) fit comfortably within f32 range, and proto uses float32.
 fn json_f32(v: &serde_json::Value, key: &str) -> f32 {
     v.get(key)
         .and_then(serde_json::Value::as_f64)
         .unwrap_or(0.0) as f32
 }
 
+/// Extract an i32 metric from `raw_metrics` JSON.
+///
+/// Truncating `i64 as i32` is acceptable here: metric counts (PRs, posts,
+/// likes) are always well within i32 range.
 fn json_i32(v: &serde_json::Value, key: &str) -> i32 {
     v.get(key).and_then(serde_json::Value::as_i64).unwrap_or(0) as i32
 }

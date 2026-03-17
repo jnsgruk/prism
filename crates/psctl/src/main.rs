@@ -14,7 +14,9 @@ struct Cli {
     #[arg(long, env = "PS_SERVER_URL", default_value = "http://localhost:18080")]
     server: String,
 
-    /// API token for authentication
+    /// API token for authentication.
+    /// Prefer setting `PS_API_TOKEN` env var over passing on the command line
+    /// (CLI args are visible in process listings).
     #[arg(long, env = "PS_API_TOKEN")]
     token: Option<String>,
 

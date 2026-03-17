@@ -8,7 +8,7 @@ use crate::client::Clients;
 /// Resolve a team name to its UUID by searching the team tree.
 async fn resolve_team_id(clients: &mut Clients, name: &str) -> Result<String> {
     // Try parsing as UUID first
-    if name.contains('-') && name.len() > 30 {
+    if uuid::Uuid::parse_str(name).is_ok() {
         return Ok(name.to_string());
     }
 

@@ -17,3 +17,4 @@ prost-types.workspace = true
 time.workspace = true
 anyhow.workspace = true
 dotenvy.workspace = true
+uuid.workspace = true

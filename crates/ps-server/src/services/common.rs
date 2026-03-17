@@ -74,6 +74,9 @@ fn serde_json_to_prost_value(value: &serde_json::Value) -> prost_types::Value {
     let kind = match value {
         serde_json::Value::Null => Some(prost_types::value::Kind::NullValue(0)),
         serde_json::Value::Bool(b) => Some(prost_types::value::Kind::BoolValue(*b)),
+        // 0.0 is a safe default for the JSON-to-Protobuf Number conversion:
+        // serde_json::Number::as_f64() only returns None for values outside f64
+        // range, which are not representable in proto's double either.
         serde_json::Value::Number(n) => Some(prost_types::value::Kind::NumberValue(
             n.as_f64().unwrap_or(0.0),
         )),

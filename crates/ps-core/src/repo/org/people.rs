@@ -42,12 +42,23 @@ impl From<PeopleQueryRow> for PersonRow {
 }
 
 /// Map a validated sort field name to its SQL expression.
+///
+/// Only known column names are accepted — the catch-all arm falls back to
+/// `p.name` and logs a warning so unexpected values are visible without
+/// opening an injection vector.
 fn sort_field_to_sql(field: &str) -> &'static str {
     match field {
+        "name" => "p.name",
         "email" => "COALESCE(p.email, '')",
         "team_name" => "COALESCE(t.name, '')",
         "active" => "p.active",
-        _ => "p.name",
+        other => {
+            tracing::warn!(
+                sort_field = other,
+                "unrecognised sort field, falling back to p.name"
+            );
+            "p.name"
+        }
     }
 }
 
@@ -118,6 +129,8 @@ impl OrgRepo {
 
         if let Some(tid) = params.team_id {
             idx += 1;
+            // Safe: `tid` is a Uuid from the caller, cast via `::uuid` in SQL.
+            // Using runtime sqlx::query here because the WHERE clause is dynamic.
             binds.push(tid.to_string());
             conditions.push(format!(
                 "tm.team_id IN (\

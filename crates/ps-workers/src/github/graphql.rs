@@ -3,6 +3,7 @@ use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use zeroize::Zeroizing;
 
 use super::types::{GraphQLSearchData, GraphQLSearchPr};
 
@@ -14,7 +15,7 @@ use super::types::{GraphQLSearchData, GraphQLSearchPr};
 pub struct GitHubGraphQLClient {
     http: reqwest::Client,
     endpoint: String,
-    token: String,
+    token: Zeroizing<String>,
 }
 
 /// A page of results from a GraphQL query.
@@ -94,7 +95,7 @@ impl GitHubGraphQLClient {
         Self {
             http,
             endpoint,
-            token: token.to_string(),
+            token: Zeroizing::new(token.to_string()),
         }
     }
 
@@ -235,7 +236,7 @@ impl GitHubGraphQLClient {
 
     fn default_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
-        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", self.token)) {
+        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", &*self.token)) {
             headers.insert(AUTHORIZATION, val);
         }
         headers.insert(USER_AGENT, HeaderValue::from_static("prism-ingestion/0.1"));

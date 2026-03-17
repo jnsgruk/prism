@@ -126,6 +126,10 @@ mod tests {
         let key = test_key();
         let encoded = STANDARD.encode(key);
 
+        // SAFETY: env mutation requires `unsafe` since Rust 1.66 because
+        // `set_var`/`remove_var` are not thread-safe.  This is acceptable in
+        // a single-threaded unit test (cargo test runs each #[test] fn on its
+        // own thread, but no other test in this module touches PS_SECRET_KEY).
         unsafe { std::env::set_var("PS_SECRET_KEY", &encoded) };
         let loaded = load_secret_key().unwrap();
         unsafe { std::env::remove_var("PS_SECRET_KEY") };

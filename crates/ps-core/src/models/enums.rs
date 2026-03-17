@@ -454,7 +454,7 @@ pub enum Role {
 }
 
 impl Role {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Admin => "admin",
         }
@@ -463,9 +463,7 @@ impl Role {
 
 impl fmt::Display for Role {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Admin => write!(f, "admin"),
-        }
+        f.write_str(self.as_str())
     }
 }
 

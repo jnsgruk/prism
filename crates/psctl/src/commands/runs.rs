@@ -27,11 +27,7 @@ pub async fn runs(clients: &mut Clients, source: Option<String>) -> Result<()> {
     println!("{}", "─".repeat(82));
 
     for run in &response.runs {
-        let short_id = if run.id.len() > 8 {
-            &run.id[..8]
-        } else {
-            &run.id
-        };
+        let short_id = run.id.get(..8).unwrap_or(&run.id);
 
         println!(
             "{:<10} {:<18} {:<22} {:<12} {:>6} {:>10}",

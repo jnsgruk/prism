@@ -374,9 +374,10 @@ impl ConfigService for ConfigServiceImpl {
             _ => &[],
         };
 
-        let missing: Vec<&&str> = required_secrets
+        let missing: Vec<&str> = required_secrets
             .iter()
-            .filter(|k| !secret_keys.contains(&k.to_string()))
+            .copied()
+            .filter(|k| !secret_keys.contains(&(*k).to_string()))
             .collect();
 
         if !missing.is_empty() {
@@ -389,20 +390,24 @@ impl ConfigService for ConfigServiceImpl {
         }
 
         // Test connection per source type
-        if source.source_type == ps_core::models::Platform::Jira {
-            self.test_jira_connection(source_id, &source, &mut details)
-                .await
-        } else if source.source_type.is_discourse() {
-            self.test_discourse_connection(source_id, &source, &mut details)
-                .await
-        } else {
-            // Default: return success if all required secrets are present
-            details.insert("status".into(), "secrets_validated".into());
-            Ok(Response::new(TestConnectionResponse {
-                success: true,
-                error_message: String::new(),
-                details,
-            }))
+        match &source.source_type {
+            ps_core::models::Platform::Jira => {
+                self.test_jira_connection(source_id, &source, &mut details)
+                    .await
+            }
+            ps_core::models::Platform::Discourse(_) => {
+                self.test_discourse_connection(source_id, &source, &mut details)
+                    .await
+            }
+            _ => {
+                // Default: return success if all required secrets are present
+                details.insert("status".into(), "secrets_validated".into());
+                Ok(Response::new(TestConnectionResponse {
+                    success: true,
+                    error_message: String::new(),
+                    details,
+                }))
+            }
         }
     }
 }
@@ -438,7 +443,16 @@ impl ConfigServiceImpl {
             .await
         {
             Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
-                Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
+                Ok(dec) => match String::from_utf8(dec) {
+                    Ok(s) => s,
+                    Err(_) => {
+                        return Ok(Response::new(TestConnectionResponse {
+                            success: false,
+                            error_message: "failed to decode api_key".into(),
+                            details: details.clone(),
+                        }));
+                    }
+                },
                 Err(e) => {
                     return Ok(Response::new(TestConnectionResponse {
                         success: false,
@@ -542,7 +556,16 @@ impl ConfigServiceImpl {
             .await
         {
             Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
-                Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
+                Ok(dec) => match String::from_utf8(dec) {
+                    Ok(s) => s,
+                    Err(_) => {
+                        return Ok(Response::new(TestConnectionResponse {
+                            success: false,
+                            error_message: "failed to decode api_token".into(),
+                            details: details.clone(),
+                        }));
+                    }
+                },
                 Err(e) => {
                     return Ok(Response::new(TestConnectionResponse {
                         success: false,
@@ -579,7 +602,11 @@ impl ConfigServiceImpl {
             {
                 Ok(Some(enc)) => match crypto::decrypt(&self.secret_key, &enc) {
                     Ok(dec) => String::from_utf8(dec).unwrap_or_default(),
-                    Err(_) => String::new(),
+                    Err(_) => {
+                        // Email decryption failure is non-fatal — fall back to
+                        // empty string which omits the Basic auth email prefix.
+                        String::new()
+                    }
                 },
                 _ => String::new(),
             };
