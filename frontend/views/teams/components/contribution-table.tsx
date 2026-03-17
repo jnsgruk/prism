@@ -7,7 +7,9 @@ import { useRef, useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
+import { create } from "@bufbuild/protobuf";
 import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
+import { PeriodSchema } from "@ps/api/gen/prism/v1/metrics_pb";
 import type {
   Contribution,
   ContributionFilters,
@@ -278,10 +280,22 @@ export const ContributionTable = ({
     pageIndex,
   };
 
-  const teamQuery = useListTeamContributions(teamId ?? "", period!, teamFilters);
-  const personQuery = useListPersonContributions(personId ?? "", personFilters);
-
   const isPersonMode = !!personId;
+
+  // Both hooks must always be called (React rules of hooks).
+  // Use a dummy period for the team hook when in person mode to avoid
+  // accessing undefined period.type in the query key.
+  const dummyPeriod = create(PeriodSchema, { start: "", end: "" });
+  const teamQuery = useListTeamContributions(
+    isPersonMode ? "" : (teamId ?? ""),
+    period ?? dummyPeriod,
+    teamFilters,
+  );
+  const personQuery = useListPersonContributions(
+    isPersonMode ? (personId ?? "") : "",
+    personFilters,
+  );
+
   const data = isPersonMode ? personQuery.data : teamQuery.data;
   const isLoading = isPersonMode ? personQuery.isLoading : teamQuery.isLoading;
 
