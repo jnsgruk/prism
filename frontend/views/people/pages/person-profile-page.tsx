@@ -252,7 +252,7 @@ const PersonProfilePage = (): React.ReactElement => {
   const navigate = useNavigate();
   const [periodKey, setPeriodKey] = useState(defaultPeriodKey);
   const period = buildPeriod(periodKey);
-  const [prsOpen, setPrsOpen] = useState(true);
+  const [prsOpen, setPrsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [discourseOpen, setDiscourseOpen] = useState(false);
 
@@ -347,94 +347,127 @@ const PersonProfilePage = (): React.ReactElement => {
             <PeerContextPanel profile={profile} />
 
             {/* Pull Requests — collapsible */}
-            <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
-              <Card>
-                <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
-                  <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
-                  >
-                    {prsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
-                    <GitPullRequest className="size-4 text-muted-foreground" />
-                    <CardTitle>Pull Requests</CardTitle>
-                  </CollapsibleTrigger>
-                </CardHeader>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <ContributionTable
-                      personId={personId}
-                      defaultContributionType="pull_request"
-                      defaultState="merged"
-                    />
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
+            {(() => {
+              const githubCount =
+                profile.activityByPlatform.find((a) => a.platform === "github")
+                  ?.contributionCount ?? 0;
+              const discourseCount = profile.activityByPlatform
+                .filter((a) => a.platform.startsWith("discourse"))
+                .reduce((sum, a) => sum + a.contributionCount, 0);
 
-            {/* Reviews — collapsible */}
-            <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
-              <Card>
-                <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
-                  <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
-                  >
-                    {reviewsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
-                    <Clock className="size-4 text-muted-foreground" />
-                    <CardTitle>Reviews</CardTitle>
-                  </CollapsibleTrigger>
-                </CardHeader>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <ContributionTable personId={personId} defaultContributionType="pr_review" />
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
+              return (
+                <>
+                  <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
+                    <Card>
+                      <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
+                        <CollapsibleTrigger
+                          render={
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 text-left"
+                            />
+                          }
+                        >
+                          {prsOpen ? (
+                            <ChevronDown className="size-4" />
+                          ) : (
+                            <ChevronRight className="size-4" />
+                          )}
+                          <GitPullRequest className="size-4 text-muted-foreground" />
+                          <CardTitle>Pull Requests</CardTitle>
+                          {githubCount > 0 && (
+                            <Badge variant="secondary" className="ml-1">
+                              {githubCount}
+                            </Badge>
+                          )}
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0">
+                          <ContributionTable
+                            personId={personId}
+                            defaultContributionType="pull_request"
+                            defaultState="merged"
+                          />
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
 
-            {/* Discourse — collapsible, only if person has discourse activity */}
-            {profile.activityByPlatform.some((a) => a.platform.startsWith("discourse")) && (
-              <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
-                <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => setDiscourseOpen(!discourseOpen)}
-                  >
-                    <CollapsibleTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 text-left"
-                        />
-                      }
-                    >
-                      {discourseOpen ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
-                      <MessageSquare className="size-4 text-muted-foreground" />
-                      <CardTitle>Discourse</CardTitle>
-                    </CollapsibleTrigger>
-                  </CardHeader>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <ContributionTable personId={personId} defaultPlatform="discourse-%" />
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            )}
+                  {/* Reviews — collapsible */}
+                  <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
+                    <Card>
+                      <CardHeader
+                        className="cursor-pointer"
+                        onClick={() => setReviewsOpen(!reviewsOpen)}
+                      >
+                        <CollapsibleTrigger
+                          render={
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 text-left"
+                            />
+                          }
+                        >
+                          {reviewsOpen ? (
+                            <ChevronDown className="size-4" />
+                          ) : (
+                            <ChevronRight className="size-4" />
+                          )}
+                          <Clock className="size-4 text-muted-foreground" />
+                          <CardTitle>Reviews</CardTitle>
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0">
+                          <ContributionTable
+                            personId={personId}
+                            defaultContributionType="pr_review"
+                          />
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  {/* Discourse — collapsible, only if person has discourse activity */}
+                  {discourseCount > 0 && (
+                    <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
+                      <Card>
+                        <CardHeader
+                          className="cursor-pointer"
+                          onClick={() => setDiscourseOpen(!discourseOpen)}
+                        >
+                          <CollapsibleTrigger
+                            render={
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 text-left"
+                              />
+                            }
+                          >
+                            {discourseOpen ? (
+                              <ChevronDown className="size-4" />
+                            ) : (
+                              <ChevronRight className="size-4" />
+                            )}
+                            <MessageSquare className="size-4 text-muted-foreground" />
+                            <CardTitle>Discourse</CardTitle>
+                            <Badge variant="secondary" className="ml-1">
+                              {discourseCount}
+                            </Badge>
+                          </CollapsibleTrigger>
+                        </CardHeader>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <ContributionTable personId={personId} defaultPlatform="discourse-%" />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>
