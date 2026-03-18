@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT DISTINCT platform_username\n            FROM org.platform_identities\n            WHERE person_id = $1\n            ",
+  "query": "\n            SELECT DISTINCT platform_username\n            FROM org.platform_identities\n            WHERE person_id = $1\n              AND platform_username NOT LIKE '%@%'\n            ",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "a92ee7d5f5f907bde53997efee8d6191437522cbd46caf5e518c2ae18a228888"
+  "hash": "c7c9651249ad7a93d8fc7be58dad95f37946d318c994b265847861de8064349a"
 }

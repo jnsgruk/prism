@@ -70,14 +70,14 @@
     "nullable": [
       false,
       false,
-      true,
+      false,
       true,
       true,
       true,
       true,
       null,
       true,
-      true,
+      false,
       true,
       true
     ]
