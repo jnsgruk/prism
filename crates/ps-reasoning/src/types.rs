@@ -50,19 +50,19 @@ impl Default for AiTaskRouting {
         Self {
             enrichment: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-3.1-flash-lite".into(),
+                model: "gemini-2.0-flash-lite".into(),
             },
             insights: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-3.1-pro".into(),
+                model: "gemini-2.5-pro".into(),
             },
             agentic: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-3-flash".into(),
+                model: "gemini-2.5-flash".into(),
             },
             embeddings: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-embedding-2".into(),
+                model: "text-embedding-004".into(),
             },
         }
     }

@@ -29,13 +29,13 @@ fn model_pricing(model: &str) -> ModelPricing {
             input_per_million: 0.075,
             output_per_million: 0.30,
         },
-        m if m.contains("gemini-3-flash") || m.contains("gemini-3.0-flash") => ModelPricing {
-            input_per_million: 0.50,
-            output_per_million: 3.0,
+        m if m.contains("flash") && !m.contains("lite") => ModelPricing {
+            input_per_million: 0.15,
+            output_per_million: 0.60,
         },
-        m if m.contains("gemini-3.1-pro") || m.contains("gemini-3-pro") => ModelPricing {
-            input_per_million: 2.0,
-            output_per_million: 12.0,
+        m if m.contains("pro") => ModelPricing {
+            input_per_million: 1.25,
+            output_per_million: 10.0,
         },
         m if m.contains("embedding") => ModelPricing {
             input_per_million: 0.20,
