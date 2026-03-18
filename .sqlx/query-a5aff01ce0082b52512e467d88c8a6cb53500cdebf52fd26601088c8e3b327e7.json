@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE ($1::text IS NULL OR source_name = $1)\n              AND ($2::text IS NULL OR handler_name = $2)\n              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill'))\n            ORDER BY started_at DESC\n            LIMIT 100\n            ",
+  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE ($1::text IS NULL OR source_name = $1)\n              AND ($2::text IS NULL OR handler_name = $2)\n              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill', 'run_cycle'))\n            ORDER BY started_at DESC\n            LIMIT 100\n            ",
   "describe": {
     "columns": [
       {
@@ -68,5 +68,5 @@
       false
     ]
   },
-  "hash": "db1fe35be3289057f1cda570d487439e6026d64f46d5af3b208d5a45f9a22d33"
+  "hash": "a5aff01ce0082b52512e467d88c8a6cb53500cdebf52fd26601088c8e3b327e7"
 }
