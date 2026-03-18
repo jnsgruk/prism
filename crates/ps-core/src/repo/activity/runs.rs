@@ -66,8 +66,8 @@ impl ActivityRepo {
     }
 
     /// List recent runs, optionally filtered by source name and/or handler name.
-    /// When `ingestion_only` is true, excludes non-ingestion handler runs
-    /// (source names starting with `_`, e.g. `_system`, `_enrichment`, `_model_catalogue`).
+    /// When `ingestion_only` is true, excludes system-only handler runs
+    /// (`_system`, `_model_catalogue`) but keeps enrichment and ingestion runs.
     pub async fn list_runs(
         &self,
         source_name: Option<&str>,
@@ -81,7 +81,7 @@ impl ActivityRepo {
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
               AND ($2::text IS NULL OR handler_name = $2)
-              AND (NOT $3::bool OR source_name NOT LIKE '\_%')
+              AND (NOT $3::bool OR source_name NOT IN ('_system', '_model_catalogue'))
             ORDER BY started_at DESC
             LIMIT 100
             "#,
