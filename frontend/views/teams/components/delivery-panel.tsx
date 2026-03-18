@@ -24,13 +24,13 @@ const sourceLabel = (key: string): string => {
   return key.charAt(0).toUpperCase() + key.slice(1);
 };
 
-/** Stable colour palette for stacked bars. */
+/** Stable distinct colour palette for stacked bars. */
 const SOURCE_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--muted-foreground))",
-  "hsl(var(--accent-foreground))",
   "hsl(221 83% 53%)", // blue
+  "hsl(142 71% 45%)", // green
+  "hsl(38 92% 50%)", // amber
   "hsl(262 83% 58%)", // purple
+  "hsl(0 84% 60%)", // red
 ];
 
 const MetricValue = ({
