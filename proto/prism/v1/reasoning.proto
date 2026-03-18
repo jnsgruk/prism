@@ -17,7 +17,6 @@ service ReasoningService {
   rpc GetEnrichments(GetEnrichmentsRequest) returns (GetEnrichmentsResponse);
   rpc GetEnrichmentsByContributions(GetEnrichmentsByContributionsRequest) returns (GetEnrichmentsByContributionsResponse);
   rpc GetEnrichmentPipelineStatus(GetEnrichmentPipelineStatusRequest) returns (GetEnrichmentPipelineStatusResponse);
-  rpc TriggerEnrichment(TriggerEnrichmentRequest) returns (TriggerEnrichmentResponse);
   rpc DeleteEnrichmentsByType(DeleteEnrichmentsByTypeRequest) returns (DeleteEnrichmentsByTypeResponse);
 }
 
@@ -165,18 +164,6 @@ message GetEnrichmentPipelineStatusResponse {
 message EnrichmentTypeCount {
   string enrichment_type = 1;
   int64 count = 2;
-}
-
-message TriggerEnrichmentRequest {
-  // Optional: only enrich this type (e.g. "review_depth"). Empty = all types.
-  string enrichment_type = 1;
-  // Max contributions to process per type (default 50).
-  int32 batch_size = 2;
-}
-
-message TriggerEnrichmentResponse {
-  bool triggered = 1;
-  string message = 2;
 }
 
 message DeleteEnrichmentsByTypeRequest {

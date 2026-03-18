@@ -11,8 +11,7 @@ use ps_proto::prism::v1::{
     GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
     GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
     GetStorageHealthResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    TestProviderRequest, TestProviderResponse, TriggerEnrichmentRequest, TriggerEnrichmentResponse,
-    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
@@ -553,25 +552,6 @@ impl ReasoningService for ReasoningServiceImpl {
                     count: t.total_count,
                 })
                 .collect(),
-        }))
-    }
-
-    async fn trigger_enrichment(
-        &self,
-        request: Request<TriggerEnrichmentRequest>,
-    ) -> Result<Response<TriggerEnrichmentResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-
-        // Enrichment runs via the Restate EnrichmentHandler. Use
-        // HandlersService.TriggerHandler(handler_name="EnrichmentHandler",
-        // method="run_cycle") instead for fire-and-forget dispatch with
-        // proper run tracking, cancellation, and Restate durability.
-        //
-        // This RPC is kept for backward compatibility but does not run
-        // enrichment inline — callers should use TriggerHandler.
-        Ok(Response::new(TriggerEnrichmentResponse {
-            triggered: false,
-            message: "Use TriggerHandler(EnrichmentHandler, run_cycle) instead".into(),
         }))
     }
 

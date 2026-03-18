@@ -22,8 +22,6 @@ import {
   SetProviderSecretResponse,
   TestProviderRequest,
   TestProviderResponse,
-  TriggerEnrichmentRequest,
-  TriggerEnrichmentResponse,
   UpdateAiSettingsRequest,
   UpdateAiSettingsResponse,
 } from "./reasoning_pb.js";
@@ -120,15 +118,6 @@ export const ReasoningService = {
       name: "GetEnrichmentPipelineStatus",
       I: GetEnrichmentPipelineStatusRequest,
       O: GetEnrichmentPipelineStatusResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc prism.v1.ReasoningService.TriggerEnrichment
-     */
-    triggerEnrichment: {
-      name: "TriggerEnrichment",
-      I: TriggerEnrichmentRequest,
-      O: TriggerEnrichmentResponse,
       kind: MethodKind.Unary,
     },
     /**

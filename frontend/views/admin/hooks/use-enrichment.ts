@@ -6,11 +6,9 @@ import type {
   DeleteEnrichmentsByTypeResponse,
   Enrichment,
   GetEnrichmentPipelineStatusResponse,
-  TriggerEnrichmentResponse,
 } from "@ps/api/gen/prism/v1/reasoning_pb";
 import { ReasoningService } from "@ps/api/gen/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
-import { handlersKeys } from "@/views/ingestion/hooks/use-ingestion";
 
 const client = createClient(ReasoningService, transport);
 
@@ -48,23 +46,6 @@ export const useEnrichmentsByContributions = (
     select: (data) => data.enrichments,
     enabled: contributionIds.length > 0,
   });
-
-export const useTriggerEnrichment = (): UseMutationResult<
-  TriggerEnrichmentResponse,
-  Error,
-  { enrichmentType?: string; batchSize?: number }
-> => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (req) => client.triggerEnrichment(req),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: enrichmentKeys.pipelineStatus(),
-      });
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
-    },
-  });
-};
 
 export const useDeleteEnrichmentsByType = (): UseMutationResult<
   DeleteEnrichmentsByTypeResponse,
