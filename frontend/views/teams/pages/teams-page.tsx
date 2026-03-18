@@ -308,13 +308,12 @@ const TeamsPage = (): React.ReactElement => {
                               </p>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            {person.identities.map((id) => (
-                              <Badge key={`${id.platform}-${id.username}`} variant="secondary">
-                                {id.platform}
-                              </Badge>
-                            ))}
-                          </div>
+                          {person.identities.length > 0 && (
+                            <Badge variant="secondary">
+                              {person.identities.length}{" "}
+                              {person.identities.length === 1 ? "identity" : "identities"}
+                            </Badge>
+                          )}
                         </button>
                       ))}
                     </div>
