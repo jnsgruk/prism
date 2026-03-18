@@ -117,8 +117,7 @@ const TeamsPage = (): React.ReactElement => {
   return (
     <>
       <PageHeader
-        title="Teams"
-        description={
+        title={
           effectiveTeamId && roots.length > 0 ? (
             <TeamBreadcrumb
               roots={roots}
@@ -131,7 +130,9 @@ const TeamsPage = (): React.ReactElement => {
                 />
               }
             />
-          ) : undefined
+          ) : (
+            "Teams"
+          )
         }
       />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">

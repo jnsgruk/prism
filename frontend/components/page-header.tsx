@@ -6,7 +6,7 @@ export const PageHeader = ({
   description,
   actions,
 }: {
-  title: string;
+  title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
 }): React.ReactElement => (
