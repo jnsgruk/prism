@@ -395,6 +395,8 @@ impl_sqlx_text!(IngestionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(PeriodType, |s: &str| s.parse().ok());
 impl_sqlx_text!(ResolutionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(Role, |s: &str| s.parse().ok());
+impl_sqlx_text!(TaskType, |s: &str| s.parse().ok());
+impl_sqlx_text!(AiProvider, |s: &str| s.parse().ok());
 
 // ---------------------------------------------------------------------------
 // ResolutionStatus
@@ -473,6 +475,88 @@ impl FromStr for Role {
         match s {
             "admin" => Ok(Self::Admin),
             _ => Err(format!("invalid Role: {s}")),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TaskType (AI task categories)
+// ---------------------------------------------------------------------------
+
+/// The type of AI task being performed, used for cost tracking and routing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskType {
+    Enrichment,
+    Insights,
+    Agentic,
+    Embeddings,
+}
+
+impl fmt::Display for TaskType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl TaskType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Enrichment => "enrichment",
+            Self::Insights => "insights",
+            Self::Agentic => "agentic",
+            Self::Embeddings => "embeddings",
+        }
+    }
+}
+
+impl FromStr for TaskType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "enrichment" => Ok(Self::Enrichment),
+            "insights" => Ok(Self::Insights),
+            "agentic" => Ok(Self::Agentic),
+            "embeddings" => Ok(Self::Embeddings),
+            _ => Err(format!("invalid TaskType: {s}")),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AiProvider
+// ---------------------------------------------------------------------------
+
+/// Supported AI provider backends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AiProvider {
+    Google,
+    OpenRouter,
+}
+
+impl fmt::Display for AiProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl AiProvider {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Google => "google",
+            Self::OpenRouter => "openrouter",
+        }
+    }
+}
+
+impl FromStr for AiProvider {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "google" => Ok(Self::Google),
+            "openrouter" => Ok(Self::OpenRouter),
+            _ => Err(format!("invalid AiProvider: {s}")),
         }
     }
 }

@@ -4,6 +4,7 @@ pub mod config;
 pub mod metrics;
 pub mod org;
 pub mod pagination;
+pub mod reasoning;
 
 pub use activity::ActivityRepo;
 pub use auth::AuthRepo;
@@ -11,6 +12,7 @@ pub use config::ConfigRepo;
 pub use metrics::MetricsRepo;
 pub use org::OrgRepo;
 pub use pagination::{PageCursor, PageRequest, PageResponse, SortDir, SortParams};
+pub use reasoning::ReasoningRepo;
 
 use sqlx::PgPool;
 
@@ -32,6 +34,7 @@ pub struct Repos {
     pub org: OrgRepo,
     pub activity: ActivityRepo,
     pub metrics: MetricsRepo,
+    pub reasoning: ReasoningRepo,
 }
 
 impl Repos {
@@ -41,7 +44,8 @@ impl Repos {
             config: ConfigRepo::new(pool.clone()),
             org: OrgRepo::new(pool.clone()),
             activity: ActivityRepo::new(pool.clone()),
-            metrics: MetricsRepo::new(pool),
+            metrics: MetricsRepo::new(pool.clone()),
+            reasoning: ReasoningRepo::new(pool),
         }
     }
 }

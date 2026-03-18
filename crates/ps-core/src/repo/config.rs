@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::{Platform, SourceConfig};
+use crate::models::{GlobalSetting, Platform, SourceConfig};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -247,11 +247,17 @@ impl ConfigRepo {
     pub async fn list_all_secret_keys(
         &self,
     ) -> Result<std::collections::HashMap<Uuid, Vec<String>>, Error> {
-        let rows =
-            sqlx::query!("SELECT source_id, secret_key FROM config.secrets ORDER BY source_id")
-                .fetch_all(&self.pool)
-                .await
-                .map_err(Error::from)?;
+        let rows = sqlx::query!(
+            r#"
+            SELECT source_id as "source_id!: Uuid", secret_key
+            FROM config.secrets
+            WHERE source_id IS NOT NULL
+            ORDER BY source_id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
 
         let mut map = std::collections::HashMap::<Uuid, Vec<String>>::new();
         for r in rows {
@@ -347,5 +353,144 @@ impl ConfigRepo {
                 })
             })
             .collect())
+    }
+
+    // -----------------------------------------------------------------------
+    // Global secrets (source_id IS NULL)
+    // -----------------------------------------------------------------------
+
+    /// List all global secret keys (not tied to any source).
+    pub async fn list_global_secret_keys(&self) -> Result<Vec<String>, Error> {
+        sqlx::query_scalar!("SELECT secret_key FROM config.secrets WHERE source_id IS NULL")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Get the encrypted value for a global secret.
+    pub async fn get_global_secret(&self, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT encrypted_value
+            FROM config.secrets
+            WHERE source_id IS NULL
+              AND secret_key = $1
+            "#,
+            key,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)
+    }
+
+    /// Insert or update a global encrypted secret (`source_id` = NULL).
+    pub async fn upsert_global_secret(
+        &self,
+        id: Uuid,
+        key: &str,
+        encrypted: &[u8],
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value)
+            VALUES ($1, NULL, $2, $3)
+            ON CONFLICT (secret_key) WHERE source_id IS NULL
+            DO UPDATE SET encrypted_value = $3, updated_at = now()
+            "#,
+            id,
+            key,
+            encrypted,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
+    /// Delete a global secret by key.
+    pub async fn delete_global_secret(&self, key: &str) -> Result<bool, Error> {
+        let result = sqlx::query!(
+            "DELETE FROM config.secrets WHERE source_id IS NULL AND secret_key = $1",
+            key,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // -----------------------------------------------------------------------
+    // Global settings (config.global_settings)
+    // -----------------------------------------------------------------------
+
+    /// Get a single global setting by key.
+    pub async fn get_global_setting(&self, key: &str) -> Result<Option<GlobalSetting>, Error> {
+        let row = sqlx::query_as!(
+            GlobalSetting,
+            r#"
+            SELECT key, value, updated_at
+            FROM config.global_settings
+            WHERE key = $1
+            "#,
+            key,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row)
+    }
+
+    /// List all global settings matching a key prefix (e.g. `"ai."` for all AI settings).
+    pub async fn list_global_settings(&self, prefix: &str) -> Result<Vec<GlobalSetting>, Error> {
+        let pattern = format!("{prefix}%");
+        sqlx::query_as!(
+            GlobalSetting,
+            r#"
+            SELECT key, value, updated_at
+            FROM config.global_settings
+            WHERE key LIKE $1
+            ORDER BY key
+            "#,
+            pattern,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)
+    }
+
+    /// Upsert a global setting.
+    pub async fn set_global_setting(
+        &self,
+        key: &str,
+        value: &serde_json::Value,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            INSERT INTO config.global_settings (key, value)
+            VALUES ($1, $2)
+            ON CONFLICT (key)
+            DO UPDATE SET value = $2, updated_at = now()
+            "#,
+            key,
+            value,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
+    /// Delete a global setting by key.
+    pub async fn delete_global_setting(&self, key: &str) -> Result<bool, Error> {
+        let result = sqlx::query!("DELETE FROM config.global_settings WHERE key = $1", key,)
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+        Ok(result.rows_affected() > 0)
     }
 }
