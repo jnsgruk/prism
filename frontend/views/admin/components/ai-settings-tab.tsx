@@ -3,8 +3,16 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -13,12 +21,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Database, Eye, EyeOff, Loader2, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronsUpDown,
+  Database,
+  Eye,
+  EyeOff,
+  Loader2,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
+
+import type { AiModelInfo } from "@ps/api/gen/prism/v1/reasoning_pb";
 
 import { AiCostSection } from "@/views/admin/components/ai-cost-tab";
 import {
+  useAiModels,
   useAiSettings,
+  useRefreshModelCatalogue,
   useSetProviderSecret,
   useStorageHealth,
   useTestProvider,
@@ -31,10 +52,30 @@ const PROVIDERS = [
 ];
 
 const TASK_TYPES = [
-  { key: "enrichment", label: "Enrichment", description: "High-volume metadata tagging" },
-  { key: "insights", label: "Insights", description: "Deep reasoning for reports" },
-  { key: "agentic", label: "Agentic", description: "Tool-use for natural language queries" },
-  { key: "embeddings", label: "Embeddings", description: "Vector generation for similarity" },
+  {
+    key: "enrichment",
+    label: "Enrichment",
+    description: "High-volume metadata tagging",
+    capability: "completion",
+  },
+  {
+    key: "insights",
+    label: "Insights",
+    description: "Deep reasoning for reports",
+    capability: "completion",
+  },
+  {
+    key: "agentic",
+    label: "Agentic",
+    description: "Tool-use for natural language queries",
+    capability: "tool_use",
+  },
+  {
+    key: "embeddings",
+    label: "Embeddings",
+    description: "Vector generation for similarity",
+    capability: "embeddings",
+  },
 ] as const;
 
 export const AiSettingsTab = (): React.ReactElement => {
@@ -43,6 +84,7 @@ export const AiSettingsTab = (): React.ReactElement => {
   const setSecret = useSetProviderSecret();
   const testProvider = useTestProvider();
   const { data: storageHealth } = useStorageHealth();
+  const refreshCatalogue = useRefreshModelCatalogue();
 
   if (isLoading) {
     return (
@@ -81,8 +123,15 @@ export const AiSettingsTab = (): React.ReactElement => {
             },
           );
         }}
+        onRefreshModels={() => {
+          refreshCatalogue.mutate(undefined, {
+            onSuccess: () => toast.success("Model catalogue refresh started"),
+            onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to refresh"),
+          });
+        }}
         isSettingSecret={setSecret.isPending}
         isTesting={testProvider.isPending}
+        isRefreshing={refreshCatalogue.isPending}
       />
 
       <TaskRoutingSection
@@ -131,19 +180,37 @@ const ProviderCredentialsSection = ({
   secretStatus,
   onSetSecret,
   onTestProvider,
+  onRefreshModels,
   isSettingSecret,
   isTesting,
+  isRefreshing,
 }: {
   secretStatus: Record<string, boolean>;
   onSetSecret: (provider: string, value: string) => void;
   onTestProvider: (provider: string) => void;
+  onRefreshModels: () => void;
   isSettingSecret: boolean;
   isTesting: boolean;
+  isRefreshing: boolean;
 }): React.ReactElement => (
   <Card>
     <CardHeader>
-      <CardTitle className="text-base">Provider Credentials</CardTitle>
-      <CardDescription>API keys are encrypted at rest. Values are never displayed.</CardDescription>
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle className="text-base">Provider Credentials</CardTitle>
+          <CardDescription>
+            API keys are encrypted at rest. Values are never displayed.
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" disabled={isRefreshing} onClick={onRefreshModels}>
+          {isRefreshing ? (
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-1.5 size-3.5" />
+          )}
+          Refresh models
+        </Button>
+      </div>
     </CardHeader>
     <CardContent className="space-y-4">
       {PROVIDERS.map((p) => (
@@ -242,6 +309,112 @@ const ProviderKeyRow = ({
 // Task Routing
 // ---------------------------------------------------------------------------
 
+/** Format a context length like "1M" or "128K". */
+const formatContext = (n: number): string => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}K`;
+  return String(n);
+};
+
+/** Format price per million tokens. */
+const formatPrice = (p: number | undefined): string => {
+  if (p == null) return "—";
+  return `$${p < 0.01 ? p.toFixed(3) : p.toFixed(2)}`;
+};
+
+const ModelCombobox = ({
+  provider,
+  capability,
+  value,
+  onSelect,
+  disabled,
+}: {
+  provider: string;
+  capability: string;
+  value: string;
+  onSelect: (modelId: string) => void;
+  disabled: boolean;
+}): React.ReactElement => {
+  const [open, setOpen] = useState(false);
+  const { data: modelsResponse } = useAiModels(provider, capability);
+
+  const models = modelsResponse?.models ?? [];
+  const selected = models.find((m) => m.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            disabled={disabled}
+            className="inline-flex h-9 w-[260px] items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-left text-sm shadow-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        }
+      >
+        <span className="min-w-0 truncate text-sm">
+          {selected ? selected.displayName : value || "Select model..."}
+        </span>
+        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        <Command shouldFilter>
+          <CommandInput placeholder="Search models..." />
+          <CommandList>
+            <CommandEmpty>
+              {models.length === 0
+                ? "No models cached. Click Refresh models above."
+                : "No matching models."}
+            </CommandEmpty>
+            {models.map((m) => (
+              <ModelCommandItem
+                key={m.id}
+                model={m}
+                isSelected={m.id === value}
+                onSelect={() => {
+                  onSelect(m.id);
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const ModelCommandItem = ({
+  model,
+  isSelected,
+  onSelect,
+}: {
+  model: AiModelInfo;
+  isSelected: boolean;
+  onSelect: () => void;
+}): React.ReactElement => (
+  <CommandItem
+    value={`${model.id} ${model.displayName}`}
+    data-checked={isSelected ? "true" : undefined}
+    onSelect={onSelect}
+  >
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate text-sm">{model.displayName || model.id}</span>
+      <span className="truncate text-xs text-muted-foreground">
+        {model.contextLength > 0 && `${formatContext(model.contextLength)} ctx`}
+        {model.inputPricePerMillion != null && (
+          <>
+            {model.contextLength > 0 && " · "}
+            {formatPrice(model.inputPricePerMillion)}/M in ·{" "}
+            {formatPrice(model.outputPricePerMillion)}
+            /M out
+          </>
+        )}
+      </span>
+    </span>
+  </CommandItem>
+);
+
 const TaskRoutingSection = ({
   settings,
   onUpdate,
@@ -294,12 +467,12 @@ const TaskRoutingSection = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  className="w-[220px]"
+                <ModelCombobox
+                  provider={config.provider}
+                  capability={task.capability}
                   value={config.model}
-                  placeholder="Model name"
-                  onChange={(e) => {
-                    onUpdate({ [task.key]: { provider: config.provider, model: e.target.value } });
+                  onSelect={(model) => {
+                    onUpdate({ [task.key]: { provider: config.provider, model } });
                   }}
                   disabled={isUpdating}
                 />

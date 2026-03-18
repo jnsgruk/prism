@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   AiSettings,
+  ListAiModelsResponse,
+  RefreshModelCatalogueResponse,
   SetProviderSecretResponse,
   TestProviderResponse,
   UpdateAiSettingsResponse,
@@ -16,6 +18,8 @@ const client = createClient(ReasoningService, transport);
 export const aiKeys = {
   all: ["ai"] as const,
   settings: () => [...aiKeys.all, "settings"] as const,
+  models: (provider: string, capability: string) =>
+    [...aiKeys.all, "models", provider, capability] as const,
   cost: (days: number) => [...aiKeys.all, "cost", days] as const,
   storageHealth: () => [...aiKeys.all, "storage-health"] as const,
 };
@@ -51,6 +55,11 @@ export const useSetProviderSecret = (): UseMutationResult<
     mutationFn: (req) => client.setProviderSecret(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.settings() });
+      // Server auto-triggers catalogue refresh; invalidate models after a delay
+      // so the UI picks up the refreshed list
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: [...aiKeys.all, "models"] });
+      }, 5_000);
     },
   });
 };
@@ -73,3 +82,30 @@ export const useStorageHealth = (): UseQueryResult<
     queryFn: () => client.getStorageHealth({}),
     refetchInterval: 60_000,
   });
+
+export const useAiModels = (
+  provider: string = "",
+  capability: string = "",
+): UseQueryResult<ListAiModelsResponse, Error> =>
+  useQuery({
+    queryKey: aiKeys.models(provider, capability),
+    queryFn: () => client.listAiModels({ provider, capability }),
+    staleTime: 5 * 60 * 1_000, // 5 minutes
+  });
+
+export const useRefreshModelCatalogue = (): UseMutationResult<
+  RefreshModelCatalogueResponse,
+  Error,
+  void
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => client.refreshModelCatalogue({}),
+    onSuccess: () => {
+      // Delay invalidation to give the Restate handler time to complete
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: [...aiKeys.all, "models"] });
+      }, 3_000);
+    },
+  });
+};
