@@ -1,16 +1,20 @@
 use std::fmt::Write as _;
 
+use futures::stream::{self, StreamExt};
 use ps_core::ingestion::{
     ContributionInput, ContributionMetadata, ContributionMetrics, FetchResult, IngestionContext,
 };
 use ps_core::models::{ContributionState, ContributionType, Platform};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use super::{
     Cursor, IngestionPhase, RATE_LIMIT_SEARCH_THRESHOLD, SEARCH_BATCH_SIZE, build_graphql_client,
     decrypt_token, is_valid_github_username, parse_datetime, serialise_cursor,
 };
 use crate::github::types::GraphQLSearchPr;
+
+/// Max size for PR diff content stored in enrichment queue (~20KB).
+const MAX_DIFF_SIZE: usize = 20_000;
 
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
@@ -96,6 +100,9 @@ async fn fetch_team_repos(
 
         items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
     }
+
+    // Fetch PR diffs concurrently and attach to enrichment content.
+    fetch_pr_diffs(ctx, &mut items).await;
 
     // Determine next cursor.
     let next_cursor = if page.has_next_page {
@@ -293,6 +300,9 @@ async fn fetch_member_search(
         items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
     }
 
+    // Fetch PR diffs concurrently and attach to enrichment content.
+    fetch_pr_diffs(ctx, &mut items).await;
+
     info!(
         source = ctx.source_config.name,
         batch_start = cur.search_user_index,
@@ -366,6 +376,21 @@ fn search_pr_to_contributions(
         .map(|l| l.nodes.iter().map(|n| n.name.as_str()).collect())
         .unwrap_or_default();
 
+    // Build enrichment content blob for this PR.
+    // Diff will be attached later by fetch_pr_diffs().
+    let pr_enrichment = serde_json::json!({
+        "title": &title,
+        "description": pr.body_text.as_deref().unwrap_or(""),
+        "labels": labels,
+        "additions": pr.additions.unwrap_or(0),
+        "deletions": pr.deletions.unwrap_or(0),
+        "changed_files": pr.changed_files.unwrap_or(0),
+        "draft": pr.is_draft.unwrap_or(false),
+    });
+
+    // Clone title before moving it — reviews need pr_title.
+    let pr_title_for_reviews = title.clone();
+
     items.push(ContributionInput {
         platform: Platform::Github,
         contribution_type: ContributionType::PullRequest,
@@ -401,7 +426,7 @@ fn search_pr_to_contributions(
         .unwrap_or_default(),
         content: None,
         state_history: Some(serde_json::Value::Array(state_history)),
-        enrichment_content: None,
+        enrichment_content: Some(pr_enrichment),
     });
 
     // Map reviews.
@@ -418,6 +443,43 @@ fn search_pr_to_contributions(
             let review_id = review.database_id.unwrap_or(0);
 
             let review_state = ContributionState::from_str_opt(&review.state);
+
+            // Build enrichment content for review — inline comments are the
+            // real substance of most reviews.
+            let inline_comments: Vec<serde_json::Value> = review
+                .comments
+                .as_ref()
+                .map(|c| {
+                    c.nodes
+                        .iter()
+                        .filter_map(|comment| {
+                            let body = comment.body.as_deref().unwrap_or("");
+                            if body.is_empty() {
+                                return None;
+                            }
+                            Some(serde_json::json!({
+                                "path": comment.path.as_deref().unwrap_or(""),
+                                "body": body,
+                            }))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let review_body = review.body.as_deref().unwrap_or("");
+            // Skip enrichment content if both body is empty AND no inline comments
+            // (pure approval click — not scorable).
+            let review_enrichment = if !review_body.is_empty() || !inline_comments.is_empty() {
+                Some(serde_json::json!({
+                    "pr_title": pr_title_for_reviews,
+                    "pr_number": number,
+                    "state": review.state,
+                    "body": review_body,
+                    "inline_comments": inline_comments,
+                }))
+            } else {
+                None
+            };
 
             items.push(ContributionInput {
                 platform: Platform::Github,
@@ -444,10 +506,128 @@ fn search_pr_to_contributions(
                 .unwrap_or_default(),
                 content: review.body.clone(),
                 state_history: None,
-                enrichment_content: None,
+                enrichment_content: review_enrichment,
             });
         }
     }
 
     Ok(items)
+}
+
+/// Concurrently fetch `.diff` URLs for PR items and attach to enrichment content.
+///
+/// Uses the existing `reqwest::Client` + PAT auth header. Diffs are truncated
+/// to `MAX_DIFF_SIZE` bytes. Failures are logged but don't stop ingestion.
+async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput]) {
+    let token = ctx.token.as_deref().unwrap_or("");
+    if token.is_empty() {
+        return;
+    }
+
+    // Derive the GitHub base URL (e.g. "https://github.com") from the API base URL.
+    let api_base = ctx
+        .source_config
+        .settings
+        .get("base_url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("https://api.github.com");
+    let html_base = if api_base.contains("api.github.com") {
+        "https://github.com".to_string()
+    } else {
+        // GitHub Enterprise: https://github.example.com/api/v3 → https://github.example.com
+        api_base
+            .strip_suffix("/api/v3")
+            .unwrap_or(api_base)
+            .to_string()
+    };
+
+    // Collect indices of PR items that need diffs.
+    let pr_indices: Vec<usize> = items
+        .iter()
+        .enumerate()
+        .filter(|(_, item)| item.contribution_type == ContributionType::PullRequest)
+        .map(|(i, _)| i)
+        .collect();
+
+    if pr_indices.is_empty() {
+        return;
+    }
+
+    // Build (index, diff_url) pairs.
+    // Safety: indices come from enumerate() on items, so they are always valid.
+    #[allow(clippy::indexing_slicing)]
+    let diff_requests: Vec<(usize, String)> = pr_indices
+        .into_iter()
+        .map(|i| {
+            // platform_id is "{owner}/{repo}/pull/{number}"
+            let diff_url = format!("{html_base}/{}.diff", items[i].platform_id);
+            (i, diff_url)
+        })
+        .collect();
+
+    // Fetch diffs concurrently, capped at 8 concurrent requests.
+    let results: Vec<(usize, Option<String>)> = stream::iter(diff_requests)
+        .map(|(idx, url)| {
+            let client = &ctx.http_client;
+            let auth = format!("Bearer {token}");
+            async move {
+                let result = client
+                    .get(&url)
+                    .header("Authorization", &auth)
+                    .header("User-Agent", "prism-ingestion/0.1")
+                    .send()
+                    .await;
+
+                let diff = match result {
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.text().await {
+                            Ok(text) => {
+                                if text.len() > MAX_DIFF_SIZE {
+                                    // Truncate at a line boundary where possible.
+                                    let truncated = &text[..MAX_DIFF_SIZE];
+                                    let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
+                                    Some(format!("{}...(truncated)", &text[..at_line]))
+                                } else {
+                                    Some(text)
+                                }
+                            }
+                            Err(e) => {
+                                debug!(url = %url, error = %e, "failed to read diff body");
+                                None
+                            }
+                        }
+                    }
+                    Ok(resp) => {
+                        debug!(url = %url, status = %resp.status(), "diff fetch returned non-200");
+                        None
+                    }
+                    Err(e) => {
+                        debug!(url = %url, error = %e, "diff fetch failed");
+                        None
+                    }
+                };
+                (idx, diff)
+            }
+        })
+        .buffer_unordered(8)
+        .collect()
+        .await;
+
+    // Attach diffs to enrichment content.
+    // Safety: indices originate from enumerate() on items, so they are always valid.
+    let mut attached = 0u32;
+    #[allow(clippy::indexing_slicing)]
+    for (idx, diff) in results {
+        if let Some(diff_text) = diff
+            && let Some(ref mut enrichment) = items[idx].enrichment_content
+            && let Some(obj) = enrichment.as_object_mut()
+        {
+            obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
+            attached += 1;
+        }
+    }
+
+    if attached > 0 {
+        debug!(count = attached, "attached PR diffs to enrichment content");
+    }
 }

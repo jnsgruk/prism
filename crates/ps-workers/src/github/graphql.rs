@@ -274,6 +274,7 @@ query($owner: String!, $repo: String!, $cursor: String) {
         deletions
         changedFiles
         author { login }
+        bodyText
         labels(first: 10) { nodes { name } }
         headRefName
         baseRefName
@@ -285,6 +286,9 @@ query($owner: String!, $repo: String!, $cursor: String) {
             body
             submittedAt
             author { login }
+            comments(first: 50) {
+              nodes { body path }
+            }
           }
         }
       }
@@ -313,6 +317,7 @@ query($query: String!, $cursor: String) {
         deletions
         changedFiles
         author { login }
+        bodyText
         repository {
           name
           owner { login }
@@ -328,6 +333,9 @@ query($query: String!, $cursor: String) {
             body
             submittedAt
             author { login }
+            comments(first: 50) {
+              nodes { body path }
+            }
           }
         }
       }
@@ -362,6 +370,7 @@ mod tests {
                             "deletions": 5,
                             "changedFiles": 3,
                             "author": { "login": "alice" },
+                            "bodyText": "This PR adds a feature",
                             "labels": { "nodes": [{ "name": "bug" }] },
                             "headRefName": "feature-branch",
                             "baseRefName": "main",
@@ -372,7 +381,10 @@ mod tests {
                                     "state": "APPROVED",
                                     "body": "LGTM",
                                     "submittedAt": "2024-01-05T00:00:00Z",
-                                    "author": { "login": "bob" }
+                                    "author": { "login": "bob" },
+                                    "comments": {
+                                        "nodes": [{ "body": "Nice work", "path": "src/main.rs" }]
+                                    }
                                 }]
                             }
                         }]
@@ -473,6 +485,7 @@ mod tests {
                         "deletions": 3,
                         "changedFiles": 2,
                         "author": { "login": "alice" },
+                        "bodyText": "Fixes an upstream bug",
                         "repository": {
                             "name": "other-repo",
                             "owner": { "login": "org" }

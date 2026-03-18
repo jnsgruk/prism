@@ -45,6 +45,8 @@ pub struct GraphQLPr {
     #[serde(rename = "changedFiles")]
     pub changed_files: Option<u32>,
     pub author: Option<GraphQLActor>,
+    #[serde(rename = "bodyText")]
+    pub body_text: Option<String>,
     pub labels: Option<GraphQLLabelConnection>,
     #[serde(rename = "headRefName")]
     pub head_ref_name: Option<String>,
@@ -63,6 +65,20 @@ pub struct GraphQLReview {
     #[serde(rename = "submittedAt")]
     pub submitted_at: Option<String>,
     pub author: Option<GraphQLActor>,
+    pub comments: Option<GraphQLReviewCommentConnection>,
+}
+
+/// Connection for inline review comments.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GraphQLReviewCommentConnection {
+    pub nodes: Vec<GraphQLReviewComment>,
+}
+
+/// An inline review comment (file-level feedback).
+#[derive(Debug, Clone, Deserialize)]
+pub struct GraphQLReviewComment {
+    pub body: Option<String>,
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -135,6 +151,8 @@ pub struct GraphQLSearchPr {
     #[serde(rename = "changedFiles")]
     pub changed_files: Option<u32>,
     pub author: Option<GraphQLActor>,
+    #[serde(rename = "bodyText")]
+    pub body_text: Option<String>,
     pub repository: Option<GraphQLSearchRepo>,
     pub labels: Option<GraphQLLabelConnection>,
     #[serde(rename = "headRefName")]
