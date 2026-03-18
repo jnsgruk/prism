@@ -213,6 +213,7 @@ fn build_topic_input(
         }),
         content: None,
         state_history: None,
+        enrichment_content: None,
     }
 }
 
@@ -262,6 +263,7 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
         }),
         content: post.raw.clone(),
         state_history: None,
+        enrichment_content: None,
     }
 }
 
@@ -350,6 +352,7 @@ fn build_like_input(
         }),
         content: None,
         state_history: None,
+        enrichment_content: None,
     }
 }
 

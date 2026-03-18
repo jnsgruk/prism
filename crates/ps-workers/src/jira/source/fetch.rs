@@ -221,6 +221,7 @@ fn convert_issue(cur: &Cursor, issue: &JiraIssue) -> Option<ContributionInput> {
         metadata: serde_json::Value::Object(metadata),
         content: None,
         state_history,
+        enrichment_content: None,
     })
 }
 

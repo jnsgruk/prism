@@ -401,6 +401,7 @@ fn search_pr_to_contributions(
         .unwrap_or_default(),
         content: None,
         state_history: Some(serde_json::Value::Array(state_history)),
+        enrichment_content: None,
     });
 
     // Map reviews.
@@ -443,6 +444,7 @@ fn search_pr_to_contributions(
                 .unwrap_or_default(),
                 content: review.body.clone(),
                 state_history: None,
+                enrichment_content: None,
             });
         }
     }

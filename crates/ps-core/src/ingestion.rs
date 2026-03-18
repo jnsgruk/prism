@@ -81,6 +81,11 @@ pub struct ContributionInput {
     pub metadata: serde_json::Value,
     pub content: Option<String>,
     pub state_history: Option<serde_json::Value>,
+    /// Structured content blob for enrichment queue. Populated during fetch,
+    /// consumed during store to create enrichment queue entries. Not persisted
+    /// on the contribution itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enrichment_content: Option<serde_json::Value>,
 }
 
 /// The plan produced by a source adapter at the start of an ingestion run.

@@ -54,7 +54,8 @@ pub(super) async fn store_batch_impl(
 
     let stored = resolved_items.len();
     if stored > 0 {
-        ctx.repos
+        let _upserted = ctx
+            .repos
             .activity
             .bulk_upsert_contributions(&ids, &person_ids, &resolved_items)
             .await?;

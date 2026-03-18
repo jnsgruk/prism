@@ -59,14 +59,17 @@ impl ActivityRepo {
     }
 
     /// Bulk upsert multiple contributions in a single query using UNNEST arrays.
+    ///
+    /// Returns `(id, platform_id)` pairs for each upserted row so callers can
+    /// map contribution IDs back to their enrichment content.
     pub async fn bulk_upsert_contributions(
         &self,
         ids: &[Uuid],
         person_ids: &[Option<Uuid>],
         items: &[&ContributionInput],
-    ) -> Result<(), Error> {
+    ) -> Result<Vec<(Uuid, String)>, Error> {
         if ids.is_empty() {
-            return Ok(());
+            return Ok(vec![]);
         }
         let platforms: Vec<String> = items.iter().map(|i| i.platform.to_string()).collect();
         let ctypes: Vec<String> = items
@@ -91,7 +94,7 @@ impl ActivityRepo {
         let state_histories: Vec<Option<&serde_json::Value>> =
             items.iter().map(|i| i.state_history.as_ref()).collect();
 
-        sqlx::query!(
+        let rows = sqlx::query!(
             r#"
             INSERT INTO activity.contributions (
                 id, person_id, platform, contribution_type, platform_id,
@@ -128,6 +131,7 @@ impl ActivityRepo {
                 content = EXCLUDED.content,
                 state_history = EXCLUDED.state_history,
                 ingested_at = now()
+            RETURNING id, platform_id
             "#,
             ids,
             person_ids as &[Option<Uuid>],
@@ -145,11 +149,11 @@ impl ActivityRepo {
             &contents as &[Option<&str>],
             &state_histories as &[Option<&serde_json::Value>],
         )
-        .execute(&self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(Error::from)?;
 
-        Ok(())
+        Ok(rows.into_iter().map(|r| (r.id, r.platform_id)).collect())
     }
 
     /// Backfill `person_id` on Discourse contributions that have a username
