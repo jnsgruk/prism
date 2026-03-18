@@ -58,7 +58,7 @@ const buildSummary = (metrics: TeamMetrics, memberCount: number): string => {
   const parts: string[] = [];
   if (metrics.throughput > 0) {
     parts.push(
-      `${metrics.throughput} merged pull request${metrics.throughput !== 1 ? "s" : ""} from ${metrics.memberCount} contributor${metrics.memberCount !== 1 ? "s" : ""}`,
+      `${metrics.throughput} completed item${metrics.throughput !== 1 ? "s" : ""} from ${metrics.memberCount} contributor${metrics.memberCount !== 1 ? "s" : ""}`,
     );
   }
   if (metrics.reviewTurnaroundP75Hours > 0) {
@@ -114,8 +114,8 @@ export const DeliveryPanel = ({
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <MetricValue
               value={String(throughput)}
-              label="Merged PRs"
-              description="Total merged pull requests in the selected period."
+              label="Throughput"
+              description="Total completed items in the period: merged PRs, resolved Jira tickets, and Discourse topics."
               onClick={onScrollToPrs}
             />
             <MetricValue
@@ -133,10 +133,13 @@ export const DeliveryPanel = ({
             />
           </div>
 
-          {/* Throughput trend (moved from orphan chart) */}
+          {/* Throughput trend — shows historical snapshots, not a breakdown of the current period */}
           {showTrend && (
             <div>
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">Throughput Trend</h4>
+              <p className="mb-2 text-xs text-muted-foreground/70">
+                Completed items per period (merged PRs, resolved tickets, topics).
+              </p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -145,7 +148,7 @@ export const DeliveryPanel = ({
                   <RechartsTooltip content={ChartTooltip} cursor={cursorStyle} />
                   <Bar
                     dataKey="count"
-                    name="Merged PRs"
+                    name="Completed items"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
                   />
