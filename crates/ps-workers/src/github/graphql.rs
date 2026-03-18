@@ -278,7 +278,7 @@ query($owner: String!, $repo: String!, $cursor: String) {
         labels(first: 10) { nodes { name } }
         headRefName
         baseRefName
-        reviews(first: 100) {
+        reviews(first: 10) {
           pageInfo { hasNextPage }
           nodes {
             databaseId
@@ -286,7 +286,7 @@ query($owner: String!, $repo: String!, $cursor: String) {
             body
             submittedAt
             author { login }
-            comments(first: 50) {
+            comments(first: 20) {
               nodes { body path }
             }
           }
@@ -299,7 +299,7 @@ query($owner: String!, $repo: String!, $cursor: String) {
 
 const SEARCH_PRS_QUERY: &str = r"
 query($query: String!, $cursor: String) {
-  search(query: $query, type: ISSUE, first: 100, after: $cursor) {
+  search(query: $query, type: ISSUE, first: 50, after: $cursor) {
     pageInfo { hasNextPage endCursor }
     issueCount
     nodes {
@@ -325,7 +325,7 @@ query($query: String!, $cursor: String) {
         labels(first: 10) { nodes { name } }
         headRefName
         baseRefName
-        reviews(first: 100) {
+        reviews(first: 10) {
           pageInfo { hasNextPage }
           nodes {
             databaseId
@@ -333,7 +333,7 @@ query($query: String!, $cursor: String) {
             body
             submittedAt
             author { login }
-            comments(first: 50) {
+            comments(first: 20) {
               nodes { body path }
             }
           }
