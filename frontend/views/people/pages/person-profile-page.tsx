@@ -1,7 +1,6 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -17,20 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
   PeriodSelector,
   buildPeriod,
   defaultPeriodKey,
 } from "@/views/teams/components/period-selector";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
 import { useGetIndividualProfile } from "@/lib/hooks/use-metrics";
+import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
 import { ActivityChart } from "@/views/people/components/activity-chart";
 import { PeerContextPanel } from "@/views/people/components/peer-context-panel";
@@ -55,8 +47,6 @@ const PersonProfilePage = (): React.ReactElement => {
     );
   }
 
-  const description = [profile?.teamName, profile?.level].filter(Boolean).join(" \u00b7 ");
-
   const github = profile?.activityByPlatform.find((a) => a.platform === "github");
   const prCount = github?.metrics["pull_request_count"] ?? 0;
   const reviewCount = github?.metrics["pr_review_count"] ?? 0;
@@ -68,41 +58,25 @@ const PersonProfilePage = (): React.ReactElement => {
   return (
     <>
       <PageHeader
-        title={profile?.name ?? "Person"}
-        description={description || undefined}
-        actions={
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back
-          </button>
+        title={
+          <PersonBreadcrumb
+            personName={profile?.name ?? "Person"}
+            personId={personId}
+            onSelect={(id) => {
+              if (id === "__all__") {
+                navigate("/people");
+              } else {
+                navigate(`/people/${id}`);
+              }
+            }}
+          />
+        }
+        description={
+          [profile?.teamName, profile?.level].filter(Boolean).join(" \u00b7 ") || undefined
         }
       />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
-        {/* Period selector + breadcrumb */}
-        <div className="space-y-3">
-          <PeriodSelector value={periodKey} onChange={setPeriodKey} />
-          {profile?.teamName && (
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink render={<Link to="/teams" />}>Teams</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink render={<Link to="/teams" />}>{profile.teamName}</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{profile.name}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          )}
-        </div>
+        <PeriodSelector value={periodKey} onChange={setPeriodKey} />
 
         {/* Loading */}
         {isLoading && (
