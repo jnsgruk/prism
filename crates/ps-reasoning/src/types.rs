@@ -50,7 +50,7 @@ impl Default for AiTaskRouting {
         Self {
             enrichment: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-2.0-flash-lite".into(),
+                model: "gemini-2.0-flash".into(),
             },
             insights: AiTaskConfig {
                 provider: AiProvider::Google,
