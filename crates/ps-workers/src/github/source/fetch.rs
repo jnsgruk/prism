@@ -66,10 +66,23 @@ async fn fetch_team_repos(
         let _ = write!(query, " updated:>{wm}");
     }
 
+    debug!(
+        source = ctx.source_config.name,
+        %query,
+        "executing GitHub search query"
+    );
+
     let page = client
         .search_pull_requests(&query, cur.graphql_cursor.as_deref())
         .await
         .map_err(|e| ps_core::Error::Internal(format!("GitHub GraphQL error: {e}")))?;
+
+    debug!(
+        source = ctx.source_config.name,
+        results = page.items.len(),
+        rate_limit = page.rate_limit.remaining,
+        "GitHub search query returned"
+    );
 
     cur.last_rate_limit_remaining = Some(page.rate_limit.remaining);
 
