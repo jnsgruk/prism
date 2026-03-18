@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { instanceLabel } from "@/lib/format-metrics";
+import { useMemo } from "react";
 import { ArrowRight, Info, MessageCircle } from "lucide-react";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
@@ -44,10 +45,9 @@ const MetricValue = ({
   </div>
 );
 
-const buildSummary = (metrics: TeamMetrics): string => {
+const buildSummary = (metrics: TeamMetrics, instanceCount: number): string => {
   const topics = metrics.discourseTopicsCreated;
   const posts = metrics.discoursePosts;
-  const instances = metrics.discourseByInstance ?? [];
   const parts: string[] = [];
   if (topics > 0) {
     parts.push(`${topics} new topic${topics !== 1 ? "s" : ""}`);
@@ -57,9 +57,7 @@ const buildSummary = (metrics: TeamMetrics): string => {
   }
   if (parts.length === 0) return "No Discourse activity in this period.";
   const suffix =
-    instances.length > 1
-      ? ` across ${instances.length} Discourse instances.`
-      : " across Discourse.";
+    instanceCount > 1 ? ` across ${instanceCount} Discourse instances.` : " across Discourse.";
   return parts.join(" and ") + suffix;
 };
 
@@ -80,8 +78,25 @@ export const CommunityPanel = ({
 
   if (!hasDiscourse) return null;
 
-  const instances = metrics.discourseByInstance ?? [];
-  const hasMultipleInstances = instances.length > 1;
+  // Group instances by display label to merge duplicates (e.g. "canonical-discourse" and
+  // "Canonical Discourse" both map to the same label via instanceLabel).
+  const byInstance = metrics.discourseByInstance;
+  const groupedInstances = useMemo(() => {
+    const raw = byInstance ?? [];
+    const map = new Map<string, { topics: number; posts: number; likes: number }>();
+    for (const inst of raw) {
+      const label = instanceLabel(inst.instance);
+      const existing = map.get(label) ?? { topics: 0, posts: 0, likes: 0 };
+      existing.topics += inst.topicsCreated;
+      existing.posts += inst.posts;
+      existing.likes += inst.likesGiven;
+      map.set(label, existing);
+    }
+    return [...map.entries()]
+      .map(([label, counts]) => ({ label, ...counts }))
+      .toSorted((a, b) => b.topics + b.posts - (a.topics + a.posts));
+  }, [byInstance]);
+  const hasMultipleInstances = groupedInstances.length > 1;
 
   return (
     <TooltipProvider>
@@ -138,17 +153,17 @@ export const CommunityPanel = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {instances.map((inst) => (
-                    <tr key={inst.instance} className="border-b last:border-0">
-                      <td className="px-3 py-1.5 font-medium">{instanceLabel(inst.instance)}</td>
+                  {groupedInstances.map((inst) => (
+                    <tr key={inst.label} className="border-b last:border-0">
+                      <td className="px-3 py-1.5 font-medium">{inst.label}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
-                        {inst.topicsCreated || "\u2014"}
+                        {inst.topics || "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
                         {inst.posts || "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
-                        {inst.likesGiven || "\u2014"}
+                        {inst.likes || "\u2014"}
                       </td>
                     </tr>
                   ))}
@@ -159,7 +174,7 @@ export const CommunityPanel = ({
 
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <ArrowRight className="size-3.5 shrink-0" />
-            {buildSummary(metrics)}
+            {buildSummary(metrics, groupedInstances.length)}
           </p>
         </CardContent>
       </Card>
