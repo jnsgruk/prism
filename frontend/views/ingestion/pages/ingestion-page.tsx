@@ -100,7 +100,7 @@ const IngestionPage = (): React.ReactElement => {
     );
   }
 
-  const sourceNames = sources.map((s) => s.name);
+  const sourceNames = [...sources.map((s) => s.name), "_enrichment"];
 
   return (
     <>

@@ -67,8 +67,8 @@ impl ActivityRepo {
 
     /// List recent runs, optionally filtered by source name and/or handler name.
     /// When `ingestion_only` is true, restricts to data-ingestion runs only
-    /// (`handler_method` = `run_ingestion` or `backfill`), excluding team sync,
-    /// enrichment, metrics, and other system handler runs.
+    /// (`handler_method` = `run_ingestion`, `backfill`, or `run_cycle`),
+    /// excluding team sync, metrics, and other system handler runs.
     pub async fn list_runs(
         &self,
         source_name: Option<&str>,
@@ -82,7 +82,7 @@ impl ActivityRepo {
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
               AND ($2::text IS NULL OR handler_name = $2)
-              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill'))
+              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill', 'run_cycle'))
             ORDER BY started_at DESC
             LIMIT 100
             "#,
