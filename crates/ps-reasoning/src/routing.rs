@@ -112,7 +112,7 @@ impl TaskRouter {
         match provider {
             AiProvider::Google => {
                 let client = self.google_client()?;
-                let model = client.completion_model("gemini-2.0-flash");
+                let model = client.completion_model("gemini-2.5-flash");
                 let req = model
                     .completion_request("Say hello in one word.")
                     .max_tokens(10)
