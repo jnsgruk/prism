@@ -1,28 +1,28 @@
 use std::fmt::Write as _;
 
-use futures::stream::{self, StreamExt};
 use ps_core::ingestion::{
     ContributionInput, ContributionMetadata, ContributionMetrics, FetchResult, IngestionContext,
 };
-use ps_core::models::{ContributionState, ContributionType, Platform};
-use time::OffsetDateTime;
+use ps_core::models::{ContributionState, ContributionType, Platform, RateLimitInfo};
 use tracing::{debug, info, warn};
 
 use super::{
     Cursor, IngestionPhase, RATE_LIMIT_SEARCH_THRESHOLD, SEARCH_BATCH_SIZE, build_graphql_client,
     decrypt_token, is_valid_github_username, parse_datetime, serialise_cursor,
 };
-use crate::github::parse_rate_limit_headers;
+use crate::github::client::GitHubClient;
 use crate::github::types::GraphQLSearchPr;
 
-/// Max size for PR diff content stored in enrichment queue (~20KB).
+/// Max size for combined PR diff content stored in enrichment queue (~20KB).
 const MAX_DIFF_SIZE: usize = 20_000;
 
-/// Max concurrent diff fetches — kept low to avoid GitHub secondary rate limits.
-const DIFF_FETCH_CONCURRENCY: usize = 3;
+/// When REST rate limit remaining drops below this, pause until reset.
+const REST_RATE_LIMIT_FLOOR: i32 = 50;
 
-/// Max retries on rate limit before giving up on remaining diffs in this batch.
-const DIFF_FETCH_MAX_RATE_LIMIT_WAITS: u32 = 3;
+/// Max number of rate-limit sleeps before giving up on remaining diffs in a batch.
+/// Each sleep waits until the rate limit window resets (~1 hour worst case), so
+/// 2 sleeps is a reasonable ceiling for a single fetch cycle.
+const MAX_RATE_LIMIT_SLEEPS: u32 = 2;
 
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
@@ -539,184 +539,217 @@ fn search_pr_to_contributions(
     Ok(items)
 }
 
-/// Concurrently fetch `.diff` URLs for PR items and attach to enrichment content.
+/// Fetch PR diffs via the REST API (`/pulls/{number}/files`) and attach to
+/// enrichment content.
 ///
-/// Uses the existing `reqwest::Client` + PAT auth header. Diffs are truncated
-/// to `MAX_DIFF_SIZE` bytes. On 429, pauses **all** in-flight work using the
-/// `x-ratelimit-reset` timestamp (via `parse_rate_limit_headers`) before
-/// resuming. Failures are logged but don't stop ingestion.
+/// Uses the proper REST rate limit headers (`x-ratelimit-remaining`,
+/// `x-ratelimit-reset`) for backoff. Each PR costs 1+ REST API calls
+/// (paginated at 100 files). The REST rate limit pool (5,000/hr) is separate
+/// from GraphQL, so diff fetches don't compete with PR/review queries.
+///
+/// Failures are logged but don't stop ingestion — diffs are optional for
+/// enrichment.
 async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput]) {
     let token = ctx.token.as_deref().unwrap_or("");
     if token.is_empty() {
         return;
     }
 
-    // Derive the GitHub base URL (e.g. "https://github.com") from the API base URL.
     let api_base = ctx
         .source_config
         .settings
         .get("base_url")
         .and_then(|v| v.as_str())
         .unwrap_or("https://api.github.com");
-    let html_base = if api_base.contains("api.github.com") {
-        "https://github.com".to_string()
-    } else {
-        // GitHub Enterprise: https://github.example.com/api/v3 → https://github.example.com
-        api_base
-            .strip_suffix("/api/v3")
-            .unwrap_or(api_base)
-            .to_string()
-    };
 
-    // Collect indices of PR items that need diffs.
-    let pr_indices: Vec<usize> = items
+    let client = GitHubClient::new(ctx.http_client.clone(), api_base, token);
+
+    // Collect (index, owner, repo, pr_number) for PR items.
+    let pr_targets: Vec<(usize, String, String, u32)> = items
         .iter()
         .enumerate()
         .filter(|(_, item)| item.contribution_type == ContributionType::PullRequest)
-        .map(|(i, _)| i)
-        .collect();
-
-    if pr_indices.is_empty() {
-        return;
-    }
-
-    // Build (index, diff_url) pairs.
-    // Safety: indices come from enumerate() on items, so they are always valid.
-    #[allow(clippy::indexing_slicing)]
-    let diff_requests: Vec<(usize, String)> = pr_indices
-        .into_iter()
-        .map(|i| {
-            let diff_url = format!("{html_base}/{}.diff", items[i].platform_id);
-            (i, diff_url)
+        .filter_map(|(i, item)| {
+            // platform_id format: "{owner}/{repo}/pull/{number}"
+            let parts: Vec<&str> = item.platform_id.split('/').collect();
+            let owner = parts.first()?;
+            let repo = parts.get(1)?;
+            let number: u32 = parts.get(3)?.parse().ok()?;
+            Some((i, (*owner).to_string(), (*repo).to_string(), number))
         })
         .collect();
 
-    let auth = format!("Bearer {token}");
+    if pr_targets.is_empty() {
+        return;
+    }
+
     let mut attached = 0u32;
-    let mut rate_limit_waits = 0u32;
+    let mut rate_limit_sleeps = 0u32;
 
-    // Process diffs in small concurrent chunks. When any request in a chunk
-    // hits a rate limit we pause the entire batch until `x-ratelimit-reset`.
-    for chunk in diff_requests.chunks(DIFF_FETCH_CONCURRENCY) {
-        // If we've waited too many times, stop burning time on this batch —
-        // the next ingestion cycle will pick up the missing diffs.
-        if rate_limit_waits >= DIFF_FETCH_MAX_RATE_LIMIT_WAITS {
-            warn!(
-                remaining = diff_requests.len().saturating_sub(attached as usize),
-                "stopping diff fetches after {rate_limit_waits} rate-limit waits"
-            );
-            break;
-        }
+    let mut i = 0;
+    #[allow(clippy::indexing_slicing)] // i is always < pr_targets.len() (loop guard)
+    while i < pr_targets.len() {
+        let (idx, ref owner, ref repo, pr_number) = pr_targets[i];
 
-        let chunk_owned: Vec<(usize, String)> = chunk.to_vec();
-        let results: Vec<(usize, DiffResult)> = stream::iter(chunk_owned)
-            .map(|(idx, url)| {
-                let client = &ctx.http_client;
-                let auth = auth.clone();
-                async move { (idx, fetch_single_diff(client, &url, &auth).await) }
-            })
-            .buffer_unordered(DIFF_FETCH_CONCURRENCY)
-            .collect()
-            .await;
-
-        // Check for rate limiting — if any request was limited, sleep until
-        // the reset time before continuing to the next chunk.
-        let mut hit_rate_limit = false;
-        #[allow(clippy::indexing_slicing)]
-        for (idx, result) in results {
-            match result {
-                DiffResult::Ok(text) => {
-                    if let Some(ref mut enrichment) = items[idx].enrichment_content
-                        && let Some(obj) = enrichment.as_object_mut()
-                    {
-                        obj.insert("diff".to_string(), serde_json::Value::String(text));
-                        attached += 1;
-                    }
+        match fetch_single_pr_diff(&client, owner, repo, pr_number).await {
+            DiffFetchResult::Ok(diff_text) => {
+                // Safety: idx comes from enumerate() on items.
+                #[allow(clippy::indexing_slicing)]
+                if let Some(ref mut enrichment) = items[idx].enrichment_content
+                    && let Some(obj) = enrichment.as_object_mut()
+                {
+                    obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
+                    attached += 1;
                 }
-                DiffResult::RateLimited { reset_at } => {
-                    if !hit_rate_limit {
-                        hit_rate_limit = true;
-                        rate_limit_waits += 1;
-                        let wait = sleep_duration_until(reset_at);
-                        warn!(
-                            wait_secs = wait.as_secs(),
-                            reset_at = %reset_at,
-                            "diff fetch rate-limited, pausing batch"
-                        );
-                        tokio::time::sleep(wait).await;
-                    }
+                i += 1;
+            }
+            DiffFetchResult::RateLimited(rate_limit) => {
+                rate_limit_sleeps += 1;
+                if rate_limit_sleeps > MAX_RATE_LIMIT_SLEEPS {
+                    warn!(
+                        remaining_prs = pr_targets.len() - i,
+                        sleeps = rate_limit_sleeps,
+                        "giving up on diff fetches after too many rate-limit sleeps"
+                    );
+                    break;
                 }
-                DiffResult::Failed => {}
+                // Pause until the rate limit resets, then retry this same PR.
+                let wait = sleep_duration_until_reset(&rate_limit);
+                warn!(
+                    wait_secs = wait.as_secs(),
+                    remaining = rate_limit.remaining,
+                    reset_at = %rate_limit.reset_at,
+                    pr = %format!("{owner}/{repo}#{pr_number}"),
+                    "REST rate limit hit, sleeping then retrying"
+                );
+                tokio::time::sleep(wait).await;
+                // Don't increment i — retry this PR after sleep.
+            }
+            DiffFetchResult::Failed => {
+                i += 1;
             }
         }
     }
 
     if attached > 0 {
-        debug!(count = attached, "attached PR diffs to enrichment content");
+        debug!(
+            count = attached,
+            total = pr_targets.len(),
+            "attached PR diffs via REST API"
+        );
     }
 }
 
-/// Result of a single diff fetch attempt.
-enum DiffResult {
+/// Result of fetching diff content for a single PR.
+enum DiffFetchResult {
+    /// Combined patch text (truncated to `MAX_DIFF_SIZE`).
     Ok(String),
-    RateLimited { reset_at: OffsetDateTime },
+    /// Hit rate limit — caller should sleep until reset.
+    RateLimited(RateLimitInfo),
+    /// Non-retryable error (logged internally).
     Failed,
 }
 
-/// Fetch a single diff URL. Returns structured result so the caller can
-/// coordinate rate-limit pausing across the batch.
-async fn fetch_single_diff(client: &reqwest::Client, url: &str, auth: &str) -> DiffResult {
-    let result = client
-        .get(url)
-        .header("Authorization", auth)
-        .header("User-Agent", "prism-ingestion/0.1")
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await;
+/// Fetch file patches for a single PR, paginating as needed, and combine into
+/// a single diff string.
+async fn fetch_single_pr_diff(
+    client: &GitHubClient,
+    owner: &str,
+    repo: &str,
+    pr_number: u32,
+) -> DiffFetchResult {
+    let mut combined = String::new();
+    let mut page = 1u32;
 
-    match result {
-        Ok(resp) if resp.status().is_success() => match resp.text().await {
-            Ok(text) => {
-                if text.len() > MAX_DIFF_SIZE {
-                    let truncated = &text[..MAX_DIFF_SIZE];
-                    let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
-                    DiffResult::Ok(format!("{}...(truncated)", &text[..at_line]))
-                } else {
-                    DiffResult::Ok(text)
-                }
+    loop {
+        let result = client.list_pr_files(owner, repo, pr_number, page).await;
+
+        let page_result = match result {
+            Ok(r) => r,
+            Err(crate::github::client::GitHubError::Api {
+                status, rate_limit, ..
+            }) if status == reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                debug!(
+                    owner,
+                    repo,
+                    pr_number,
+                    remaining = rate_limit.remaining,
+                    reset_at = %rate_limit.reset_at,
+                    "PR files endpoint returned 429"
+                );
+                return DiffFetchResult::RateLimited(rate_limit);
             }
             Err(e) => {
-                debug!(url = %url, error = %e, "failed to read diff body");
-                DiffResult::Failed
+                debug!(
+                    owner,
+                    repo,
+                    pr_number,
+                    error = %e,
+                    "failed to fetch PR files"
+                );
+                return DiffFetchResult::Failed;
             }
-        },
-        Ok(resp) if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => {
-            let rate_limit = parse_rate_limit_headers(resp.headers());
+        };
+
+        // Check rate limit proactively — pause before we exhaust the budget.
+        if page_result.rate_limit.remaining < REST_RATE_LIMIT_FLOOR
+            && page_result.rate_limit.remaining > 0
+        {
             debug!(
-                url = %url,
-                reset_at = %rate_limit.reset_at,
-                remaining = rate_limit.remaining,
-                "diff fetch returned 429"
+                remaining = page_result.rate_limit.remaining,
+                "REST rate limit running low, returning what we have"
             );
-            DiffResult::RateLimited {
-                reset_at: rate_limit.reset_at,
+            // Don't abort entirely — return whatever we've built so far.
+            break;
+        }
+        if page_result.rate_limit.remaining == 0 {
+            // Already exhausted — signal caller to pause.
+            if combined.is_empty() {
+                return DiffFetchResult::RateLimited(page_result.rate_limit);
+            }
+            // We have partial content — return it rather than losing it.
+            break;
+        }
+
+        // Assemble patches from this page.
+        for file in &page_result.items {
+            if let Some(ref patch) = file.patch {
+                if !combined.is_empty() {
+                    combined.push('\n');
+                }
+                // Add file header for context.
+                let _ = writeln!(combined, "--- a/{}", file.filename);
+                let _ = writeln!(combined, "+++ b/{}", file.filename);
+                combined.push_str(patch);
+
+                if combined.len() >= MAX_DIFF_SIZE {
+                    // Truncate on a line boundary.
+                    let truncated = &combined[..MAX_DIFF_SIZE];
+                    let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
+                    combined.truncate(at_line);
+                    combined.push_str("\n...(truncated)");
+                    return DiffFetchResult::Ok(combined);
+                }
             }
         }
-        Ok(resp) => {
-            debug!(url = %url, status = %resp.status(), "diff fetch returned non-200");
-            DiffResult::Failed
+
+        match page_result.next_page {
+            Some(next) => page = next,
+            None => break,
         }
-        Err(e) => {
-            debug!(url = %url, error = %e, "diff fetch failed");
-            DiffResult::Failed
-        }
+    }
+
+    if combined.is_empty() {
+        DiffFetchResult::Failed
+    } else {
+        DiffFetchResult::Ok(combined)
     }
 }
 
 /// Compute how long to sleep until a rate limit reset time, with a small buffer.
-fn sleep_duration_until(reset_at: OffsetDateTime) -> std::time::Duration {
-    let now = OffsetDateTime::now_utc();
-    let delta = reset_at - now;
+fn sleep_duration_until_reset(rate_limit: &RateLimitInfo) -> std::time::Duration {
+    let now = time::OffsetDateTime::now_utc();
+    let delta = rate_limit.reset_at - now;
     // Add 1s buffer to avoid edge-case where we wake just before reset.
     let secs = delta.whole_seconds().max(1) + 1;
     #[allow(clippy::cast_sign_loss)]

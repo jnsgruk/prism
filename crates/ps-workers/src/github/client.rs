@@ -4,7 +4,9 @@ use ps_core::models::RateLimitInfo;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue, LINK, USER_AGENT};
 use tracing::debug;
 
-use super::types::{GitHubPr, GitHubRepo, GitHubReview, GitHubTeam, GitHubTeamRepo, GitHubUser};
+use super::types::{
+    GitHubPr, GitHubPrFile, GitHubRepo, GitHubReview, GitHubTeam, GitHubTeamRepo, GitHubUser,
+};
 
 /// Result of a paginated API call: items, optional next page, rate limit info.
 pub struct PageResult<T> {
@@ -120,7 +122,11 @@ impl GitHubClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(GitHubError::Api { status, body });
+            return Err(GitHubError::Api {
+                status,
+                body,
+                rate_limit,
+            });
         }
 
         let etag = resp
@@ -176,14 +182,51 @@ impl GitHubClient {
             .await
             .map_err(GitHubError::Http)?;
 
+        let rate_limit = parse_rate_limit(resp.headers());
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(GitHubError::Api { status, body });
+            return Err(GitHubError::Api {
+                status,
+                body,
+                rate_limit,
+            });
         }
 
         let reviews: Vec<GitHubReview> = resp.json().await.map_err(GitHubError::Http)?;
         Ok(reviews)
+    }
+
+    /// List files changed in a pull request.
+    ///
+    /// Returns up to 100 files per page. Use `next_page` from the result to
+    /// paginate. The `patch` field on each file contains the unified diff (absent
+    /// for binary files or very large diffs).
+    pub async fn list_pr_files(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u32,
+        page: u32,
+    ) -> Result<PageResult<GitHubPrFile>, GitHubError> {
+        validate_path_segment(owner, "owner")?;
+        validate_path_segment(repo, "repo")?;
+
+        let url = format!(
+            "{}/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}",
+            self.base_url,
+        );
+        let result: PageResult<GitHubPrFile> = self.paginated_get(&url).await?;
+        debug!(
+            owner,
+            repo,
+            pr_number,
+            page,
+            count = result.items.len(),
+            next_page = ?result.next_page,
+            "fetched PR files"
+        );
+        Ok(result)
     }
 
     /// Generic paginated GET: send request, parse rate limit, extract Link
@@ -205,7 +248,11 @@ impl GitHubClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(GitHubError::Api { status, body });
+            return Err(GitHubError::Api {
+                status,
+                body,
+                rate_limit,
+            });
         }
 
         let next_page = resp
@@ -342,6 +389,7 @@ pub enum GitHubError {
     Api {
         status: reqwest::StatusCode,
         body: String,
+        rate_limit: RateLimitInfo,
     },
     #[error("invalid URL path segment for {label}: {value:?}")]
     InvalidPathSegment { label: String, value: String },

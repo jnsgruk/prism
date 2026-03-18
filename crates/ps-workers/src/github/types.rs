@@ -174,6 +174,19 @@ pub struct GraphQLSearchRepoOwner {
 }
 
 // ---------------------------------------------------------------------------
+// REST API response types
+// ---------------------------------------------------------------------------
+
+/// A file changed in a pull request, as returned by `GET /repos/{owner}/{repo}/pulls/{number}/files`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubPrFile {
+    pub filename: String,
+    pub status: String,
+    /// Unified diff patch for this file. Absent for binary files or very large diffs.
+    pub patch: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // REST API response types (used by team sync handler)
 // ---------------------------------------------------------------------------
 
