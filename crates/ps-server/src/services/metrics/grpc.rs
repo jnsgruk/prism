@@ -556,8 +556,9 @@ impl MetricsService for MetricsServiceImpl {
         // Use sub-period granularity: month → weekly bars, quarter → monthly bars.
         // Week has no sub-period so we show weekly history for context.
         let (trend_period_type, history_limit) = match period_type_val {
-            ps_core::models::PeriodType::Week => (ps_core::models::PeriodType::Week, 8),
-            ps_core::models::PeriodType::Month => (ps_core::models::PeriodType::Week, 8),
+            ps_core::models::PeriodType::Week | ps_core::models::PeriodType::Month => {
+                (ps_core::models::PeriodType::Week, 8)
+            }
             ps_core::models::PeriodType::Quarter => (ps_core::models::PeriodType::Month, 6),
         };
 

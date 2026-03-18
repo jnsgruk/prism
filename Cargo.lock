@@ -2288,6 +2288,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ps-reasoning"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ps-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ps-server"
 version = "0.1.0"
 dependencies = [

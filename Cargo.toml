@@ -2,6 +2,7 @@
 members = [
     "crates/ps-core",
     "crates/ps-proto",
+    "crates/ps-reasoning",
     "crates/ps-server",
     "crates/ps-workers",
     "crates/ps-metrics",
