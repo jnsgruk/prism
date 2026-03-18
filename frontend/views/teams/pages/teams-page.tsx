@@ -119,7 +119,11 @@ const TeamsPage = (): React.ReactElement => {
     <>
       <PageHeader
         title={teamName}
-        description="Team performance and contributions"
+        description={
+          effectiveTeamId && roots.length > 0 ? (
+            <TeamBreadcrumb roots={roots} selectedTeamId={effectiveTeamId} />
+          ) : undefined
+        }
         actions={
           roots.length > 0 && (
             <TeamSelector
@@ -131,13 +135,7 @@ const TeamsPage = (): React.ReactElement => {
         }
       />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
-        {/* Navigation: period selector, breadcrumbs */}
-        <div className="space-y-3">
-          <PeriodSelector value={periodKey} onChange={setPeriodKey} />
-          {effectiveTeamId && roots.length > 0 && (
-            <TeamBreadcrumb roots={roots} selectedTeamId={effectiveTeamId} />
-          )}
-        </div>
+        <PeriodSelector value={periodKey} onChange={setPeriodKey} />
 
         {isLoading && (
           <div className="flex items-center justify-center p-12">

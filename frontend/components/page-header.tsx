@@ -7,7 +7,7 @@ export const PageHeader = ({
   actions,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
 }): React.ReactElement => (
   <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
