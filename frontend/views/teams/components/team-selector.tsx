@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -32,28 +31,15 @@ export const TeamSelector = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button variant="outline" className="w-80 justify-between font-normal" />}
+        render={
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm font-medium hover:bg-muted"
+          />
+        }
       >
-        {selectedTeam ? (
-          <span className="flex items-center gap-2 truncate">
-            <span className="truncate">{selectedTeam.name}</span>
-            <Badge
-              variant={teamTypeBadgeVariant(selectedTeam.teamType)}
-              className="shrink-0 text-[10px]"
-            >
-              {teamTypeLabel(selectedTeam.teamType)}
-            </Badge>
-            <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-              <Users className="size-3" />
-              {selectedTeam.totalMemberCount > 0
-                ? selectedTeam.totalMemberCount
-                : selectedTeam.memberCount}
-            </span>
-          </span>
-        ) : (
-          <span className="text-muted-foreground">Select a team...</span>
-        )}
-        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+        {selectedTeam?.name ?? "Select team..."}
+        <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
         <Command shouldFilter={false}>

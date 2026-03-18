@@ -92,7 +92,6 @@ const TeamsPage = (): React.ReactElement => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
   const members = teamDetail?.members ?? [];
-  const teamName = selectedTeam?.name ?? currentMetrics?.teamName ?? "Teams";
   const memberCount =
     selectedTeam && selectedTeam.totalMemberCount > 0
       ? selectedTeam.totalMemberCount
@@ -118,20 +117,21 @@ const TeamsPage = (): React.ReactElement => {
   return (
     <>
       <PageHeader
-        title={teamName}
+        title="Teams"
         description={
           effectiveTeamId && roots.length > 0 ? (
-            <TeamBreadcrumb roots={roots} selectedTeamId={effectiveTeamId} />
-          ) : undefined
-        }
-        actions={
-          roots.length > 0 && (
-            <TeamSelector
+            <TeamBreadcrumb
               roots={roots}
-              selectedTeam={selectedTeam}
-              onSelect={(id) => navigate(`/teams/${id}`)}
+              selectedTeamId={effectiveTeamId}
+              selector={
+                <TeamSelector
+                  roots={roots}
+                  selectedTeam={selectedTeam}
+                  onSelect={(id) => navigate(`/teams/${id}`)}
+                />
+              }
             />
-          )
+          ) : undefined
         }
       />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
