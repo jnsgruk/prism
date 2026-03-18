@@ -14,11 +14,10 @@ spec:
       name: console
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: rustfs
 spec:
-  serviceName: rustfs
   replicas: 1
   selector:
     matchLabels:
@@ -32,7 +31,6 @@ spec:
         - name: rustfs
           image: rustfs/rustfs:latest
           args:
-            - server
             - /data
             - --address
             - "0.0.0.0:9000"
@@ -42,9 +40,9 @@ spec:
             - containerPort: 9000
             - containerPort: 9001
           env:
-            - name: RUSTFS_ROOT_USER
+            - name: RUSTFS_ACCESS_KEY
               value: prism
-            - name: RUSTFS_ROOT_PASSWORD
+            - name: RUSTFS_SECRET_KEY
               value: prism-dev-password
           volumeMounts:
             - name: data
@@ -57,16 +55,10 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           readinessProbe:
-            httpGet:
-              path: /minio/health/ready
+            tcpSocket:
               port: 9000
             initialDelaySeconds: 5
             periodSeconds: 10
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 10Gi
+      volumes:
+        - name: data
+          emptyDir: {}
