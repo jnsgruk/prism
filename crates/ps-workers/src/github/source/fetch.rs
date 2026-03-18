@@ -16,6 +16,15 @@ use crate::github::types::GraphQLSearchPr;
 /// Max size for PR diff content stored in enrichment queue (~20KB).
 const MAX_DIFF_SIZE: usize = 20_000;
 
+/// Max concurrent diff fetches — kept low to avoid GitHub secondary rate limits.
+const DIFF_FETCH_CONCURRENCY: usize = 3;
+
+/// Max retries for a single diff fetch on 429.
+const DIFF_FETCH_MAX_RETRIES: u32 = 3;
+
+/// Default backoff when `Retry-After` header is absent (seconds).
+const DIFF_FETCH_DEFAULT_BACKOFF_SECS: u64 = 2;
+
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
     cursor: &str,
@@ -534,7 +543,8 @@ fn search_pr_to_contributions(
 /// Concurrently fetch `.diff` URLs for PR items and attach to enrichment content.
 ///
 /// Uses the existing `reqwest::Client` + PAT auth header. Diffs are truncated
-/// to `MAX_DIFF_SIZE` bytes. Failures are logged but don't stop ingestion.
+/// to `MAX_DIFF_SIZE` bytes. Retries on 429 with `Retry-After` backoff.
+/// Failures are logged but don't stop ingestion.
 async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput]) {
     let token = ctx.token.as_deref().unwrap_or("");
     if token.is_empty() {
@@ -582,52 +592,17 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
         })
         .collect();
 
-    // Fetch diffs concurrently, capped at 8 concurrent requests.
+    // Fetch diffs concurrently with low concurrency to avoid secondary rate limits.
     let results: Vec<(usize, Option<String>)> = stream::iter(diff_requests)
         .map(|(idx, url)| {
             let client = &ctx.http_client;
             let auth = format!("Bearer {token}");
             async move {
-                let result = client
-                    .get(&url)
-                    .header("Authorization", &auth)
-                    .header("User-Agent", "prism-ingestion/0.1")
-                    .timeout(std::time::Duration::from_secs(10))
-                    .send()
-                    .await;
-
-                let diff = match result {
-                    Ok(resp) if resp.status().is_success() => {
-                        match resp.text().await {
-                            Ok(text) => {
-                                if text.len() > MAX_DIFF_SIZE {
-                                    // Truncate at a line boundary where possible.
-                                    let truncated = &text[..MAX_DIFF_SIZE];
-                                    let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
-                                    Some(format!("{}...(truncated)", &text[..at_line]))
-                                } else {
-                                    Some(text)
-                                }
-                            }
-                            Err(e) => {
-                                debug!(url = %url, error = %e, "failed to read diff body");
-                                None
-                            }
-                        }
-                    }
-                    Ok(resp) => {
-                        debug!(url = %url, status = %resp.status(), "diff fetch returned non-200");
-                        None
-                    }
-                    Err(e) => {
-                        debug!(url = %url, error = %e, "diff fetch failed");
-                        None
-                    }
-                };
+                let diff = fetch_single_diff(client, &url, &auth).await;
                 (idx, diff)
             }
         })
-        .buffer_unordered(8)
+        .buffer_unordered(DIFF_FETCH_CONCURRENCY)
         .collect()
         .await;
 
@@ -648,4 +623,69 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
     if attached > 0 {
         debug!(count = attached, "attached PR diffs to enrichment content");
     }
+}
+
+/// Fetch a single diff URL with retry on 429 (rate limit).
+async fn fetch_single_diff(client: &reqwest::Client, url: &str, auth: &str) -> Option<String> {
+    for attempt in 0..=DIFF_FETCH_MAX_RETRIES {
+        let result = client
+            .get(url)
+            .header("Authorization", auth)
+            .header("User-Agent", "prism-ingestion/0.1")
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await;
+
+        match result {
+            Ok(resp) if resp.status().is_success() => {
+                return match resp.text().await {
+                    Ok(text) => {
+                        if text.len() > MAX_DIFF_SIZE {
+                            // Truncate at a line boundary where possible.
+                            let truncated = &text[..MAX_DIFF_SIZE];
+                            let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
+                            Some(format!("{}...(truncated)", &text[..at_line]))
+                        } else {
+                            Some(text)
+                        }
+                    }
+                    Err(e) => {
+                        debug!(url = %url, error = %e, "failed to read diff body");
+                        None
+                    }
+                };
+            }
+            Ok(resp) if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                if attempt == DIFF_FETCH_MAX_RETRIES {
+                    debug!(url = %url, "diff fetch rate-limited after {DIFF_FETCH_MAX_RETRIES} retries");
+                    return None;
+                }
+
+                // Respect Retry-After header if present, otherwise use default backoff.
+                let backoff_secs = resp
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .unwrap_or(DIFF_FETCH_DEFAULT_BACKOFF_SECS * (u64::from(attempt) + 1));
+
+                debug!(
+                    url = %url,
+                    attempt = attempt + 1,
+                    backoff_secs,
+                    "diff fetch rate-limited, retrying"
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
+            }
+            Ok(resp) => {
+                debug!(url = %url, status = %resp.status(), "diff fetch returned non-200");
+                return None;
+            }
+            Err(e) => {
+                debug!(url = %url, error = %e, "diff fetch failed");
+                return None;
+            }
+        }
+    }
+    None
 }
