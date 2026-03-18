@@ -42,11 +42,12 @@ _tomls = [
     "crates/ps-metrics/Cargo.toml",
     "crates/ps-migrate/Cargo.toml",
     "crates/psctl/Cargo.toml",
+    "crates/ps-reasoning/Cargo.toml",
     "tests/integration/Cargo.toml",
 ]
 
 # Shared crates — changes here rebuild any service that depends on them.
-_shared = ["crates/ps-core", "crates/ps-proto", "proto"]
+_shared = ["crates/ps-core", "crates/ps-proto", "crates/ps-reasoning", "proto"]
 
 docker_build(
     "prism/ps-server",
@@ -98,3 +99,4 @@ k8s_resource(workload="eg-gateway-helm-certgen", labels=["gateway"])
 
 k8s_resource("postgres", port_forwards=["5432:5432"], labels=["infra"],)
 k8s_resource("restate",  port_forwards=["9070:9070"], labels=["infra"])
+k8s_resource("rustfs",   port_forwards=["9000:9000", "9001:9001"], labels=["infra"])
