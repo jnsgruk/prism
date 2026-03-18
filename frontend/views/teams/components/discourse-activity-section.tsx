@@ -335,8 +335,6 @@ export const DiscourseActivitySection = ({
   const instance = instanceFilter === "all" ? undefined : instanceFilter;
   const { data, isLoading } = useDiscourseActivity(teamId, period, enabled, instance);
 
-  if (!hasDiscourse) return null;
-
   const activityTrend = useMemo(
     () =>
       (data?.activityTrend ?? []).map((t) => ({
@@ -349,6 +347,8 @@ export const DiscourseActivitySection = ({
   );
 
   const allContributors = data?.topContributors ?? [];
+
+  if (!hasDiscourse) return null;
 
   // Client-side contributor filtering / sorting / pagination
   const searchLower = debouncedContribSearch.toLowerCase();
