@@ -310,7 +310,7 @@ impl ConfigRepo {
             r#"
             INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (source_id, secret_key)
+            ON CONFLICT (source_id, secret_key) WHERE source_id IS NOT NULL
             DO UPDATE SET encrypted_value = $4, updated_at = now()
             "#,
             id,
