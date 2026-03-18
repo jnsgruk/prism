@@ -59,20 +59,29 @@ const PersonProfilePage = (): React.ReactElement => {
     <>
       <PageHeader
         title={
-          <PersonBreadcrumb
-            personName={profile?.name ?? "Person"}
-            personId={personId}
-            onSelect={(id) => {
-              if (id === "__all__") {
-                navigate("/people");
-              } else {
-                navigate(`/people/${id}`);
-              }
-            }}
-          />
-        }
-        description={
-          [profile?.teamName, profile?.level].filter(Boolean).join(" \u00b7 ") || undefined
+          <div className="flex items-center gap-2">
+            <PersonBreadcrumb
+              personName={profile?.name ?? "Person"}
+              personId={personId}
+              onSelect={(id) => {
+                if (id === "__all__") {
+                  navigate("/people");
+                } else {
+                  navigate(`/people/${id}`);
+                }
+              }}
+            />
+            {profile?.teamName && (
+              <Badge variant="secondary" className="text-[10px]">
+                {profile.teamName}
+              </Badge>
+            )}
+            {profile?.level && (
+              <Badge variant="secondary" className="text-[10px]">
+                {profile.level}
+              </Badge>
+            )}
+          </div>
         }
       />
       <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-6">
