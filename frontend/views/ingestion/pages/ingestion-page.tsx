@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
+import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
 import { SourceStatusRow } from "@/views/ingestion/components/source-status-card";
 import {
@@ -128,6 +129,8 @@ const IngestionPage = (): React.ReactElement => {
             ))}
           </div>
         </section>
+
+        <AiPipelineStatus />
 
         {runsLoading ? (
           <div className="flex justify-center py-8">
