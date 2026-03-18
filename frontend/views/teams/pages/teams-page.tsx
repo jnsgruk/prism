@@ -29,7 +29,6 @@ import {
 } from "@/views/teams/components/period-selector";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
-import { TeamSelector } from "@/views/teams/components/team-selector";
 import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
 
 const TeamsPage = (): React.ReactElement => {
@@ -122,13 +121,7 @@ const TeamsPage = (): React.ReactElement => {
             <TeamBreadcrumb
               roots={roots}
               selectedTeamId={effectiveTeamId}
-              selector={
-                <TeamSelector
-                  roots={roots}
-                  selectedTeam={selectedTeam}
-                  onSelect={(id) => navigate(`/teams/${id}`)}
-                />
-              }
+              onSelect={(id) => navigate(`/teams/${id}`)}
             />
           ) : (
             "Teams"
