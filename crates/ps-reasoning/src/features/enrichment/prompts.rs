@@ -86,6 +86,7 @@ Given a topic title and opening post content, assign:
     - \"feature_request\" — Proposing new functionality
     - \"tutorial\" — How-to guide or walkthrough
     - \"showcase\" — Showing off work or results
+    - \"blog\" — Blog post published on the forum (often tagged \"blog\")
     - \"meta\" — About the forum itself, moderation, policies
     - \"other\" — Doesn't fit the above
 

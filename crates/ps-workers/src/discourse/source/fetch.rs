@@ -136,6 +136,7 @@ pub(super) async fn fetch_batch_impl(
                     topic_input.enrichment_content = Some(serde_json::json!({
                         "title": topic.title,
                         "category": category_name.as_deref().unwrap_or(""),
+                        "tags": topic.tags,
                         "body": raw,
                     }));
                 }

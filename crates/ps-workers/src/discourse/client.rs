@@ -63,6 +63,8 @@ pub struct TopicSummary {
     pub pinned: bool,
     #[serde(default)]
     pub has_accepted_answer: bool,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +83,8 @@ pub struct TopicDetailResponse {
     pub bumped_at: Option<String>,
     #[serde(default)]
     pub has_accepted_answer: bool,
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub post_stream: Option<PostStream>,
 }
 
@@ -254,7 +258,7 @@ impl DiscourseClient {
 
     /// Fetch full topic detail including posts.
     pub async fn topic(&self, topic_id: i64) -> Result<TopicDetailResponse, ps_core::Error> {
-        let url = format!("{}/t/{}.json", self.base_url, topic_id);
+        let url = format!("{}/t/{}.json?include_raw=1", self.base_url, topic_id);
 
         debug!(topic_id, "discourse topic request");
 
