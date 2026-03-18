@@ -166,6 +166,12 @@ impl JiraIngestionHandlerImpl {
                 }
             }
 
+            // The fetch always carries the latest cursor state in etag
+            // (including updated max_updated_at) for watermark advancement.
+            if let Some(ref latest) = batch.etag {
+                cursor = latest.clone();
+            }
+
             if !batch.items.is_empty() {
                 let stored = store_batch(ctx, &self.state, config, &batch.items, token).await?;
                 total_items += stored;
@@ -191,10 +197,9 @@ impl JiraIngestionHandlerImpl {
                 warn!(source = source_name, "failed to update run progress: {e}");
             }
 
-            let Some(next_cursor) = batch.next_cursor else {
+            if batch.next_cursor.is_none() {
                 break;
-            };
-            cursor = next_cursor;
+            }
         }
 
         // Final progress

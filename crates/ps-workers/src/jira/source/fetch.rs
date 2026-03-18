@@ -110,6 +110,11 @@ pub(super) async fn fetch_batch_impl(
     let has_more = response
         .is_last
         .map_or(response.next_page_token.is_some(), |last| !last);
+
+    // Always serialize the current cursor state so the handler can extract
+    // max_updated_at for watermark advancement, even on the final page.
+    let final_cursor = serialise_cursor(&cur)?;
+
     let next_cursor = if has_more {
         cur.next_page_token = response.next_page_token;
         Some(serialise_cursor(&cur)?)
@@ -121,7 +126,7 @@ pub(super) async fn fetch_batch_impl(
         items,
         next_cursor,
         rate_limit,
-        etag: None,
+        etag: Some(final_cursor),
     })
 }
 
