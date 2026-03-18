@@ -28,10 +28,13 @@ pub trait JiraIngestionHandler {
 
 impl JiraIngestionHandler for JiraIngestionHandlerImpl {
     async fn run_ingestion(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, "starting Jira ingestion run");
 
-        self.execute_ingestion(&ctx, &source_name, None).await
+        self.execute_ingestion(&ctx, &source_name, &config, None)
+            .await
     }
 
     async fn backfill(
@@ -39,10 +42,12 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
         ctx: ObjectContext<'_>,
         since_date: String,
     ) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting Jira backfill");
 
-        self.execute_ingestion(&ctx, &source_name, Some(since_date))
+        self.execute_ingestion(&ctx, &source_name, &config, Some(since_date))
             .await
     }
 }
@@ -52,10 +57,9 @@ impl JiraIngestionHandlerImpl {
         &self,
         ctx: &ObjectContext<'_>,
         source_name: &str,
+        config: &SourceConfig,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        let config = load_source_config(ctx, &self.state.repos, source_name).await?;
-
         let source = registry::create_source(&config.source_type).ok_or_else(|| {
             TerminalError::new(format!("unsupported source type: {}", config.source_type))
         })?;
@@ -78,7 +82,7 @@ impl JiraIngestionHandlerImpl {
         let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
         let email = decrypt_optional_secret(&self.state, config.id, "email").await?;
 
-        let ing_ctx = build_ingestion_context(&self.state, &config, Some(token), email, None);
+        let ing_ctx = build_ingestion_context(&self.state, config, Some(token), email, None);
 
         let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
@@ -100,14 +104,14 @@ impl JiraIngestionHandlerImpl {
         );
 
         // Build the initial cursor with full Jira config
-        let initial_cursor = build_jira_cursor(&config, &plan);
+        let initial_cursor = build_jira_cursor(config, &plan);
 
         let (total_items, final_cursor) = self
             .fetch_store_loop(
                 ctx,
                 run_id,
                 source_name,
-                &config,
+                config,
                 &initial_cursor,
                 ing_ctx.token.as_deref(),
             )
@@ -117,7 +121,7 @@ impl JiraIngestionHandlerImpl {
             advance_watermark(
                 ctx,
                 &self.state,
-                &config,
+                config,
                 &final_cursor,
                 total_items,
                 ing_ctx.token.as_deref(),

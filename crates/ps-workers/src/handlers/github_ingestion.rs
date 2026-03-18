@@ -26,10 +26,13 @@ pub trait GithubIngestionHandler {
 
 impl GithubIngestionHandler for GithubIngestionHandlerImpl {
     async fn run_ingestion(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, "starting ingestion run");
 
-        self.execute_ingestion(&ctx, &source_name, None).await
+        self.execute_ingestion(&ctx, &source_name, &config, None)
+            .await
     }
 
     async fn backfill(
@@ -37,10 +40,12 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
         ctx: ObjectContext<'_>,
         since_date: String,
     ) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting backfill");
 
-        self.execute_ingestion(&ctx, &source_name, Some(since_date))
+        self.execute_ingestion(&ctx, &source_name, &config, Some(since_date))
             .await
     }
 }
@@ -50,10 +55,9 @@ impl GithubIngestionHandlerImpl {
         &self,
         ctx: &ObjectContext<'_>,
         source_name: &str,
+        config: &SourceConfig,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        let config = load_source_config(ctx, &self.state.repos, source_name).await?;
-
         let source = registry::create_source(&config.source_type).ok_or_else(|| {
             TerminalError::new(format!("unsupported source type: {}", config.source_type))
         })?;
@@ -75,7 +79,7 @@ impl GithubIngestionHandlerImpl {
         // Decrypt token once per run, outside ctx.run() to avoid journaling
         let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
 
-        let ing_ctx = build_ingestion_context(&self.state, &config, Some(token), None, None);
+        let ing_ctx = build_ingestion_context(&self.state, config, Some(token), None, None);
         let mut plan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
             Err(e) => {
@@ -107,7 +111,7 @@ impl GithubIngestionHandlerImpl {
                 ctx,
                 run_id,
                 source_name,
-                &config,
+                config,
                 source.as_ref(),
                 &plan,
                 ing_ctx.token.as_deref(),
@@ -118,7 +122,7 @@ impl GithubIngestionHandlerImpl {
             advance_watermark(
                 ctx,
                 &self.state,
-                &config,
+                config,
                 &final_cursor,
                 total_items,
                 ing_ctx.token.as_deref(),

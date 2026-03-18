@@ -19,10 +19,11 @@ pub trait GithubTeamSyncHandler {
 
 impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
     async fn sync_teams(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = self.load_config(&ctx, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, "starting GitHub team sync");
 
-        let config = self.load_config(&ctx, &source_name).await?;
         let run_id = self.create_run(&ctx, &source_name).await?;
         let token = self.decrypt_token(&ctx, config.id).await?;
 

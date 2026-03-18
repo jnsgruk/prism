@@ -132,9 +132,8 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
-        validate_restate_identifier(&req.source_name)?;
 
-        // Verify source exists and is enabled, and get the source type for routing
+        // Look up source by display name, then use source_type as the Restate key
         let source = self
             .repos
             .config
@@ -144,23 +143,25 @@ impl HandlersService for HandlersServiceImpl {
             .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
         let handler = handler_for_platform(&source.source_type)?;
+        let restate_key = source.source_type.to_string();
+        validate_restate_identifier(&restate_key)?;
 
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/{handler}/{}/run_ingestion/send",
-            self.restate_url, req.source_name,
+            "{}/{handler}/{restate_key}/run_ingestion/send",
+            self.restate_url,
         );
 
         let invocation_id = self.send_to_restate(&url, None).await?;
 
-        // Store the invocation ID for cancellation
+        // Store the invocation ID for cancellation (keyed on display name)
         self.repos
             .activity
-            .set_current_invocation_id(&req.source_name, &invocation_id)
+            .set_current_invocation_id(&source.name, &invocation_id)
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, %handler, %invocation_id, "triggered ingestion run via Restate");
+        info!(source = %source.name, %handler, %invocation_id, "triggered ingestion run via Restate");
 
         Ok(Response::new(TriggerRunResponse {}))
     }
@@ -175,12 +176,11 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
-        validate_restate_identifier(&req.source_name)?;
         if req.since_date.is_empty() {
             return Err(Status::invalid_argument("since_date is required"));
         }
 
-        // Verify source exists and is enabled, and get the source type for routing
+        // Look up source by display name, then use source_type as the Restate key
         let source = self
             .repos
             .config
@@ -190,24 +190,23 @@ impl HandlersService for HandlersServiceImpl {
             .ok_or_else(|| Status::not_found("source not found or disabled"))?;
 
         let handler = handler_for_platform(&source.source_type)?;
+        let restate_key = source.source_type.to_string();
+        validate_restate_identifier(&restate_key)?;
 
         // Fire-and-forget send to Restate ingress
-        let url = format!(
-            "{}/{handler}/{}/backfill/send",
-            self.restate_url, req.source_name,
-        );
+        let url = format!("{}/{handler}/{restate_key}/backfill/send", self.restate_url,);
         let body = serde_json::json!(req.since_date);
 
         let invocation_id = self.send_to_restate(&url, Some(&body)).await?;
 
-        // Store the invocation ID for cancellation
+        // Store the invocation ID for cancellation (keyed on display name)
         self.repos
             .activity
-            .set_current_invocation_id(&req.source_name, &invocation_id)
+            .set_current_invocation_id(&source.name, &invocation_id)
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, %handler, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
+        info!(source = %source.name, %handler, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
 
         Ok(Response::new(TriggerBackfillResponse {}))
     }
@@ -223,6 +222,16 @@ impl HandlersService for HandlersServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
+        // Look up source to get source_type for Restate queries
+        let source = self
+            .repos
+            .config
+            .get_enabled_source_by_name(&req.source_name)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+        let restate_key = source.source_type.to_string();
+
         // Collect invocation IDs to cancel: start with the stored one, then
         // also query Restate for any active invocations on this virtual object
         // (covers cases where the stored ID is stale or missing).
@@ -232,7 +241,7 @@ impl HandlersService for HandlersServiceImpl {
         if let Some(id) = self
             .repos
             .activity
-            .get_current_invocation_id(&req.source_name)
+            .get_current_invocation_id(&source.name)
             .await
             .map_err(db_err)?
         {
@@ -241,7 +250,8 @@ impl HandlersService for HandlersServiceImpl {
         }
 
         // Query Restate admin for active invocations on this virtual object
-        if let Some(active_ids) = self.query_active_invocations(&req.source_name).await {
+        // (uses source_type as the Restate key)
+        if let Some(active_ids) = self.query_active_invocations(&restate_key).await {
             for id in active_ids {
                 if seen.insert(id.clone()) {
                     ids_to_cancel.push(id);
@@ -253,18 +263,18 @@ impl HandlersService for HandlersServiceImpl {
         futures::future::join_all(
             ids_to_cancel
                 .iter()
-                .map(|id| self.cancel_restate_invocation(&req.source_name, id)),
+                .map(|id| self.cancel_restate_invocation(&source.name, id)),
         )
         .await;
 
-        // Mark active runs as cancelled in the database
+        // Mark active runs as cancelled in the database (keyed on display name)
         self.repos
             .activity
-            .cancel_active_runs(&req.source_name)
+            .cancel_active_runs(&source.name)
             .await
             .map_err(db_err)?;
 
-        info!(source = %req.source_name, cancelled = ?ids_to_cancel, "cancelled ingestion run");
+        info!(source = %source.name, cancelled = ?ids_to_cancel, "cancelled ingestion run");
 
         Ok(Response::new(CancelRunResponse {}))
     }
@@ -279,25 +289,27 @@ impl HandlersService for HandlersServiceImpl {
         if req.source_name.is_empty() {
             return Err(Status::invalid_argument("source_name is required"));
         }
-        validate_restate_identifier(&req.source_name)?;
 
-        // Verify source exists and is enabled
-        self.repos
+        // Look up source by display name, then use source_type as the Restate key
+        let source = self
+            .repos
             .config
             .get_enabled_source_by_name(&req.source_name)
             .await
             .map_err(db_err)?
             .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+        let restate_key = source.source_type.to_string();
+        validate_restate_identifier(&restate_key)?;
 
         // Fire-and-forget send to Restate ingress
         let url = format!(
-            "{}/GithubTeamSyncHandler/{}/sync_teams/send",
-            self.restate_url, req.source_name,
+            "{}/GithubTeamSyncHandler/{restate_key}/sync_teams/send",
+            self.restate_url,
         );
 
         let invocation_id = self.send_to_restate(&url, None).await?;
 
-        info!(source = %req.source_name, %invocation_id, "triggered team sync via Restate");
+        info!(source = %source.name, %invocation_id, "triggered team sync via Restate");
 
         Ok(Response::new(TriggerTeamSyncResponse {}))
     }
@@ -403,28 +415,36 @@ impl HandlersService for HandlersServiceImpl {
         };
 
         // Object handlers require a key (source name); services do not
-        let url = if *requires_key {
+        let (url, source_name_for_db) = if *requires_key {
             if req.key.is_empty() {
                 return Err(Status::invalid_argument("key (source name) is required"));
             }
-            validate_restate_identifier(&req.key)?;
-            // Verify source exists and is enabled
-            self.repos
+            // Look up source by display name, use source_type as Restate key
+            let source = self
+                .repos
                 .config
                 .get_enabled_source_by_name(&req.key)
                 .await
                 .map_err(db_err)?
                 .ok_or_else(|| Status::not_found("source not found or disabled"))?;
+            let restate_key = source.source_type.to_string();
+            validate_restate_identifier(&restate_key)?;
 
-            format!(
-                "{}/{}/{}/{}/send",
-                self.restate_url, req.handler_name, req.key, req.method,
+            (
+                format!(
+                    "{}/{}/{restate_key}/{}/send",
+                    self.restate_url, req.handler_name, req.method,
+                ),
+                Some(source.name),
             )
         } else {
             // Service handler: /{handler}/{method}/send
-            format!(
-                "{}/{}/{}/send",
-                self.restate_url, req.handler_name, req.method,
+            (
+                format!(
+                    "{}/{}/{}/send",
+                    self.restate_url, req.handler_name, req.method,
+                ),
+                None,
             )
         };
 
@@ -439,14 +459,15 @@ impl HandlersService for HandlersServiceImpl {
         let invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
 
         // Store invocation ID for ingestion handlers (for cancellation support)
-        if req.handler_name == "GithubIngestionHandler"
-            || req.handler_name == "JiraIngestionHandler"
-            || req.handler_name == "DiscourseIngestionHandler"
+        if let Some(ref sn) = source_name_for_db
+            && (req.handler_name == "GithubIngestionHandler"
+                || req.handler_name == "JiraIngestionHandler"
+                || req.handler_name == "DiscourseIngestionHandler")
         {
             let _ = self
                 .repos
                 .activity
-                .set_current_invocation_id(&req.key, &invocation_id)
+                .set_current_invocation_id(sn, &invocation_id)
                 .await;
         }
 
@@ -499,7 +520,7 @@ impl HandlersService for HandlersServiceImpl {
                 .await
                 .map_err(db_err)?;
         } else {
-            // Try stored invocation ID first
+            // Try stored invocation ID first (DB keyed on display name)
             if let Some(inv_id) = self
                 .repos
                 .activity
@@ -511,8 +532,20 @@ impl HandlersService for HandlersServiceImpl {
                     .await;
             }
 
-            // Also query Restate for any active invocations
-            if let Some(active_ids) = self.query_active_invocations(&run.source_name).await {
+            // Also query Restate for any active invocations (uses source_type as Restate key)
+            let restate_key = self
+                .repos
+                .config
+                .get_enabled_source_by_name(&run.source_name)
+                .await
+                .ok()
+                .flatten()
+                .map(|s| s.source_type.to_string())
+                .unwrap_or_default();
+
+            if !restate_key.is_empty()
+                && let Some(active_ids) = self.query_active_invocations(&restate_key).await
+            {
                 for id in &active_ids {
                     self.cancel_restate_invocation(&run.source_name, id).await;
                 }

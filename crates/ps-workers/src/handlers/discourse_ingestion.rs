@@ -28,10 +28,13 @@ pub trait DiscourseIngestionHandler {
 
 impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
     async fn run_ingestion(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, "starting Discourse ingestion run");
 
-        self.execute_ingestion(&ctx, &source_name, None).await
+        self.execute_ingestion(&ctx, &source_name, &config, None)
+            .await
     }
 
     async fn backfill(
@@ -39,10 +42,12 @@ impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
         ctx: ObjectContext<'_>,
         since_date: String,
     ) -> Result<(), TerminalError> {
-        let source_name = ctx.key().to_string();
+        let source_type_key = ctx.key().to_string();
+        let config = load_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting Discourse backfill");
 
-        self.execute_ingestion(&ctx, &source_name, Some(since_date))
+        self.execute_ingestion(&ctx, &source_name, &config, Some(since_date))
             .await
     }
 }
@@ -52,10 +57,9 @@ impl DiscourseIngestionHandlerImpl {
         &self,
         ctx: &ObjectContext<'_>,
         source_name: &str,
+        config: &SourceConfig,
         override_watermark: Option<String>,
     ) -> Result<(), TerminalError> {
-        let config = load_source_config(ctx, &self.state.repos, source_name).await?;
-
         let source = registry::create_source(&config.source_type).ok_or_else(|| {
             TerminalError::new(format!("unsupported source type: {}", config.source_type))
         })?;
@@ -79,7 +83,7 @@ impl DiscourseIngestionHandlerImpl {
         let api_key = decrypt_optional_secret(&self.state, config.id, "api_key").await?;
         let api_username = decrypt_optional_secret(&self.state, config.id, "api_username").await?;
 
-        let ing_ctx = build_ingestion_context(&self.state, &config, api_key, None, api_username);
+        let ing_ctx = build_ingestion_context(&self.state, config, api_key, None, api_username);
 
         let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
             Ok(p) => p,
@@ -100,14 +104,14 @@ impl DiscourseIngestionHandlerImpl {
             "Discourse ingestion plan ready"
         );
 
-        let initial_cursor = build_discourse_cursor(&config, &plan);
+        let initial_cursor = build_discourse_cursor(config, &plan);
 
         let result = self
             .fetch_store_loop(
                 ctx,
                 run_id,
                 source_name,
-                &config,
+                config,
                 &initial_cursor,
                 ing_ctx.token.as_deref(),
             )
@@ -126,7 +130,7 @@ impl DiscourseIngestionHandlerImpl {
             && let Err(e) = advance_watermark(
                 ctx,
                 &self.state,
-                &config,
+                config,
                 &final_cursor,
                 total_items,
                 ing_ctx.token.as_deref(),

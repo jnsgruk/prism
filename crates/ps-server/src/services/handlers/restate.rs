@@ -129,17 +129,19 @@ impl HandlersServiceImpl {
     }
 
     /// Query Restate admin SQL API for active invocations on the given virtual object.
+    ///
+    /// `restate_key` is the Restate virtual object key (i.e. the source type string).
     /// Returns `None` if the query fails (best-effort).
-    pub(crate) async fn query_active_invocations(&self, source_name: &str) -> Option<Vec<String>> {
-        let Ok(source_name) = validate_restate_identifier(source_name) else {
-            warn!(%source_name, "invalid source name format for Restate query");
+    pub(crate) async fn query_active_invocations(&self, restate_key: &str) -> Option<Vec<String>> {
+        let Ok(restate_key) = validate_restate_identifier(restate_key) else {
+            warn!(%restate_key, "invalid Restate key format for invocation query");
             return None;
         };
         let url = format!("{}/query", self.restate_admin_url);
         let query = format!(
             "SELECT id FROM sys_invocation \
              WHERE target_service_name IN ('GithubIngestionHandler', 'JiraIngestionHandler', 'DiscourseIngestionHandler') \
-             AND target_service_key = '{source_name}' \
+             AND target_service_key = '{restate_key}' \
              AND status != 'completed'",
         );
 
@@ -153,13 +155,13 @@ impl HandlersServiceImpl {
         {
             Ok(r) => r,
             Err(e) => {
-                warn!(source = %source_name, error = %e, "failed to query Restate invocations");
+                warn!(restate_key = %restate_key, error = %e, "failed to query Restate invocations");
                 return None;
             }
         };
 
         if !resp.status().is_success() {
-            warn!(source = %source_name, status = %resp.status(), "Restate invocation query failed");
+            warn!(restate_key = %restate_key, status = %resp.status(), "Restate invocation query failed");
             return None;
         }
 

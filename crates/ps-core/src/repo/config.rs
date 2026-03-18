@@ -117,6 +117,29 @@ impl ConfigRepo {
         Ok(row.map(|r| map_source_config!(r)))
     }
 
+    /// Get an enabled source configuration by source type (e.g. "github", "discourse-ubuntu").
+    ///
+    /// Used by Restate workers where the virtual object key is the source type.
+    pub async fn get_enabled_source_by_type(
+        &self,
+        source_type: &str,
+    ) -> Result<Option<SourceConfig>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT id, source_type, name, enabled, settings, schedule_cron,
+                   created_at, updated_at
+            FROM config.source_configs
+            WHERE source_type = $1 AND enabled = true
+            "#,
+            source_type,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| map_source_config!(r)))
+    }
+
     /// Create a new source configuration.
     pub async fn create_source(
         &self,
