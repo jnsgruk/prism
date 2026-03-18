@@ -97,6 +97,8 @@ pub struct EnrichmentStatus {
     pub total_enrichments: i64,
     pub last_enrichment_at: Option<OffsetDateTime>,
     pub by_type: Vec<EnrichmentPipelineStatus>,
+    /// Number of contributions in the enrichment queue awaiting processing.
+    pub queue_depth: i64,
 }
 
 // ---------------------------------------------------------------------------
@@ -505,6 +507,14 @@ impl ReasoningRepo {
         .await
         .map_err(Error::from)?;
 
+        // Queue depth
+        let queue_depth = sqlx::query_scalar!(
+            r#"SELECT COUNT(*)::bigint as "count!: i64" FROM reasoning.enrichment_queue"#,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
         Ok(EnrichmentStatus {
             pending_count,
             total_enrichments: totals.total,
@@ -516,6 +526,7 @@ impl ReasoningRepo {
                     total_count: r.count,
                 })
                 .collect(),
+            queue_depth,
         })
     }
 

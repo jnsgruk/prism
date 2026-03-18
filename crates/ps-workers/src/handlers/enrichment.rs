@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ps_core::models::TaskType;
-use ps_core::repo::reasoning::UnenrichedContribution;
+use ps_core::repo::reasoning::QueuedContribution;
 use ps_reasoning::cost::CostTracker;
 use ps_reasoning::features::enrichment;
 use ps_reasoning::features::enrichment::types::EnrichmentType;
@@ -104,8 +104,8 @@ impl EnrichmentHandlerImpl {
             }
             drop(router);
 
-            // Step 2: Find unenriched contributions (journaled DB read)
-            let contributions = self.find_unenriched(ctx, type_name).await?;
+            // Step 2: Find queued contributions missing this enrichment type (journaled DB read)
+            let contributions = self.find_queued(ctx, type_name).await?;
 
             if contributions.is_empty() {
                 debug!(enrichment = type_name, "no contributions to enrich");
@@ -126,7 +126,7 @@ impl EnrichmentHandlerImpl {
 
             // Step 3: AI API calls (NOT journaled — idempotent, large payloads)
             let router = self.router.read().await;
-            let batch = enrichment::process_enrichment_batch(
+            let batch = enrichment::process_queued_enrichment_batch(
                 &router,
                 &self.state.repos.reasoning,
                 *enrichment_type,
@@ -171,7 +171,12 @@ impl EnrichmentHandlerImpl {
                 .await;
         }
 
-        // Step 5: Complete or fail the run (journaled)
+        // Step 5: Delete fully enriched queue entries (journaled DB write)
+        if total_processed > 0 {
+            self.delete_fully_enriched(ctx).await;
+        }
+
+        // Step 6: Complete or fail the run (journaled)
         progress.phase = "complete".into();
         progress.status_message =
             format!("Enrichment complete: {total_processed} processed, {total_errors} errors");
@@ -223,11 +228,11 @@ impl EnrichmentHandlerImpl {
         .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
     }
 
-    async fn find_unenriched(
+    async fn find_queued(
         &self,
         ctx: &Context<'_>,
         enrichment_type: &str,
-    ) -> Result<Vec<UnenrichedContribution>, TerminalError> {
+    ) -> Result<Vec<QueuedContribution>, TerminalError> {
         let repos = self.state.repos.clone();
         let etype = enrichment_type.to_string();
         Ok(ctx
@@ -237,7 +242,7 @@ impl EnrichmentHandlerImpl {
                 async move {
                     let contributions = repos
                         .reasoning
-                        .find_unenriched_contributions(&etype, MAX_BATCH_SIZE)
+                        .find_queued_for_enrichment(&etype, MAX_BATCH_SIZE)
                         .await
                         .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
                     Ok(Json::from(contributions))
@@ -344,6 +349,36 @@ impl EnrichmentHandlerImpl {
 
         if let Err(e) = result {
             warn!(error = %e, "failed to mark enrichment run as failed");
+        }
+    }
+
+    async fn delete_fully_enriched(&self, ctx: &Context<'_>) {
+        let repos = self.state.repos.clone();
+        let result = ctx
+            .run(|| {
+                let repos = repos.clone();
+                async move {
+                    let deleted = repos
+                        .reasoning
+                        .delete_fully_enriched_entries()
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(deleted))
+                }
+            })
+            .name("delete_fully_enriched")
+            .await;
+
+        match result {
+            Ok(count) => {
+                let deleted = count.into_inner();
+                if deleted > 0 {
+                    info!(deleted, "cleaned up fully enriched queue entries");
+                }
+            }
+            Err(e) => {
+                warn!(error = %e, "failed to delete fully enriched entries");
+            }
         }
     }
 
