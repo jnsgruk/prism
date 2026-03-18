@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM reasoning.enrichment_queue eq\n            WHERE EXISTS (\n                SELECT 1 FROM activity.contributions c\n                WHERE c.id = eq.contribution_id\n                AND CASE c.contribution_type\n                    WHEN 'pr_review' THEN\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'review_depth')\n                        AND EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'sentiment')\n                    WHEN 'pull_request' THEN\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'significance')\n                    WHEN 'discourse_topic' THEN\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'topic')\n                    ELSE TRUE\n                END\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d9da8a80d0467259ed6b96537236e5006d9cf200965de5f1e09661e83aa85520"
+}

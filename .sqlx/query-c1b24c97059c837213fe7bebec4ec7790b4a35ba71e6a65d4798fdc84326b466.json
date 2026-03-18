@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                eq.id,\n                eq.contribution_id,\n                c.contribution_type,\n                eq.content\n            FROM reasoning.enrichment_queue eq\n            JOIN activity.contributions c ON c.id = eq.contribution_id\n            LEFT JOIN reasoning.enrichments e\n                ON e.contribution_id = eq.contribution_id\n                AND e.enrichment_type = $1\n            WHERE e.id IS NULL\n              AND c.contribution_type = $2\n            ORDER BY eq.created_at\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "contribution_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "contribution_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c1b24c97059c837213fe7bebec4ec7790b4a35ba71e6a65d4798fdc84326b466"
+}
