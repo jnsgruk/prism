@@ -571,6 +571,7 @@ impl ReasoningService for ReasoningServiceImpl {
         info!(enrichment_type = %req.enrichment_type, deleted, "enrichments deleted for re-enrichment");
 
         Ok(Response::new(DeleteEnrichmentsByTypeResponse {
+            #[allow(clippy::cast_possible_wrap)]
             deleted_count: deleted as i64,
         }))
     }

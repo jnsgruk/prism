@@ -11,6 +11,7 @@ workspace = true
 ps-core = { path = "../ps-core" }
 ps-metrics = { path = "../ps-metrics" }
 ps-proto = { path = "../ps-proto" }
+ps-reasoning = { path = "../ps-reasoning" }
 tokio.workspace = true
 tonic.workspace = true
 tonic-health.workspace = true

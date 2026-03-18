@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use ps_workers::handlers::SharedState;
 use ps_workers::handlers::discourse_ingestion::{
     DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
 };
+use ps_workers::handlers::enrichment::{EnrichmentHandler, EnrichmentHandlerImpl};
 use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
 use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
 use ps_workers::handlers::identity_resolution::{
@@ -62,6 +65,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state: state.clone(),
     };
 
+    // AI provider routing for enrichment handler
+    let ai_router = {
+        let ai_config = ps_reasoning::types::AiConfig::default();
+        let mut router = ps_reasoning::routing::TaskRouter::new(ai_config);
+
+        // Load AI config from global_settings
+        if let Ok(settings) = state.repos.config.list_global_settings("ai.").await {
+            let mut config = ps_reasoning::types::AiConfig::default();
+            for s in &settings {
+                match s.key.as_str() {
+                    "ai.tasks.enrichment" => {
+                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                            config.tasks.enrichment = tc;
+                        }
+                    }
+                    "ai.budget_cap_usd" => {
+                        if let Some(cap) = s.value.as_f64() {
+                            config.budget_cap_usd = Some(cap);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            router.update_config(config);
+        }
+
+        // Load provider API keys
+        for (provider, secret_key_name) in &[
+            ("google", "google_api_key"),
+            ("openrouter", "openrouter_api_key"),
+        ] {
+            if let Ok(Some(encrypted)) = state.repos.config.get_global_secret(secret_key_name).await
+                && let Ok(decrypted) = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
+                && let Ok(api_key) = String::from_utf8(decrypted)
+            {
+                match *provider {
+                    "google" => router.set_google(&api_key),
+                    "openrouter" => router.set_openrouter(&api_key),
+                    _ => {}
+                }
+                info!(provider, "loaded AI provider key for enrichment handler");
+            }
+        }
+
+        Arc::new(tokio::sync::RwLock::new(router))
+    };
+
+    let enrichment = EnrichmentHandlerImpl {
+        state: state.clone(),
+        router: ai_router,
+    };
+
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
     let health_addr = format!("0.0.0.0:{health_port}").parse()?;
@@ -96,6 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(discourse_ingestion.serve())
                 .bind(identity_resolution.serve())
                 .bind(metrics_compute.serve())
+                .bind(enrichment.serve())
                 .build(),
         )
         .listen_and_serve(restate_addr)
