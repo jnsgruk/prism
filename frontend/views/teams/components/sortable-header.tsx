@@ -7,11 +7,8 @@ export type SortField =
   | "reviewP75"
   | "members"
   | "cycleTime"
-  | "wip"
-  | "leadTime"
   | "discourseTopics"
-  | "discoursePosts"
-  | "discourseEngagement";
+  | "discoursePosts";
 export type SortDir = "asc" | "desc";
 
 export const SortableHeader = ({

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -9,9 +9,6 @@ import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { MetricsRow } from "@/views/teams/components/metrics-row";
 import { SortableHeader } from "@/views/teams/components/sortable-header";
 import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
-
-const discourseEngagement = (m: TeamMetrics): number =>
-  m.discourseLikesGiven + m.discourseLikesReceived;
 
 export const ComparisonTable = ({
   childMetrics,
@@ -51,16 +48,10 @@ export const ComparisonTable = ({
           return dir * (a.memberCount - b.memberCount);
         case "cycleTime":
           return dir * (a.avgCycleTimeHours - b.avgCycleTimeHours);
-        case "wip":
-          return dir * (a.wipAvg - b.wipAvg);
-        case "leadTime":
-          return dir * (a.leadTimeHours - b.leadTimeHours);
         case "discourseTopics":
           return dir * (a.discourseTopicsCreated - b.discourseTopicsCreated);
         case "discoursePosts":
           return dir * (a.discoursePosts - b.discoursePosts);
-        case "discourseEngagement":
-          return dir * (discourseEngagement(a) - discourseEngagement(b));
         default:
           return 0;
       }
@@ -112,17 +103,6 @@ export const ComparisonTable = ({
                 >
                   Cycle Time
                 </SortableHeader>
-                <SortableHeader field="wip" current={sortField} dir={sortDir} onSort={toggleSort}>
-                  WIP
-                </SortableHeader>
-                <SortableHeader
-                  field="leadTime"
-                  current={sortField}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                >
-                  Lead Time
-                </SortableHeader>
                 {hasDiscourse && (
                   <SortableHeader
                     field="discourseTopics"
@@ -141,16 +121,6 @@ export const ComparisonTable = ({
                     onSort={toggleSort}
                   >
                     Posts
-                  </SortableHeader>
-                )}
-                {hasDiscourse && (
-                  <SortableHeader
-                    field="discourseEngagement"
-                    current={sortField}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  >
-                    Engagement
                   </SortableHeader>
                 )}
                 <SortableHeader
@@ -180,36 +150,47 @@ export const ComparisonTable = ({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Throughput by Team</CardTitle>
-          <CardDescription>
-            Merged pull requests and P75 review turnaround per child team.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-              <YAxis className="fill-muted-foreground" />
-              <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-              <Bar
-                dataKey="throughput"
-                name="Throughput"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="reviewP75Hours"
-                name="Review P75 (hrs)"
-                fill="hsl(var(--muted-foreground))"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Two separate charts instead of one mixed-axis chart */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardContent className="pt-6">
+            <h4 className="mb-3 text-sm font-medium">Throughput by Team</h4>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                <YAxis allowDecimals={false} className="fill-muted-foreground" />
+                <Tooltip content={ChartTooltip} cursor={cursorStyle} />
+                <Bar
+                  dataKey="throughput"
+                  name="Merged PRs"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <h4 className="mb-3 text-sm font-medium">Review P75 by Team</h4>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                <YAxis unit="h" className="fill-muted-foreground" />
+                <Tooltip content={ChartTooltip} cursor={cursorStyle} />
+                <Bar
+                  dataKey="reviewP75Hours"
+                  name="Review P75 (hrs)"
+                  fill="hsl(var(--muted-foreground))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 };

@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-import { fmtFloat, fmtHours } from "@/lib/format-metrics";
+import { fmtHours } from "@/lib/format-metrics";
 
 export const MetricsRow = ({
   metrics,
@@ -32,20 +32,13 @@ export const MetricsRow = ({
           {metrics.throughput}
         </Badge>
       </TableCell>
-      <TableCell>{fmtHours(metrics.reviewTurnaroundP75Hours)}</TableCell>
+      <TableCell className="tabular-nums">{fmtHours(metrics.reviewTurnaroundP75Hours)}</TableCell>
       <TableCell className="tabular-nums">{fmtHours(metrics.avgCycleTimeHours)}</TableCell>
-      <TableCell className="tabular-nums">{fmtFloat(metrics.wipAvg)}</TableCell>
-      <TableCell className="tabular-nums">{fmtHours(metrics.leadTimeHours)}</TableCell>
       {showDiscourse && (
         <TableCell className="tabular-nums">{metrics.discourseTopicsCreated || "\u2014"}</TableCell>
       )}
       {showDiscourse && (
         <TableCell className="tabular-nums">{metrics.discoursePosts || "\u2014"}</TableCell>
-      )}
-      {showDiscourse && (
-        <TableCell className="tabular-nums">
-          {metrics.discourseLikesGiven + metrics.discourseLikesReceived || "\u2014"}
-        </TableCell>
       )}
       <TableCell>{metrics.memberCount}</TableCell>
     </TableRow>

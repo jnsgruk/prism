@@ -12,13 +12,16 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
+import { CommunityPanel } from "@/views/teams/components/community-panel";
 import { ComparisonTable } from "@/views/teams/components/comparison-table";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
+import { DeliveryPanel } from "@/views/teams/components/delivery-panel";
 import { DiscourseActivitySection } from "@/views/teams/components/discourse-activity-section";
+import { FlowPanel } from "@/views/teams/components/flow-panel";
 import {
   buildPeriod,
   defaultPeriodKey,
@@ -26,9 +29,7 @@ import {
 } from "@/views/teams/components/period-selector";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
-import { TeamMetricCards } from "@/views/teams/components/team-metric-cards";
 import { TeamSelector } from "@/views/teams/components/team-selector";
-import { ThroughputTrendChart, WipTrendChart } from "@/views/teams/components/trend-charts";
 import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
 
 const TeamsPage = (): React.ReactElement => {
@@ -77,7 +78,7 @@ const TeamsPage = (): React.ReactElement => {
   const { data: parentMetrics } = useCompareTeams(teamIdArray, period);
   const currentMetrics = parentMetrics?.[0];
 
-  // Flow metrics for trend charts
+  // Flow metrics for trend chart in delivery panel
   const { data: flowMetrics } = useGetFlowMetrics(effectiveTeamId, period);
 
   // Fetch members
@@ -92,6 +93,27 @@ const TeamsPage = (): React.ReactElement => {
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
   const members = teamDetail?.members ?? [];
   const teamName = selectedTeam?.name ?? currentMetrics?.teamName ?? "Teams";
+  const memberCount =
+    selectedTeam && selectedTeam.totalMemberCount > 0
+      ? selectedTeam.totalMemberCount
+      : (selectedTeam?.memberCount ?? 0);
+
+  // Refs for scroll-to-section
+  const prsRef = useRef<HTMLDivElement>(null);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const discourseRef = useRef<HTMLDivElement>(null);
+  const membersRef = useRef<HTMLDivElement>(null);
+
+  const scrollToAndOpen = useCallback(
+    (ref: React.RefObject<HTMLDivElement | null>, setOpen: (v: boolean) => void) => {
+      setOpen(true);
+      // Allow collapsible to open before scrolling
+      requestAnimationFrame(() => {
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [],
+  );
 
   return (
     <>
@@ -130,19 +152,30 @@ const TeamsPage = (): React.ReactElement => {
           </Alert>
         )}
 
-        {/* Metric summary cards */}
+        {/* Themed metric panels */}
         {selectedTeam && (
-          <TeamMetricCards
+          <DeliveryPanel
             metrics={currentMetrics}
-            memberCount={
-              selectedTeam.totalMemberCount > 0
-                ? selectedTeam.totalMemberCount
-                : selectedTeam.memberCount
-            }
+            memberCount={memberCount}
+            flowMetrics={flowMetrics}
+            onScrollToPrs={() => scrollToAndOpen(prsRef, setPrsOpen)}
+            onScrollToReviews={() => scrollToAndOpen(reviewsRef, setReviewsOpen)}
+            onScrollToMembers={() => scrollToAndOpen(membersRef, setMembersOpen)}
           />
         )}
 
-        {/* Child teams comparison table — right after cards */}
+        {selectedTeam && <FlowPanel metrics={currentMetrics} />}
+
+        {selectedTeam && (
+          <CommunityPanel
+            metrics={currentMetrics}
+            onScrollToDiscourse={() => {
+              discourseRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+        )}
+
+        {/* Child teams comparison table */}
         {selectedTeam && (childMetrics?.length ?? 0) > 0 && (
           <ComparisonTable
             childMetrics={childMetrics ?? []}
@@ -151,141 +184,147 @@ const TeamsPage = (): React.ReactElement => {
           />
         )}
 
-        {/* Trend charts — throughput + WIP */}
-        <ThroughputTrendChart flowMetrics={flowMetrics} />
-        <WipTrendChart flowMetrics={flowMetrics} />
-
         {/* Discourse Activity — collapsible, lazy-loaded */}
         {selectedTeam && (
-          <DiscourseActivitySection
-            teamId={effectiveTeamId}
-            period={period}
-            metrics={currentMetrics}
-          />
+          <div ref={discourseRef}>
+            <DiscourseActivitySection
+              teamId={effectiveTeamId}
+              period={period}
+              metrics={currentMetrics}
+            />
+          </div>
         )}
 
         {/* Pull Requests — collapsible */}
         {selectedTeam && (
-          <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
-            <Card>
-              <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
-                <CollapsibleTrigger
-                  render={
-                    <button type="button" className="flex w-full items-center gap-2 text-left" />
-                  }
-                >
-                  {prsOpen ? (
-                    <ChevronDown className="size-4" />
-                  ) : (
-                    <ChevronRight className="size-4" />
-                  )}
-                  <GitPullRequest className="size-4 text-muted-foreground" />
-                  <CardTitle>Pull Requests</CardTitle>
-                  {currentMetrics && (
-                    <Badge variant="secondary" className="ml-1">
-                      {currentMetrics.throughput}
-                    </Badge>
-                  )}
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <ContributionTable
-                    teamId={effectiveTeamId}
-                    period={period}
-                    defaultContributionType="pull_request"
-                    defaultState="merged"
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          <div ref={prsRef}>
+            <Collapsible open={prsOpen} onOpenChange={setPrsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {prsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <GitPullRequest className="size-4 text-muted-foreground" />
+                    <CardTitle>Pull Requests</CardTitle>
+                    {currentMetrics && (
+                      <Badge variant="secondary" className="ml-1">
+                        {currentMetrics.throughput}
+                      </Badge>
+                    )}
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <ContributionTable
+                      teamId={effectiveTeamId}
+                      period={period}
+                      defaultContributionType="pull_request"
+                      defaultState="merged"
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
         )}
 
         {/* Reviews — collapsible */}
         {selectedTeam && (
-          <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
-            <Card>
-              <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
-                <CollapsibleTrigger
-                  render={
-                    <button type="button" className="flex w-full items-center gap-2 text-left" />
-                  }
-                >
-                  {reviewsOpen ? (
-                    <ChevronDown className="size-4" />
-                  ) : (
-                    <ChevronRight className="size-4" />
-                  )}
-                  <Clock className="size-4 text-muted-foreground" />
-                  <CardTitle>Reviews</CardTitle>
-                  {currentMetrics && currentMetrics.reviewTurnaroundP75Hours > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      P75 {currentMetrics.reviewTurnaroundP75Hours.toFixed(1)}h
-                    </Badge>
-                  )}
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent className="space-y-4 pt-0">
-                  <ReviewDistribution teamId={effectiveTeamId} period={period} />
-                  <ContributionTable
-                    teamId={effectiveTeamId}
-                    period={period}
-                    defaultContributionType="pr_review"
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          <div ref={reviewsRef}>
+            <Collapsible open={reviewsOpen} onOpenChange={setReviewsOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {reviewsOpen ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                    <Clock className="size-4 text-muted-foreground" />
+                    <CardTitle>Reviews</CardTitle>
+                    {currentMetrics && currentMetrics.reviewTurnaroundP75Hours > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        P75 {currentMetrics.reviewTurnaroundP75Hours.toFixed(1)}h
+                      </Badge>
+                    )}
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4 pt-0">
+                    <ReviewDistribution teamId={effectiveTeamId} period={period} />
+                    <ContributionTable
+                      teamId={effectiveTeamId}
+                      period={period}
+                      defaultContributionType="pr_review"
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
         )}
 
         {/* Members — collapsible */}
         {selectedTeam && members.length > 0 && (
-          <Collapsible open={!hasChildren || membersOpen} onOpenChange={setMembersOpen}>
-            <Card>
-              <CardHeader className="cursor-pointer" onClick={() => setMembersOpen(!membersOpen)}>
-                <CollapsibleTrigger
-                  render={
-                    <button type="button" className="flex w-full items-center gap-2 text-left" />
-                  }
-                >
-                  {hasChildren && membersOpen && <ChevronDown className="size-4" />}
-                  {hasChildren && !membersOpen && <ChevronRight className="size-4" />}
-                  <Users className="size-4 text-muted-foreground" />
-                  <CardTitle>Members ({members.length})</CardTitle>
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    {members.map((person) => (
-                      <button
-                        key={person.id}
-                        type="button"
-                        onClick={() => navigate(`/people/${person.id}`)}
-                        className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded border px-4 py-3 text-left hover:bg-muted/50"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{person.name}</p>
-                          {person.email && (
-                            <p className="truncate text-xs text-muted-foreground">{person.email}</p>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {person.identities.map((id) => (
-                            <Badge key={`${id.platform}-${id.username}`} variant="secondary">
-                              {id.platform}
-                            </Badge>
-                          ))}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          <div ref={membersRef}>
+            <Collapsible open={!hasChildren || membersOpen} onOpenChange={setMembersOpen}>
+              <Card>
+                <CardHeader className="cursor-pointer" onClick={() => setMembersOpen(!membersOpen)}>
+                  <CollapsibleTrigger
+                    render={
+                      <button type="button" className="flex w-full items-center gap-2 text-left" />
+                    }
+                  >
+                    {hasChildren && membersOpen && <ChevronDown className="size-4" />}
+                    {hasChildren && !membersOpen && <ChevronRight className="size-4" />}
+                    <Users className="size-4 text-muted-foreground" />
+                    <CardTitle>Members ({members.length})</CardTitle>
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {members.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => navigate(`/people/${person.id}`)}
+                          className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded border px-4 py-3 text-left hover:bg-muted/50"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{person.name}</p>
+                            {person.email && (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {person.email}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {person.identities.map((id) => (
+                              <Badge key={`${id.platform}-${id.username}`} variant="secondary">
+                                {id.platform}
+                              </Badge>
+                            ))}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
         )}
       </div>
     </>
