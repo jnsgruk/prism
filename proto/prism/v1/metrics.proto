@@ -231,8 +231,10 @@ message GetFlowMetricsResponse {
 message ThroughputDataPoint {
   string date = 1;
   int32 count = 2;
-  // Break down by source (optional).
+  // Deprecated: use by_source instead.
   string source = 3;
+  // Per-source breakdown (e.g. {"github": 21, "discourse-ubuntu": 42}).
+  map<string, int32> by_source = 4;
 }
 
 message WipDataPoint {

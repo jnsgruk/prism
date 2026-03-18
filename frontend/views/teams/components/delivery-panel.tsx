@@ -3,10 +3,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { fmtHours } from "@/lib/format-metrics";
 import { ArrowRight, GitPullRequest, Info } from "lucide-react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
   XAxis,
@@ -14,6 +16,22 @@ import {
 } from "recharts";
 
 import type { GetFlowMetricsResponse, TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+
+/** Capitalise a source key like "github" → "GitHub", "discourse" → "Discourse", "jira" → "Jira". */
+const sourceLabel = (key: string): string => {
+  if (key === "github") return "GitHub";
+  if (key === "discourse") return "Discourse";
+  return key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+/** Stable colour palette for stacked bars. */
+const SOURCE_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--muted-foreground))",
+  "hsl(var(--accent-foreground))",
+  "hsl(221 83% 53%)", // blue
+  "hsl(262 83% 58%)", // purple
+];
 
 const MetricValue = ({
   value,
@@ -93,11 +111,45 @@ export const DeliveryPanel = ({
   const p99 = metrics.reviewTurnaroundP99Hours;
   const activeContributors = metrics.memberCount;
 
-  const trendData = (flowMetrics?.throughputTrend ?? []).map((t) => ({
-    date: t.date,
-    count: t.count,
-  }));
+  // Build stacked trend data: each data point has { date, <source1>: n, <source2>: n, ... }
+  // Discourse instances (discourse-ubuntu, discourse-ask, etc.) are grouped into a single "discourse" bucket.
+  const throughputTrend = flowMetrics?.throughputTrend;
+  const { trendData, sourceKeys } = useMemo(() => {
+    const points = throughputTrend ?? [];
+
+    // Group per-source counts, merging all discourse-* into "discourse"
+    const groupKey = (key: string): string => (key.startsWith("discourse") ? "discourse" : key);
+
+    const allKeys = new Set<string>();
+    for (const t of points) {
+      for (const key of Object.keys(t.bySource)) {
+        allKeys.add(groupKey(key));
+      }
+    }
+    const keys = [...allKeys].toSorted();
+
+    const data = points.map((t) => {
+      const point: Record<string, string | number> = { date: t.date };
+      if (keys.length === 0) {
+        point["total"] = t.count;
+      } else {
+        // Initialise all keys to 0, then accumulate
+        for (const key of keys) {
+          point[key] = 0;
+        }
+        for (const [rawKey, count] of Object.entries(t.bySource)) {
+          const grouped = groupKey(rawKey);
+          point[grouped] = (point[grouped] as number) + count;
+        }
+      }
+      return point;
+    });
+
+    return { trendData: data, sourceKeys: keys };
+  }, [throughputTrend]);
+
   const showTrend = trendData.length > 1;
+  const hasMultipleSources = sourceKeys.length > 1;
 
   return (
     <TooltipProvider>
@@ -133,25 +185,41 @@ export const DeliveryPanel = ({
             />
           </div>
 
-          {/* Throughput trend — shows historical snapshots, not a breakdown of the current period */}
+          {/* Throughput trend — stacked by source when breakdown is available */}
           {showTrend && (
             <div>
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">Throughput Trend</h4>
               <p className="mb-2 text-xs text-muted-foreground/70">
                 Completed items per period (merged PRs, resolved tickets, topics).
               </p>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={hasMultipleSources ? 210 : 180}>
                 <BarChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                   <YAxis allowDecimals={false} className="fill-muted-foreground" />
                   <RechartsTooltip content={ChartTooltip} cursor={cursorStyle} />
-                  <Bar
-                    dataKey="count"
-                    name="Completed items"
-                    fill="hsl(var(--primary))"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  {sourceKeys.length > 0 ? (
+                    sourceKeys.map((key, i) => (
+                      <Bar
+                        key={key}
+                        dataKey={key}
+                        name={sourceLabel(key)}
+                        stackId="throughput"
+                        fill={SOURCE_COLORS[i % SOURCE_COLORS.length]!}
+                        radius={i === sourceKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                      />
+                    ))
+                  ) : (
+                    <Bar
+                      dataKey="total"
+                      name="Completed items"
+                      fill="hsl(var(--primary))"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  )}
+                  {hasMultipleSources && (
+                    <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>

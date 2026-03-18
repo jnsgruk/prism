@@ -569,10 +569,25 @@ impl MetricsService for MetricsServiceImpl {
         let throughput_trend: Vec<ThroughputDataPoint> = history
             .iter()
             .rev() // oldest first
-            .map(|s| ThroughputDataPoint {
-                date: format_date(s.period_start),
-                count: s.throughput.unwrap_or(0),
-                source: String::new(),
+            .map(|s| {
+                // Parse per-source breakdown from raw_metrics JSON
+                let by_source = s
+                    .raw_metrics
+                    .get("throughput_by_source")
+                    .and_then(|v| v.as_object())
+                    .map(|obj| {
+                        obj.iter()
+                            .filter_map(|(k, v)| v.as_i64().map(|n| (k.clone(), n as i32)))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                ThroughputDataPoint {
+                    date: format_date(s.period_start),
+                    count: s.throughput.unwrap_or(0),
+                    source: String::new(),
+                    by_source,
+                }
             })
             .collect();
 
