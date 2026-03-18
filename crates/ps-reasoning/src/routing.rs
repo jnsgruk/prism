@@ -1,20 +1,31 @@
-use std::sync::Arc;
-
 use ps_core::models::{AiProvider, TaskType};
+use rig::client::CompletionClient as _;
+use rig::completion::CompletionModel as _;
+use rig::providers::{gemini, openrouter};
 use tracing::info;
 
-use crate::provider::{ModelProvider, ProviderError};
-use crate::providers::google::GoogleProvider;
-use crate::providers::openrouter::OpenRouterProvider;
-use crate::types::{AiConfig, AiTaskConfig, AiTaskRouting, CompletionRequest, CompletionResponse};
+use crate::types::{AiConfig, AiTaskConfig, AiTaskRouting};
 
-/// Routes AI tasks to the correct provider and model based on configuration.
+/// Error type for provider routing.
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderError {
+    #[error("provider not configured: {0}")]
+    NotConfigured(String),
+
+    #[error("provider error: {0}")]
+    Completion(#[from] rig::completion::CompletionError),
+
+    #[error("budget exceeded: daily spend ${current:.2} >= cap ${cap:.2}")]
+    BudgetExceeded { current: f64, cap: f64 },
+}
+
+/// Routes AI tasks to the correct Rig provider client based on configuration.
 ///
-/// Holds provider instances and the current routing config. Call `update_config`
+/// Holds Rig provider clients and the current routing config. Call `update_config`
 /// when the admin changes AI settings.
 pub struct TaskRouter {
-    google: Option<Arc<GoogleProvider>>,
-    openrouter: Option<Arc<OpenRouterProvider>>,
+    google: Option<gemini::Client>,
+    openrouter: Option<openrouter::Client>,
     config: AiConfig,
 }
 
@@ -29,14 +40,20 @@ impl TaskRouter {
         }
     }
 
-    /// Set the Google provider (typically after decrypting the API key).
-    pub fn set_google(&mut self, provider: GoogleProvider) {
-        self.google = Some(Arc::new(provider));
+    /// Set the Google Gemini provider client.
+    pub fn set_google(&mut self, api_key: &str) {
+        match gemini::Client::new(api_key) {
+            Ok(client) => self.google = Some(client),
+            Err(e) => tracing::warn!(error = %e, "failed to create Gemini client"),
+        }
     }
 
-    /// Set the `OpenRouter` provider.
-    pub fn set_openrouter(&mut self, provider: OpenRouterProvider) {
-        self.openrouter = Some(Arc::new(provider));
+    /// Set the `OpenRouter` provider client.
+    pub fn set_openrouter(&mut self, api_key: &str) {
+        match openrouter::Client::new(api_key) {
+            Ok(client) => self.openrouter = Some(client),
+            Err(e) => tracing::warn!(error = %e, "failed to create OpenRouter client"),
+        }
     }
 
     /// Update the routing configuration.
@@ -60,73 +77,68 @@ impl TaskRouter {
         self.config.budget_cap_usd
     }
 
-    /// Resolve the provider for a given task type.
-    fn resolve_provider(&self, task: TaskType) -> Result<&dyn ModelProvider, ProviderError> {
-        let task_config = self.config.tasks.get(task);
-        match task_config.provider {
-            AiProvider::Google => self
-                .google
-                .as_ref()
-                .map(|p| p.as_ref() as &dyn ModelProvider)
-                .ok_or_else(|| {
-                    ProviderError::Other("Google provider not configured (missing API key)".into())
-                }),
-            AiProvider::OpenRouter => self
-                .openrouter
-                .as_ref()
-                .map(|p| p.as_ref() as &dyn ModelProvider)
-                .ok_or_else(|| {
-                    ProviderError::Other(
-                        "OpenRouter provider not configured (missing API key)".into(),
-                    )
-                }),
-        }
-    }
-
     /// Get the task config for a given task type.
     pub fn task_config(&self, task: TaskType) -> &AiTaskConfig {
         self.config.tasks.get(task)
     }
 
-    /// Send a completion request for a specific task type, routing to
-    /// the configured provider and model.
-    pub async fn complete(
-        &self,
-        task: TaskType,
-        mut req: CompletionRequest,
-    ) -> Result<CompletionResponse, ProviderError> {
+    /// Get the Google Gemini client, if configured.
+    pub fn google_client(&self) -> Result<&gemini::Client, ProviderError> {
+        self.google.as_ref().ok_or_else(|| {
+            ProviderError::NotConfigured("Google provider not configured (missing API key)".into())
+        })
+    }
+
+    /// Get the `OpenRouter` client, if configured.
+    pub fn openrouter_client(&self) -> Result<&openrouter::Client, ProviderError> {
+        self.openrouter.as_ref().ok_or_else(|| {
+            ProviderError::NotConfigured(
+                "OpenRouter provider not configured (missing API key)".into(),
+            )
+        })
+    }
+
+    /// Resolve the provider for a given task type as a `ResolvedProvider`.
+    pub fn resolve_provider(&self, task: TaskType) -> Result<ResolvedProvider<'_>, ProviderError> {
         let task_config = self.config.tasks.get(task);
-        let provider = self.resolve_provider(task)?;
-
-        // Override model with the configured one for this task
-        req.model = task_config.model.clone();
-
-        provider.complete(req).await
+        match task_config.provider {
+            AiProvider::Google => Ok(ResolvedProvider::Google(self.google_client()?)),
+            AiProvider::OpenRouter => Ok(ResolvedProvider::OpenRouter(self.openrouter_client()?)),
+        }
     }
 
-    /// Generate embeddings using the configured embeddings provider/model.
-    pub async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, ProviderError> {
-        let task_config = self.config.tasks.get(TaskType::Embeddings);
-        let provider = self.resolve_provider(TaskType::Embeddings)?;
-        provider.embed(&task_config.model, texts).await
-    }
-
-    /// Test a specific provider's connection.
+    /// Test a specific provider's connection by making a minimal completion request.
     pub async fn test_provider(&self, provider: AiProvider) -> Result<(), ProviderError> {
         match provider {
             AiProvider::Google => {
-                let p = self
-                    .google
-                    .as_ref()
-                    .ok_or_else(|| ProviderError::Other("Google provider not configured".into()))?;
-                p.test_connection().await
+                let client = self.google_client()?;
+                let model = client.completion_model("gemini-2.0-flash-lite");
+                let req = model
+                    .completion_request("Say hello in one word.")
+                    .max_tokens(10)
+                    .build();
+                let _resp = model.completion(req).await?;
+                Ok(())
             }
             AiProvider::OpenRouter => {
-                let p = self.openrouter.as_ref().ok_or_else(|| {
-                    ProviderError::Other("OpenRouter provider not configured".into())
-                })?;
-                p.test_connection().await
+                let client = self.openrouter_client()?;
+                let model = client.completion_model("openai/gpt-4.1-nano");
+                let req = model
+                    .completion_request("Say hello in one word.")
+                    .max_tokens(10)
+                    .build();
+                let _resp = model.completion(req).await?;
+                Ok(())
             }
         }
     }
+}
+
+/// Enum for dispatching to the correct provider client.
+///
+/// Callers match on this to get the concrete client type and build
+/// Rig completion models, agents, extractors, etc. from it.
+pub enum ResolvedProvider<'a> {
+    Google(&'a gemini::Client),
+    OpenRouter(&'a openrouter::Client),
 }

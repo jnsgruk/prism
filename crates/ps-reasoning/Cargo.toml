@@ -9,12 +9,11 @@ workspace = true
 
 [dependencies]
 ps-core = { path = "../ps-core" }
-async-trait.workspace = true
-reqwest.workspace = true
+rig-core = { version = "0.33.0", features = ["derive"] }
+schemars = "1.2.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["macros"] }
 tokio.workspace = true
 tracing.workspace = true
-uuid.workspace = true

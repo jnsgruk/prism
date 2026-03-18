@@ -172,24 +172,15 @@ The system must support **two providers from the start**:
 
 ### Provider Abstraction
 
-A `ModelProvider` trait in Rust that abstracts over both:
+**Updated March 2026:** The provider layer is implemented using [Rig](https://github.com/0xPlaygrounds/rig) (`rig-core`), a mature Rust LLM framework with 20+ built-in providers. See [40-adopt-rig-framework.md](./40-adopt-rig-framework.md) for the full adoption plan.
 
-```
-trait ModelProvider {
-    async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse>;
-    async fn embed(&self, texts: Vec<String>) -> Result<Vec<Vec<f32>>>;
-}
-```
+Rig's `CompletionModel` and `EmbeddingModel` traits replace our hand-rolled `ModelProvider` trait. Individual provider HTTP implementations (Google Gemini REST API, OpenRouter OpenAI-compatible API) are handled by Rig — we do not maintain these ourselves. `ps-reasoning` holds a `TaskRouter` that selects Rig provider clients based on config-driven task routing.
 
-Configuration determines which provider handles which task:
+Rig also provides agent orchestration (tool-call loop), structured extraction (typed output via `JsonSchema` derive), and streaming — all used in W1-W3. See the adoption plan for details.
+
+Configuration determines which provider handles which task (stored in `config.global_settings`):
 
 ```toml
-[ai.providers.openrouter]
-api_key = "${OPENROUTER_API_KEY}"
-
-[ai.providers.google]
-api_key = "${GOOGLE_AI_API_KEY}"
-
 [ai.tasks]
 enrichment = { provider = "google", model = "gemini-3.1-flash-lite" }
 insights = { provider = "google", model = "gemini-3.1-pro" }

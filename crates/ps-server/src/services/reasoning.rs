@@ -263,21 +263,12 @@ impl ReasoningService for ReasoningServiceImpl {
             .await
             .map_err(db_err)?;
 
-        // Update the router with the new provider
+        // Update the router with the new Rig provider client
         {
-            let decrypted = req.secret_value;
             let mut router = self.router.write().await;
             match req.provider.as_str() {
-                "google" => {
-                    router.set_google(ps_reasoning::providers::google::GoogleProvider::new(
-                        decrypted,
-                    ));
-                }
-                "openrouter" => {
-                    router.set_openrouter(
-                        ps_reasoning::providers::openrouter::OpenRouterProvider::new(decrypted),
-                    );
-                }
+                "google" => router.set_google(&req.secret_value),
+                "openrouter" => router.set_openrouter(&req.secret_value),
                 _ => {}
             }
         }

@@ -177,6 +177,7 @@ prism/
 | Frontend API       | @connectrpc/connect-web  | Type-safe clients generated from proto definitions       |
 | Runtime validation  | Zod                      | Schema validation at system boundaries (forms, URL params, env config); complements proto-generated types |
 | Frontend tooling   | TypeScript (typescript-go), Bun, oxlint + oxfmt | Strict, modern, fast — Bun as runtime/package manager, typescript-go for type-checking |
+| LLM framework      | Rig (`rig-core`)         | Provider abstraction (20+ LLM providers), agent orchestration, structured extraction, tool framework. See [40-adopt-rig-framework.md](./40-adopt-rig-framework.md) |
 
 ## Object Storage Strategy
 

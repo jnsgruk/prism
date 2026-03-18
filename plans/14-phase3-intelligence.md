@@ -11,6 +11,7 @@ Phase 3 layers AI capabilities over the metrics foundation built in Phases 1-2. 
 - [02 Domain Model](./02-domain-model.md) — Reasoning context (Enrichment, Insight, Embedding)
 - [04 Database Design](./04-database-design.md) — `reasoning` schema tables
 - [06 AI Reasoning](./06-ai-reasoning.md) — provider abstraction, tool design, cost model
+- [40 Adopt Rig Framework](./40-adopt-rig-framework.md) — **Post-W0 decision:** replace hand-rolled provider layer with Rig (`rig-core`). Rig provides provider abstractions (20+ LLM providers), agent orchestration, structured extraction, and tool framework. W1 uses Rig extractors, W2 uses Rig embeddings + custom pgvector `VectorStoreIndex`, W3 uses Rig agents with `#[tool_macro]` tools. See the adoption plan for full details and code examples.
 
 ---
 

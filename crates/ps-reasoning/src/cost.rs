@@ -1,8 +1,7 @@
 use ps_core::models::TaskType;
 use ps_core::repo::ReasoningRepo;
+use rig::completion::Usage;
 use tracing::{debug, warn};
-
-use crate::types::TokenUsage;
 
 /// Known per-token pricing (USD per 1M tokens).
 ///
@@ -13,11 +12,12 @@ struct ModelPricing {
     output_per_million: f64,
 }
 
-/// Estimate cost in USD from token usage and model name.
-pub fn estimate_cost(model: &str, usage: &TokenUsage) -> f64 {
+/// Estimate cost in USD from Rig's token usage and model name.
+#[allow(clippy::cast_precision_loss)] // Token counts won't exceed f64 mantissa range in practice
+pub fn estimate_cost(model: &str, usage: &Usage) -> f64 {
     let pricing = model_pricing(model);
-    let input_cost = f64::from(usage.prompt_tokens) * pricing.input_per_million / 1_000_000.0;
-    let output_cost = f64::from(usage.completion_tokens) * pricing.output_per_million / 1_000_000.0;
+    let input_cost = (usage.input_tokens as f64) * pricing.input_per_million / 1_000_000.0;
+    let output_cost = (usage.output_tokens as f64) * pricing.output_per_million / 1_000_000.0;
     input_cost + output_cost
 }
 
@@ -71,21 +71,17 @@ impl CostTracker {
     }
 
     /// Log a completed API call's usage and estimated cost.
-    pub async fn log_usage(
-        &self,
-        provider: &str,
-        model: &str,
-        task_type: TaskType,
-        usage: &TokenUsage,
-    ) {
+    ///
+    /// Accepts Rig's `Usage` type directly from completion responses.
+    pub async fn log_usage(&self, provider: &str, model: &str, task_type: TaskType, usage: &Usage) {
         let cost = estimate_cost(model, usage);
 
         debug!(
             provider = %provider,
             model = %model,
             task = %task_type,
-            prompt_tokens = usage.prompt_tokens,
-            completion_tokens = usage.completion_tokens,
+            input_tokens = usage.input_tokens,
+            output_tokens = usage.output_tokens,
             cost_usd = cost,
             "logging API usage"
         );
@@ -97,8 +93,8 @@ impl CostTracker {
                 provider,
                 model,
                 task_type.as_str(),
-                usage.prompt_tokens as i32,
-                usage.completion_tokens as i32,
+                usage.input_tokens as i32,
+                usage.output_tokens as i32,
                 cost as f32,
             )
             .await
