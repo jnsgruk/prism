@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM config.secrets WHERE source_id IS NULL AND secret_key = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "31de72996e62ac9f4708fef3d2fceebe13621e221bef81da15809b1543254186"
+}

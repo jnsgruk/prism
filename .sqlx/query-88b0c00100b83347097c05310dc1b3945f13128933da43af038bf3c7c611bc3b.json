@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO config.global_settings (key, value)\n            VALUES ($1, $2)\n            ON CONFLICT (key)\n            DO UPDATE SET value = $2, updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88b0c00100b83347097c05310dc1b3945f13128933da43af038bf3c7c611bc3b"
+}

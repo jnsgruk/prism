@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                task_type,\n                COALESCE(SUM(estimated_cost_usd::double precision), 0.0) as \"total_cost_usd!: f64\",\n                COALESCE(SUM(prompt_tokens::bigint), 0) as \"total_prompt_tokens!: i64\",\n                COALESCE(SUM(completion_tokens::bigint), 0) as \"total_completion_tokens!: i64\",\n                COUNT(*) as \"request_count!: i64\"\n            FROM reasoning.api_usage\n            WHERE created_at::date = $1\n            GROUP BY task_type\n            ORDER BY 2 DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "task_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_cost_usd!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_prompt_tokens!: i64",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_completion_tokens!: i64",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "request_count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4df445d2838aa603f175fa252bc7b39cd5e8186ebfc4e1727c8b0c2efd8a3bcc"
+}

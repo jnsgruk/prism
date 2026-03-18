@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT encrypted_value\n            FROM config.secrets\n            WHERE source_id IS NULL\n              AND secret_key = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "encrypted_value",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8cd8f2971d64b6e63859fb98c0a831d731f9a95da2c6caa58208de7d9922a1f2"
+}

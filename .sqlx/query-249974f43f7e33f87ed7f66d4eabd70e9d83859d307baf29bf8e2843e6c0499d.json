@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT source_id as \"source_id!: Uuid\", secret_key\n            FROM config.secrets\n            WHERE source_id IS NOT NULL\n            ORDER BY source_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "source_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "secret_key",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "249974f43f7e33f87ed7f66d4eabd70e9d83859d307baf29bf8e2843e6c0499d"
+}
