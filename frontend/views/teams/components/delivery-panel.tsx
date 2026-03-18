@@ -24,13 +24,13 @@ const sourceLabel = (key: string): string => {
   return key.charAt(0).toUpperCase() + key.slice(1);
 };
 
-/** Stable distinct colour palette for stacked bars. */
+/** Monochrome palette for stacked bars — black to light grey. */
 const SOURCE_COLORS = [
-  "hsl(221 83% 53%)", // blue
-  "hsl(142 71% 45%)", // green
-  "hsl(38 92% 50%)", // amber
-  "hsl(262 83% 58%)", // purple
-  "hsl(0 84% 60%)", // red
+  "hsl(0 0% 15%)", // near-black
+  "hsl(0 0% 40%)", // dark grey
+  "hsl(0 0% 60%)", // mid grey
+  "hsl(0 0% 75%)", // light grey
+  "hsl(0 0% 85%)", // very light grey
 ];
 
 const MetricValue = ({
