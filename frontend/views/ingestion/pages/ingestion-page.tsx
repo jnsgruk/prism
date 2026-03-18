@@ -1,12 +1,18 @@
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { Activity, Loader2 } from "lucide-react";
+import { Activity, Loader2, Play } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
 import { SourceStatusRow } from "@/views/ingestion/components/source-status-card";
-import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
+import {
+  useIngestionStatus,
+  useListRuns,
+  useTriggerRun,
+} from "@/views/ingestion/hooks/use-ingestion";
 
 const POLL_INTERVAL_BURST = 1_000;
 const POLL_INTERVAL_ACTIVE = 3_000;
@@ -35,6 +41,24 @@ const IngestionPage = (): React.ReactElement => {
       return hasActive ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
     },
   });
+
+  const triggerRun = useTriggerRun();
+
+  const handleRunAll = useCallback(() => {
+    if (!sources) return;
+    const idle = sources.filter(
+      (s) => s.state !== SourceState.COLLECTING && s.state !== SourceState.WAITING,
+    );
+    if (idle.length === 0) {
+      toast.info("All sources are already running");
+      return;
+    }
+    for (const s of idle) {
+      triggerRun.mutate(s.name);
+    }
+    toast.success(`Triggered ${idle.length} source${idle.length > 1 ? "s" : ""}`);
+    triggerBurst();
+  }, [sources, triggerRun, triggerBurst]);
 
   const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
 
@@ -82,7 +106,22 @@ const IngestionPage = (): React.ReactElement => {
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
         <section>
-          <h2 className="mb-3 text-sm font-semibold">Sources</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Sources</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRunAll}
+              disabled={triggerRun.isPending}
+            >
+              {triggerRun.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Play className="mr-1.5 size-3.5" />
+              )}
+              Run All
+            </Button>
+          </div>
           <div className="space-y-3">
             {sources.map((source) => (
               <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
