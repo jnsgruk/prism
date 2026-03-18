@@ -27,7 +27,13 @@ pub struct BatchResult {
     pub processed: usize,
     pub errors: usize,
     pub total_usage: Usage,
+    /// The first error message encountered, if any. Useful for surfacing
+    /// systemic issues (e.g. model not found, auth failure) to the UI.
+    pub first_error: Option<String>,
 }
+
+/// Max consecutive errors before aborting a batch (likely a systemic issue).
+const MAX_CONSECUTIVE_ERRORS: usize = 3;
 
 /// Build the input text for a contribution based on the enrichment type.
 fn build_input_text(enrichment_type: EnrichmentType, c: &UnenrichedContribution) -> Option<String> {
@@ -114,9 +120,24 @@ pub async fn process_enrichment_batch(
 
     let mut processed = 0usize;
     let mut errors = 0usize;
+    let mut consecutive_errors = 0usize;
+    let mut first_error: Option<String> = None;
     let mut total_usage = Usage::new();
 
     for contribution in contributions {
+        // Fail fast: if we hit MAX_CONSECUTIVE_ERRORS in a row, it's a systemic
+        // issue (wrong model, auth failure, etc.) — stop wasting API calls.
+        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+            warn!(
+                enrichment = enrichment_type.as_str(),
+                consecutive_errors,
+                remaining = contributions.len() - processed - errors,
+                "aborting batch after consecutive errors (likely systemic issue)"
+            );
+            errors += contributions.len() - processed - errors;
+            break;
+        }
+
         let Some(input_text) = build_input_text(enrichment_type, contribution) else {
             debug!(
                 contribution_id = %contribution.id,
@@ -134,6 +155,7 @@ pub async fn process_enrichment_batch(
         match result {
             Ok((value, confidence, usage)) => {
                 total_usage += usage;
+                consecutive_errors = 0;
 
                 if let Err(e) = repo
                     .upsert_enrichment(&UpsertEnrichmentParams {
@@ -159,13 +181,18 @@ pub async fn process_enrichment_batch(
                 processed += 1;
             }
             Err(e) => {
+                let err_msg = e.to_string();
+                if first_error.is_none() {
+                    first_error = Some(err_msg.clone());
+                }
                 warn!(
                     contribution_id = %contribution.id,
                     enrichment = enrichment_type.as_str(),
-                    error = %e,
+                    error = %err_msg,
                     "enrichment extraction failed"
                 );
                 errors += 1;
+                consecutive_errors += 1;
             }
         }
     }
@@ -184,6 +211,7 @@ pub async fn process_enrichment_batch(
         processed,
         errors,
         total_usage,
+        first_error,
     }
 }
 

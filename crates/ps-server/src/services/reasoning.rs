@@ -594,7 +594,14 @@ impl ReasoningService for ReasoningServiceImpl {
         let total_processed: usize = results.iter().map(|r| r.processed).sum();
         let total_errors: usize = results.iter().map(|r| r.errors).sum();
 
-        let message = format!("processed {total_processed}, errors {total_errors}");
+        // Collect the first error from any batch for the run record / UI
+        let first_error = results.iter().find_map(|r| r.first_error.clone());
+
+        let message = if let Some(ref err) = first_error {
+            format!("processed {total_processed}, errors {total_errors}: {err}")
+        } else {
+            format!("processed {total_processed}")
+        };
 
         // Complete or fail the run record
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
