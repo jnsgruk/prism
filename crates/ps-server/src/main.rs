@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ps_core::crypto::load_secret_key;
 use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
@@ -5,6 +7,7 @@ use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
 use ps_proto::prism::v1::handlers_service_server::HandlersServiceServer;
 use ps_proto::prism::v1::metrics_service_server::MetricsServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
+use ps_proto::prism::v1::reasoning_service_server::ReasoningServiceServer;
 use ps_server::interceptor::AuthLayer;
 use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
@@ -12,6 +15,7 @@ use ps_server::services::config::ConfigServiceImpl;
 use ps_server::services::handlers::HandlersServiceImpl;
 use ps_server::services::metrics::MetricsServiceImpl;
 use ps_server::services::org::OrgServiceImpl;
+use ps_server::services::reasoning::ReasoningServiceImpl;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
 use tracing::info;
@@ -45,12 +49,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_service = AuthServiceImpl::new(repos.clone());
     let admin_service = AdminServiceImpl::new(repos.clone());
     let org_service = OrgServiceImpl::new(repos.clone());
-    let config_service = ConfigServiceImpl::new(repos.clone(), secret_key);
+    let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
     let metrics_service = MetricsServiceImpl::new(repos.clone());
     let handlers_service = HandlersServiceImpl::new(repos.clone(), restate_url, restate_admin_url);
+
+    // AI reasoning — task router with default config, providers set later via admin UI
+    let ai_config = ps_reasoning::types::AiConfig::default();
+    let router = Arc::new(tokio::sync::RwLock::new(
+        ps_reasoning::routing::TaskRouter::new(ai_config),
+    ));
+
+    // Object storage — optional, configured via env vars
+    let artifact_store: Option<Arc<dyn ps_core::ArtifactStore>> =
+        if let (Ok(endpoint), Ok(bucket)) =
+            (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
+        {
+            let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
+            let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
+            let region = std::env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".into());
+            match ps_core::artifact_store::S3ArtifactStore::new(
+                &endpoint,
+                &bucket,
+                &access_key,
+                &secret_key_s3,
+                &region,
+            ) {
+                Ok(store) => {
+                    info!(%endpoint, %bucket, "S3 artifact store configured");
+                    Some(Arc::new(store))
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to configure S3 artifact store");
+                    None
+                }
+            }
+        } else {
+            info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
+            None
+        };
+
+    let reasoning_service =
+        ReasoningServiceImpl::new(repos.clone(), secret_key, router, artifact_store);
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
@@ -70,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(ConfigServiceServer::new(config_service))
         .add_service(MetricsServiceServer::new(metrics_service))
         .add_service(HandlersServiceServer::new(handlers_service))
+        .add_service(ReasoningServiceServer::new(reasoning_service))
         .serve(addr)
         .await?;
 

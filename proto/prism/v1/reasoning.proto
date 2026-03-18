@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package prism.v1;
+
+service ReasoningService {
+  // AI Settings
+  rpc GetAiSettings(GetAiSettingsRequest) returns (GetAiSettingsResponse);
+  rpc UpdateAiSettings(UpdateAiSettingsRequest) returns (UpdateAiSettingsResponse);
+  rpc SetProviderSecret(SetProviderSecretRequest) returns (SetProviderSecretResponse);
+  rpc TestProvider(TestProviderRequest) returns (TestProviderResponse);
+  rpc GetStorageHealth(GetStorageHealthRequest) returns (GetStorageHealthResponse);
+
+  // Cost Dashboard
+  rpc GetCostSummary(GetCostSummaryRequest) returns (GetCostSummaryResponse);
+}
+
+// ---------------------------------------------------------------------------
+// AI Settings
+// ---------------------------------------------------------------------------
+
+message AiTaskConfig {
+  string provider = 1; // "google" or "openrouter"
+  string model = 2;    // e.g. "gemini-3.1-flash-lite"
+}
+
+message AiSettings {
+  AiTaskConfig enrichment = 1;
+  AiTaskConfig insights = 2;
+  AiTaskConfig agentic = 3;
+  AiTaskConfig embeddings = 4;
+  optional double budget_cap_usd = 5;
+  map<string, bool> provider_secret_status = 6; // which providers have keys set
+}
+
+message GetAiSettingsRequest {}
+
+message GetAiSettingsResponse {
+  AiSettings settings = 1;
+}
+
+message UpdateAiSettingsRequest {
+  optional AiTaskConfig enrichment = 1;
+  optional AiTaskConfig insights = 2;
+  optional AiTaskConfig agentic = 3;
+  optional AiTaskConfig embeddings = 4;
+  optional double budget_cap_usd = 5;
+}
+
+message UpdateAiSettingsResponse {
+  AiSettings settings = 1;
+}
+
+message SetProviderSecretRequest {
+  string provider = 1;  // "google" or "openrouter"
+  string secret_value = 2;
+}
+
+message SetProviderSecretResponse {}
+
+message TestProviderRequest {
+  string provider = 1; // "google" or "openrouter"
+}
+
+message TestProviderResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message GetStorageHealthRequest {}
+
+message GetStorageHealthResponse {
+  bool healthy = 1;
+  string error_message = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Cost Dashboard
+// ---------------------------------------------------------------------------
+
+message GetCostSummaryRequest {
+  // Number of days to include (default 7)
+  int32 days = 1;
+}
+
+message GetCostSummaryResponse {
+  double today_spend_usd = 1;
+  optional double budget_cap_usd = 2;
+  repeated DailySpend daily_spend = 3;
+  repeated TaskSpend task_breakdown = 4;
+  repeated ModelSpend model_breakdown = 5;
+}
+
+message DailySpend {
+  string date = 1; // ISO 8601 date
+  double cost_usd = 2;
+  int64 request_count = 3;
+}
+
+message TaskSpend {
+  string task_type = 1;
+  double cost_usd = 2;
+  int64 prompt_tokens = 3;
+  int64 completion_tokens = 4;
+  int64 request_count = 5;
+}
+
+message ModelSpend {
+  string provider = 1;
+  string model = 2;
+  string task_type = 3;
+  double cost_usd = 4;
+  int64 prompt_tokens = 5;
+  int64 completion_tokens = 6;
+  int64 request_count = 7;
+}
