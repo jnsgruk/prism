@@ -414,8 +414,13 @@ impl DiscourseClient {
     /// Look up a user by username via the public endpoint.
     ///
     /// Returns `true` if the user exists (200 response), `false` on 404.
+    /// Returns `false` (not an error) if the username fails validation — an
+    /// invalid username can never exist on Discourse.
     pub async fn user_exists(&self, username: &str) -> Result<bool, ps_core::Error> {
-        let username = validate_discourse_username(username)?;
+        let username = match validate_discourse_username(username) {
+            Ok(u) => u,
+            Err(_) => return Ok(false),
+        };
         let url = format!("{}/u/{}.json", self.base_url, username);
 
         let req = self

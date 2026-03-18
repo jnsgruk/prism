@@ -175,12 +175,16 @@ impl OrgRepo {
 
     /// Get all existing platform usernames for a person (used for username
     /// probing strategy — try GitHub/Launchpad/etc. usernames on Discourse).
+    ///
+    /// Excludes email addresses (contain `@`) since they are never valid
+    /// usernames on platforms like Discourse or GitHub.
     pub async fn get_candidate_usernames(&self, person_id: Uuid) -> Result<Vec<String>, Error> {
         let rows = sqlx::query_scalar!(
             r#"
             SELECT DISTINCT platform_username
             FROM org.platform_identities
             WHERE person_id = $1
+              AND platform_username NOT LIKE '%@%'
             "#,
             person_id,
         )
