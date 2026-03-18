@@ -130,6 +130,15 @@ pub(super) async fn fetch_batch_impl(
             // The first post (post_number 1) is the topic creator.
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
                 topic_input.platform_username = first_post.username.clone();
+
+                // Capture the first post body as enrichment content for topic classification.
+                if let Some(ref raw) = first_post.raw {
+                    topic_input.enrichment_content = Some(serde_json::json!({
+                        "title": topic.title,
+                        "category": category_name.as_deref().unwrap_or(""),
+                        "body": raw,
+                    }));
+                }
             }
 
             for post in &post_stream.posts {

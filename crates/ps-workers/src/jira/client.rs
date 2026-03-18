@@ -76,6 +76,8 @@ pub struct JiraIssue {
 #[serde(rename_all = "camelCase")]
 pub struct JiraFields {
     pub summary: Option<String>,
+    /// Jira Cloud API v3 returns description as Atlassian Document Format (ADF) JSON.
+    pub description: Option<serde_json::Value>,
     pub status: Option<JiraStatus>,
     pub issuetype: Option<JiraIssueType>,
     pub priority: Option<JiraPriority>,
