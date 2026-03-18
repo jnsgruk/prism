@@ -561,69 +561,17 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<TriggerEnrichmentRequest>,
     ) -> Result<Response<TriggerEnrichmentResponse>, Status> {
         let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
 
-        let batch_size = if req.batch_size > 0 {
-            i64::from(req.batch_size)
-        } else {
-            50
-        };
-
-        // Create a handler run record so enrichment shows in the runs tables
-        let run_id = Uuid::now_v7();
-        if let Err(e) = self
-            .repos
-            .activity
-            .create_run(run_id, "_enrichment", "EnrichmentHandler", "run_cycle")
-            .await
-        {
-            error!(error = %e, "failed to create enrichment run record");
-        }
-
-        let router = self.router.read().await;
-        let cost_tracker = ps_reasoning::cost::CostTracker::new(self.repos.reasoning.clone());
-
-        let results = ps_reasoning::features::enrichment::run_enrichment_cycle(
-            &router,
-            &self.repos.reasoning,
-            &cost_tracker,
-            batch_size,
-        )
-        .await;
-
-        let total_processed: usize = results.iter().map(|r| r.processed).sum();
-        let total_errors: usize = results.iter().map(|r| r.errors).sum();
-
-        // Collect the first error from any batch for the run record / UI
-        let first_error = results.iter().find_map(|r| r.first_error.clone());
-
-        let message = if let Some(ref err) = first_error {
-            format!("processed {total_processed}, errors {total_errors}: {err}")
-        } else {
-            format!("processed {total_processed}")
-        };
-
-        // Complete or fail the run record
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        if total_errors > 0 && total_processed == 0 {
-            let _ = self.repos.activity.fail_run(run_id, &message).await;
-        } else {
-            let _ = self
-                .repos
-                .activity
-                .complete_run(run_id, total_processed as i32)
-                .await;
-        }
-
-        info!(
-            processed = total_processed,
-            errors = total_errors,
-            "enrichment cycle complete"
-        );
-
+        // Enrichment runs via the Restate EnrichmentHandler. Use
+        // HandlersService.TriggerHandler(handler_name="EnrichmentHandler",
+        // method="run_cycle") instead for fire-and-forget dispatch with
+        // proper run tracking, cancellation, and Restate durability.
+        //
+        // This RPC is kept for backward compatibility but does not run
+        // enrichment inline — callers should use TriggerHandler.
         Ok(Response::new(TriggerEnrichmentResponse {
-            triggered: true,
-            message,
+            triggered: false,
+            message: "Use TriggerHandler(EnrichmentHandler, run_cycle) instead".into(),
         }))
     }
 

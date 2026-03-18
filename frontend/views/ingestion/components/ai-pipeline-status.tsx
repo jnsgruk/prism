@@ -3,13 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Loader2, Play, Sparkles } from "lucide-react";
+import { Brain, Loader2, Play, Sparkles, Square } from "lucide-react";
 import { toast } from "sonner";
 
+import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
 import {
-  useEnrichmentPipelineStatus,
-  useTriggerEnrichment,
-} from "@/views/admin/hooks/use-enrichment";
+  useCancelHandlerRun,
+  useListRuns,
+  useTriggerHandler,
+} from "@/views/ingestion/hooks/use-ingestion";
 
 const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
   review_depth: "Review Depth",
@@ -20,20 +22,41 @@ const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
 
 const AiPipelineStatus = (): React.ReactElement => {
   const { data: status, isLoading } = useEnrichmentPipelineStatus();
-  const triggerEnrichment = useTriggerEnrichment();
+  const triggerHandler = useTriggerHandler();
+  const cancelRun = useCancelHandlerRun();
+
+  // Check if there's an active enrichment run
+  const { data: runs } = useListRuns(undefined, {
+    refetchInterval: 5_000,
+    handlerName: "EnrichmentHandler",
+  });
+  const activeRun = runs?.find((r) => r.status === "running");
+  const isRunning = !!activeRun;
 
   const handleTrigger = (): void => {
-    triggerEnrichment.mutate(
-      {},
+    triggerHandler.mutate(
+      { handlerName: "EnrichmentHandler", method: "run_cycle", key: "" },
       {
-        onSuccess: (resp) => {
-          toast.success(`Enrichment run: ${resp.message}`);
+        onSuccess: () => {
+          toast.success("Enrichment run started");
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : "Failed to trigger enrichment");
         },
       },
     );
+  };
+
+  const handleCancel = (): void => {
+    if (!activeRun) return;
+    cancelRun.mutate(activeRun.id, {
+      onSuccess: () => {
+        toast.success("Enrichment run cancelled");
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to cancel");
+      },
+    });
   };
 
   if (isLoading) {
@@ -67,19 +90,35 @@ const AiPipelineStatus = (): React.ReactElement => {
             <Brain className="size-4" />
             AI Pipeline
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTrigger}
-            disabled={triggerEnrichment.isPending}
-          >
-            {triggerEnrichment.isPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <Play className="mr-1.5 size-3.5" />
-            )}
-            Run Enrichment
-          </Button>
+          {isRunning ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleCancel}
+              disabled={cancelRun.isPending}
+            >
+              {cancelRun.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Square className="mr-1.5 size-3.5" />
+              )}
+              Cancel
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTrigger}
+              disabled={triggerHandler.isPending}
+            >
+              {triggerHandler.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Play className="mr-1.5 size-3.5" />
+              )}
+              Run Enrichment
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
