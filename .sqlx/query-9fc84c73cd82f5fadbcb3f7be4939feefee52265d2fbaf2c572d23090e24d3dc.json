@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (source_id, secret_key) WHERE source_id IS NOT NULL\n            DO UPDATE SET encrypted_value = $4, updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9fc84c73cd82f5fadbcb3f7be4939feefee52265d2fbaf2c572d23090e24d3dc"
+}
