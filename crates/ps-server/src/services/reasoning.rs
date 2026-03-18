@@ -4,10 +4,15 @@ use ps_core::crypto;
 use ps_core::repo::Repos;
 use ps_proto::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::prism::v1::{
-    AiSettings, AiTaskConfig as ProtoAiTaskConfig, GetAiSettingsRequest, GetAiSettingsResponse,
-    GetCostSummaryRequest, GetCostSummaryResponse, GetStorageHealthRequest,
+    AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
+    DeleteEnrichmentsByTypeResponse, Enrichment as ProtoEnrichment, EnrichmentTypeCount,
+    GetAiSettingsRequest, GetAiSettingsResponse, GetCostSummaryRequest, GetCostSummaryResponse,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
+    GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
+    GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
     GetStorageHealthResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    TestProviderRequest, TestProviderResponse, TriggerEnrichmentRequest, TriggerEnrichmentResponse,
+    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
@@ -413,5 +418,177 @@ impl ReasoningService for ReasoningServiceImpl {
             task_breakdown,
             model_breakdown,
         }))
+    }
+
+    // -------------------------------------------------------------------
+    // Enrichments
+    // -------------------------------------------------------------------
+
+    async fn get_enrichments(
+        &self,
+        request: Request<GetEnrichmentsRequest>,
+    ) -> Result<Response<GetEnrichmentsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let contribution_id: Uuid = req
+            .contribution_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid contribution_id"))?;
+
+        let enrichments = self
+            .repos
+            .reasoning
+            .get_enrichments_for_contribution(contribution_id)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(GetEnrichmentsResponse {
+            enrichments: enrichments.into_iter().map(enrichment_to_proto).collect(),
+        }))
+    }
+
+    async fn get_enrichments_by_contributions(
+        &self,
+        request: Request<GetEnrichmentsByContributionsRequest>,
+    ) -> Result<Response<GetEnrichmentsByContributionsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let ids: Vec<Uuid> = req
+            .contribution_ids
+            .iter()
+            .filter_map(|s| s.parse().ok())
+            .collect();
+
+        if ids.is_empty() {
+            return Ok(Response::new(GetEnrichmentsByContributionsResponse {
+                enrichments: vec![],
+            }));
+        }
+
+        let enrichments = self
+            .repos
+            .reasoning
+            .get_enrichments_for_contributions(&ids)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(GetEnrichmentsByContributionsResponse {
+            enrichments: enrichments.into_iter().map(enrichment_to_proto).collect(),
+        }))
+    }
+
+    async fn get_enrichment_pipeline_status(
+        &self,
+        request: Request<GetEnrichmentPipelineStatusRequest>,
+    ) -> Result<Response<GetEnrichmentPipelineStatusResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let status = self
+            .repos
+            .reasoning
+            .get_enrichment_status()
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(GetEnrichmentPipelineStatusResponse {
+            pending_count: status.pending_count,
+            total_enrichments: status.total_enrichments,
+            last_enrichment_at: status.last_enrichment_at.map(|t| {
+                t.format(&time::format_description::well_known::Rfc3339)
+                    .unwrap_or_default()
+            }),
+            by_type: status
+                .by_type
+                .into_iter()
+                .map(|t| EnrichmentTypeCount {
+                    enrichment_type: t.enrichment_type,
+                    count: t.total_count,
+                })
+                .collect(),
+        }))
+    }
+
+    async fn trigger_enrichment(
+        &self,
+        request: Request<TriggerEnrichmentRequest>,
+    ) -> Result<Response<TriggerEnrichmentResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let batch_size = if req.batch_size > 0 {
+            i64::from(req.batch_size)
+        } else {
+            50
+        };
+
+        let router = self.router.read().await;
+        let cost_tracker = ps_reasoning::cost::CostTracker::new(self.repos.reasoning.clone());
+
+        let results = ps_reasoning::features::enrichment::run_enrichment_cycle(
+            &router,
+            &self.repos.reasoning,
+            &cost_tracker,
+            batch_size,
+        )
+        .await;
+
+        let total_processed: usize = results.iter().map(|r| r.processed).sum();
+        let total_errors: usize = results.iter().map(|r| r.errors).sum();
+
+        let message = format!("processed {total_processed}, errors {total_errors}");
+        info!(
+            processed = total_processed,
+            errors = total_errors,
+            "enrichment cycle complete"
+        );
+
+        Ok(Response::new(TriggerEnrichmentResponse {
+            triggered: true,
+            message,
+        }))
+    }
+
+    async fn delete_enrichments_by_type(
+        &self,
+        request: Request<DeleteEnrichmentsByTypeRequest>,
+    ) -> Result<Response<DeleteEnrichmentsByTypeResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.enrichment_type.is_empty() {
+            return Err(Status::invalid_argument("enrichment_type is required"));
+        }
+
+        let deleted = self
+            .repos
+            .reasoning
+            .delete_enrichments_by_type(&req.enrichment_type)
+            .await
+            .map_err(db_err)?;
+
+        info!(enrichment_type = %req.enrichment_type, deleted, "enrichments deleted for re-enrichment");
+
+        Ok(Response::new(DeleteEnrichmentsByTypeResponse {
+            deleted_count: deleted as i64,
+        }))
+    }
+}
+
+fn enrichment_to_proto(e: ps_core::repo::reasoning::EnrichmentRecord) -> ProtoEnrichment {
+    ProtoEnrichment {
+        id: e.id.to_string(),
+        contribution_id: e.contribution_id.to_string(),
+        enrichment_type: e.enrichment_type,
+        value_json: e.value.to_string(),
+        model_name: e.model_name,
+        confidence: e.confidence,
+        input_hash: e.input_hash,
+        input_preview: e.input_preview,
+        created_at: e
+            .created_at
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_default(),
     }
 }

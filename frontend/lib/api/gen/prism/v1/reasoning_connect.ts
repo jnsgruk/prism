@@ -4,16 +4,26 @@
 // @ts-nocheck
 
 import {
+  DeleteEnrichmentsByTypeRequest,
+  DeleteEnrichmentsByTypeResponse,
   GetAiSettingsRequest,
   GetAiSettingsResponse,
   GetCostSummaryRequest,
   GetCostSummaryResponse,
+  GetEnrichmentPipelineStatusRequest,
+  GetEnrichmentPipelineStatusResponse,
+  GetEnrichmentsByContributionsRequest,
+  GetEnrichmentsByContributionsResponse,
+  GetEnrichmentsRequest,
+  GetEnrichmentsResponse,
   GetStorageHealthRequest,
   GetStorageHealthResponse,
   SetProviderSecretRequest,
   SetProviderSecretResponse,
   TestProviderRequest,
   TestProviderResponse,
+  TriggerEnrichmentRequest,
+  TriggerEnrichmentResponse,
   UpdateAiSettingsRequest,
   UpdateAiSettingsResponse,
 } from "./reasoning_pb.js";
@@ -81,6 +91,53 @@ export const ReasoningService = {
       name: "GetCostSummary",
       I: GetCostSummaryRequest,
       O: GetCostSummaryResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Enrichments
+     *
+     * @generated from rpc prism.v1.ReasoningService.GetEnrichments
+     */
+    getEnrichments: {
+      name: "GetEnrichments",
+      I: GetEnrichmentsRequest,
+      O: GetEnrichmentsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.GetEnrichmentsByContributions
+     */
+    getEnrichmentsByContributions: {
+      name: "GetEnrichmentsByContributions",
+      I: GetEnrichmentsByContributionsRequest,
+      O: GetEnrichmentsByContributionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.GetEnrichmentPipelineStatus
+     */
+    getEnrichmentPipelineStatus: {
+      name: "GetEnrichmentPipelineStatus",
+      I: GetEnrichmentPipelineStatusRequest,
+      O: GetEnrichmentPipelineStatusResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.TriggerEnrichment
+     */
+    triggerEnrichment: {
+      name: "TriggerEnrichment",
+      I: TriggerEnrichmentRequest,
+      O: TriggerEnrichmentResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.DeleteEnrichmentsByType
+     */
+    deleteEnrichmentsByType: {
+      name: "DeleteEnrichmentsByType",
+      I: DeleteEnrichmentsByTypeRequest,
+      O: DeleteEnrichmentsByTypeResponse,
       kind: MethodKind.Unary,
     },
   },

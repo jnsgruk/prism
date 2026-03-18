@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/reasoning.proto.
  */
 export const file_prism_v1_reasoning: GenFile /*@__PURE__*/ = fileDesc(
-  "ChhwcmlzbS92MS9yZWFzb25pbmcucHJvdG8SCHByaXNtLnYxIi8KDEFpVGFza0NvbmZpZxIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCSL0AgoKQWlTZXR0aW5ncxIqCgplbnJpY2htZW50GAEgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnEigKCGluc2lnaHRzGAIgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnEicKB2FnZW50aWMYAyABKAsyFi5wcmlzbS52MS5BaVRhc2tDb25maWcSKgoKZW1iZWRkaW5ncxgEIAEoCzIWLnByaXNtLnYxLkFpVGFza0NvbmZpZxIbCg5idWRnZXRfY2FwX3VzZBgFIAEoAUgAiAEBEk4KFnByb3ZpZGVyX3NlY3JldF9zdGF0dXMYBiADKAsyLi5wcmlzbS52MS5BaVNldHRpbmdzLlByb3ZpZGVyU2VjcmV0U3RhdHVzRW50cnkaOwoZUHJvdmlkZXJTZWNyZXRTdGF0dXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBQhEKD19idWRnZXRfY2FwX3VzZCIWChRHZXRBaVNldHRpbmdzUmVxdWVzdCI/ChVHZXRBaVNldHRpbmdzUmVzcG9uc2USJgoIc2V0dGluZ3MYASABKAsyFC5wcmlzbS52MS5BaVNldHRpbmdzIr8CChdVcGRhdGVBaVNldHRpbmdzUmVxdWVzdBIvCgplbnJpY2htZW50GAEgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnSACIAQESLQoIaW5zaWdodHMYAiABKAsyFi5wcmlzbS52MS5BaVRhc2tDb25maWdIAYgBARIsCgdhZ2VudGljGAMgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnSAKIAQESLwoKZW1iZWRkaW5ncxgEIAEoCzIWLnByaXNtLnYxLkFpVGFza0NvbmZpZ0gDiAEBEhsKDmJ1ZGdldF9jYXBfdXNkGAUgASgBSASIAQFCDQoLX2VucmljaG1lbnRCCwoJX2luc2lnaHRzQgoKCF9hZ2VudGljQg0KC19lbWJlZGRpbmdzQhEKD19idWRnZXRfY2FwX3VzZCJCChhVcGRhdGVBaVNldHRpbmdzUmVzcG9uc2USJgoIc2V0dGluZ3MYASABKAsyFC5wcmlzbS52MS5BaVNldHRpbmdzIkIKGFNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBIQCghwcm92aWRlchgBIAEoCRIUCgxzZWNyZXRfdmFsdWUYAiABKAkiGwoZU2V0UHJvdmlkZXJTZWNyZXRSZXNwb25zZSInChNUZXN0UHJvdmlkZXJSZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJIj4KFFRlc3RQcm92aWRlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSFQoNZXJyb3JfbWVzc2FnZRgCIAEoCSIZChdHZXRTdG9yYWdlSGVhbHRoUmVxdWVzdCJCChhHZXRTdG9yYWdlSGVhbHRoUmVzcG9uc2USDwoHaGVhbHRoeRgBIAEoCBIVCg1lcnJvcl9tZXNzYWdlGAIgASgJIiUKFUdldENvc3RTdW1tYXJ5UmVxdWVzdBIMCgRkYXlzGAEgASgFIugBChZHZXRDb3N0U3VtbWFyeVJlc3BvbnNlEhcKD3RvZGF5X3NwZW5kX3VzZBgBIAEoARIbCg5idWRnZXRfY2FwX3VzZBgCIAEoAUgAiAEBEikKC2RhaWx5X3NwZW5kGAMgAygLMhQucHJpc20udjEuRGFpbHlTcGVuZBIrCg50YXNrX2JyZWFrZG93bhgEIAMoCzITLnByaXNtLnYxLlRhc2tTcGVuZBItCg9tb2RlbF9icmVha2Rvd24YBSADKAsyFC5wcmlzbS52MS5Nb2RlbFNwZW5kQhEKD19idWRnZXRfY2FwX3VzZCJDCgpEYWlseVNwZW5kEgwKBGRhdGUYASABKAkSEAoIY29zdF91c2QYAiABKAESFQoNcmVxdWVzdF9jb3VudBgDIAEoAyJ5CglUYXNrU3BlbmQSEQoJdGFza190eXBlGAEgASgJEhAKCGNvc3RfdXNkGAIgASgBEhUKDXByb21wdF90b2tlbnMYAyABKAMSGQoRY29tcGxldGlvbl90b2tlbnMYBCABKAMSFQoNcmVxdWVzdF9jb3VudBgFIAEoAyKbAQoKTW9kZWxTcGVuZBIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCRIRCgl0YXNrX3R5cGUYAyABKAkSEAoIY29zdF91c2QYBCABKAESFQoNcHJvbXB0X3Rva2VucxgFIAEoAxIZChFjb21wbGV0aW9uX3Rva2VucxgGIAEoAxIVCg1yZXF1ZXN0X2NvdW50GAcgASgDMpwEChBSZWFzb25pbmdTZXJ2aWNlElAKDUdldEFpU2V0dGluZ3MSHi5wcmlzbS52MS5HZXRBaVNldHRpbmdzUmVxdWVzdBofLnByaXNtLnYxLkdldEFpU2V0dGluZ3NSZXNwb25zZRJZChBVcGRhdGVBaVNldHRpbmdzEiEucHJpc20udjEuVXBkYXRlQWlTZXR0aW5nc1JlcXVlc3QaIi5wcmlzbS52MS5VcGRhdGVBaVNldHRpbmdzUmVzcG9uc2USXAoRU2V0UHJvdmlkZXJTZWNyZXQSIi5wcmlzbS52MS5TZXRQcm92aWRlclNlY3JldFJlcXVlc3QaIy5wcmlzbS52MS5TZXRQcm92aWRlclNlY3JldFJlc3BvbnNlEk0KDFRlc3RQcm92aWRlchIdLnByaXNtLnYxLlRlc3RQcm92aWRlclJlcXVlc3QaHi5wcmlzbS52MS5UZXN0UHJvdmlkZXJSZXNwb25zZRJZChBHZXRTdG9yYWdlSGVhbHRoEiEucHJpc20udjEuR2V0U3RvcmFnZUhlYWx0aFJlcXVlc3QaIi5wcmlzbS52MS5HZXRTdG9yYWdlSGVhbHRoUmVzcG9uc2USUwoOR2V0Q29zdFN1bW1hcnkSHy5wcmlzbS52MS5HZXRDb3N0U3VtbWFyeVJlcXVlc3QaIC5wcmlzbS52MS5HZXRDb3N0U3VtbWFyeVJlc3BvbnNlYgZwcm90bzM",
+  "ChhwcmlzbS92MS9yZWFzb25pbmcucHJvdG8SCHByaXNtLnYxIi8KDEFpVGFza0NvbmZpZxIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCSL0AgoKQWlTZXR0aW5ncxIqCgplbnJpY2htZW50GAEgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnEigKCGluc2lnaHRzGAIgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnEicKB2FnZW50aWMYAyABKAsyFi5wcmlzbS52MS5BaVRhc2tDb25maWcSKgoKZW1iZWRkaW5ncxgEIAEoCzIWLnByaXNtLnYxLkFpVGFza0NvbmZpZxIbCg5idWRnZXRfY2FwX3VzZBgFIAEoAUgAiAEBEk4KFnByb3ZpZGVyX3NlY3JldF9zdGF0dXMYBiADKAsyLi5wcmlzbS52MS5BaVNldHRpbmdzLlByb3ZpZGVyU2VjcmV0U3RhdHVzRW50cnkaOwoZUHJvdmlkZXJTZWNyZXRTdGF0dXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBQhEKD19idWRnZXRfY2FwX3VzZCIWChRHZXRBaVNldHRpbmdzUmVxdWVzdCI/ChVHZXRBaVNldHRpbmdzUmVzcG9uc2USJgoIc2V0dGluZ3MYASABKAsyFC5wcmlzbS52MS5BaVNldHRpbmdzIr8CChdVcGRhdGVBaVNldHRpbmdzUmVxdWVzdBIvCgplbnJpY2htZW50GAEgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnSACIAQESLQoIaW5zaWdodHMYAiABKAsyFi5wcmlzbS52MS5BaVRhc2tDb25maWdIAYgBARIsCgdhZ2VudGljGAMgASgLMhYucHJpc20udjEuQWlUYXNrQ29uZmlnSAKIAQESLwoKZW1iZWRkaW5ncxgEIAEoCzIWLnByaXNtLnYxLkFpVGFza0NvbmZpZ0gDiAEBEhsKDmJ1ZGdldF9jYXBfdXNkGAUgASgBSASIAQFCDQoLX2VucmljaG1lbnRCCwoJX2luc2lnaHRzQgoKCF9hZ2VudGljQg0KC19lbWJlZGRpbmdzQhEKD19idWRnZXRfY2FwX3VzZCJCChhVcGRhdGVBaVNldHRpbmdzUmVzcG9uc2USJgoIc2V0dGluZ3MYASABKAsyFC5wcmlzbS52MS5BaVNldHRpbmdzIkIKGFNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBIQCghwcm92aWRlchgBIAEoCRIUCgxzZWNyZXRfdmFsdWUYAiABKAkiGwoZU2V0UHJvdmlkZXJTZWNyZXRSZXNwb25zZSInChNUZXN0UHJvdmlkZXJSZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJIj4KFFRlc3RQcm92aWRlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSFQoNZXJyb3JfbWVzc2FnZRgCIAEoCSIZChdHZXRTdG9yYWdlSGVhbHRoUmVxdWVzdCJCChhHZXRTdG9yYWdlSGVhbHRoUmVzcG9uc2USDwoHaGVhbHRoeRgBIAEoCBIVCg1lcnJvcl9tZXNzYWdlGAIgASgJIiUKFUdldENvc3RTdW1tYXJ5UmVxdWVzdBIMCgRkYXlzGAEgASgFIugBChZHZXRDb3N0U3VtbWFyeVJlc3BvbnNlEhcKD3RvZGF5X3NwZW5kX3VzZBgBIAEoARIbCg5idWRnZXRfY2FwX3VzZBgCIAEoAUgAiAEBEikKC2RhaWx5X3NwZW5kGAMgAygLMhQucHJpc20udjEuRGFpbHlTcGVuZBIrCg50YXNrX2JyZWFrZG93bhgEIAMoCzITLnByaXNtLnYxLlRhc2tTcGVuZBItCg9tb2RlbF9icmVha2Rvd24YBSADKAsyFC5wcmlzbS52MS5Nb2RlbFNwZW5kQhEKD19idWRnZXRfY2FwX3VzZCJDCgpEYWlseVNwZW5kEgwKBGRhdGUYASABKAkSEAoIY29zdF91c2QYAiABKAESFQoNcmVxdWVzdF9jb3VudBgDIAEoAyJ5CglUYXNrU3BlbmQSEQoJdGFza190eXBlGAEgASgJEhAKCGNvc3RfdXNkGAIgASgBEhUKDXByb21wdF90b2tlbnMYAyABKAMSGQoRY29tcGxldGlvbl90b2tlbnMYBCABKAMSFQoNcmVxdWVzdF9jb3VudBgFIAEoAyKbAQoKTW9kZWxTcGVuZBIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCRIRCgl0YXNrX3R5cGUYAyABKAkSEAoIY29zdF91c2QYBCABKAESFQoNcHJvbXB0X3Rva2VucxgFIAEoAxIZChFjb21wbGV0aW9uX3Rva2VucxgGIAEoAxIVCg1yZXF1ZXN0X2NvdW50GAcgASgDIoQCCgpFbnJpY2htZW50EgoKAmlkGAEgASgJEhcKD2NvbnRyaWJ1dGlvbl9pZBgCIAEoCRIXCg9lbnJpY2htZW50X3R5cGUYAyABKAkSEgoKdmFsdWVfanNvbhgEIAEoCRISCgptb2RlbF9uYW1lGAUgASgJEhcKCmNvbmZpZGVuY2UYBiABKAJIAIgBARIXCgppbnB1dF9oYXNoGAcgASgJSAGIAQESGgoNaW5wdXRfcHJldmlldxgIIAEoCUgCiAEBEhIKCmNyZWF0ZWRfYXQYCSABKAlCDQoLX2NvbmZpZGVuY2VCDQoLX2lucHV0X2hhc2hCEAoOX2lucHV0X3ByZXZpZXciMAoVR2V0RW5yaWNobWVudHNSZXF1ZXN0EhcKD2NvbnRyaWJ1dGlvbl9pZBgBIAEoCSJDChZHZXRFbnJpY2htZW50c1Jlc3BvbnNlEikKC2VucmljaG1lbnRzGAEgAygLMhQucHJpc20udjEuRW5yaWNobWVudCJACiRHZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9uc1JlcXVlc3QSGAoQY29udHJpYnV0aW9uX2lkcxgBIAMoCSJSCiVHZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9uc1Jlc3BvbnNlEikKC2VucmljaG1lbnRzGAEgAygLMhQucHJpc20udjEuRW5yaWNobWVudCIkCiJHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXF1ZXN0Ir8BCiNHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXNwb25zZRIVCg1wZW5kaW5nX2NvdW50GAEgASgDEhkKEXRvdGFsX2VucmljaG1lbnRzGAIgASgDEh8KEmxhc3RfZW5yaWNobWVudF9hdBgDIAEoCUgAiAEBEi4KB2J5X3R5cGUYBCADKAsyHS5wcmlzbS52MS5FbnJpY2htZW50VHlwZUNvdW50QhUKE19sYXN0X2VucmljaG1lbnRfYXQiPQoTRW5yaWNobWVudFR5cGVDb3VudBIXCg9lbnJpY2htZW50X3R5cGUYASABKAkSDQoFY291bnQYAiABKAMiRwoYVHJpZ2dlckVucmljaG1lbnRSZXF1ZXN0EhcKD2VucmljaG1lbnRfdHlwZRgBIAEoCRISCgpiYXRjaF9zaXplGAIgASgFIj8KGVRyaWdnZXJFbnJpY2htZW50UmVzcG9uc2USEQoJdHJpZ2dlcmVkGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiOQoeRGVsZXRlRW5yaWNobWVudHNCeVR5cGVSZXF1ZXN0EhcKD2VucmljaG1lbnRfdHlwZRgBIAEoCSI4Ch9EZWxldGVFbnJpY2htZW50c0J5VHlwZVJlc3BvbnNlEhUKDWRlbGV0ZWRfY291bnQYASABKAMyvggKEFJlYXNvbmluZ1NlcnZpY2USUAoNR2V0QWlTZXR0aW5ncxIeLnByaXNtLnYxLkdldEFpU2V0dGluZ3NSZXF1ZXN0Gh8ucHJpc20udjEuR2V0QWlTZXR0aW5nc1Jlc3BvbnNlElkKEFVwZGF0ZUFpU2V0dGluZ3MSIS5wcmlzbS52MS5VcGRhdGVBaVNldHRpbmdzUmVxdWVzdBoiLnByaXNtLnYxLlVwZGF0ZUFpU2V0dGluZ3NSZXNwb25zZRJcChFTZXRQcm92aWRlclNlY3JldBIiLnByaXNtLnYxLlNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBojLnByaXNtLnYxLlNldFByb3ZpZGVyU2VjcmV0UmVzcG9uc2USTQoMVGVzdFByb3ZpZGVyEh0ucHJpc20udjEuVGVzdFByb3ZpZGVyUmVxdWVzdBoeLnByaXNtLnYxLlRlc3RQcm92aWRlclJlc3BvbnNlElkKEEdldFN0b3JhZ2VIZWFsdGgSIS5wcmlzbS52MS5HZXRTdG9yYWdlSGVhbHRoUmVxdWVzdBoiLnByaXNtLnYxLkdldFN0b3JhZ2VIZWFsdGhSZXNwb25zZRJTCg5HZXRDb3N0U3VtbWFyeRIfLnByaXNtLnYxLkdldENvc3RTdW1tYXJ5UmVxdWVzdBogLnByaXNtLnYxLkdldENvc3RTdW1tYXJ5UmVzcG9uc2USUwoOR2V0RW5yaWNobWVudHMSHy5wcmlzbS52MS5HZXRFbnJpY2htZW50c1JlcXVlc3QaIC5wcmlzbS52MS5HZXRFbnJpY2htZW50c1Jlc3BvbnNlEoABCh1HZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9ucxIuLnByaXNtLnYxLkdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVxdWVzdBovLnByaXNtLnYxLkdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVzcG9uc2USegobR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzEiwucHJpc20udjEuR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzUmVxdWVzdBotLnByaXNtLnYxLkdldEVucmljaG1lbnRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlElwKEVRyaWdnZXJFbnJpY2htZW50EiIucHJpc20udjEuVHJpZ2dlckVucmljaG1lbnRSZXF1ZXN0GiMucHJpc20udjEuVHJpZ2dlckVucmljaG1lbnRSZXNwb25zZRJuChdEZWxldGVFbnJpY2htZW50c0J5VHlwZRIoLnByaXNtLnYxLkRlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVxdWVzdBopLnByaXNtLnYxLkRlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVzcG9uc2ViBnByb3RvMw",
 );
 
 /**
@@ -459,6 +459,296 @@ export const ModelSpendSchema: GenMessage<ModelSpend> /*@__PURE__*/ = messageDes
 );
 
 /**
+ * @generated from message prism.v1.Enrichment
+ */
+export type Enrichment = Message<"prism.v1.Enrichment"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string contribution_id = 2;
+   */
+  contributionId: string;
+
+  /**
+   * "review_depth", "sentiment", "significance", "topic"
+   *
+   * @generated from field: string enrichment_type = 3;
+   */
+  enrichmentType: string;
+
+  /**
+   * structured JSON result (score, label, rationale)
+   *
+   * @generated from field: string value_json = 4;
+   */
+  valueJson: string;
+
+  /**
+   * @generated from field: string model_name = 5;
+   */
+  modelName: string;
+
+  /**
+   * @generated from field: optional float confidence = 6;
+   */
+  confidence?: number;
+
+  /**
+   * @generated from field: optional string input_hash = 7;
+   */
+  inputHash?: string;
+
+  /**
+   * @generated from field: optional string input_preview = 8;
+   */
+  inputPreview?: string;
+
+  /**
+   * ISO 8601 timestamp
+   *
+   * @generated from field: string created_at = 9;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message prism.v1.Enrichment.
+ * Use `create(EnrichmentSchema)` to create a new message.
+ */
+export const EnrichmentSchema: GenMessage<Enrichment> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_reasoning,
+  17,
+);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentsRequest
+ */
+export type GetEnrichmentsRequest = Message<"prism.v1.GetEnrichmentsRequest"> & {
+  /**
+   * @generated from field: string contribution_id = 1;
+   */
+  contributionId: string;
+};
+
+/**
+ * Describes the message prism.v1.GetEnrichmentsRequest.
+ * Use `create(GetEnrichmentsRequestSchema)` to create a new message.
+ */
+export const GetEnrichmentsRequestSchema: GenMessage<GetEnrichmentsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 18);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentsResponse
+ */
+export type GetEnrichmentsResponse = Message<"prism.v1.GetEnrichmentsResponse"> & {
+  /**
+   * @generated from field: repeated prism.v1.Enrichment enrichments = 1;
+   */
+  enrichments: Enrichment[];
+};
+
+/**
+ * Describes the message prism.v1.GetEnrichmentsResponse.
+ * Use `create(GetEnrichmentsResponseSchema)` to create a new message.
+ */
+export const GetEnrichmentsResponseSchema: GenMessage<GetEnrichmentsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 19);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentsByContributionsRequest
+ */
+export type GetEnrichmentsByContributionsRequest =
+  Message<"prism.v1.GetEnrichmentsByContributionsRequest"> & {
+    /**
+     * @generated from field: repeated string contribution_ids = 1;
+     */
+    contributionIds: string[];
+  };
+
+/**
+ * Describes the message prism.v1.GetEnrichmentsByContributionsRequest.
+ * Use `create(GetEnrichmentsByContributionsRequestSchema)` to create a new message.
+ */
+export const GetEnrichmentsByContributionsRequestSchema: GenMessage<GetEnrichmentsByContributionsRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 20);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentsByContributionsResponse
+ */
+export type GetEnrichmentsByContributionsResponse =
+  Message<"prism.v1.GetEnrichmentsByContributionsResponse"> & {
+    /**
+     * @generated from field: repeated prism.v1.Enrichment enrichments = 1;
+     */
+    enrichments: Enrichment[];
+  };
+
+/**
+ * Describes the message prism.v1.GetEnrichmentsByContributionsResponse.
+ * Use `create(GetEnrichmentsByContributionsResponseSchema)` to create a new message.
+ */
+export const GetEnrichmentsByContributionsResponseSchema: GenMessage<GetEnrichmentsByContributionsResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 21);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentPipelineStatusRequest
+ */
+export type GetEnrichmentPipelineStatusRequest =
+  Message<"prism.v1.GetEnrichmentPipelineStatusRequest"> & {};
+
+/**
+ * Describes the message prism.v1.GetEnrichmentPipelineStatusRequest.
+ * Use `create(GetEnrichmentPipelineStatusRequestSchema)` to create a new message.
+ */
+export const GetEnrichmentPipelineStatusRequestSchema: GenMessage<GetEnrichmentPipelineStatusRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 22);
+
+/**
+ * @generated from message prism.v1.GetEnrichmentPipelineStatusResponse
+ */
+export type GetEnrichmentPipelineStatusResponse =
+  Message<"prism.v1.GetEnrichmentPipelineStatusResponse"> & {
+    /**
+     * @generated from field: int64 pending_count = 1;
+     */
+    pendingCount: bigint;
+
+    /**
+     * @generated from field: int64 total_enrichments = 2;
+     */
+    totalEnrichments: bigint;
+
+    /**
+     * ISO 8601 timestamp
+     *
+     * @generated from field: optional string last_enrichment_at = 3;
+     */
+    lastEnrichmentAt?: string;
+
+    /**
+     * @generated from field: repeated prism.v1.EnrichmentTypeCount by_type = 4;
+     */
+    byType: EnrichmentTypeCount[];
+  };
+
+/**
+ * Describes the message prism.v1.GetEnrichmentPipelineStatusResponse.
+ * Use `create(GetEnrichmentPipelineStatusResponseSchema)` to create a new message.
+ */
+export const GetEnrichmentPipelineStatusResponseSchema: GenMessage<GetEnrichmentPipelineStatusResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 23);
+
+/**
+ * @generated from message prism.v1.EnrichmentTypeCount
+ */
+export type EnrichmentTypeCount = Message<"prism.v1.EnrichmentTypeCount"> & {
+  /**
+   * @generated from field: string enrichment_type = 1;
+   */
+  enrichmentType: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+};
+
+/**
+ * Describes the message prism.v1.EnrichmentTypeCount.
+ * Use `create(EnrichmentTypeCountSchema)` to create a new message.
+ */
+export const EnrichmentTypeCountSchema: GenMessage<EnrichmentTypeCount> /*@__PURE__*/ = messageDesc(
+  file_prism_v1_reasoning,
+  24,
+);
+
+/**
+ * @generated from message prism.v1.TriggerEnrichmentRequest
+ */
+export type TriggerEnrichmentRequest = Message<"prism.v1.TriggerEnrichmentRequest"> & {
+  /**
+   * Optional: only enrich this type (e.g. "review_depth"). Empty = all types.
+   *
+   * @generated from field: string enrichment_type = 1;
+   */
+  enrichmentType: string;
+
+  /**
+   * Max contributions to process per type (default 50).
+   *
+   * @generated from field: int32 batch_size = 2;
+   */
+  batchSize: number;
+};
+
+/**
+ * Describes the message prism.v1.TriggerEnrichmentRequest.
+ * Use `create(TriggerEnrichmentRequestSchema)` to create a new message.
+ */
+export const TriggerEnrichmentRequestSchema: GenMessage<TriggerEnrichmentRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 25);
+
+/**
+ * @generated from message prism.v1.TriggerEnrichmentResponse
+ */
+export type TriggerEnrichmentResponse = Message<"prism.v1.TriggerEnrichmentResponse"> & {
+  /**
+   * @generated from field: bool triggered = 1;
+   */
+  triggered: boolean;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message prism.v1.TriggerEnrichmentResponse.
+ * Use `create(TriggerEnrichmentResponseSchema)` to create a new message.
+ */
+export const TriggerEnrichmentResponseSchema: GenMessage<TriggerEnrichmentResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 26);
+
+/**
+ * @generated from message prism.v1.DeleteEnrichmentsByTypeRequest
+ */
+export type DeleteEnrichmentsByTypeRequest = Message<"prism.v1.DeleteEnrichmentsByTypeRequest"> & {
+  /**
+   * @generated from field: string enrichment_type = 1;
+   */
+  enrichmentType: string;
+};
+
+/**
+ * Describes the message prism.v1.DeleteEnrichmentsByTypeRequest.
+ * Use `create(DeleteEnrichmentsByTypeRequestSchema)` to create a new message.
+ */
+export const DeleteEnrichmentsByTypeRequestSchema: GenMessage<DeleteEnrichmentsByTypeRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 27);
+
+/**
+ * @generated from message prism.v1.DeleteEnrichmentsByTypeResponse
+ */
+export type DeleteEnrichmentsByTypeResponse =
+  Message<"prism.v1.DeleteEnrichmentsByTypeResponse"> & {
+    /**
+     * @generated from field: int64 deleted_count = 1;
+     */
+    deletedCount: bigint;
+  };
+
+/**
+ * Describes the message prism.v1.DeleteEnrichmentsByTypeResponse.
+ * Use `create(DeleteEnrichmentsByTypeResponseSchema)` to create a new message.
+ */
+export const DeleteEnrichmentsByTypeResponseSchema: GenMessage<DeleteEnrichmentsByTypeResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_reasoning, 28);
+
+/**
  * @generated from service prism.v1.ReasoningService
  */
 export const ReasoningService: GenService<{
@@ -513,5 +803,47 @@ export const ReasoningService: GenService<{
     methodKind: "unary";
     input: typeof GetCostSummaryRequestSchema;
     output: typeof GetCostSummaryResponseSchema;
+  };
+  /**
+   * Enrichments
+   *
+   * @generated from rpc prism.v1.ReasoningService.GetEnrichments
+   */
+  getEnrichments: {
+    methodKind: "unary";
+    input: typeof GetEnrichmentsRequestSchema;
+    output: typeof GetEnrichmentsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.ReasoningService.GetEnrichmentsByContributions
+   */
+  getEnrichmentsByContributions: {
+    methodKind: "unary";
+    input: typeof GetEnrichmentsByContributionsRequestSchema;
+    output: typeof GetEnrichmentsByContributionsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.ReasoningService.GetEnrichmentPipelineStatus
+   */
+  getEnrichmentPipelineStatus: {
+    methodKind: "unary";
+    input: typeof GetEnrichmentPipelineStatusRequestSchema;
+    output: typeof GetEnrichmentPipelineStatusResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.ReasoningService.TriggerEnrichment
+   */
+  triggerEnrichment: {
+    methodKind: "unary";
+    input: typeof TriggerEnrichmentRequestSchema;
+    output: typeof TriggerEnrichmentResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.ReasoningService.DeleteEnrichmentsByType
+   */
+  deleteEnrichmentsByType: {
+    methodKind: "unary";
+    input: typeof DeleteEnrichmentsByTypeRequestSchema;
+    output: typeof DeleteEnrichmentsByTypeResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_prism_v1_reasoning, 0);

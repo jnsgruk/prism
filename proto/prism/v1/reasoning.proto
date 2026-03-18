@@ -12,6 +12,13 @@ service ReasoningService {
 
   // Cost Dashboard
   rpc GetCostSummary(GetCostSummaryRequest) returns (GetCostSummaryResponse);
+
+  // Enrichments
+  rpc GetEnrichments(GetEnrichmentsRequest) returns (GetEnrichmentsResponse);
+  rpc GetEnrichmentsByContributions(GetEnrichmentsByContributionsRequest) returns (GetEnrichmentsByContributionsResponse);
+  rpc GetEnrichmentPipelineStatus(GetEnrichmentPipelineStatusRequest) returns (GetEnrichmentPipelineStatusResponse);
+  rpc TriggerEnrichment(TriggerEnrichmentRequest) returns (TriggerEnrichmentResponse);
+  rpc DeleteEnrichmentsByType(DeleteEnrichmentsByTypeRequest) returns (DeleteEnrichmentsByTypeResponse);
 }
 
 // ---------------------------------------------------------------------------
@@ -112,4 +119,70 @@ message ModelSpend {
   int64 prompt_tokens = 5;
   int64 completion_tokens = 6;
   int64 request_count = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Enrichments
+// ---------------------------------------------------------------------------
+
+message Enrichment {
+  string id = 1;
+  string contribution_id = 2;
+  string enrichment_type = 3;     // "review_depth", "sentiment", "significance", "topic"
+  string value_json = 4;          // structured JSON result (score, label, rationale)
+  string model_name = 5;
+  optional float confidence = 6;
+  optional string input_hash = 7;
+  optional string input_preview = 8;
+  string created_at = 9;          // ISO 8601 timestamp
+}
+
+message GetEnrichmentsRequest {
+  string contribution_id = 1;
+}
+
+message GetEnrichmentsResponse {
+  repeated Enrichment enrichments = 1;
+}
+
+message GetEnrichmentsByContributionsRequest {
+  repeated string contribution_ids = 1;
+}
+
+message GetEnrichmentsByContributionsResponse {
+  repeated Enrichment enrichments = 1;
+}
+
+message GetEnrichmentPipelineStatusRequest {}
+
+message GetEnrichmentPipelineStatusResponse {
+  int64 pending_count = 1;
+  int64 total_enrichments = 2;
+  optional string last_enrichment_at = 3;  // ISO 8601 timestamp
+  repeated EnrichmentTypeCount by_type = 4;
+}
+
+message EnrichmentTypeCount {
+  string enrichment_type = 1;
+  int64 count = 2;
+}
+
+message TriggerEnrichmentRequest {
+  // Optional: only enrich this type (e.g. "review_depth"). Empty = all types.
+  string enrichment_type = 1;
+  // Max contributions to process per type (default 50).
+  int32 batch_size = 2;
+}
+
+message TriggerEnrichmentResponse {
+  bool triggered = 1;
+  string message = 2;
+}
+
+message DeleteEnrichmentsByTypeRequest {
+  string enrichment_type = 1;
+}
+
+message DeleteEnrichmentsByTypeResponse {
+  int64 deleted_count = 1;
 }
