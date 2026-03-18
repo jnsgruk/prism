@@ -34,7 +34,7 @@ export const ProfileMetricCards = ({
           description={`Throughput percentile among ${profile.peerContext?.peerCount ?? 0} ${profile.peerContext?.level ?? ""} peers`}
         />
       ) : (
-        <MetricCard label="Peer percentile" value="\u2014" icon={TrendingUp} />
+        <MetricCard label="Peer percentile" value={"\u2014"} icon={TrendingUp} />
       )}
       <MetricCard label="Identities" value={String(profile.identities.length)} icon={Users} />
     </div>
