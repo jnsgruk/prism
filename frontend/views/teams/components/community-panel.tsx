@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { instanceLabel } from "@/lib/format-metrics";
 import { ArrowRight, Info, MessageCircle } from "lucide-react";
 
 import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
@@ -46,6 +47,7 @@ const MetricValue = ({
 const buildSummary = (metrics: TeamMetrics): string => {
   const topics = metrics.discourseTopicsCreated;
   const posts = metrics.discoursePosts;
+  const instances = metrics.discourseByInstance ?? [];
   const parts: string[] = [];
   if (topics > 0) {
     parts.push(`${topics} new topic${topics !== 1 ? "s" : ""}`);
@@ -54,7 +56,11 @@ const buildSummary = (metrics: TeamMetrics): string => {
     parts.push(`${posts} post${posts !== 1 ? "s" : ""}`);
   }
   if (parts.length === 0) return "No Discourse activity in this period.";
-  return parts.join(" and ") + " across Discourse.";
+  const suffix =
+    instances.length > 1
+      ? ` across ${instances.length} Discourse instances.`
+      : " across Discourse.";
+  return parts.join(" and ") + suffix;
 };
 
 export const CommunityPanel = ({
@@ -74,17 +80,8 @@ export const CommunityPanel = ({
 
   if (!hasDiscourse) return null;
 
-  // Build per-instance secondary text
-  const instanceBreakdown = (
-    field: "topicsCreated" | "posts" | "likesGiven",
-  ): string | undefined => {
-    const instances = metrics.discourseByInstance ?? [];
-    if (instances.length <= 1) return undefined;
-    return instances
-      .filter((i) => i[field] > 0)
-      .map((i) => `${i.instance}: ${i[field]}`)
-      .join(" \u00b7 ");
-  };
+  const instances = metrics.discourseByInstance ?? [];
+  const hasMultipleInstances = instances.length > 1;
 
   return (
     <TooltipProvider>
@@ -97,12 +94,12 @@ export const CommunityPanel = ({
           <CardDescription>Discourse participation and engagement.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Aggregate totals */}
           <div className="grid grid-cols-3 gap-4">
             <MetricValue
               value={String(discourseTopics)}
               label="Topics Created"
               description="New Discourse topics started by team members."
-              secondary={instanceBreakdown("topicsCreated")}
               onClick={onScrollToDiscourse}
             />
             <MetricValue
@@ -116,10 +113,49 @@ export const CommunityPanel = ({
               value={String(discourseLikesGiven)}
               label="Likes Given"
               description="Likes given by team members on Discourse."
-              secondary={instanceBreakdown("likesGiven")}
               onClick={onScrollToDiscourse}
             />
           </div>
+
+          {/* Per-instance breakdown as a compact table */}
+          {hasMultipleInstances && (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
+                      Instance
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
+                      Topics
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
+                      Posts
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
+                      Likes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {instances.map((inst) => (
+                    <tr key={inst.instance} className="border-b last:border-0">
+                      <td className="px-3 py-1.5 font-medium">{instanceLabel(inst.instance)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {inst.topicsCreated || "\u2014"}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {inst.posts || "\u2014"}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {inst.likesGiven || "\u2014"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <ArrowRight className="size-3.5 shrink-0" />
