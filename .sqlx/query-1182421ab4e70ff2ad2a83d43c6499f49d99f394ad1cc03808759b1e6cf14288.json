@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM reasoning.enrichments WHERE enrichment_type = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1182421ab4e70ff2ad2a83d43c6499f49d99f394ad1cc03808759b1e6cf14288"
+}
