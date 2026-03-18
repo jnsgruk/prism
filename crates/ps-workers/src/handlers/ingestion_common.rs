@@ -7,8 +7,10 @@
 
 use ps_core::ingestion::{ContributionInput, IngestionContext};
 use ps_core::models::{RateLimitInfo, SourceConfig};
+use ps_core::repo::Repos;
+use ps_core::repo::reasoning::{EnrichmentQueueEntry, content_hash};
 use restate_sdk::prelude::*;
-use tracing::error;
+use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::SharedState;
@@ -379,4 +381,51 @@ pub(super) async fn advance_watermark(
     .await?;
 
     Ok(())
+}
+
+/// Enqueue enrichment content for upserted contributions.
+///
+/// Maps `(id, platform_id)` pairs from `bulk_upsert_contributions` back to
+/// the `enrichment_content` blobs on the original items, computes content
+/// hashes, and bulk-inserts into the enrichment queue.
+///
+/// Called from each source's `store_batch_impl` after upsert.
+pub async fn enqueue_enrichments(
+    repos: &Repos,
+    items: &[&ContributionInput],
+    upserted: &[(Uuid, String)],
+) -> Result<u64, ps_core::Error> {
+    // Build a platform_id → enrichment_content lookup from items.
+    let content_by_platform_id: std::collections::HashMap<&str, &serde_json::Value> = items
+        .iter()
+        .filter_map(|item| {
+            item.enrichment_content
+                .as_ref()
+                .map(|c| (item.platform_id.as_str(), c))
+        })
+        .collect();
+
+    let entries: Vec<EnrichmentQueueEntry> = upserted
+        .iter()
+        .filter_map(|(contribution_id, platform_id)| {
+            let content = content_by_platform_id.get(platform_id.as_str())?;
+            Some(EnrichmentQueueEntry {
+                contribution_id: *contribution_id,
+                content: (*content).clone(),
+                content_hash: content_hash(content),
+            })
+        })
+        .collect();
+
+    if entries.is_empty() {
+        return Ok(0);
+    }
+
+    let count = repos.reasoning.bulk_enqueue_enrichments(&entries).await?;
+    debug!(
+        queued = entries.len(),
+        updated = count,
+        "enqueued enrichments"
+    );
+    Ok(count)
 }

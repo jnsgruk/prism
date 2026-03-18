@@ -1,6 +1,8 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
+
+use crate::handlers::ingestion_common;
 
 pub(super) async fn store_batch_impl(
     ctx: &IngestionContext,
@@ -54,11 +56,18 @@ pub(super) async fn store_batch_impl(
 
     let stored = resolved_items.len();
     if stored > 0 {
-        let _upserted = ctx
+        let upserted = ctx
             .repos
             .activity
             .bulk_upsert_contributions(&ids, &person_ids, &resolved_items)
             .await?;
+
+        // Enqueue enrichment content for AI processing.
+        if let Err(e) =
+            ingestion_common::enqueue_enrichments(&ctx.repos, &resolved_items, &upserted).await
+        {
+            warn!(source = ctx.source_config.name, error = %e, "failed to enqueue enrichments");
+        }
     }
 
     // Backfill person_id on older Discourse contributions whose username
