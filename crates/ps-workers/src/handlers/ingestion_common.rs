@@ -23,6 +23,10 @@ pub(super) struct SerFetchResult {
     pub next_cursor: Option<String>,
     #[serde(default)]
     pub rate_limit: Option<RateLimitInfo>,
+    /// Carries the latest cursor state for watermark extraction, even when
+    /// `next_cursor` is `None` (final batch). Used by Discourse ingestion.
+    #[serde(default)]
+    pub etag: Option<String>,
 }
 
 /// Extract a named field from a serialised cursor JSON string.
@@ -277,6 +281,7 @@ pub(super) async fn fetch_batch(
                     items: result.items,
                     next_cursor: result.next_cursor,
                     rate_limit: result.rate_limit,
+                    etag: result.etag,
                 }))
             }
         })

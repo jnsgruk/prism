@@ -159,6 +159,10 @@ pub(super) async fn fetch_batch_impl(
 
     let stop = reached_watermark || !has_more_pages || cur.page >= MAX_PAGES_PER_RUN;
 
+    // Always serialize the current cursor state so the handler can extract
+    // max_bumped_at for watermark advancement, even on the final batch.
+    let final_cursor = serialise_cursor(&cur)?;
+
     let next_cursor = if stop {
         None
     } else {
@@ -178,7 +182,9 @@ pub(super) async fn fetch_batch_impl(
         items,
         next_cursor,
         rate_limit: None,
-        etag: None,
+        // Carry the final cursor state for watermark extraction — next_cursor
+        // is None on the last batch, but we still need max_bumped_at.
+        etag: Some(final_cursor),
     })
 }
 
