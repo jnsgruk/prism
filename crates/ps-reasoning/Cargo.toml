@@ -13,6 +13,7 @@ rig-core = { version = "0.33.0", features = ["derive"] }
 schemars = "1.2.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+sha2 = "0.10"
 thiserror.workspace = true
 time = { workspace = true, features = ["macros"] }
 tokio.workspace = true
