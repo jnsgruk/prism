@@ -92,6 +92,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reasoning_service =
         ReasoningServiceImpl::new(repos.clone(), secret_key, router, artifact_store);
 
+    // Load AI provider keys from the database so they survive server restarts.
+    reasoning_service.load_providers_from_db().await;
+
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
         .set_service_status("", ServingStatus::Serving)

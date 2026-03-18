@@ -6,6 +6,7 @@ use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
+use uuid::Uuid;
 
 use super::SharedState;
 
@@ -32,6 +33,35 @@ pub trait EnrichmentHandler {
 
 impl EnrichmentHandler for EnrichmentHandlerImpl {
     async fn run_cycle(&self, _ctx: Context<'_>) -> Result<(), TerminalError> {
+        self.run_enrichment_with_tracking().await
+    }
+
+    async fn start_schedule(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
+        self.run_enrichment_with_tracking().await?;
+
+        // Schedule the next cycle via delayed self-invocation
+        ctx.service_client::<EnrichmentHandlerClient>()
+            .start_schedule()
+            .send_after(std::time::Duration::from_secs(SCHEDULE_INTERVAL_SECS));
+
+        Ok(())
+    }
+}
+
+impl EnrichmentHandlerImpl {
+    /// Run an enrichment cycle with a handler run record for tracking.
+    async fn run_enrichment_with_tracking(&self) -> Result<(), TerminalError> {
+        let run_id = Uuid::now_v7();
+        if let Err(e) = self
+            .state
+            .repos
+            .activity
+            .create_run(run_id, "_enrichment", "EnrichmentHandler", "run_cycle")
+            .await
+        {
+            warn!(error = %e, "failed to create enrichment run record");
+        }
+
         let router = self.router.read().await;
         let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
 
@@ -45,6 +75,21 @@ impl EnrichmentHandler for EnrichmentHandlerImpl {
 
         let total_processed: usize = results.iter().map(|r| r.processed).sum();
         let total_errors: usize = results.iter().map(|r| r.errors).sum();
+
+        let message = format!("processed {total_processed}, errors {total_errors}");
+
+        // Complete or fail the run record
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        if total_errors > 0 && total_processed == 0 {
+            let _ = self.state.repos.activity.fail_run(run_id, &message).await;
+        } else {
+            let _ = self
+                .state
+                .repos
+                .activity
+                .complete_run(run_id, total_processed as i32)
+                .await;
+        }
 
         if total_errors > 0 {
             warn!(
@@ -55,36 +100,6 @@ impl EnrichmentHandler for EnrichmentHandlerImpl {
         } else {
             info!(processed = total_processed, "enrichment cycle complete");
         }
-
-        Ok(())
-    }
-
-    async fn start_schedule(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
-        // Run the enrichment cycle
-        let router = self.router.read().await;
-        let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-
-        let results = enrichment::run_enrichment_cycle(
-            &router,
-            &self.state.repos.reasoning,
-            &cost_tracker,
-            DEFAULT_BATCH_SIZE,
-        )
-        .await;
-
-        let total_processed: usize = results.iter().map(|r| r.processed).sum();
-        let total_errors: usize = results.iter().map(|r| r.errors).sum();
-
-        info!(
-            processed = total_processed,
-            errors = total_errors,
-            "enrichment schedule cycle complete"
-        );
-
-        // Schedule the next cycle via delayed self-invocation
-        ctx.service_client::<EnrichmentHandlerClient>()
-            .start_schedule()
-            .send_after(std::time::Duration::from_secs(SCHEDULE_INTERVAL_SECS));
 
         Ok(())
     }

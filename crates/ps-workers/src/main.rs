@@ -80,6 +80,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             config.tasks.enrichment = tc;
                         }
                     }
+                    "ai.tasks.insights" => {
+                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                            config.tasks.insights = tc;
+                        }
+                    }
+                    "ai.tasks.agentic" => {
+                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                            config.tasks.agentic = tc;
+                        }
+                    }
+                    "ai.tasks.embeddings" => {
+                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                            config.tasks.embeddings = tc;
+                        }
+                    }
                     "ai.budget_cap_usd" => {
                         if let Some(cap) = s.value.as_f64() {
                             config.budget_cap_usd = Some(cap);

@@ -45,6 +45,52 @@ impl ReasoningServiceImpl {
         }
     }
 
+    /// Load AI config and provider API keys from the database into the router.
+    ///
+    /// Called at startup so that provider keys survive server restarts.
+    pub async fn load_providers_from_db(&self) {
+        // Load config
+        match self.load_ai_config().await {
+            Ok(config) => {
+                self.router.write().await.update_config(config);
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to load AI config from database");
+            }
+        }
+
+        // Load provider API keys
+        for (provider, secret_key_name) in [
+            ("google", "google_api_key"),
+            ("openrouter", "openrouter_api_key"),
+        ] {
+            match self.repos.config.get_global_secret(secret_key_name).await {
+                Ok(Some(encrypted)) => {
+                    match ps_core::crypto::decrypt(&self.secret_key, &encrypted) {
+                        Ok(decrypted) => {
+                            if let Ok(api_key) = String::from_utf8(decrypted) {
+                                let mut router = self.router.write().await;
+                                match provider {
+                                    "google" => router.set_google(&api_key),
+                                    "openrouter" => router.set_openrouter(&api_key),
+                                    _ => {}
+                                }
+                                info!(provider, "loaded AI provider key from database");
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(provider, error = %e, "failed to decrypt provider key");
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    tracing::warn!(provider, error = %e, "failed to load provider key");
+                }
+            }
+        }
+    }
+
     /// Load AI config from `global_settings`, falling back to defaults.
     async fn load_ai_config(&self) -> Result<AiConfig, Status> {
         let settings = self
@@ -523,6 +569,17 @@ impl ReasoningService for ReasoningServiceImpl {
             50
         };
 
+        // Create a handler run record so enrichment shows in the runs tables
+        let run_id = Uuid::now_v7();
+        if let Err(e) = self
+            .repos
+            .activity
+            .create_run(run_id, "_enrichment", "EnrichmentHandler", "run_cycle")
+            .await
+        {
+            error!(error = %e, "failed to create enrichment run record");
+        }
+
         let router = self.router.read().await;
         let cost_tracker = ps_reasoning::cost::CostTracker::new(self.repos.reasoning.clone());
 
@@ -538,6 +595,19 @@ impl ReasoningService for ReasoningServiceImpl {
         let total_errors: usize = results.iter().map(|r| r.errors).sum();
 
         let message = format!("processed {total_processed}, errors {total_errors}");
+
+        // Complete or fail the run record
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        if total_errors > 0 && total_processed == 0 {
+            let _ = self.repos.activity.fail_run(run_id, &message).await;
+        } else {
+            let _ = self
+                .repos
+                .activity
+                .complete_run(run_id, total_processed as i32)
+                .await;
+        }
+
         info!(
             processed = total_processed,
             errors = total_errors,

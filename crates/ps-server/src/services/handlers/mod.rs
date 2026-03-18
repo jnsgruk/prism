@@ -48,6 +48,12 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         "Recomputes metric snapshots for all teams across current week/month/quarter",
         false,
     ),
+    (
+        "EnrichmentHandler",
+        &["run_cycle", "start_schedule"],
+        "AI enrichment pipeline — scores review depth, sentiment, PR significance, and topic classification",
+        false,
+    ),
 ];
 
 /// Map a platform to its Restate ingestion handler name.
