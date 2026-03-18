@@ -4,14 +4,16 @@ use ps_core::crypto;
 use ps_core::repo::Repos;
 use ps_proto::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::prism::v1::{
-    AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
+    AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
     DeleteEnrichmentsByTypeResponse, Enrichment as ProtoEnrichment, EnrichmentTypeCount,
     GetAiSettingsRequest, GetAiSettingsResponse, GetCostSummaryRequest, GetCostSummaryResponse,
     GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
     GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
     GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
-    GetStorageHealthResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
+    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, SetProviderSecretRequest,
+    SetProviderSecretResponse, TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest,
+    UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
@@ -27,6 +29,8 @@ pub struct ReasoningServiceImpl {
     secret_key: Zeroizing<[u8; 32]>,
     router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
     artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
+    restate_url: String,
+    http_client: reqwest::Client,
 }
 
 impl ReasoningServiceImpl {
@@ -35,12 +39,15 @@ impl ReasoningServiceImpl {
         secret_key: Zeroizing<[u8; 32]>,
         router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
         artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
+        restate_url: String,
     ) -> Self {
         Self {
             repos,
             secret_key,
             router,
             artifact_store,
+            restate_url,
+            http_client: reqwest::Client::new(),
         }
     }
 
@@ -133,6 +140,29 @@ impl ReasoningServiceImpl {
         }
 
         Ok(config)
+    }
+
+    /// Fire-and-forget trigger of the `ModelCatalogueHandler` via Restate.
+    async fn trigger_catalogue_refresh(&self) -> bool {
+        let url = format!(
+            "{}/ModelCatalogueHandler/refresh_catalogue/send",
+            self.restate_url,
+        );
+        match self.http_client.post(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                info!("triggered model catalogue refresh via Restate");
+                true
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                tracing::warn!(%status, "failed to trigger model catalogue refresh");
+                false
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to reach Restate for catalogue refresh");
+                false
+            }
+        }
     }
 
     /// Build the proto `AiSettings` from current config + secret status.
@@ -325,7 +355,82 @@ impl ReasoningService for ReasoningServiceImpl {
 
         info!(provider = %req.provider, "provider secret set");
 
+        // Auto-trigger model catalogue refresh so the admin gets up-to-date models
+        self.trigger_catalogue_refresh().await;
+
         Ok(Response::new(SetProviderSecretResponse {}))
+    }
+
+    async fn list_ai_models(
+        &self,
+        request: Request<ListAiModelsRequest>,
+    ) -> Result<Response<ListAiModelsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let provider = if req.provider.is_empty() {
+            None
+        } else {
+            Some(req.provider.as_str())
+        };
+        let capability = if req.capability.is_empty() {
+            None
+        } else {
+            Some(req.capability.as_str())
+        };
+
+        let models = self
+            .repos
+            .config
+            .list_ai_models(provider, capability)
+            .await
+            .map_err(db_err)?;
+
+        let proto_models: Vec<AiModelInfo> = models
+            .into_iter()
+            .map(|m| AiModelInfo {
+                id: m.id,
+                provider: m.provider.to_string(),
+                display_name: m.display_name,
+                description: m.description.unwrap_or_default(),
+                context_length: m.context_length.unwrap_or(0),
+                input_price_per_million: m.input_price,
+                output_price_per_million: m.output_price,
+                capabilities: m.capabilities,
+            })
+            .collect();
+
+        // Fetch last-refreshed timestamps
+        let settings = self
+            .repos
+            .config
+            .list_global_settings("ai.models_refreshed.")
+            .await
+            .map_err(db_err)?;
+        let last_refreshed: std::collections::HashMap<String, String> = settings
+            .into_iter()
+            .filter_map(|s| {
+                let provider_name = s.key.strip_prefix("ai.models_refreshed.")?;
+                let ts = s.value.as_str()?.to_string();
+                Some((provider_name.to_string(), ts))
+            })
+            .collect();
+
+        Ok(Response::new(ListAiModelsResponse {
+            models: proto_models,
+            last_refreshed,
+        }))
+    }
+
+    async fn refresh_model_catalogue(
+        &self,
+        request: Request<RefreshModelCatalogueRequest>,
+    ) -> Result<Response<RefreshModelCatalogueResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let started = self.trigger_catalogue_refresh().await;
+
+        Ok(Response::new(RefreshModelCatalogueResponse { started }))
     }
 
     async fn test_provider(

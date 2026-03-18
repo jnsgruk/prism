@@ -54,7 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
     let metrics_service = MetricsServiceImpl::new(repos.clone());
-    let handlers_service = HandlersServiceImpl::new(repos.clone(), restate_url, restate_admin_url);
+    let handlers_service =
+        HandlersServiceImpl::new(repos.clone(), restate_url.clone(), restate_admin_url);
 
     // AI reasoning — task router with default config, providers set later via admin UI
     let ai_config = ps_reasoning::types::AiConfig::default();
@@ -89,8 +90,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         };
 
-    let reasoning_service =
-        ReasoningServiceImpl::new(repos.clone(), secret_key, router, artifact_store);
+    let reasoning_service = ReasoningServiceImpl::new(
+        repos.clone(),
+        secret_key,
+        router,
+        artifact_store,
+        restate_url,
+    );
 
     // Load AI provider keys from the database so they survive server restarts.
     reasoning_service.load_providers_from_db().await;

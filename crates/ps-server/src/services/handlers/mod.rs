@@ -54,6 +54,12 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         "AI enrichment pipeline — scores review depth, sentiment, PR significance, and topic classification",
         false,
     ),
+    (
+        "ModelCatalogueHandler",
+        &["refresh_catalogue"],
+        "Fetches available models from configured AI providers and caches them locally",
+        false,
+    ),
 ];
 
 /// Map a platform to its Restate ingestion handler name.

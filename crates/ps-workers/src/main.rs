@@ -12,13 +12,14 @@ use ps_workers::handlers::identity_resolution::{
 };
 use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
 use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
+use ps_workers::handlers::model_catalogue::{ModelCatalogueHandler, ModelCatalogueHandlerImpl};
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
 use tracing::{error, info, warn};
 
 #[tokio::main]
-#[allow(clippy::expect_used)]
+#[allow(clippy::expect_used, clippy::too_many_lines)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -132,6 +133,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         router: ai_router,
     };
 
+    let model_catalogue = ModelCatalogueHandlerImpl {
+        state: state.clone(),
+    };
+
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
     let health_addr = format!("0.0.0.0:{health_port}").parse()?;
@@ -167,6 +172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(identity_resolution.serve())
                 .bind(metrics_compute.serve())
                 .bind(enrichment.serve())
+                .bind(model_catalogue.serve())
                 .build(),
         )
         .listen_and_serve(restate_addr)

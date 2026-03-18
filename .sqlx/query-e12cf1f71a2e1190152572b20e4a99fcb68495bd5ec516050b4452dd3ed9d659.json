@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, provider, display_name, description, context_length,\n                   input_price, output_price, capabilities\n            FROM config.ai_models\n            WHERE ($1::text IS NULL OR provider = $1)\n              AND ($2::text IS NULL OR $2 = ANY(capabilities))\n            ORDER BY provider, display_name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "provider",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "context_length",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "input_price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "output_price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "capabilities",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "e12cf1f71a2e1190152572b20e4a99fcb68495bd5ec516050b4452dd3ed9d659"
+}

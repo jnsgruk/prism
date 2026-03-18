@@ -18,6 +18,10 @@ import {
   GetEnrichmentsResponse,
   GetStorageHealthRequest,
   GetStorageHealthResponse,
+  ListAiModelsRequest,
+  ListAiModelsResponse,
+  RefreshModelCatalogueRequest,
+  RefreshModelCatalogueResponse,
   SetProviderSecretRequest,
   SetProviderSecretResponse,
   TestProviderRequest,
@@ -89,6 +93,26 @@ export const ReasoningService = {
       name: "GetCostSummary",
       I: GetCostSummaryRequest,
       O: GetCostSummaryResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Model Catalogue
+     *
+     * @generated from rpc prism.v1.ReasoningService.ListAiModels
+     */
+    listAiModels: {
+      name: "ListAiModels",
+      I: ListAiModelsRequest,
+      O: ListAiModelsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.RefreshModelCatalogue
+     */
+    refreshModelCatalogue: {
+      name: "RefreshModelCatalogue",
+      I: RefreshModelCatalogueRequest,
+      O: RefreshModelCatalogueResponse,
       kind: MethodKind.Unary,
     },
     /**

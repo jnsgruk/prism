@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::{GlobalSetting, Platform, SourceConfig};
+use crate::models::{AiModel, AiProvider, GlobalSetting, Platform, SourceConfig};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -492,5 +492,90 @@ impl ConfigRepo {
             .map_err(Error::from)?;
 
         Ok(result.rows_affected() > 0)
+    }
+
+    // -----------------------------------------------------------------------
+    // AI model catalogue (config.ai_models)
+    // -----------------------------------------------------------------------
+
+    /// Replace all cached models for a provider (full refresh).
+    ///
+    /// Deletes existing entries and inserts the new list in a single transaction
+    /// so deprecated/removed models are cleaned up automatically.
+    pub async fn replace_ai_models(&self, provider: &str, models: &[AiModel]) -> Result<(), Error> {
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+
+        sqlx::query!("DELETE FROM config.ai_models WHERE provider = $1", provider)
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
+        // Insert models individually within the transaction. Model lists are
+        // small (~50-200 per provider) so per-row inserts are fine here; the
+        // UNNEST pattern doesn't work well with TEXT[] columns in sqlx.
+        for m in models {
+            sqlx::query!(
+                r#"
+                INSERT INTO config.ai_models
+                    (id, provider, display_name, description, context_length,
+                     input_price, output_price, capabilities)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                "#,
+                m.id,
+                provider,
+                m.display_name,
+                m.description.as_deref(),
+                m.context_length,
+                m.input_price,
+                m.output_price,
+                &m.capabilities,
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+        }
+
+        tx.commit().await.map_err(Error::from)?;
+        Ok(())
+    }
+
+    /// List cached models, optionally filtered by provider and/or capability.
+    pub async fn list_ai_models(
+        &self,
+        provider: Option<&str>,
+        capability: Option<&str>,
+    ) -> Result<Vec<AiModel>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, provider, display_name, description, context_length,
+                   input_price, output_price, capabilities
+            FROM config.ai_models
+            WHERE ($1::text IS NULL OR provider = $1)
+              AND ($2::text IS NULL OR $2 = ANY(capabilities))
+            ORDER BY provider, display_name
+            "#,
+            provider,
+            capability,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        rows.into_iter()
+            .map(|r| {
+                Ok(AiModel {
+                    id: r.id,
+                    provider: r.provider.parse::<AiProvider>().map_err(|e| {
+                        Error::Internal(format!("invalid provider in ai_models: {e}"))
+                    })?,
+                    display_name: r.display_name,
+                    description: r.description,
+                    context_length: r.context_length,
+                    input_price: r.input_price,
+                    output_price: r.output_price,
+                    capabilities: r.capabilities,
+                })
+            })
+            .collect()
     }
 }

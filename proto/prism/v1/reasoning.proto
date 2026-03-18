@@ -13,6 +13,10 @@ service ReasoningService {
   // Cost Dashboard
   rpc GetCostSummary(GetCostSummaryRequest) returns (GetCostSummaryResponse);
 
+  // Model Catalogue
+  rpc ListAiModels(ListAiModelsRequest) returns (ListAiModelsResponse);
+  rpc RefreshModelCatalogue(RefreshModelCatalogueRequest) returns (RefreshModelCatalogueResponse);
+
   // Enrichments
   rpc GetEnrichments(GetEnrichmentsRequest) returns (GetEnrichmentsResponse);
   rpc GetEnrichmentsByContributions(GetEnrichmentsByContributionsRequest) returns (GetEnrichmentsByContributionsResponse);
@@ -77,6 +81,37 @@ message GetStorageHealthRequest {}
 message GetStorageHealthResponse {
   bool healthy = 1;
   string error_message = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Model Catalogue
+// ---------------------------------------------------------------------------
+
+message AiModelInfo {
+  string id = 1;
+  string provider = 2;
+  string display_name = 3;
+  string description = 4;
+  int32 context_length = 5;
+  optional double input_price_per_million = 6;
+  optional double output_price_per_million = 7;
+  repeated string capabilities = 8;
+}
+
+message ListAiModelsRequest {
+  string provider = 1;     // filter by provider (empty = all)
+  string capability = 2;   // filter by capability (empty = all)
+}
+
+message ListAiModelsResponse {
+  repeated AiModelInfo models = 1;
+  map<string, string> last_refreshed = 2; // provider → ISO timestamp
+}
+
+message RefreshModelCatalogueRequest {}
+
+message RefreshModelCatalogueResponse {
+  bool started = 1;
 }
 
 // ---------------------------------------------------------------------------

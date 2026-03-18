@@ -479,6 +479,7 @@ impl HandlersService for HandlersServiceImpl {
             // Map service handlers to their well-known source names
             match req.handler_name.as_str() {
                 "EnrichmentHandler" => Some("_enrichment".into()),
+                "ModelCatalogueHandler" => Some("_model_catalogue".into()),
                 _ => None,
             }
         });
