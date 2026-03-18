@@ -111,21 +111,24 @@ pub struct S3ArtifactStore {
 }
 
 impl S3ArtifactStore {
-    /// Create from explicit configuration. Typically used in production.
+    /// Create from explicit configuration.
+    ///
+    /// Uses path-style URLs (`http://endpoint/bucket/key`) which is required
+    /// for S3-compatible services like `RustFS` and `MinIO`.
     pub fn new(
         endpoint: &str,
         bucket: &str,
         access_key_id: &str,
         secret_access_key: &str,
-        region: &str,
     ) -> Result<Self, Error> {
         let store = object_store::aws::AmazonS3Builder::new()
             .with_endpoint(endpoint)
             .with_bucket_name(bucket)
             .with_access_key_id(access_key_id)
             .with_secret_access_key(secret_access_key)
-            .with_region(region)
-            .with_allow_http(true) // Dev: non-TLS endpoints
+            .with_region("us-east-1") // Required by the SDK but ignored by RustFS
+            .with_allow_http(true)
+            .with_virtual_hosted_style_request(false) // Force path-style for S3-compatible servers
             .build()
             .map_err(|e| Error::Internal(format!("failed to build S3 client: {e}")))?;
 

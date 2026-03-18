@@ -69,13 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
             let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
-            let region = std::env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".into());
             match ps_core::artifact_store::S3ArtifactStore::new(
                 &endpoint,
                 &bucket,
                 &access_key,
                 &secret_key_s3,
-                &region,
             ) {
                 Ok(store) => {
                     info!(%endpoint, %bucket, "S3 artifact store configured");

@@ -2,22 +2,44 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rustfs
+  labels:
+    app: rustfs
 spec:
+  type: ClusterIP
   selector:
     app: rustfs
   ports:
-    - port: 9000
+    - name: api
+      port: 80
       targetPort: 9000
-      name: s3
-    - port: 9001
+    - name: console
+      port: 9001
       targetPort: 9001
-      name: console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rustfs-headless
+  labels:
+    app: rustfs
+spec:
+  clusterIP: None
+  selector:
+    app: rustfs
+  ports:
+    - name: api
+      port: 80
+    - name: console
+      port: 9001
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: rustfs
+  labels:
+    app: rustfs
 spec:
+  serviceName: rustfs-headless
   replicas: 1
   selector:
     matchLabels:
@@ -30,23 +52,42 @@ spec:
       containers:
         - name: rustfs
           image: rustfs/rustfs:latest
-          args:
-            - /data
-            - --address
-            - "0.0.0.0:9000"
-            - --console-address
-            - "0.0.0.0:9001"
+          command: ["rustfs", "/data", "--console-address", ":9001"]
           ports:
             - containerPort: 9000
+              name: api
             - containerPort: 9001
+              name: console
           env:
             - name: RUSTFS_ACCESS_KEY
-              value: prism
+              valueFrom:
+                secretKeyRef:
+                  name: prism-secrets
+                  key: S3_ACCESS_KEY_ID
             - name: RUSTFS_SECRET_KEY
-              value: prism-dev-password
+              valueFrom:
+                secretKeyRef:
+                  name: prism-secrets
+                  key: S3_SECRET_ACCESS_KEY
           volumeMounts:
             - name: data
               mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
           resources:
             requests:
               memory: "128Mi"
@@ -54,11 +95,50 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
-          readinessProbe:
-            tcpSocket:
-              port: 9000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-      volumes:
-        - name: data
-          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Seed the ps-artifacts bucket after RustFS starts.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rustfs-init
+  labels:
+    app: rustfs
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: rustfs-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          command:
+            - sh
+            - -c
+            - |
+              until mc alias set local http://rustfs "$S3_ACCESS_KEY_ID" "$S3_SECRET_ACCESS_KEY" 2>/dev/null; do
+                echo "Waiting for RustFS..."
+                sleep 2
+              done
+              mc mb --ignore-existing local/ps-artifacts
+          env:
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: prism-secrets
+                  key: S3_ACCESS_KEY_ID
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: prism-secrets
+                  key: S3_SECRET_ACCESS_KEY
