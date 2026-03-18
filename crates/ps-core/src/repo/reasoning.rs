@@ -71,6 +71,10 @@ pub struct EnrichmentRecord {
 }
 
 /// A contribution that is eligible for enrichment (no existing enrichment row).
+///
+/// Derives Serialize/Deserialize so it can be passed through Restate's
+/// `ctx.run()` journal as `Json<Vec<UnenrichedContribution>>`.
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct UnenrichedContribution {
     pub id: Uuid,
     pub contribution_type: String,

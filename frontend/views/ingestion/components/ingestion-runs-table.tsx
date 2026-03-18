@@ -14,11 +14,20 @@ import { defaultStatus, statusConfig } from "@/lib/run-status";
 import type { StatusFilter } from "@/lib/run-status";
 import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 
+const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  _enrichment: "Enrichment",
+  _system: "System",
+};
+
+const displaySourceName = (name: string): string => SOURCE_DISPLAY_NAMES[name] ?? name;
+
 const columns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "sourceName",
     header: "Source",
-    cell: ({ row }) => <span className="font-medium">{row.original.sourceName}</span>,
+    cell: ({ row }) => (
+      <span className="font-medium">{displaySourceName(row.original.sourceName)}</span>
+    ),
   },
   {
     accessorKey: "startedAt",
@@ -139,7 +148,7 @@ export const RunHistoryPanel = ({
                 size="sm"
                 onClick={() => setSourceFilter(name)}
               >
-                {name}
+                {displaySourceName(name)}
               </Button>
             ))}
           </div>

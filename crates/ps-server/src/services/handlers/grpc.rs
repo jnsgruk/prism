@@ -439,6 +439,20 @@ impl HandlersService for HandlersServiceImpl {
             )
         } else {
             // Service handler: /{handler}/{method}/send
+            // Guard against duplicate runs for service handlers
+            let active = self
+                .repos
+                .activity
+                .get_active_handler_runs()
+                .await
+                .map_err(db_err)?;
+            if active.iter().any(|r| r.handler_name == req.handler_name) {
+                return Err(Status::already_exists(format!(
+                    "{} already has an active run",
+                    req.handler_name
+                )));
+            }
+
             (
                 format!(
                     "{}/{}/{}/send",
@@ -458,16 +472,21 @@ impl HandlersService for HandlersServiceImpl {
 
         let invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
 
-        // Store invocation ID for ingestion handlers (for cancellation support)
-        if let Some(ref sn) = source_name_for_db
-            && (req.handler_name == "GithubIngestionHandler"
-                || req.handler_name == "JiraIngestionHandler"
-                || req.handler_name == "DiscourseIngestionHandler")
-        {
+        // Store invocation ID for cancellation support and stale-run reconciliation.
+        // Ingestion handlers key on their source name; service handlers key on
+        // their well-known source name (e.g. "_enrichment").
+        let invocation_key = source_name_for_db.clone().or_else(|| {
+            // Map service handlers to their well-known source names
+            match req.handler_name.as_str() {
+                "EnrichmentHandler" => Some("_enrichment".into()),
+                _ => None,
+            }
+        });
+        if let Some(ref key) = invocation_key {
             let _ = self
                 .repos
                 .activity
-                .set_current_invocation_id(sn, &invocation_id)
+                .set_current_invocation_id(key, &invocation_id)
                 .await;
         }
 

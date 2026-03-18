@@ -50,7 +50,7 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
     ),
     (
         "EnrichmentHandler",
-        &["run_cycle", "start_schedule"],
+        &["run_cycle"],
         "AI enrichment pipeline — scores review depth, sentiment, PR significance, and topic classification",
         false,
     ),

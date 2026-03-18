@@ -324,83 +324,25 @@ where
     }
 }
 
-/// Run a full enrichment cycle: for each enrichment type, find un-enriched
-/// contributions, process them, log costs, and return results.
+/// Store the results of an enrichment batch: upsert enrichments and log API cost.
 ///
-/// Respects the daily budget cap — stops processing if the cap is reached.
-pub async fn run_enrichment_cycle(
-    router: &TaskRouter,
-    repo: &ReasoningRepo,
+/// This is designed to be called inside `ctx.run()` by the Restate handler,
+/// keeping DB writes journaled and idempotent on replay.
+pub async fn log_enrichment_cost(
     cost_tracker: &CostTracker,
-    batch_size: i64,
-) -> Vec<BatchResult> {
-    let budget_cap = router.budget_cap_usd();
-    let task_config = router.task_config(TaskType::Enrichment);
-    let provider_name = task_config.provider.as_str();
-    let model_name = task_config.model.clone();
-
-    let mut results = Vec::new();
-
-    for enrichment_type in EnrichmentType::all() {
-        // Check budget before each enrichment type
-        if let Some(cap) = budget_cap {
-            match cost_tracker.check_budget(cap).await {
-                Ok(true) => {}
-                Ok(false) => {
-                    info!(cap, "daily budget exceeded, pausing enrichment pipeline");
-                    break;
-                }
-                Err(e) => {
-                    warn!(error = %e, "failed to check budget, continuing cautiously");
-                }
-            }
-        }
-
-        let contributions = match repo
-            .find_unenriched_contributions(enrichment_type.as_str(), batch_size)
-            .await
-        {
-            Ok(c) => c,
-            Err(e) => {
-                warn!(
-                    enrichment = enrichment_type.as_str(),
-                    error = %e,
-                    "failed to query unenriched contributions"
-                );
-                continue;
-            }
-        };
-
-        if contributions.is_empty() {
-            debug!(
-                enrichment = enrichment_type.as_str(),
-                "no contributions to enrich"
-            );
-            continue;
-        }
-
-        info!(
-            enrichment = enrichment_type.as_str(),
-            count = contributions.len(),
-            "processing enrichment batch"
-        );
-
-        let batch = process_enrichment_batch(router, repo, *enrichment_type, &contributions).await;
-
-        // Log cost for the batch
-        if batch.total_usage.input_tokens > 0 || batch.total_usage.output_tokens > 0 {
-            cost_tracker
-                .log_usage(
-                    provider_name,
-                    &model_name,
-                    TaskType::Enrichment,
-                    &batch.total_usage,
-                )
-                .await;
-        }
-
-        results.push(batch);
+    provider_name: &str,
+    model_name: &str,
+    batch: &BatchResult,
+) {
+    // Log cost for the batch
+    if batch.total_usage.input_tokens > 0 || batch.total_usage.output_tokens > 0 {
+        cost_tracker
+            .log_usage(
+                provider_name,
+                model_name,
+                TaskType::Enrichment,
+                &batch.total_usage,
+            )
+            .await;
     }
-
-    results
 }

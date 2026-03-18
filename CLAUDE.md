@@ -338,6 +338,26 @@ Sources implement a common `Source` trait. Orchestrated by Restate virtual objec
 
 **GraphQL over REST** for N+1-prone queries (PRs + reviews inline, member search). REST for infrequent operations like team sync.
 
+### Restate Handler Convention
+
+All long-running background work (ingestion, enrichment, embedding, agentic queries) **must** run as Restate handlers — never as synchronous gRPC RPCs. This ensures durability, cancellation, progress tracking, and journal visibility.
+
+**Journaling rules:**
+- **DB operations inside `ctx.run()`** with `.name("step_name")` labels — run creation, data writes, cost logging. These are idempotent on Restate replay.
+- **External API calls (AI providers, GitHub, Jira) outside `ctx.run()`** — responses are large, and re-executing is safe (upserts, idempotent APIs). Never journal API responses.
+- **Secrets outside `ctx.run()`** — decrypt once before the loop, pass into closures. Restate journals `ctx.run()` results, so plaintext secrets must never be inside.
+- **Progress updates outside `ctx.run()`** — call `update_run_progress_detail()` after each batch. Best-effort, doesn't affect replay correctness.
+
+**Run lifecycle:**
+- `create_run()` inside `ctx.run()` — generates `Uuid::now_v7()` inside the closure so retries reuse the journaled ID, preventing ghost duplicate runs.
+- `complete_run()` / `fail_run()` inside `ctx.run()` — idempotent on replay.
+- Invocation ID stored in `ingestion_watermarks` via `set_current_invocation_id()` — enables stale-run reconciliation and cancellation.
+
+**Frontend dispatch:**
+- Use `TriggerHandler` RPC (fire-and-forget to Restate), never synchronous RPCs for long operations.
+- `trigger_handler()` guards against duplicate runs for service handlers (checks for active runs before dispatching).
+- UI shows Run/Cancel toggle with polling for status updates.
+
 ## Testing Strategy
 
 ### Rust — Integration Tests Are Primary
