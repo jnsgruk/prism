@@ -60,7 +60,9 @@ async fn fetch_team_repos(
 
     // Build search query with server-side updated filter.
     let mut query = format!("repo:{owner}/{repo} type:pr");
-    if let Some(ref wm) = cur.watermark {
+    if let Some(ref wm) = cur.watermark
+        && !wm.is_empty()
+    {
         let _ = write!(query, " updated:>{wm}");
     }
 
@@ -254,7 +256,9 @@ async fn fetch_member_search(
     for org in &cur.orgs {
         let _ = write!(query, " org:{org}");
     }
-    if let Some(ref wm) = cur.watermark {
+    if let Some(ref wm) = cur.watermark
+        && !wm.is_empty()
+    {
         let _ = write!(query, " updated:>{wm}");
     }
 
@@ -575,6 +579,7 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
                     .get(&url)
                     .header("Authorization", &auth)
                     .header("User-Agent", "prism-ingestion/0.1")
+                    .timeout(std::time::Duration::from_secs(10))
                     .send()
                     .await;
 
