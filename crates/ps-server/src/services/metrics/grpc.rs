@@ -552,17 +552,19 @@ impl MetricsService for MetricsServiceImpl {
             .await
             .map_err(db_err)?;
 
-        // Fetch historical snapshots for trend data
-        let history_limit = match period_type_val {
-            ps_core::models::PeriodType::Week => 12,
-            ps_core::models::PeriodType::Month => 6,
-            ps_core::models::PeriodType::Quarter => 4,
+        // Fetch historical snapshots for trend data.
+        // Use sub-period granularity: month → weekly bars, quarter → monthly bars.
+        // Week has no sub-period so we show weekly history for context.
+        let (trend_period_type, history_limit) = match period_type_val {
+            ps_core::models::PeriodType::Week => (ps_core::models::PeriodType::Week, 8),
+            ps_core::models::PeriodType::Month => (ps_core::models::PeriodType::Week, 8),
+            ps_core::models::PeriodType::Quarter => (ps_core::models::PeriodType::Month, 6),
         };
 
         let history = self
             .repos
             .metrics
-            .get_snapshot_history(team_id, period_type_val, history_limit)
+            .get_snapshot_history(team_id, trend_period_type, history_limit)
             .await
             .map_err(db_err)?;
 
