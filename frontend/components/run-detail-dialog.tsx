@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Square } from "lucide-react";
+import { AlertTriangle, Loader2, Square } from "lucide-react";
 
 import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
@@ -86,10 +86,24 @@ export const RunDetailDialog = ({
           </div>
           {run.errorMessage && (
             <div>
-              <p className="text-xs text-muted-foreground">Error</p>
-              <p className="mt-1 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {run.errorMessage}
+              <p className="text-xs text-muted-foreground">
+                {run.status === "completed_with_warnings" ? "Warnings" : "Error"}
               </p>
+              <div
+                className={`mt-1 rounded-md px-3 py-2 text-sm ${
+                  run.status === "completed_with_warnings"
+                    ? "border bg-muted/50 text-foreground"
+                    : "bg-destructive/10 text-destructive"
+                }`}
+              >
+                {run.status === "completed_with_warnings" && (
+                  <div className="mb-1 flex items-center gap-1.5 font-medium">
+                    <AlertTriangle className="size-3.5" />
+                    Partial completion
+                  </div>
+                )}
+                <p>{run.errorMessage}</p>
+              </div>
             </div>
           )}
         </div>

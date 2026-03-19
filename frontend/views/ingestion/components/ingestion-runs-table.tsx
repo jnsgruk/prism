@@ -168,6 +168,13 @@ export const RunHistoryPanel = ({
               Completed
             </Button>
             <Button
+              variant={statusFilter === "completed_with_warnings" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("completed_with_warnings")}
+            >
+              Partial
+            </Button>
+            <Button
               variant={statusFilter === "failed" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("failed")}
