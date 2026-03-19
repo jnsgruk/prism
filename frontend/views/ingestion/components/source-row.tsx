@@ -121,55 +121,110 @@ const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
   topic: "Topic",
 };
 
-const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => (
-  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 pt-1 text-xs text-muted-foreground">
-    {detail.prsFetched !== undefined && (
-      <span className="flex items-center gap-1">
-        <GitPullRequest className="size-3" />
-        {detail.prsFetched.toLocaleString()} PRs
-      </span>
+// ---------------------------------------------------------------------------
+// Stat pill — small labelled value used inside detail panels
+// ---------------------------------------------------------------------------
+
+const StatPill = ({
+  label,
+  value,
+  icon,
+  variant,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  variant?: "default" | "warning" | "danger";
+}): React.ReactElement => (
+  <div
+    className={cn(
+      "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5",
+      variant === "warning" && "border-amber-500/30 bg-amber-500/5",
+      variant === "danger" && "border-destructive/30 bg-destructive/5",
+      !variant && "bg-muted/50",
     )}
-    {detail.reviewsFetched !== undefined && (
-      <span className="flex items-center gap-1">
-        <MessageSquare className="size-3" />
-        {detail.reviewsFetched.toLocaleString()} reviews
-      </span>
-    )}
-    {detail.identitiesSkipped !== undefined && (
-      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-        <UserX className="size-3" />
-        {detail.identitiesSkipped} skipped
-      </span>
-    )}
-    {detail.rateLimit && (
+  >
+    {icon}
+    <div className="flex flex-col">
+      <span className="text-[10px] leading-tight text-muted-foreground">{label}</span>
       <span
         className={cn(
-          "tabular-nums",
-          detail.rateLimit.remaining / detail.rateLimit.limit < 0.1 && "text-destructive",
+          "text-xs font-medium tabular-nums leading-tight",
+          variant === "warning" && "text-amber-600 dark:text-amber-400",
+          variant === "danger" && "text-destructive",
         )}
       >
-        {detail.rateLimit.remaining.toLocaleString()}/{detail.rateLimit.limit.toLocaleString()} API
-        calls left
+        {value}
       </span>
-    )}
-    {detail.statusMessage && <span className="truncate italic">{detail.statusMessage}</span>}
+    </div>
   </div>
 );
+
+const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => {
+  const rateLimitLow =
+    detail.rateLimit && detail.rateLimit.remaining / detail.rateLimit.limit < 0.1;
+
+  return (
+    <div className="mx-4 mb-3 mt-1 space-y-2 rounded-md border bg-muted/30 p-3">
+      <div className="flex flex-wrap gap-2">
+        {detail.prsFetched !== undefined && (
+          <StatPill
+            label="PRs"
+            value={detail.prsFetched.toLocaleString()}
+            icon={<GitPullRequest className="size-3 text-muted-foreground" />}
+          />
+        )}
+        {detail.reviewsFetched !== undefined && (
+          <StatPill
+            label="Reviews"
+            value={detail.reviewsFetched.toLocaleString()}
+            icon={<MessageSquare className="size-3 text-muted-foreground" />}
+          />
+        )}
+        {detail.identitiesSkipped !== undefined && (
+          <StatPill
+            label="Skipped"
+            value={String(detail.identitiesSkipped)}
+            icon={<UserX className="size-3" />}
+            variant="warning"
+          />
+        )}
+        {detail.rateLimit && (
+          <StatPill
+            label="API calls left"
+            value={`${detail.rateLimit.remaining.toLocaleString()} / ${detail.rateLimit.limit.toLocaleString()}`}
+            variant={rateLimitLow ? "danger" : undefined}
+          />
+        )}
+      </div>
+      {detail.statusMessage && (
+        <p className="truncate text-xs italic text-muted-foreground">{detail.statusMessage}</p>
+      )}
+    </div>
+  );
+};
 
 const EnrichmentDetail = ({
   status,
 }: {
   status: GetEnrichmentPipelineStatusResponse;
 }): React.ReactElement => (
-  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 pt-1 text-xs text-muted-foreground">
-    <span>Pending: {status.pendingCount.toString()}</span>
-    <span>Total: {status.totalEnrichments.toString()}</span>
-    {status.byType.map((t) => (
-      <span key={t.enrichmentType} className="flex items-center gap-1">
-        {ENRICHMENT_TYPE_LABELS[t.enrichmentType] ?? t.enrichmentType}:{" "}
-        <span className="tabular-nums">{t.count.toString()}</span>
-      </span>
-    ))}
+  <div className="mx-4 mb-3 mt-1 space-y-2 rounded-md border bg-muted/30 p-3">
+    <div className="flex flex-wrap gap-2">
+      <StatPill label="Pending" value={status.pendingCount.toString()} />
+      <StatPill label="Total enriched" value={status.totalEnrichments.toString()} />
+    </div>
+    {status.byType.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {status.byType.map((t) => (
+          <StatPill
+            key={t.enrichmentType}
+            label={ENRICHMENT_TYPE_LABELS[t.enrichmentType] ?? t.enrichmentType}
+            value={t.count.toString()}
+          />
+        ))}
+      </div>
+    )}
   </div>
 );
 
