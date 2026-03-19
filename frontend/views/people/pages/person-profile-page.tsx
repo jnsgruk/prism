@@ -26,6 +26,8 @@ import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
 import { ActivityChart } from "@/views/people/components/activity-chart";
 import { PeerContextPanel } from "@/views/people/components/peer-context-panel";
+import { PersonInsightsSection } from "@/views/people/components/person-insights-section";
+import { usePersonInsights } from "@/views/people/hooks/use-insights";
 
 const PersonProfilePage = (): React.ReactElement => {
   const { personId } = useParams<{ personId: string }>();
@@ -38,6 +40,11 @@ const PersonProfilePage = (): React.ReactElement => {
   const [identitiesOpen, setIdentitiesOpen] = useState(false);
 
   const { data: profile, isLoading, error } = useGetIndividualProfile(personId ?? "", period);
+  const {
+    data: insights,
+    isLoading: insightsLoading,
+    error: insightsError,
+  } = usePersonInsights(personId ?? "", periodKey);
 
   if (!personId) {
     return (
@@ -108,6 +115,13 @@ const PersonProfilePage = (): React.ReactElement => {
           <>
             {/* Metric cards */}
             <ProfileMetricCards profile={profile} />
+
+            {/* Insights */}
+            <PersonInsightsSection
+              insights={insights}
+              isLoading={insightsLoading}
+              error={insightsError}
+            />
 
             {/* Activity chart */}
             <ActivityChart profile={profile} />
