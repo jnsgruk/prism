@@ -1,21 +1,27 @@
 use ps_core::ingestion::ContributionInput;
-use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
+use ps_core::models::{ContributionType, RateLimitInfo};
 use restate_sdk::prelude::*;
 use serde::Serialize;
 use tracing::info;
 
 use super::SharedState;
 use super::ingestion_common::{
-    ProgressTracker, build_ingestion_context, complete_ingestion_run, create_ingestion_run,
-    decrypt_required_secret, extract_failed_items, fail_ingestion_run, finalise_run,
-    load_source_config,
+    IngestionSpec, ProgressTracker, execute_ingestion, load_source_config,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
-use crate::registry;
 
 pub struct GithubIngestionHandlerImpl {
     pub state: SharedState,
 }
+
+const GITHUB_SPEC: IngestionSpec = IngestionSpec {
+    handler_name: "GithubIngestionHandler",
+    token_key: Some("api_token"),
+    token_required: true,
+    email_key: None,
+    api_username_key: None,
+    item_noun: "repo",
+};
 
 #[restate_sdk::object]
 pub trait GithubIngestionHandler {
@@ -33,8 +39,22 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, "starting ingestion run");
 
-        self.execute_ingestion(&ctx, &source_name, &config, None)
-            .await
+        let mut tracker = GithubProgressTracker::default();
+        execute_ingestion(
+            &ctx,
+            &self.state,
+            &GITHUB_SPEC,
+            &source_name,
+            &config,
+            None,
+            &mut tracker,
+            |ctx| {
+                ctx.service_client::<MetricsComputeHandlerClient>()
+                    .compute_current_periods()
+                    .send();
+            },
+        )
+        .await
     }
 
     async fn backfill(
@@ -47,111 +67,22 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting backfill");
 
-        self.execute_ingestion(&ctx, &source_name, &config, Some(since_date))
-            .await
-    }
-}
-
-impl GithubIngestionHandlerImpl {
-    async fn execute_ingestion(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_name: &str,
-        config: &SourceConfig,
-        override_watermark: Option<String>,
-    ) -> Result<(), TerminalError> {
-        let source = registry::create_source(&config.source_type).ok_or_else(|| {
-            TerminalError::new(format!("unsupported source type: {}", config.source_type))
-        })?;
-
-        let method = if override_watermark.is_some() {
-            "backfill"
-        } else {
-            "run_ingestion"
-        };
-        let run_id = create_ingestion_run(
-            ctx,
-            &self.state.repos,
-            source_name,
-            "GithubIngestionHandler",
-            method,
-        )
-        .await?;
-
-        // Decrypt token once per run, outside ctx.run() to avoid journaling
-        let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
-
-        let ing_ctx = build_ingestion_context(&self.state, config, Some(token), None, None);
-        let mut plan = match source.plan(&ing_ctx).await {
-            Ok(p) => p,
-            Err(e) => {
-                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &e.to_string())
-                    .await;
-                return Err(TerminalError::new(format!("plan failed: {e}")));
-            }
-        };
-
-        if let Some(ref wm) = override_watermark {
-            plan.watermark = Some(wm.clone());
-        }
-
-        info!(
-            source = source_name,
-            repos = plan.repos.len(),
-            watermark = ?plan.watermark,
-            "ingestion plan ready"
-        );
-
-        if plan.repos.is_empty() {
-            info!(source = source_name, "no repos to ingest");
-            complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, 0).await;
-            return Ok(());
-        }
-
         let mut tracker = GithubProgressTracker::default();
-        let result = super::ingestion_common::fetch_store_loop(
-            ctx,
-            &ing_ctx,
-            run_id,
-            source_name,
-            &source.initial_cursor(&ing_ctx, &plan),
+        execute_ingestion(
+            &ctx,
+            &self.state,
+            &GITHUB_SPEC,
+            &source_name,
+            &config,
+            Some(since_date),
             &mut tracker,
+            |ctx| {
+                ctx.service_client::<MetricsComputeHandlerClient>()
+                    .compute_current_periods()
+                    .send();
+            },
         )
-        .await;
-
-        let (total_items, final_cursor) = match result {
-            Ok(v) => v,
-            Err(e) => {
-                let msg = e.to_string();
-                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
-                return Err(TerminalError::new(format!("ingestion failed: {msg}")));
-            }
-        };
-
-        let failed_items = extract_failed_items(&final_cursor);
-        finalise_run(
-            ctx,
-            &self.state.repos,
-            &ing_ctx,
-            run_id,
-            source_name,
-            total_items,
-            &failed_items,
-            "repo",
-            &final_cursor,
-            source.watermark_field(),
-        )
-        .await?;
-
-        if total_items > 0 {
-            info!(source = source_name, "triggering metrics recomputation");
-            ctx.service_client::<MetricsComputeHandlerClient>()
-                .compute_current_periods()
-                .send();
-        }
-
-        info!(source = source_name, total_items, "ingestion complete");
-        Ok(())
+        .await
     }
 }
 

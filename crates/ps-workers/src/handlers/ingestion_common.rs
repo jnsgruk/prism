@@ -257,6 +257,125 @@ pub(super) async fn fetch_store_loop(
     Ok((total_items, cursor))
 }
 
+/// Specification for an ingestion handler, describing which secrets to decrypt
+/// and what to call the item type in error summaries.
+pub(super) struct IngestionSpec {
+    pub handler_name: &'static str,
+    /// Secret key name for the API token (e.g. `"api_token"`, `"api_key"`).
+    /// `None` if this source has no token.
+    pub token_key: Option<&'static str>,
+    /// Whether the token is required (error if missing) vs optional.
+    pub token_required: bool,
+    /// Secret key name for an email credential (Jira Basic auth).
+    pub email_key: Option<&'static str>,
+    /// Secret key name for an API username (Discourse).
+    pub api_username_key: Option<&'static str>,
+    /// Noun for items in error summaries (e.g. `"repo"`, `"project"`, `"category"`).
+    pub item_noun: &'static str,
+}
+
+/// Shared ingestion orchestration used by all three ingestion handlers.
+///
+/// Handles: source creation, run creation, secret decryption, planning,
+/// watermark override, fetch/store loop, run finalisation.
+///
+/// The caller provides a `ProgressTracker` for source-specific progress
+/// reporting, and a closure to fire downstream triggers after completion.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn execute_ingestion(
+    ctx: &ObjectContext<'_>,
+    state: &SharedState,
+    spec: &IngestionSpec,
+    source_name: &str,
+    config: &SourceConfig,
+    override_watermark: Option<String>,
+    tracker: &mut (dyn ProgressTracker + Send),
+    trigger_downstream: impl FnOnce(&ObjectContext<'_>),
+) -> Result<(), TerminalError> {
+    let source = registry::create_source(&config.source_type).ok_or_else(|| {
+        TerminalError::new(format!("unsupported source type: {}", config.source_type))
+    })?;
+
+    let method = if override_watermark.is_some() {
+        "backfill"
+    } else {
+        "run_ingestion"
+    };
+    let run_id =
+        create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?;
+
+    // Decrypt secrets outside ctx.run() to avoid journaling plaintext
+    let token = match (spec.token_key, spec.token_required) {
+        (Some(key), true) => Some(decrypt_required_secret(state, config.id, key).await?),
+        (Some(key), false) => decrypt_optional_secret(state, config.id, key).await?,
+        (None, _) => None,
+    };
+    let email = match spec.email_key {
+        Some(key) => decrypt_optional_secret(state, config.id, key).await?,
+        None => None,
+    };
+    let api_username = match spec.api_username_key {
+        Some(key) => decrypt_optional_secret(state, config.id, key).await?,
+        None => None,
+    };
+
+    let ing_ctx = build_ingestion_context(state, config, token, email, api_username);
+
+    let mut plan = match source.plan(&ing_ctx).await {
+        Ok(p) => p,
+        Err(e) => {
+            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &e.to_string()).await;
+            return Err(TerminalError::new(format!("plan failed: {e}")));
+        }
+    };
+
+    if let Some(ref wm) = override_watermark {
+        plan.watermark = Some(wm.clone());
+    }
+
+    tracing::info!(
+        source = source_name,
+        watermark = ?plan.watermark,
+        "ingestion plan ready"
+    );
+
+    let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
+
+    let result =
+        fetch_store_loop(ctx, &ing_ctx, run_id, source_name, &initial_cursor, tracker).await;
+
+    let (total_items, final_cursor) = match result {
+        Ok(v) => v,
+        Err(e) => {
+            let msg = e.to_string();
+            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &msg).await;
+            return Err(TerminalError::new(format!("ingestion failed: {msg}")));
+        }
+    };
+
+    let failed_items = extract_failed_items(&final_cursor);
+    finalise_run(
+        ctx,
+        &state.repos,
+        &ing_ctx,
+        run_id,
+        source_name,
+        total_items,
+        &failed_items,
+        spec.item_noun,
+        &final_cursor,
+        source.watermark_field(),
+    )
+    .await?;
+
+    if total_items > 0 {
+        trigger_downstream(ctx);
+    }
+
+    tracing::info!(source = source_name, total_items, "ingestion complete");
+    Ok(())
+}
+
 /// Construct an `IngestionContext` from shared state and config.
 pub(super) fn build_ingestion_context(
     state: &SharedState,

@@ -1,20 +1,27 @@
-use ps_core::ingestion::{ContributionInput, IngestionPlan};
-use ps_core::models::{RateLimitInfo, SourceConfig};
+use ps_core::ingestion::ContributionInput;
+use ps_core::models::RateLimitInfo;
 use restate_sdk::prelude::*;
 use tracing::info;
 
 use super::SharedState;
 use super::identity_resolution::IdentityResolutionHandlerClient;
 use super::ingestion_common::{
-    ProgressTracker, build_ingestion_context, create_ingestion_run, decrypt_optional_secret,
-    extract_failed_items, fail_ingestion_run, finalise_run, load_source_config,
+    IngestionSpec, ProgressTracker, execute_ingestion, load_source_config,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
-use crate::registry;
 
 pub struct DiscourseIngestionHandlerImpl {
     pub state: SharedState,
 }
+
+const DISCOURSE_SPEC: IngestionSpec = IngestionSpec {
+    handler_name: "DiscourseIngestionHandler",
+    token_key: Some("api_key"),
+    token_required: false,
+    email_key: None,
+    api_username_key: Some("api_username"),
+    item_noun: "category",
+};
 
 #[restate_sdk::object]
 pub trait DiscourseIngestionHandler {
@@ -32,8 +39,25 @@ impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, "starting Discourse ingestion run");
 
-        self.execute_ingestion(&ctx, &source_name, &config, None)
-            .await
+        let mut tracker = DiscourseProgressTracker::default();
+        execute_ingestion(
+            &ctx,
+            &self.state,
+            &DISCOURSE_SPEC,
+            &source_name,
+            &config,
+            None,
+            &mut tracker,
+            |ctx| {
+                ctx.service_client::<MetricsComputeHandlerClient>()
+                    .compute_current_periods()
+                    .send();
+                ctx.service_client::<IdentityResolutionHandlerClient>()
+                    .resolve_identities()
+                    .send();
+            },
+        )
+        .await
     }
 
     async fn backfill(
@@ -46,118 +70,25 @@ impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting Discourse backfill");
 
-        self.execute_ingestion(&ctx, &source_name, &config, Some(since_date))
-            .await
-    }
-}
-
-impl DiscourseIngestionHandlerImpl {
-    async fn execute_ingestion(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_name: &str,
-        config: &SourceConfig,
-        override_watermark: Option<String>,
-    ) -> Result<(), TerminalError> {
-        let source = registry::create_source(&config.source_type).ok_or_else(|| {
-            TerminalError::new(format!("unsupported source type: {}", config.source_type))
-        })?;
-
-        let method = if override_watermark.is_some() {
-            "backfill"
-        } else {
-            "run_ingestion"
-        };
-        let run_id = create_ingestion_run(
-            ctx,
-            &self.state.repos,
-            source_name,
-            "DiscourseIngestionHandler",
-            method,
-        )
-        .await?;
-
-        // Decrypt API key and username once per run, outside ctx.run() to avoid journaling.
-        // API key is optional — Discourse public endpoints work without auth.
-        let api_key = decrypt_optional_secret(&self.state, config.id, "api_key").await?;
-        let api_username = decrypt_optional_secret(&self.state, config.id, "api_username").await?;
-
-        let ing_ctx = build_ingestion_context(&self.state, config, api_key, None, api_username);
-
-        let mut plan: IngestionPlan = match source.plan(&ing_ctx).await {
-            Ok(p) => p,
-            Err(e) => {
-                let msg = e.to_string();
-                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
-                return Err(TerminalError::new(format!("plan failed: {msg}")));
-            }
-        };
-
-        if let Some(ref wm) = override_watermark {
-            plan.watermark = Some(wm.clone());
-        }
-
-        info!(
-            source = source_name,
-            watermark = ?plan.watermark,
-            "Discourse ingestion plan ready"
-        );
-
-        let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
-
         let mut tracker = DiscourseProgressTracker::default();
-        let result = super::ingestion_common::fetch_store_loop(
-            ctx,
-            &ing_ctx,
-            run_id,
-            source_name,
-            &initial_cursor,
+        execute_ingestion(
+            &ctx,
+            &self.state,
+            &DISCOURSE_SPEC,
+            &source_name,
+            &config,
+            Some(since_date),
             &mut tracker,
+            |ctx| {
+                ctx.service_client::<MetricsComputeHandlerClient>()
+                    .compute_current_periods()
+                    .send();
+                ctx.service_client::<IdentityResolutionHandlerClient>()
+                    .resolve_identities()
+                    .send();
+            },
         )
-        .await;
-
-        let (total_items, final_cursor) = match result {
-            Ok(v) => v,
-            Err(e) => {
-                let msg = e.to_string();
-                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
-                return Err(TerminalError::new(format!("ingestion failed: {msg}")));
-            }
-        };
-
-        let failed_items = extract_failed_items(&final_cursor);
-        finalise_run(
-            ctx,
-            &self.state.repos,
-            &ing_ctx,
-            run_id,
-            source_name,
-            total_items,
-            &failed_items,
-            "category",
-            &final_cursor,
-            source.watermark_field(),
-        )
-        .await?;
-
-        if total_items > 0 {
-            info!(source = source_name, "triggering metrics recomputation");
-            ctx.service_client::<MetricsComputeHandlerClient>()
-                .compute_current_periods()
-                .send();
-
-            // Trigger identity resolution across all Discourse sources.
-            info!(source = source_name, "triggering identity resolution");
-            ctx.service_client::<IdentityResolutionHandlerClient>()
-                .resolve_identities()
-                .send();
-        }
-
-        info!(
-            source = source_name,
-            total_items, "Discourse ingestion complete"
-        );
-        Ok(())
+        .await
     }
 }
 
@@ -176,10 +107,10 @@ impl ProgressTracker for DiscourseProgressTracker {
 
     fn build_progress(
         &self,
-        _cursor_json: &str,
+        cursor_json: &str,
         rate_limit: Option<&RateLimitInfo>,
     ) -> serde_json::Value {
-        build_progress_json(_cursor_json, self.topics_fetched, rate_limit)
+        build_progress_json(cursor_json, self.topics_fetched, rate_limit)
     }
 
     fn build_final_progress(&self) -> serde_json::Value {
