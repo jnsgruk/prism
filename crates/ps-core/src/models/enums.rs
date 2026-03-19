@@ -277,6 +277,7 @@ impl FromStr for ContributionState {
 pub enum IngestionStatus {
     Running,
     Completed,
+    CompletedWithWarnings,
     Failed,
     Cancelled,
 }
@@ -292,6 +293,7 @@ impl IngestionStatus {
         match self {
             Self::Running => "running",
             Self::Completed => "completed",
+            Self::CompletedWithWarnings => "completed_with_warnings",
             Self::Failed => "failed",
             Self::Cancelled => "cancelled",
         }
@@ -304,6 +306,7 @@ impl FromStr for IngestionStatus {
         match s {
             "running" => Ok(Self::Running),
             "completed" => Ok(Self::Completed),
+            "completed_with_warnings" => Ok(Self::CompletedWithWarnings),
             "failed" => Ok(Self::Failed),
             "cancelled" => Ok(Self::Cancelled),
             _ => Err(format!("invalid IngestionStatus: {s}")),

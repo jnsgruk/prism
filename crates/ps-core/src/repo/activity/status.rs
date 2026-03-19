@@ -36,7 +36,7 @@ impl ActivityRepo {
                 SELECT completed_at, items_collected
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
-                  AND ir.status = 'completed'
+                  AND ir.status IN ('completed', 'completed_with_warnings')
                 ORDER BY ir.completed_at DESC
                 LIMIT 1
             ) lr ON true

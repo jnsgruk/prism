@@ -97,5 +97,6 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         source_name: ctx.source_config.name.clone(),
         watermark: effective_watermark,
         repos: final_repos,
+        items: vec![],
     })
 }

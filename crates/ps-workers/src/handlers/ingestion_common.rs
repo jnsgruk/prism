@@ -134,6 +134,49 @@ pub(super) async fn complete_ingestion_run(
     }
 }
 
+/// Mark a run as completed with warnings inside a Restate `ctx.run()` closure.
+#[allow(dead_code)] // Used when handlers adopt CompletedWithWarnings in the next commit.
+pub(super) async fn complete_ingestion_run_with_warnings(
+    ctx: &ObjectContext<'_>,
+    repos: &ps_core::repo::Repos,
+    run_id: Uuid,
+    source_name: &str,
+    items_collected: i32,
+    error_summary: &str,
+    metadata: serde_json::Value,
+) {
+    let repos = repos.clone();
+    let sn = source_name.to_string();
+    let err_msg = error_summary.to_string();
+    let meta = metadata;
+    let result = ctx
+        .run(|| {
+            let repos = repos.clone();
+            let sn = sn.clone();
+            let err_msg = err_msg.clone();
+            let meta = meta.clone();
+            async move {
+                repos
+                    .activity
+                    .complete_run_with_warnings(run_id, items_collected, &err_msg, meta)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                repos
+                    .activity
+                    .clear_current_invocation_id(&sn)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                Ok(Json::from(()))
+            }
+        })
+        .name("complete_run_with_warnings")
+        .await;
+
+    if let Err(e) = result {
+        error!(source = source_name, "failed to update run status: {e}");
+    }
+}
+
 /// Mark a run as failed inside a Restate `ctx.run()` closure.
 pub(super) async fn fail_ingestion_run(
     ctx: &ObjectContext<'_>,

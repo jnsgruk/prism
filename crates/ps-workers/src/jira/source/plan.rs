@@ -43,7 +43,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
     Ok(IngestionPlan {
         source_name: ctx.source_config.name.clone(),
         watermark: effective_watermark,
-        // Jira doesn't use the repos field — projects are tracked in the cursor.
         repos: vec![],
+        items: projects,
     })
 }

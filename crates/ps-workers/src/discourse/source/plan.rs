@@ -32,9 +32,20 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         "planned Discourse ingestion"
     );
 
+    let categories: Vec<i64> = ctx
+        .source_config
+        .settings
+        .get("categories")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+
     Ok(IngestionPlan {
         source_name: ctx.source_config.name.clone(),
         watermark: effective_watermark,
         repos: vec![],
+        items: categories
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
     })
 }

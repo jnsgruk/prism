@@ -94,6 +94,19 @@ pub struct IngestionPlan {
     pub source_name: String,
     pub watermark: Option<String>,
     pub repos: Vec<RepoTarget>,
+    /// Generic iteration targets (Jira project keys, Discourse category IDs).
+    /// GitHub uses `repos` instead.
+    #[serde(default)]
+    pub items: Vec<String>,
+}
+
+/// An item (repo, project, category) that failed during an ingestion run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FailedItem {
+    /// Human-readable identifier (e.g. "canonical/lxd", "PROJ-1", "category:5").
+    pub key: String,
+    /// Error message from the failed fetch.
+    pub error: String,
 }
 
 /// A GitHub org/repo pair to fetch data from.

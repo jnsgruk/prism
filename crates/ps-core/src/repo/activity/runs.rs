@@ -47,6 +47,36 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Mark an ingestion run as completed with warnings (partial success).
+    pub async fn complete_run_with_warnings(
+        &self,
+        id: Uuid,
+        items_collected: i32,
+        error_message: &str,
+        metadata: serde_json::Value,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET completed_at = now(),
+                status = 'completed_with_warnings',
+                items_collected = $2,
+                error_message = $3,
+                metadata = $4
+            WHERE id = $1
+            "#,
+            id,
+            items_collected,
+            error_message,
+            metadata,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
     /// Mark an ingestion run as failed with an error message.
     pub async fn fail_run(&self, id: Uuid, error_message: &str) -> Result<(), Error> {
         sqlx::query!(
