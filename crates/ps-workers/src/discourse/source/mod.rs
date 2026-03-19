@@ -83,21 +83,36 @@ impl Source for DiscourseSource {
         store::advance_watermark_impl(ctx, new_watermark, items_collected).await
     }
 
-    fn initial_cursor(&self, plan: &IngestionPlan) -> String {
-        let category_ids: Vec<i64> = plan
-            .items
-            .iter()
-            .filter_map(|s| s.parse::<i64>().ok())
-            .collect();
+    fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
+        let settings = &ctx.source_config.settings;
+
+        let base_url = settings
+            .get("base_url")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .trim_end_matches('/')
+            .to_string();
+
+        let categories: Vec<i64> = settings
+            .get("categories")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        let min_posts = settings
+            .get("min_posts")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0) as i32;
+
+        let instance = extract_instance(&ctx.source_config.name);
 
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
             page: 0,
-            category_ids,
+            category_ids: categories,
             category_index: 0,
-            min_posts: 0,
-            base_url: String::new(),
-            instance: String::new(),
+            min_posts,
+            base_url,
+            instance,
             max_bumped_at: plan.watermark.clone(),
             has_more: true,
             category_map: std::collections::HashMap::new(),

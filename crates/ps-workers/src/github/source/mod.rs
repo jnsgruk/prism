@@ -115,7 +115,7 @@ impl Source for GitHubSource {
         store::advance_watermark_impl(ctx, new_watermark, items_collected).await
     }
 
-    fn initial_cursor(&self, plan: &IngestionPlan) -> String {
+    fn initial_cursor(&self, _ctx: &IngestionContext, plan: &IngestionPlan) -> String {
         let cursor = Cursor {
             phase: IngestionPhase::TeamRepos,
             repo_index: 0,

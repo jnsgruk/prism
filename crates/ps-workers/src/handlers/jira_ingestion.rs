@@ -104,8 +104,7 @@ impl JiraIngestionHandlerImpl {
             "Jira ingestion plan ready"
         );
 
-        // Build the initial cursor with full Jira config
-        let initial_cursor = build_jira_cursor(config, &plan);
+        let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
 
         let result = self
             .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, &initial_cursor)
@@ -220,47 +219,6 @@ impl JiraIngestionHandlerImpl {
 
         Ok((total_items, cursor))
     }
-}
-
-/// Build the initial Jira cursor with full config.
-fn build_jira_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String {
-    let settings = &config.settings;
-
-    let projects: Vec<String> = settings
-        .get("projects")
-        .and_then(|v| serde_json::from_value(v.clone()).ok())
-        .unwrap_or_default();
-
-    let base_url = settings
-        .get("base_url")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("")
-        .to_string();
-
-    let story_points_field = settings
-        .get("story_points_field")
-        .and_then(serde_json::Value::as_str)
-        .map(String::from);
-
-    let api_mode = settings
-        .get("api_mode")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("cloud")
-        .to_string();
-
-    let cursor = crate::jira::source::Cursor {
-        watermark: plan.watermark.clone(),
-        projects,
-        project_index: 0,
-        next_page_token: None,
-        max_updated_at: plan.watermark.clone(),
-        base_url,
-        story_points_field,
-        api_mode,
-        failed_items: vec![],
-    };
-
-    serde_json::to_string(&cursor).unwrap_or_default()
 }
 
 /// Build a structured progress JSON for the Jira ingestion run.

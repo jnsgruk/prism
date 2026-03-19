@@ -157,7 +157,7 @@ impl GithubIngestionHandlerImpl {
         source: &dyn ps_core::ingestion::Source,
         plan: &ps_core::ingestion::IngestionPlan,
     ) -> Result<(i32, String), TerminalError> {
-        let mut cursor = source.initial_cursor(plan);
+        let mut cursor = source.initial_cursor(ing_ctx, plan);
         let mut total_items = 0i32;
         let mut prs_fetched = 0u32;
         let mut reviews_fetched = 0u32;

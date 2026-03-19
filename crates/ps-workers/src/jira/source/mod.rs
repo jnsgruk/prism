@@ -75,16 +75,40 @@ impl Source for JiraSource {
         store::advance_watermark_impl(ctx, new_watermark, items_collected).await
     }
 
-    fn initial_cursor(&self, plan: &IngestionPlan) -> String {
+    fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
+        let settings = &ctx.source_config.settings;
+
+        let projects: Vec<String> = settings
+            .get("projects")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        let base_url = settings
+            .get("base_url")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string();
+
+        let story_points_field = settings
+            .get("story_points_field")
+            .and_then(serde_json::Value::as_str)
+            .map(String::from);
+
+        let api_mode = settings
+            .get("api_mode")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("cloud")
+            .to_string();
+
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
-            projects: plan.items.clone(),
+            projects,
             project_index: 0,
             next_page_token: None,
             max_updated_at: plan.watermark.clone(),
-            base_url: String::new(),
-            story_points_field: None,
-            api_mode: "cloud".into(),
+            base_url,
+            story_points_field,
+            api_mode,
             failed_items: vec![],
         };
         serde_json::to_string(&cursor).unwrap_or_default()

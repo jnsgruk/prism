@@ -104,7 +104,7 @@ impl DiscourseIngestionHandlerImpl {
             "Discourse ingestion plan ready"
         );
 
-        let initial_cursor = build_discourse_cursor(config, &plan);
+        let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
 
         let result = self
             .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, &initial_cursor)
@@ -222,46 +222,6 @@ impl DiscourseIngestionHandlerImpl {
 
         Ok((total_items, cursor))
     }
-}
-
-/// Build the initial Discourse cursor with full config.
-fn build_discourse_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String {
-    let settings = &config.settings;
-
-    let base_url = settings
-        .get("base_url")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("")
-        .trim_end_matches('/')
-        .to_string();
-
-    let categories: Vec<i64> = settings
-        .get("categories")
-        .and_then(|v| serde_json::from_value(v.clone()).ok())
-        .unwrap_or_default();
-
-    let min_posts = settings
-        .get("min_posts")
-        .and_then(serde_json::Value::as_i64)
-        .unwrap_or(0) as i32;
-
-    let instance = crate::discourse::source::extract_instance(&config.name);
-
-    let cursor = crate::discourse::source::Cursor {
-        watermark: plan.watermark.clone(),
-        page: 0,
-        category_ids: categories,
-        category_index: 0,
-        min_posts,
-        base_url,
-        instance,
-        max_bumped_at: plan.watermark.clone(),
-        has_more: true,
-        category_map: std::collections::HashMap::new(),
-        failed_items: vec![],
-    };
-
-    serde_json::to_string(&cursor).unwrap_or_default()
 }
 
 /// Build a structured progress JSON for the Discourse ingestion run.

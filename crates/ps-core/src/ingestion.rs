@@ -169,8 +169,11 @@ pub trait Source: Send + Sync {
     /// Return an initial cursor string for the given plan.
     ///
     /// The default implementation returns a JSON cursor starting at
-    /// repo index 0, page 1, with the plan's watermark.
-    fn initial_cursor(&self, plan: &IngestionPlan) -> String {
+    /// repo index 0, page 1, with the plan's watermark. Source
+    /// implementations may override to include source-specific config
+    /// (e.g. Jira projects, Discourse categories).
+    fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
+        let _ = ctx; // default impl doesn't need context
         serde_json::json!({
             "repo_index": 0,
             "page": 1,
