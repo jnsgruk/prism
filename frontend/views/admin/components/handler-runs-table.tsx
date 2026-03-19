@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
@@ -92,6 +100,14 @@ export const HandlerRunsTable = ({
     setPageIndex(0);
   }, [handlerFilter, statusFilter, pageSize]);
 
+  const { ingestionHandlers, systemHandlers } = useMemo(() => {
+    const ingestionNames = new Set(["EnrichmentHandler"]);
+    return {
+      ingestionHandlers: handlers.filter((h) => h.requiresKey || ingestionNames.has(h.name)),
+      systemHandlers: handlers.filter((h) => !h.requiresKey && !ingestionNames.has(h.name)),
+    };
+  }, [handlers]);
+
   const filteredRuns = useMemo(() => {
     let result = runs;
     if (handlerFilter !== "all") {
@@ -99,6 +115,9 @@ export const HandlerRunsTable = ({
     }
     if (statusFilter !== "all") {
       result = result.filter((r) => r.status === statusFilter);
+    } else {
+      // Default: exclude running entries (visible in sections above)
+      result = result.filter((r) => r.status !== "running");
     }
     return result;
   }, [runs, handlerFilter, statusFilter]);
@@ -121,63 +140,54 @@ export const HandlerRunsTable = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          <Button
-            variant={handlerFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setHandlerFilter("all")}
-          >
-            All handlers
-          </Button>
-          {handlers.map((h) => (
-            <Button
-              key={h.name}
-              variant={handlerFilter === h.name ? "default" : "outline"}
-              size="sm"
-              onClick={() => setHandlerFilter(h.name)}
-            >
-              {displayName(h.name)}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant={statusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={statusFilter === "completed" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("completed")}
-          >
-            Completed
-          </Button>
-          <Button
-            variant={statusFilter === "completed_with_warnings" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("completed_with_warnings")}
-          >
-            Partial
-          </Button>
-          <Button
-            variant={statusFilter === "failed" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("failed")}
-          >
-            Failed
-          </Button>
-          <Button
-            variant={statusFilter === "running" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("running")}
-          >
-            Running
-          </Button>
-        </div>
+      <div className="flex items-center gap-3">
+        {/* Handler filter — grouped select */}
+        <Select value={handlerFilter} onValueChange={(v) => v !== null && setHandlerFilter(v)}>
+          <SelectTrigger className="h-8 w-48 text-xs">
+            <SelectValue placeholder="All handlers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All handlers</SelectItem>
+            {ingestionHandlers.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>Ingestion</SelectLabel>
+                {ingestionHandlers.map((h) => (
+                  <SelectItem key={h.name} value={h.name}>
+                    {displayName(h.name)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+            {systemHandlers.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>System</SelectLabel>
+                {systemHandlers.map((h) => (
+                  <SelectItem key={h.name} value={h.name}>
+                    {displayName(h.name)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+          </SelectContent>
+        </Select>
+
+        {/* Status filter — select */}
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => v !== null && setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="completed_with_warnings">Partial</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="running">Running</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />

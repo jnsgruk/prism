@@ -1,15 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Cog, Loader2, Play, Square } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertCircle, ChevronDown, ChevronRight, History } from "lucide-react";
 import { toast } from "sonner";
 
-import type { HandlerInfo } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { formatRelativeTime } from "@/lib/format";
 import {
   useCancelHandlerRun,
   useListHandlers,
@@ -17,111 +15,27 @@ import {
 } from "@/views/ingestion/hooks/use-ingestion";
 
 import { HandlerRunsTable } from "@/views/admin/components/handler-runs-table";
-import { TriggerHandlerDialog } from "@/views/admin/components/trigger-handler-dialog";
+import { HandlerSection } from "@/views/admin/components/handler-section";
 
-/** Strip the "Handler" suffix for display. */
-const displayName = (name: string): string => name.replace("Handler", "");
-
-const HandlerCard = ({
-  handler,
-  onCancelRun,
-  cancelPending,
-}: {
-  handler: HandlerInfo;
-  onCancelRun: (runId: string) => void;
-  cancelPending: boolean;
-}): React.ReactElement => {
-  const [triggerOpen, setTriggerOpen] = useState(false);
-  const isRunning = !!handler.activeRun;
-
-  return (
-    <>
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-start gap-6 p-5">
-          {/* Left: identity */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <Cog className="size-5 shrink-0 text-muted-foreground" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">{displayName(handler.name)}</p>
-                  {isRunning && (
-                    <Badge variant="default" className="gap-1 text-xs">
-                      <Loader2 className="size-3 animate-spin" />
-                      Running
-                    </Badge>
-                  )}
-                </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{handler.description}</p>
-                <div className="mt-1.5 flex gap-1">
-                  {handler.methods.map((m) => (
-                    <Badge key={m} variant="outline" className="text-xs">
-                      {m}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: actions */}
-          <div className="flex shrink-0 items-center gap-2">
-            {isRunning ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={cancelPending}
-                onClick={() => {
-                  if (handler.activeRun) onCancelRun(handler.activeRun.runId);
-                }}
-              >
-                {cancelPending ? (
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                ) : (
-                  <Square className="mr-1.5 size-3.5" />
-                )}
-                Cancel
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setTriggerOpen(true)}>
-                <Play className="mr-1.5 size-3.5" />
-                Run
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Active run info */}
-        {handler.activeRun && (
-          <>
-            <Separator />
-            <div className="flex gap-6 px-5 py-3 text-xs text-muted-foreground">
-              <span>
-                Method:{" "}
-                <span className="font-medium text-foreground">{handler.activeRun.method}</span>
-              </span>
-              {handler.activeRun.key && (
-                <span>
-                  Source:{" "}
-                  <span className="font-medium text-foreground">{handler.activeRun.key}</span>
-                </span>
-              )}
-              {handler.activeRun.startedAt && (
-                <span>Started {formatRelativeTime(handler.activeRun.startedAt)}</span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-      <TriggerHandlerDialog handler={handler} open={triggerOpen} onOpenChange={setTriggerOpen} />
-    </>
-  );
-};
+const useStatusCounts = (
+  runs: HandlerRun[],
+): { completed: number; failed: number; running: number } =>
+  useMemo(() => {
+    const counts = { completed: 0, failed: 0, running: 0 };
+    for (const r of runs) {
+      if (r.status === "completed" || r.status === "completed_with_warnings") counts.completed++;
+      else if (r.status === "failed") counts.failed++;
+      else if (r.status === "running") counts.running++;
+    }
+    return counts;
+  }, [runs]);
 
 export const HandlersTab = (): React.ReactElement => {
   const { data: handlers, isLoading: handlersLoading, error: handlersError } = useListHandlers();
   const { data: runs } = useListRuns(undefined, { refetchInterval: 5000 });
   const cancelRun = useCancelHandlerRun();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const statusCounts = useStatusCounts(runs ?? []);
 
   const handleCancel = useCallback(
     (runId: string) => {
@@ -133,51 +47,93 @@ export const HandlersTab = (): React.ReactElement => {
     [cancelRun],
   );
 
+  const { ingestionHandlers, systemHandlers } = useMemo(() => {
+    if (!handlers) return { ingestionHandlers: [], systemHandlers: [] };
+    const ingestionNames = new Set(["EnrichmentHandler"]);
+    return {
+      ingestionHandlers: handlers.filter((h) => h.requiresKey || ingestionNames.has(h.name)),
+      systemHandlers: handlers.filter((h) => !h.requiresKey && !ingestionNames.has(h.name)),
+    };
+  }, [handlers]);
+
   return (
     <div className="space-y-6 pt-4">
-      {/* Registered handlers */}
-      <div>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Registered Restate handlers and their available methods.
-        </p>
+      {handlersLoading && <p className="text-sm text-muted-foreground">Loading handlers...</p>}
 
-        {handlersLoading && <p className="text-sm text-muted-foreground">Loading handlers...</p>}
+      {handlersError && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          Failed to load handlers.
+        </Alert>
+      )}
 
-        {handlersError && (
-          <Alert variant="destructive">
-            <AlertCircle className="size-4" />
-            Failed to load handlers.
-          </Alert>
-        )}
+      {handlers && (
+        <>
+          {ingestionHandlers.length > 0 && (
+            <HandlerSection
+              title="Ingestion Handlers"
+              description="Handlers that fetch data from external platforms."
+              handlers={ingestionHandlers}
+              onCancelRun={handleCancel}
+              cancelPending={cancelRun.isPending}
+            />
+          )}
 
-        {handlers && (
-          <div className="space-y-3">
-            {handlers.map((h) => (
-              <HandlerCard
-                key={h.name}
-                handler={h}
+          {systemHandlers.length > 0 && (
+            <HandlerSection
+              title="System Handlers"
+              description="Background tasks for metrics, identity, AI, and maintenance."
+              handlers={systemHandlers}
+              onCancelRun={handleCancel}
+              cancelPending={cancelRun.isPending}
+            />
+          )}
+        </>
+      )}
+
+      {/* Run history — collapsible, collapsed by default */}
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+        <Card>
+          <CardHeader className="cursor-pointer" onClick={() => setHistoryOpen(!historyOpen)}>
+            <CollapsibleTrigger
+              render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
+            >
+              {historyOpen ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              <History className="size-4 text-muted-foreground" />
+              <CardTitle className="text-base">Run History</CardTitle>
+              {statusCounts.completed > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {statusCounts.completed} completed
+                </Badge>
+              )}
+              {statusCounts.failed > 0 && (
+                <Badge variant="destructive" className="ml-1">
+                  {statusCounts.failed} failed
+                </Badge>
+              )}
+              {statusCounts.running > 0 && (
+                <Badge variant="default" className="ml-1">
+                  {statusCounts.running} running
+                </Badge>
+              )}
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <HandlerRunsTable
+                runs={runs ?? []}
+                handlers={handlers ?? []}
                 onCancelRun={handleCancel}
                 cancelPending={cancelRun.isPending}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Run history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Run History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HandlerRunsTable
-            runs={runs ?? []}
-            handlers={handlers ?? []}
-            onCancelRun={handleCancel}
-            cancelPending={cancelRun.isPending}
-          />
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 };
