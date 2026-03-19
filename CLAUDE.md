@@ -328,35 +328,228 @@ Domain concepts (platform, contribution type, state, ingestion status, period ty
 - **File size limit** — split files exceeding ~500 lines into modules. God-files hurt readability and review.
 - **Params structs** — when a function takes >5 parameters, bundle into a struct instead of suppressing `clippy::too_many_arguments`.
 
-### Ingestion
+### Restate Handler Architecture
 
-Sources implement a common `Source` trait. Orchestrated by Restate virtual objects (one per source). Each step (plan, fetch, store, advance) is a named `ctx.run()` side effect. Rate limit backoff uses durable `ctx.sleep()`. Watermarks stored in PostgreSQL.
+All long-running background work **must** run as Restate handlers — never as synchronous gRPC RPCs. This ensures durability, cancellation, progress tracking, and journal visibility.
 
-**Scheduling:** Recurring ingestion uses Restate's durable delayed self-invocation (`ctx.object_client().method().send_with_delay()`), not external cron daemons. Cron expressions stored per-source, evaluated in UTC.
+#### Handler Types
 
-**GitHub two-phase ingestion:** (1) Team repos — fetch PRs/reviews for repos from team sync data. (2) Member search — discover cross-repo contributions by team members via GraphQL search API. Falls back to full org discovery when no teams are configured.
+| Handler | Restate Type | Key | Purpose |
+| --- | --- | --- | --- |
+| `GithubIngestionHandler` | Object | source name | GitHub PR/review ingestion |
+| `JiraIngestionHandler` | Object | source name | Jira issue ingestion |
+| `DiscourseIngestionHandler` | Object | source name | Discourse topic ingestion |
+| `GithubTeamSyncHandler` | Object | source name | GitHub team/member/repo sync |
+| `MetricsComputeHandler` | Service | — | Metric snapshot computation |
+| `EnrichmentHandler` | Service | — | AI enrichment pipeline |
+| `IdentityResolutionHandler` | Service | — | Discourse identity resolution |
+| `ModelCatalogueHandler` | Service | — | AI model catalogue refresh |
+
+**Objects** are per-source (keyed by source type name, e.g. `"github"`). **Services** are singletons.
+
+#### SharedState
+
+All handlers receive `SharedState` (constructed once in `main.rs`, cloned into each handler):
+
+```rust
+pub struct SharedState {
+    pub repos: Repos,                      // Database access (all repos)
+    pub secret_key: Zeroizing<[u8; 32]>,  // AES-256-GCM encryption key
+    pub http_client: reqwest::Client,     // Shared HTTP client (60s timeout)
+}
+```
+
+Handlers never touch `PgPool` directly — always go through `state.repos`.
+
+#### Journaling Rules
+
+| What | Inside `ctx.run()`? | Why |
+| --- | --- | --- |
+| DB writes (store, watermark, run lifecycle) | Yes | Must be idempotent on replay |
+| External API calls (GitHub, Jira, AI) | **No** | Responses are large; re-executing is safe (upserts) |
+| Secret decryption | **No** | Journal persists results — plaintext must never be inside |
+| Progress updates | **No** | Best-effort, doesn't affect replay correctness |
+| Budget/rate-limit reads | **No** | Re-checking on replay is correct |
+
+All `ctx.run()` closures must have `.name("step_name")` labels for journal debugging.
+
+#### Run Lifecycle
+
+Managed by macros in `handlers/run_lifecycle.rs`:
+
+- **`create_run!`** — inside `ctx.run()`, generates `Uuid::now_v7()` inside the closure so retries reuse the journaled ID (no duplicate runs)
+- **`complete_run!`** — inside `ctx.run()`, marks complete + clears `current_invocation_id`
+- **`complete_run_with_warnings!`** — partial failure: records failed items in metadata
+- **`fail_run!`** — inside `ctx.run()`, marks failed + clears `current_invocation_id`
+
+All log errors rather than propagating — run lifecycle failure should not abort the handler.
+
+#### Frontend Dispatch
+
+- Use `TriggerHandler` RPC (fire-and-forget to Restate), never synchronous RPCs for long operations.
+- `trigger_handler()` guards against duplicate runs (checks for active runs before dispatching).
+- UI shows Run/Cancel toggle with polling for status updates.
+
+#### Journal Compatibility
+
+Changing the sequence of `ctx.run()` calls in a handler **breaks in-flight invocations**. Restate replays the journal positionally — if the code now calls different steps at the same indices, you get error 570 ("mismatch between code paths"). After refactoring handler code:
+
+1. Cancel all in-flight invocations for affected handlers
+2. If the CLI can't find them: wipe Restate's journal storage (`/restate-data/`) and restart the pod
+3. Re-register the deployment: `restate deployments register http://ps-workers:9081/ --force --yes`
+
+### Ingestion Handler Pattern
+
+The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion()` in `handlers/ingestion_common.rs`. Platform-specific logic is abstracted behind the `Source` trait.
+
+#### Source Trait (`ps-core/src/ingestion.rs`)
+
+```rust
+pub trait Source: Send + Sync {
+    fn name(&self) -> &'static str;
+    async fn plan(&self, ctx: &IngestionContext) -> Result<IngestionPlan, Error>;
+    async fn fetch_batch(&self, ctx: &IngestionContext, cursor: &str) -> Result<FetchResult, Error>;
+    async fn store_batch(&self, ctx: &IngestionContext, items: &[ContributionInput]) -> Result<usize, Error>;
+    async fn advance_watermark(&self, ctx: &IngestionContext, new_watermark: &str, items: i32) -> Result<(), Error>;
+    fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String;
+    fn watermark_field(&self) -> &'static str { "max_updated_at" }  // Discourse overrides to "max_bumped_at"
+}
+```
+
+Sources are registered in `registry.rs` and instantiated by `create_source(platform)`.
+
+#### IngestionContext
+
+Pre-constructed once per run with **all secrets pre-decrypted** (outside `ctx.run()`):
+
+```rust
+pub struct IngestionContext {
+    pub repos: Repos,
+    pub source_config: SourceConfig,
+    pub http_client: reqwest::Client,
+    pub token: Option<String>,        // Pre-decrypted API token
+    pub email: Option<String>,        // Pre-decrypted email (Jira)
+    pub api_username: Option<String>, // Pre-decrypted username (Discourse)
+}
+```
+
+#### execute_ingestion() Flow
+
+1. **Create source adapter** — `registry::create_source(source_type)`
+2. **Create run record** (journaled) — `Uuid::now_v7()` inside `ctx.run()` for idempotent retries
+3. **Decrypt secrets** (outside `ctx.run()`) — via `decrypt_required_secret()` / `decrypt_optional_secret()`
+4. **Build IngestionContext** — combine state + config + decrypted secrets
+5. **Plan** (not journaled) — determine repos/projects/categories to fetch, load watermark
+6. **Override watermark** if backfilling — replace plan's watermark with user-provided date
+7. **fetch_store_loop()** — batched fetch→store→advance cycle (see below)
+8. **Finalise run** — three outcomes based on failed items
+9. **Trigger downstream** — fire-and-forget to MetricsComputeHandler, etc.
+
+#### IngestionSpec
+
+Each handler defines a static spec describing its secrets and error nouns:
+
+```rust
+const GITHUB_SPEC: IngestionSpec = IngestionSpec {
+    handler_name: "GithubIngestionHandler",
+    token_key: Some("api_token"),
+    token_required: true,
+    email_key: None,
+    api_username_key: None,
+    item_noun: "repo",  // For error summaries like "2 repo(s) failed"
+};
+```
+
+#### fetch_store_loop() — Core Batch Loop
+
+```
+loop {
+    1. fetch_batch()          — NOT journaled (external API, idempotent on replay)
+       └─ wrapped in catch_unwind() to isolate panics
+    2. Update cursor from etag (Jira/Discourse pattern)
+    3. Rate limit warning if remaining < 100
+    4. store_batch()          — journaled inside ctx.run()
+    5. advance_watermark()    — journaled inside ctx.run() (incremental, after each batch)
+    6. Update progress        — NOT journaled (best-effort)
+    7. Break if next_cursor is None
+}
+```
+
+**Incremental watermark advancement**: After each successful `store_batch()`, the watermark is advanced immediately. On retry, only the last incomplete batch needs re-fetching — not the entire run.
+
+#### ProgressTracker Trait
+
+Each handler implements source-specific progress reporting:
+
+```rust
+pub trait ProgressTracker {
+    fn count_batch(&mut self, items: &[ContributionInput], stored: i32);
+    fn build_progress(&self, cursor: &str, rate_limit: Option<&RateLimitInfo>) -> serde_json::Value;
+    fn build_final_progress(&self) -> serde_json::Value;
+}
+```
+
+Progress is stored in the run's `progress` JSONB column and displayed in the UI. Not journaled.
+
+#### Cursor Design
+
+Each source defines its own cursor struct (serialized to JSON). Cursors are **opaque to the orchestration layer** — only `initial_cursor()` and `fetch_batch()` interpret them.
+
+- **GitHub**: Multi-phase (`TeamRepos` → `MemberSearch`), tracks `repo_index`, `graphql_cursor`, `max_updated_at`, `failed_items`
+- **Jira**: Iterates projects, tracks `project_index`, `next_page_token`, `max_updated_at`, `failed_items`
+- **Discourse**: Iterates categories, tracks `category_index`, `page`, `max_bumped_at`
+
+Use `#[serde(default)]` on cursor fields for forward compatibility when evolving structure.
+
+#### Watermark & Finalisation
+
+Three outcomes in `finalise_run()`:
+
+| Outcome | Watermark | Run status |
+| --- | --- | --- |
+| No failures, items > 0 | Advanced (final) | `completed` |
+| All items failed (total = 0) | **Not** advanced | `failed` |
+| Partial failure (some repos/projects failed) | **Not** advanced | `completed_with_warnings` |
+
+Failed items are tracked via `Vec<FailedItem>` in the cursor and extracted at finalisation.
+
+#### Downstream Triggers
+
+After successful ingestion, handlers fire-and-forget to downstream handlers:
+
+```rust
+|ctx| {
+    ctx.service_client::<MetricsComputeHandlerClient>()
+        .compute_current_periods()
+        .send();
+}
+```
+
+Discourse also triggers `IdentityResolutionHandler`. Triggers are **not awaited**.
+
+### GitHub Two-Phase Ingestion
+
+1. **Team repos phase** — fetch PRs/reviews for repos discovered via team sync data. Uses GraphQL for PRs + reviews inline.
+2. **Member search phase** — discover cross-repo contributions by team members via GraphQL search API. Falls back to full org discovery when no teams are configured.
 
 **GraphQL over REST** for N+1-prone queries (PRs + reviews inline, member search). REST for infrequent operations like team sync.
 
-### Restate Handler Convention
+**Scheduling:** Recurring ingestion uses Restate's durable delayed self-invocation (`ctx.object_client().method().send_with_delay()`), not external cron daemons. Cron expressions stored per-source, evaluated in UTC.
 
-All long-running background work (ingestion, enrichment, embedding, agentic queries) **must** run as Restate handlers — never as synchronous gRPC RPCs. This ensures durability, cancellation, progress tracking, and journal visibility.
+### Adding a New Ingestion Handler
 
-**Journaling rules:**
-- **DB operations inside `ctx.run()`** with `.name("step_name")` labels — run creation, data writes, cost logging. These are idempotent on Restate replay.
-- **External API calls (AI providers, GitHub, Jira) outside `ctx.run()`** — responses are large, and re-executing is safe (upserts, idempotent APIs). Never journal API responses.
-- **Secrets outside `ctx.run()`** — decrypt once before the loop, pass into closures. Restate journals `ctx.run()` results, so plaintext secrets must never be inside.
-- **Progress updates outside `ctx.run()`** — call `update_run_progress_detail()` after each batch. Best-effort, doesn't affect replay correctness.
+1. **Source module** — `crates/ps-workers/src/newplatform/source/{mod.rs, plan.rs, fetch.rs, store.rs}`. Implement `Source` trait. Define cursor struct.
+2. **Registry** — add `Platform::NewPlatform => Some(Box::new(NewPlatformSource))` in `registry.rs`
+3. **Handler** — `crates/ps-workers/src/handlers/newplatform_ingestion.rs`. Define `IngestionSpec`, implement `ProgressTracker`, create `#[restate_sdk::object]` trait with `run_ingestion()` and `backfill()`. Call `execute_ingestion()`.
+4. **Export** — add `pub mod newplatform_ingestion` in `handlers/mod.rs`
+5. **Wire up** — instantiate in `main.rs`, bind to Restate endpoint
+6. **Platform enum** — add variant to `Platform` in `ps-core/src/models/enums.rs` if new platform type
 
-**Run lifecycle:**
-- `create_run()` inside `ctx.run()` — generates `Uuid::now_v7()` inside the closure so retries reuse the journaled ID, preventing ghost duplicate runs.
-- `complete_run()` / `fail_run()` inside `ctx.run()` — idempotent on replay.
-- Invocation ID stored in `ingestion_watermarks` via `set_current_invocation_id()` — enables stale-run reconciliation and cancellation.
+### Adding a New System Handler
 
-**Frontend dispatch:**
-- Use `TriggerHandler` RPC (fire-and-forget to Restate), never synchronous RPCs for long operations.
-- `trigger_handler()` guards against duplicate runs for service handlers (checks for active runs before dispatching).
-- UI shows Run/Cancel toggle with polling for status updates.
+1. **Handler** — `crates/ps-workers/src/handlers/newhandler.rs`. Use `#[restate_sdk::service]` (singleton) or `#[restate_sdk::object]` (per-key). Follow journaling rules.
+2. **Export** — add `pub mod newhandler` in `handlers/mod.rs`
+3. **Wire up** — instantiate in `main.rs`, bind to Restate endpoint
 
 ## Testing Strategy
 
