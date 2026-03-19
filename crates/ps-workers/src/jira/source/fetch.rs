@@ -296,7 +296,7 @@ fn map_status_category(category_key: &str) -> Option<ContributionState> {
         "indeterminate" => Some(ContributionState::InProgress),
         "done" => Some(ContributionState::Closed),
         _ => {
-            warn!(category = category_key, "unknown Jira status category");
+            debug!(category = category_key, "unknown Jira status category");
             None
         }
     }
