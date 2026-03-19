@@ -129,6 +129,17 @@ pub struct UpsertSnapshotParams {
     pub raw_insights: serde_json::Value,
 }
 
+/// A stored insight snapshot for a team and period.
+pub struct SnapshotRow {
+    pub avg_review_depth: Option<f32>,
+    pub review_count: i32,
+    pub rubber_stamp_pct: Option<f32>,
+    pub deep_review_pct: Option<f32>,
+    pub significant_count: i32,
+    pub notable_count: i32,
+    pub routine_count: i32,
+}
+
 /// Enrichment-based peer percentile for a single metric.
 pub struct EnrichmentPeerPercentile {
     pub metric_name: String,
@@ -1368,5 +1379,49 @@ impl InsightsRepo {
                 peer_count,
             },
         ])
+    }
+
+    /// Fetch the most recent snapshot for a team before the given period start
+    /// with the same period type. Returns `None` if no prior snapshot exists.
+    pub async fn get_previous_snapshot(
+        &self,
+        team_id: Uuid,
+        period_start: Date,
+        period_type: &str,
+    ) -> Result<Option<SnapshotRow>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                avg_review_depth AS "avg_review_depth: f32",
+                review_count AS "review_count!",
+                rubber_stamp_pct AS "rubber_stamp_pct: f32",
+                deep_review_pct AS "deep_review_pct: f32",
+                significant_count AS "significant_count!",
+                notable_count AS "notable_count!",
+                routine_count AS "routine_count!"
+            FROM reasoning.insight_snapshots
+            WHERE team_id = $1
+              AND period_type = $2
+              AND period_start < $3
+            ORDER BY period_start DESC
+            LIMIT 1
+            "#,
+            team_id,
+            period_type,
+            period_start,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| SnapshotRow {
+            avg_review_depth: r.avg_review_depth,
+            review_count: r.review_count,
+            rubber_stamp_pct: r.rubber_stamp_pct,
+            deep_review_pct: r.deep_review_pct,
+            significant_count: r.significant_count,
+            notable_count: r.notable_count,
+            routine_count: r.routine_count,
+        }))
     }
 }

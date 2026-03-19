@@ -92,6 +92,18 @@ message DepthBySignificance {
   int32 routine_review_count = 6;
 }
 
+// Period-over-period trend deltas from stored snapshots.
+// All delta fields represent "current - previous"; positive = improvement.
+// Only populated when a prior-period snapshot exists.
+message InsightTrend {
+  bool has_previous = 1;            // false if no prior snapshot exists
+  double avg_depth_delta = 2;       // change in avg review depth
+  double rubber_stamp_pct_delta = 3; // change in rubber-stamp % (negative = improvement)
+  double deep_review_pct_delta = 4;  // change in deep review %
+  int32 review_count_delta = 5;      // change in review count
+  int32 significant_count_delta = 6; // change in significant PR count
+}
+
 // ---------------------------------------------------------------------------
 // GetTeamInsights
 // ---------------------------------------------------------------------------
@@ -113,6 +125,7 @@ message TeamInsights {
   TopicCategorySummary discourse_topics = 4;
   repeated NotableContribution notable_items = 5;
   DepthBySignificance depth_by_significance = 6;
+  InsightTrend trend = 7;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +190,7 @@ message OrgInsights {
   repeated NotableContribution org_highlights = 6;
   OrgDeliverySummary delivery = 7;
   DepthBySignificance depth_by_significance = 8;
+  InsightTrend trend = 9;
 }
 
 message TeamReviewComparison {

@@ -4,8 +4,8 @@ use ps_proto::prism::v1::insights_service_server::InsightsService;
 use ps_proto::prism::v1::{
     DepthBySignificance, EnrichmentCoverage, GetOrgInsightsRequest, GetOrgInsightsResponse,
     GetPersonInsightsRequest, GetPersonInsightsResponse, GetTeamInsightsRequest,
-    GetTeamInsightsResponse, NotableContribution, OrgDeliverySummary, OrgInsights, PersonInsights,
-    ReviewQualitySummary, ReviewerDepth, ReviewerProfile, ReviewsReceivedSummary,
+    GetTeamInsightsResponse, InsightTrend, NotableContribution, OrgDeliverySummary, OrgInsights,
+    PersonInsights, ReviewQualitySummary, ReviewerDepth, ReviewerProfile, ReviewsReceivedSummary,
     SignificanceSummary, TeamInsights, TeamReviewComparison, TopicCategoryCount,
     TopicCategorySummary, TypeCoverage,
 };
@@ -42,6 +42,57 @@ fn parse_period_since(period: &str) -> Result<OffsetDateTime, Status> {
         }
     };
     Ok(now - duration)
+}
+
+/// Map a period string to the snapshot `period_type` and approximate `period_start` date.
+#[allow(clippy::result_large_err)]
+fn parse_period_snapshot_params(period: &str) -> Result<(String, time::Date), Status> {
+    let now = OffsetDateTime::now_utc();
+    match period {
+        "last_week" => Ok(("week".to_string(), (now - time::Duration::weeks(1)).date())),
+        "last_month" => Ok(("month".to_string(), (now - time::Duration::days(30)).date())),
+        "last_quarter" => Ok((
+            "quarter".to_string(),
+            (now - time::Duration::days(90)).date(),
+        )),
+        "last_year" => Ok((
+            "quarter".to_string(),
+            (now - time::Duration::days(365)).date(),
+        )),
+        _ => Err(Status::invalid_argument(format!(
+            "invalid period: {period}"
+        ))),
+    }
+}
+
+/// Build an `InsightTrend` from a current review-quality row + significance row
+/// and a previous snapshot.
+#[allow(clippy::cast_lossless)]
+fn build_trend(
+    rq: &insights::ReviewQualityRow,
+    sig: &insights::SignificanceRow,
+    prev: &insights::SnapshotRow,
+) -> InsightTrend {
+    let total = rq.total_reviews;
+    let current_rubber = if total > 0 {
+        f64::from(rq.depth_1) / f64::from(total) * 100.0
+    } else {
+        0.0
+    };
+    let current_deep = if total > 0 {
+        f64::from(rq.depth_4 + rq.depth_5) / f64::from(total) * 100.0
+    } else {
+        0.0
+    };
+
+    InsightTrend {
+        has_previous: true,
+        avg_depth_delta: rq.avg_depth - prev.avg_review_depth.unwrap_or(0.0) as f64,
+        rubber_stamp_pct_delta: current_rubber - prev.rubber_stamp_pct.unwrap_or(0.0) as f64,
+        deep_review_pct_delta: current_deep - prev.deep_review_pct.unwrap_or(0.0) as f64,
+        review_count_delta: total - prev.review_count,
+        significant_count_delta: sig.significant - prev.significant_count,
+    }
 }
 
 fn review_quality_to_proto(
@@ -199,6 +250,21 @@ impl InsightsService for InsightsServiceImpl {
 
         let (total, enriched, by_type) = coverage;
 
+        // Fetch previous-period snapshot for trend deltas
+        let trend =
+            if let Ok((period_type, period_start)) = parse_period_snapshot_params(&req.period) {
+                let prev = self
+                    .repos
+                    .insights
+                    .get_previous_snapshot(team_id, period_start, &period_type)
+                    .await
+                    .ok()
+                    .flatten();
+                prev.map(|p| build_trend(&review_quality, &significance, &p))
+            } else {
+                None
+            };
+
         Ok(Response::new(GetTeamInsightsResponse {
             insights: Some(TeamInsights {
                 coverage: Some(coverage_to_proto(total, enriched, by_type)),
@@ -207,6 +273,7 @@ impl InsightsService for InsightsServiceImpl {
                 discourse_topics: Some(topics_to_proto(topics)),
                 notable_items: notable_to_proto(notable),
                 depth_by_significance: Some(depth_by_sig_to_proto(depth_by_sig)),
+                trend,
             }),
         }))
     }
@@ -375,6 +442,21 @@ impl InsightsService for InsightsServiceImpl {
 
         let (total, enriched, by_type) = coverage;
 
+        // Fetch previous-period snapshot for trend deltas
+        let trend =
+            if let Ok((period_type, period_start)) = parse_period_snapshot_params(&req.period) {
+                let prev = self
+                    .repos
+                    .insights
+                    .get_previous_snapshot(root_team_id, period_start, &period_type)
+                    .await
+                    .ok()
+                    .flatten();
+                prev.map(|p| build_trend(&review_quality, &significance, &p))
+            } else {
+                None
+            };
+
         Ok(Response::new(GetOrgInsightsResponse {
             insights: Some(OrgInsights {
                 coverage: Some(coverage_to_proto(total, enriched, by_type)),
@@ -405,6 +487,7 @@ impl InsightsService for InsightsServiceImpl {
                     active_teams: delivery.active_teams,
                 }),
                 depth_by_significance: Some(depth_by_sig_to_proto(depth_by_sig)),
+                trend,
             }),
         }))
     }
