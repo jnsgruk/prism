@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
+import { useTeamInsights } from "@/views/teams/hooks/use-insights";
 import { CommunityPanel } from "@/views/teams/components/community-panel";
 import { ComparisonTable } from "@/views/teams/components/comparison-table";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
@@ -29,6 +30,7 @@ import {
 } from "@/views/teams/components/period-selector";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
+import { TeamInsightsSection } from "@/views/teams/components/team-insights-section";
 import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
 
 const TeamsPage = (): React.ReactElement => {
@@ -90,6 +92,13 @@ const TeamsPage = (): React.ReactElement => {
   const [prsOpen, setPrsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
+
+  // Enrichment insights (needs hasChildren for include_descendants)
+  const { data: teamInsights, isLoading: insightsLoading } = useTeamInsights(
+    effectiveTeamId,
+    periodKey,
+    hasChildren,
+  );
   const members = teamDetail?.members ?? [];
   const memberCount =
     selectedTeam && selectedTeam.totalMemberCount > 0
@@ -154,6 +163,10 @@ const TeamsPage = (): React.ReactElement => {
             onScrollToReviews={() => scrollToAndOpen(reviewsRef, setReviewsOpen)}
             onScrollToMembers={() => scrollToAndOpen(membersRef, setMembersOpen)}
           />
+        )}
+
+        {selectedTeam && (
+          <TeamInsightsSection insights={teamInsights} isLoading={insightsLoading} />
         )}
 
         {selectedTeam && <FlowPanel metrics={currentMetrics} />}
