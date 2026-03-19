@@ -203,6 +203,29 @@ This is simple enough to inline in the one call site in `fetch_store_loop`.
 
 6. **REST vs GraphQL rate limits**: These are separate pools on GitHub. The diff fetch uses REST; PR/review fetch uses GraphQL. The `rate_limit` field in `FetchResult` should prefer the REST rate limit when diffs were skipped (it's the one that matters for the retry).
 
+## Part 2: GraphQL Rate Limit Handling
+
+### Problem
+
+When the GraphQL rate limit is exhausted (from a prior backfill or heavy usage), a regular `run_ingestion` call hits `API rate limit exceeded` on every repo. The error handler in `fetch_team_repos()` treats each as a per-repo failure, pushing all repos into `failed_items`. With 0 items collected and all repos failed, `finalise_run` marks the entire run as `failed`.
+
+This is wasteful (burns through repos rapidly just to log failures) and prevents recovery without waiting for rate limit reset + manual re-trigger.
+
+### Fix
+
+Detect rate limit errors in the GraphQL fetch error handler. Instead of treating them as per-repo failures, return a `FetchResult` with `rate_limit.remaining == 0` and the `reset_at` time. The existing `fetch_store_loop` logic will then `ctx.sleep()` durably until reset, and the next `fetch_batch()` call will retry the same repo with a fresh rate limit window.
+
+**Key change in `fetch_team_repos()`**: check if the error message contains `"rate limit"`. If so, return a `FetchResult` with empty items, the **same cursor** (don't advance `repo_index`), and a synthetic `RateLimitInfo` with `remaining: 0`. The fetch_store_loop already handles rate-limit-induced sleeps.
+
+Same pattern applies to `fetch_member_search()`.
+
+### Implementation
+
+1. Add a `rate_limit_reset_at` field to the GraphQL error type or parse it from the error message
+2. In `fetch_team_repos()` error handler: if rate limited, return `FetchResult` with `rate_limit.remaining == 0` and `next_cursor` pointing to the same repo (no `repo_index` increment)
+3. In `fetch_store_loop()`: add a durable `ctx.sleep()` when `batch.rate_limit.remaining == 0` and `batch.items.is_empty()` (no items to store, just need to wait)
+4. Same for `fetch_member_search()`
+
 ## Testing
 
 - Unit test `DiffFetchOutcome` construction with skipped items

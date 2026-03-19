@@ -79,6 +79,29 @@ async fn fetch_team_repos(
         .await
     {
         Ok(page) => page,
+        Err(ref e @ crate::github::graphql::GraphQLClientError::GraphQL { ref rate_limit, .. })
+            if e.to_string().contains("rate limit") =>
+        {
+            // GraphQL rate limit exhausted — return with rate_limit info so
+            // fetch_store_loop can ctx.sleep() durably. Don't advance cursor.
+            warn!(
+                source = ctx.source_config.name,
+                repo = %format!("{owner}/{repo}"),
+                "GraphQL rate limit exhausted, deferring for durable sleep"
+            );
+            let rl = rate_limit.clone().unwrap_or(RateLimitInfo {
+                remaining: 0,
+                limit: 5000,
+                reset_at: time::OffsetDateTime::now_utc() + time::Duration::hours(1),
+            });
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: Some(serialise_cursor(cur)?),
+                rate_limit: Some(rl),
+                etag: None,
+                skipped_diffs: vec![],
+            });
+        }
         Err(e) => {
             warn!(
                 source = ctx.source_config.name,
@@ -296,10 +319,34 @@ async fn fetch_member_search(
         let _ = write!(query, " updated:>{wm}");
     }
 
-    let page = client
+    let page = match client
         .search_pull_requests(&query, cur.search_graphql_cursor.as_deref())
         .await
-        .map_err(|e| ps_core::Error::Internal(format!("GitHub GraphQL search error: {e}")))?;
+    {
+        Ok(page) => page,
+        Err(ref e @ crate::github::graphql::GraphQLClientError::GraphQL { ref rate_limit, .. })
+            if e.to_string().contains("rate limit") =>
+        {
+            warn!("GraphQL rate limit exhausted during member search, deferring for durable sleep");
+            let rl = rate_limit.clone().unwrap_or(RateLimitInfo {
+                remaining: 0,
+                limit: 5000,
+                reset_at: time::OffsetDateTime::now_utc() + time::Duration::hours(1),
+            });
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: Some(serialise_cursor(cur)?),
+                rate_limit: Some(rl),
+                etag: None,
+                skipped_diffs: vec![],
+            });
+        }
+        Err(e) => {
+            return Err(ps_core::Error::Internal(format!(
+                "GitHub GraphQL search error: {e}"
+            )));
+        }
+    };
 
     cur.last_rate_limit_remaining = Some(page.rate_limit.remaining);
 

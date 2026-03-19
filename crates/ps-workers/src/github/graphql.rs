@@ -75,7 +75,10 @@ pub enum GraphQLClientError {
         body: String,
     },
     #[error("GraphQL errors: {messages}")]
-    GraphQL { messages: String },
+    GraphQL {
+        messages: String,
+        rate_limit: Option<RateLimitInfo>,
+    },
     #[error("response parse error: {message}")]
     Parse { message: String, body: String },
 }
@@ -224,11 +227,13 @@ impl GitHubGraphQLClient {
             let messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
             return Err(GraphQLClientError::GraphQL {
                 messages: messages.join("; "),
+                rate_limit: Some(rate_limit.clone()),
             });
         }
 
-        let data = response.data.ok_or(GraphQLClientError::GraphQL {
+        let data = response.data.ok_or_else(|| GraphQLClientError::GraphQL {
             messages: "response contained no data".into(),
+            rate_limit: Some(rate_limit.clone()),
         })?;
 
         Ok((data, rate_limit))

@@ -235,6 +235,23 @@ pub(super) async fn fetch_store_loop(
             );
         }
 
+        // If rate limit is exhausted and no items returned, sleep durably
+        // until reset then retry the same cursor (GraphQL rate limit case).
+        if batch.items.is_empty()
+            && batch.next_cursor.is_some()
+            && let Some(ref rl) = batch.rate_limit
+            && rl.remaining == 0
+        {
+            let wait = diff_rate_limit_sleep_duration(rl);
+            tracing::info!(
+                wait_secs = wait.as_secs(),
+                "rate limit exhausted, sleeping durably before retry"
+            );
+            ctx.sleep(wait).await?;
+            // Don't advance cursor — retry the same position after sleep.
+            continue;
+        }
+
         if !batch.items.is_empty() {
             let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
             total_items += stored;
