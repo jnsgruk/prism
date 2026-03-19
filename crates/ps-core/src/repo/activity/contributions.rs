@@ -156,6 +156,36 @@ impl ActivityRepo {
         Ok(rows.into_iter().map(|r| (r.id, r.platform_id)).collect())
     }
 
+    /// Look up contribution IDs by platform and `platform_ids`.
+    ///
+    /// Used to re-enqueue enrichments for contributions whose diffs were
+    /// retried after a rate limit sleep.
+    pub async fn get_contribution_ids_by_platform_ids(
+        &self,
+        platform: &str,
+        platform_ids: &[String],
+    ) -> Result<Vec<(Uuid, String)>, Error> {
+        if platform_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let ids_as_str: Vec<&str> = platform_ids.iter().map(String::as_str).collect();
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, platform_id
+            FROM activity.contributions
+            WHERE platform = $1
+              AND platform_id = ANY($2)
+            "#,
+            platform,
+            &ids_as_str as &[&str],
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows.into_iter().map(|r| (r.id, r.platform_id)).collect())
+    }
+
     /// Backfill `person_id` on Discourse contributions that have a username
     /// stored in `metadata->>'username'` but no `person_id` yet.
     ///

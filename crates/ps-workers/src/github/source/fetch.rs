@@ -20,11 +20,6 @@ const MAX_DIFF_SIZE: usize = 20_000;
 /// When REST rate limit remaining drops below this, pause until reset.
 const REST_RATE_LIMIT_FLOOR: i32 = 50;
 
-/// Max number of rate-limit sleeps before giving up on remaining diffs in a batch.
-/// Each sleep waits until the rate limit window resets (~1 hour worst case), so
-/// 2 sleeps is a reasonable ceiling for a single fetch cycle.
-const MAX_RATE_LIMIT_SLEEPS: u32 = 2;
-
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
     cursor: &str,
@@ -102,6 +97,7 @@ async fn fetch_team_repos(
                 next_cursor: Some(serialise_cursor(cur)?),
                 rate_limit: None,
                 etag: None,
+                skipped_diffs: vec![],
             });
         }
     };
@@ -145,7 +141,7 @@ async fn fetch_team_repos(
     }
 
     // Fetch PR diffs concurrently and attach to enrichment content.
-    fetch_pr_diffs(ctx, &mut items).await;
+    let diff_outcome = fetch_pr_diffs(ctx, &mut items).await;
 
     // Determine next cursor.
     let next_cursor = if page.has_next_page {
@@ -183,8 +179,9 @@ async fn fetch_team_repos(
     Ok(FetchResult {
         items,
         next_cursor,
-        rate_limit: Some(page.rate_limit),
+        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit)),
         etag: None,
+        skipped_diffs: diff_outcome.skipped,
     })
 }
 
@@ -206,6 +203,7 @@ async fn transition_to_member_search(
             next_cursor: None,
             rate_limit: None,
             etag: None,
+            skipped_diffs: vec![],
         });
     }
 
@@ -220,6 +218,7 @@ async fn transition_to_member_search(
             next_cursor: None,
             rate_limit: None,
             etag: None,
+            skipped_diffs: vec![],
         });
     }
 
@@ -266,6 +265,7 @@ async fn fetch_member_search(
             next_cursor: None,
             rate_limit: None,
             etag: None,
+            skipped_diffs: vec![],
         });
     }
 
@@ -339,7 +339,7 @@ async fn fetch_member_search(
     }
 
     // Fetch PR diffs concurrently and attach to enrichment content.
-    fetch_pr_diffs(ctx, &mut items).await;
+    let diff_outcome = fetch_pr_diffs(ctx, &mut items).await;
 
     debug!(
         batch_start = cur.search_user_index,
@@ -365,8 +365,9 @@ async fn fetch_member_search(
     Ok(FetchResult {
         items,
         next_cursor,
-        rate_limit: Some(page.rate_limit),
+        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit)),
         etag: None,
+        skipped_diffs: diff_outcome.skipped,
     })
 }
 
@@ -551,6 +552,14 @@ fn search_pr_to_contributions(
     Ok(items)
 }
 
+/// Outcome of a `fetch_pr_diffs()` call.
+struct DiffFetchOutcome {
+    /// Rate limit info if we hit the REST limit (for durable sleep).
+    rate_limit: Option<RateLimitInfo>,
+    /// PRs that were skipped due to rate limiting.
+    skipped: Vec<ps_core::ingestion::SkippedDiff>,
+}
+
 /// Fetch PR diffs via the REST API (`/pulls/{number}/files`) and attach to
 /// enrichment content.
 ///
@@ -559,12 +568,18 @@ fn search_pr_to_contributions(
 /// (paginated at 100 files). The REST rate limit pool (5,000/hr) is separate
 /// from GraphQL, so diff fetches don't compete with PR/review queries.
 ///
-/// Failures are logged but don't stop ingestion — diffs are optional for
-/// enrichment.
-async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput]) {
+/// When rate-limited, returns immediately with the skipped PRs instead of
+/// sleeping. The caller is responsible for durable sleep + retry.
+async fn fetch_pr_diffs(
+    ctx: &IngestionContext,
+    items: &mut [ContributionInput],
+) -> DiffFetchOutcome {
     let token = ctx.token.as_deref().unwrap_or("");
     if token.is_empty() {
-        return;
+        return DiffFetchOutcome {
+            rate_limit: None,
+            skipped: vec![],
+        };
     }
 
     let api_base = ctx
@@ -592,11 +607,13 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
         .collect();
 
     if pr_targets.is_empty() {
-        return;
+        return DiffFetchOutcome {
+            rate_limit: None,
+            skipped: vec![],
+        };
     }
 
     let mut attached = 0u32;
-    let mut rate_limit_sleeps = 0u32;
 
     let mut i = 0;
     #[allow(clippy::indexing_slicing)] // i is always < pr_targets.len() (loop guard)
@@ -616,26 +633,34 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
                 i += 1;
             }
             DiffFetchResult::RateLimited(rate_limit) => {
-                rate_limit_sleeps += 1;
-                if rate_limit_sleeps > MAX_RATE_LIMIT_SLEEPS {
-                    warn!(
-                        remaining_prs = pr_targets.len() - i,
-                        sleeps = rate_limit_sleeps,
-                        "giving up on diff fetches after too many rate-limit sleeps"
-                    );
-                    break;
-                }
-                // Pause until the rate limit resets, then retry this same PR.
-                let wait = sleep_duration_until_reset(&rate_limit);
+                // Don't sleep — collect remaining PRs as skipped and return.
+                let skipped: Vec<ps_core::ingestion::SkippedDiff> = pr_targets[i..]
+                    .iter()
+                    .map(
+                        |(idx, owner, repo, pr_number)| ps_core::ingestion::SkippedDiff {
+                            item_index: *idx,
+                            owner: owner.clone(),
+                            repo: repo.clone(),
+                            pr_number: *pr_number,
+                        },
+                    )
+                    .collect();
                 warn!(
-                    wait_secs = wait.as_secs(),
-                    remaining = rate_limit.remaining,
+                    skipped = skipped.len(),
                     reset_at = %rate_limit.reset_at,
-                    pr = %format!("{owner}/{repo}#{pr_number}"),
-                    "REST rate limit hit, sleeping then retrying"
+                    "REST rate limit hit, deferring remaining diffs for durable retry"
                 );
-                tokio::time::sleep(wait).await;
-                // Don't increment i — retry this PR after sleep.
+                if attached > 0 {
+                    debug!(
+                        count = attached,
+                        total = pr_targets.len(),
+                        "attached PR diffs via REST API (partial)"
+                    );
+                }
+                return DiffFetchOutcome {
+                    rate_limit: Some(rate_limit),
+                    skipped,
+                };
             }
             DiffFetchResult::Failed => {
                 i += 1;
@@ -650,10 +675,15 @@ async fn fetch_pr_diffs(ctx: &IngestionContext, items: &mut [ContributionInput])
             "attached PR diffs via REST API"
         );
     }
+
+    DiffFetchOutcome {
+        rate_limit: None,
+        skipped: vec![],
+    }
 }
 
 /// Result of fetching diff content for a single PR.
-enum DiffFetchResult {
+pub(crate) enum DiffFetchResult {
     /// Combined patch text (truncated to `MAX_DIFF_SIZE`).
     Ok(String),
     /// Hit rate limit — caller should sleep until reset.
@@ -664,7 +694,7 @@ enum DiffFetchResult {
 
 /// Fetch file patches for a single PR, paginating as needed, and combine into
 /// a single diff string.
-async fn fetch_single_pr_diff(
+pub(crate) async fn fetch_single_pr_diff(
     client: &GitHubClient,
     owner: &str,
     repo: &str,
@@ -756,14 +786,4 @@ async fn fetch_single_pr_diff(
     } else {
         DiffFetchResult::Ok(combined)
     }
-}
-
-/// Compute how long to sleep until a rate limit reset time, with a small buffer.
-fn sleep_duration_until_reset(rate_limit: &RateLimitInfo) -> std::time::Duration {
-    let now = time::OffsetDateTime::now_utc();
-    let delta = rate_limit.reset_at - now;
-    // Add 1s buffer to avoid edge-case where we wake just before reset.
-    let secs = delta.whole_seconds().max(1) + 1;
-    #[allow(clippy::cast_sign_loss)]
-    std::time::Duration::from_secs(secs as u64)
 }

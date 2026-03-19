@@ -50,6 +50,7 @@ pub(super) async fn fetch_batch_impl(
                 next_cursor: None,
                 rate_limit: None,
                 etag: Some(final_cursor),
+                skipped_diffs: vec![],
             });
         };
         Some(proj.clone())
@@ -109,6 +110,7 @@ pub(super) async fn fetch_batch_impl(
                     next_cursor,
                     rate_limit: None,
                     etag: Some(final_cursor),
+                    skipped_diffs: vec![],
                 });
             }
             return Err(e);
@@ -173,6 +175,7 @@ pub(super) async fn fetch_batch_impl(
         next_cursor,
         rate_limit,
         etag: Some(final_cursor),
+        skipped_diffs: vec![],
     })
 }
 

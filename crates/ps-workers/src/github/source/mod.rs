@@ -1,4 +1,4 @@
-mod fetch;
+pub(crate) mod fetch;
 mod plan;
 mod store;
 

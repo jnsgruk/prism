@@ -60,6 +60,7 @@ pub(super) async fn fetch_batch_impl(
                             + time::Duration::seconds(retry_after_secs.cast_signed()),
                     }),
                     etag: None,
+                    skipped_diffs: vec![],
                 });
             }
             Err(e) => return Err(e),
@@ -73,6 +74,7 @@ pub(super) async fn fetch_batch_impl(
                 next_cursor: None,
                 rate_limit: None,
                 etag: Some(final_cursor),
+                skipped_diffs: vec![],
             });
         };
         match client.latest_for_category(cat_id, cur.page).await {
@@ -94,6 +96,7 @@ pub(super) async fn fetch_batch_impl(
                             + time::Duration::seconds(retry_after_secs.cast_signed()),
                     }),
                     etag: None,
+                    skipped_diffs: vec![],
                 });
             }
             Err(e) => {
@@ -121,6 +124,7 @@ pub(super) async fn fetch_batch_impl(
                     next_cursor,
                     rate_limit: None,
                     etag: Some(final_cursor),
+                    skipped_diffs: vec![],
                 });
             }
         }
@@ -142,6 +146,7 @@ pub(super) async fn fetch_batch_impl(
             next_cursor: None,
             rate_limit: None,
             etag: None,
+            skipped_diffs: vec![],
         });
     }
 
@@ -249,6 +254,7 @@ pub(super) async fn fetch_batch_impl(
         // Carry the final cursor state for watermark extraction — next_cursor
         // is None on the last batch, but we still need max_bumped_at.
         etag: Some(final_cursor),
+        skipped_diffs: vec![],
     })
 }
 

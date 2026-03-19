@@ -117,6 +117,16 @@ pub struct RepoTarget {
     pub repo: String,
 }
 
+/// A PR diff that was skipped during fetch due to rate limiting.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SkippedDiff {
+    pub owner: String,
+    pub repo: String,
+    pub pr_number: u32,
+    /// Index into the batch's `items` vec for the corresponding PR.
+    pub item_index: usize,
+}
+
 /// Result of fetching a single batch of data from an external API.
 #[derive(Debug, Clone)]
 pub struct FetchResult {
@@ -125,6 +135,9 @@ pub struct FetchResult {
     pub next_cursor: Option<String>,
     pub rate_limit: Option<RateLimitInfo>,
     pub etag: Option<String>,
+    /// PR diffs skipped due to REST rate limiting. The orchestrator should
+    /// durably sleep then retry these before continuing to the next batch.
+    pub skipped_diffs: Vec<SkippedDiff>,
 }
 
 /// Orchestrator-agnostic interface for data sources.

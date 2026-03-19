@@ -5,7 +5,7 @@
 //! secrets, and running fetch/store/advance loops through Restate `ctx.run()`
 //! closures. This module extracts that boilerplate into free functions.
 
-use ps_core::ingestion::{ContributionInput, FailedItem, IngestionContext};
+use ps_core::ingestion::{ContributionInput, FailedItem, IngestionContext, SkippedDiff};
 use ps_core::models::{RateLimitInfo, SourceConfig};
 use ps_core::repo::Repos;
 use ps_core::repo::reasoning::{EnrichmentQueueEntry, content_hash};
@@ -27,6 +27,9 @@ pub(super) struct SerFetchResult {
     /// `next_cursor` is `None` (final batch). Used by Discourse ingestion.
     #[serde(default)]
     pub etag: Option<String>,
+    /// PR diffs skipped due to REST rate limiting (GitHub only).
+    #[serde(default)]
+    pub skipped_diffs: Vec<SkippedDiff>,
 }
 
 /// Extract a named field from a serialised cursor JSON string.
@@ -249,6 +252,23 @@ pub(super) async fn fetch_store_loop(
             tracing::debug!(batch_stored = stored, total_items, "stored batch");
         }
 
+        // If diffs were skipped due to rate limiting, sleep durably then retry.
+        if !batch.skipped_diffs.is_empty() {
+            if let Some(ref rl) = batch.rate_limit
+                && rl.remaining == 0
+            {
+                let wait = diff_rate_limit_sleep_duration(rl);
+                tracing::info!(
+                    wait_secs = wait.as_secs(),
+                    skipped = batch.skipped_diffs.len(),
+                    "sleeping for REST rate limit reset before retrying diffs"
+                );
+                ctx.sleep(wait).await?;
+            }
+
+            retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs).await?;
+        }
+
         let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
         if let Err(e) = ing_ctx
             .repos
@@ -468,6 +488,7 @@ pub(super) async fn fetch_batch(
         next_cursor: result.next_cursor,
         rate_limit: result.rate_limit,
         etag: result.etag,
+        skipped_diffs: result.skipped_diffs,
     })
 }
 
@@ -602,6 +623,146 @@ pub(super) async fn finalise_run(
         )
         .await;
     }
+    Ok(())
+}
+
+/// Compute how long to sleep until a rate limit reset, with a buffer.
+fn diff_rate_limit_sleep_duration(rate_limit: &RateLimitInfo) -> std::time::Duration {
+    let now = time::OffsetDateTime::now_utc();
+    let delta = rate_limit.reset_at - now;
+    let secs = delta.whole_seconds().max(1) + 1;
+    #[allow(clippy::cast_sign_loss)]
+    std::time::Duration::from_secs(secs as u64)
+}
+
+/// Retry fetching PR diffs that were skipped due to rate limiting,
+/// then re-enqueue the affected contributions for enrichment with
+/// updated content that includes the diff.
+///
+/// Called after a durable `ctx.sleep()` so the rate limit has reset.
+async fn retry_skipped_diffs(
+    ctx: &ObjectContext<'_>,
+    ing_ctx: &IngestionContext,
+    original_items: &[ContributionInput],
+    skipped: &[SkippedDiff],
+) -> Result<(), TerminalError> {
+    let token = ing_ctx.token.as_deref().unwrap_or("");
+    if token.is_empty() {
+        return Ok(());
+    }
+
+    let api_base = ing_ctx
+        .source_config
+        .settings
+        .get("base_url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("https://api.github.com");
+
+    let client =
+        crate::github::client::GitHubClient::new(ing_ctx.http_client.clone(), api_base, token);
+
+    // Fetch diffs for skipped PRs.
+    let mut updated_items: Vec<(String, serde_json::Value)> = Vec::new();
+
+    for sd in skipped {
+        match crate::github::source::fetch::fetch_single_pr_diff(
+            &client,
+            &sd.owner,
+            &sd.repo,
+            sd.pr_number,
+        )
+        .await
+        {
+            crate::github::source::fetch::DiffFetchResult::Ok(diff_text) => {
+                // Get the original enrichment_content and add the diff.
+                if let Some(item) = original_items.get(sd.item_index)
+                    && let Some(ref enrichment) = item.enrichment_content
+                {
+                    let mut content = enrichment.clone();
+                    if let Some(obj) = content.as_object_mut() {
+                        obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
+                    }
+                    let platform_id = item.platform_id.clone();
+                    updated_items.push((platform_id, content));
+                }
+            }
+            crate::github::source::fetch::DiffFetchResult::RateLimited(_) => {
+                tracing::warn!(
+                    remaining = skipped.len() - updated_items.len(),
+                    "diff retry also hit rate limit, skipping remaining"
+                );
+                break;
+            }
+            crate::github::source::fetch::DiffFetchResult::Failed => {}
+        }
+    }
+
+    if updated_items.is_empty() {
+        return Ok(());
+    }
+
+    // Re-enqueue enrichments with updated content (now including diffs).
+    let repos = ing_ctx.repos.clone();
+    let items_for_closure = updated_items.clone();
+
+    let result = ctx
+        .run(|| {
+            let repos = repos.clone();
+            let items = items_for_closure.clone();
+            async move {
+                let platform_ids: Vec<String> = items.iter().map(|(pid, _)| pid.clone()).collect();
+                let id_pairs = repos
+                    .activity
+                    .get_contribution_ids_by_platform_ids("github", &platform_ids)
+                    .await
+                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+
+                let content_by_pid: std::collections::HashMap<&str, &serde_json::Value> = items
+                    .iter()
+                    .map(|(pid, content)| (pid.as_str(), content))
+                    .collect();
+
+                let entries: Vec<ps_core::repo::reasoning::EnrichmentQueueEntry> = id_pairs
+                    .iter()
+                    .filter_map(|(contribution_id, platform_id)| {
+                        let content = content_by_pid.get(platform_id.as_str())?;
+                        Some(ps_core::repo::reasoning::EnrichmentQueueEntry {
+                            contribution_id: *contribution_id,
+                            content: (*content).clone(),
+                            content_hash: ps_core::repo::reasoning::content_hash(content),
+                        })
+                    })
+                    .collect();
+
+                if !entries.is_empty() {
+                    repos
+                        .reasoning
+                        .bulk_enqueue_enrichments(&entries)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("enqueue error: {e}")))?;
+                }
+
+                #[allow(clippy::cast_possible_wrap)]
+                Ok(Json::from(entries.len() as i32))
+            }
+        })
+        .name("retry_diff_enqueue")
+        .await;
+
+    match result {
+        Ok(count) => {
+            let re_enqueued = count.into_inner();
+            tracing::info!(
+                fetched = updated_items.len(),
+                re_enqueued,
+                "retried skipped diffs"
+            );
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to re-enqueue retried diffs");
+        }
+    }
+
     Ok(())
 }
 
