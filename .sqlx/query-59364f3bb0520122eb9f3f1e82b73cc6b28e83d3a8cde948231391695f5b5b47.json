@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams WHERE id = $1\n                UNION ALL\n                SELECT t.id FROM org.teams t\n                JOIN team_tree tt ON t.parent_team_id = tt.id\n                WHERE $3\n            ),\n            scored AS (\n                SELECT\n                    c.id AS contribution_id,\n                    COALESCE(c.title, '') AS title,\n                    COALESCE(c.url, '') AS url,\n                    COALESCE(p.name, '') AS person_name,\n                    c.platform::text AS platform,\n                    c.contribution_type::text AS contribution_type,\n                    e.enrichment_type,\n                    e.value,\n                    COALESCE(e.confidence, 0.0)::double precision AS confidence,\n                    CASE\n                        WHEN e.enrichment_type = 'review_depth'\n                            AND (e.value->>'score')::int = 5 THEN 100\n                        WHEN e.enrichment_type = 'significance'\n                            AND e.value->>'label' = 'significant' THEN 90\n                        WHEN e.enrichment_type = 'review_depth'\n                            AND (e.value->>'score')::int = 4 THEN 80\n                        WHEN e.enrichment_type = 'significance'\n                            AND e.value->>'label' = 'notable' THEN 70\n                        ELSE 0\n                    END AS signal_score\n                FROM reasoning.enrichments e\n                JOIN activity.contributions c ON c.id = e.contribution_id\n                LEFT JOIN org.people p ON p.id = c.person_id\n                JOIN org.team_memberships tm ON tm.person_id = c.person_id\n                JOIN team_tree tt ON tm.team_id = tt.id\n                WHERE c.created_at >= $2\n                  AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n                  AND e.enrichment_type IN ('review_depth', 'significance')\n            )\n            SELECT\n                contribution_id AS \"contribution_id!: Uuid\",\n                title AS \"title!: String\",\n                url AS \"url!: String\",\n                person_name AS \"person_name!: String\",\n                platform AS \"platform!: String\",\n                contribution_type AS \"contribution_type!: String\",\n                enrichment_type AS \"enrichment_type!: String\",\n                CASE\n                    WHEN enrichment_type = 'review_depth'\n                        THEN 'Score ' || (value->>'score') || ' — ' || COALESCE(value->>'rationale', '')\n                    WHEN enrichment_type = 'significance'\n                        THEN COALESCE(value->>'label', '') || ' — ' || COALESCE(value->>'rationale', '')\n                    ELSE ''\n                END AS \"value_summary!: String\",\n                COALESCE(value->>'rationale', '') AS \"rationale!: String\",\n                confidence AS \"confidence!: f64\"\n            FROM scored\n            WHERE signal_score > 0\n            ORDER BY signal_score DESC, confidence DESC\n            LIMIT $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "person_name!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "platform!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "contribution_type!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "enrichment_type!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "value_summary!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "rationale!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "confidence!: f64",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "59364f3bb0520122eb9f3f1e82b73cc6b28e83d3a8cde948231391695f5b5b47"
+}

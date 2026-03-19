@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(AVG((e.value->>'score')::double precision), 0.0) AS \"avg_depth!: f64\",\n                COUNT(*)::int AS \"total!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int >= 4)::int AS \"deep!: i32\"\n            FROM reasoning.enrichments e\n            JOIN activity.contributions review ON review.id = e.contribution_id\n            JOIN activity.contributions pr\n                ON pr.platform = review.platform\n                AND pr.platform_id = review.metrics->>'pr_platform_id'\n                AND pr.contribution_type = 'pull_request'\n            WHERE e.enrichment_type = 'review_depth'\n              AND pr.person_id = $1\n              AND review.created_at >= $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_depth!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "deep!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "43905d2a602a00406b995d0bed86ec8ca93d584cc835ed5491704966db49a9a0"
+}

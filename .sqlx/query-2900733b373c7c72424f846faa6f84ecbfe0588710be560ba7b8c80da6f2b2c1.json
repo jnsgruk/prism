@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(AVG((e.value->>'score')::double precision), 0.0) AS \"avg_depth!: f64\",\n                COUNT(*)::int AS \"total_reviews!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 1)::int AS \"depth_1!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 2)::int AS \"depth_2!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 3)::int AS \"depth_3!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 4)::int AS \"depth_4!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 5)::int AS \"depth_5!: i32\"\n            FROM reasoning.enrichments e\n            JOIN activity.contributions c ON c.id = e.contribution_id\n            WHERE e.enrichment_type = 'review_depth'\n              AND c.person_id = $1\n              AND c.created_at >= $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_depth!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_reviews!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "depth_1!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "depth_2!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "depth_3!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "depth_4!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "depth_5!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "2900733b373c7c72424f846faa6f84ecbfe0588710be560ba7b8c80da6f2b2c1"
+}

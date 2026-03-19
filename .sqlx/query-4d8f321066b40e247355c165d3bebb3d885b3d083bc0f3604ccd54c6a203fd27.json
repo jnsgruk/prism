@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams WHERE id = $1\n                UNION ALL\n                SELECT t.id FROM org.teams t\n                JOIN team_tree tt ON t.parent_team_id = tt.id\n                WHERE $3\n            )\n            SELECT\n                COALESCE(AVG((e.value->>'score')::double precision), 0.0) AS \"avg_depth!: f64\",\n                COUNT(*)::int AS \"total_reviews!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 1)::int AS \"depth_1!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 2)::int AS \"depth_2!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 3)::int AS \"depth_3!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 4)::int AS \"depth_4!: i32\",\n                COUNT(*) FILTER (WHERE (e.value->>'score')::int = 5)::int AS \"depth_5!: i32\",\n                -- Sentiment (from separate enrichment rows, counted via subquery)\n                0::int AS \"constructive!: i32\",\n                0::int AS \"neutral!: i32\",\n                0::int AS \"critical!: i32\",\n                0::int AS \"hostile!: i32\"\n            FROM reasoning.enrichments e\n            JOIN activity.contributions c ON c.id = e.contribution_id\n            JOIN org.team_memberships tm ON tm.person_id = c.person_id\n            JOIN team_tree tt ON tm.team_id = tt.id\n            WHERE e.enrichment_type = 'review_depth'\n              AND c.created_at >= $2\n              AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_depth!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_reviews!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "depth_1!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "depth_2!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "depth_3!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "depth_4!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "depth_5!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "constructive!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "neutral!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "critical!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "hostile!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4d8f321066b40e247355c165d3bebb3d885b3d083bc0f3604ccd54c6a203fd27"
+}
