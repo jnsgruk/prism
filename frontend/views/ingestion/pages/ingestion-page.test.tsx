@@ -121,26 +121,32 @@ describe("IngestionPage", () => {
     expect(runButtons.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("renders run history panel with table", async () => {
+  it("renders run history panel with status pills", async () => {
     await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Table should show run data — "Completed" appears as both filter button and status badge
-    expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(2);
+    // Collapsed header shows status count pills
+    expect(screen.getByText("1 completed")).toBeInTheDocument();
+    expect(screen.getByText("1 failed")).toBeInTheDocument();
   });
 
-  it("renders status filter controls in run history panel", async () => {
+  it("expands run history to show filters and table", async () => {
     await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Status filter buttons
-    expect(screen.getByRole("button", { name: "Completed" })).toBeInTheDocument();
+    // Expand the collapsible run history
+    screen.getByText("Run History").click();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Completed" })).toBeInTheDocument();
+    });
+
     expect(screen.getByRole("button", { name: "Failed" })).toBeInTheDocument();
   });
 });
