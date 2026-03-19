@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH peer_review_stats AS (\n                SELECT\n                    c.person_id,\n                    AVG((e.value->>'score')::double precision) AS avg_depth,\n                    COUNT(*)::int AS review_count,\n                    (COUNT(*) FILTER (WHERE (e.value->>'score')::int = 1)::double precision\n                     / NULLIF(COUNT(*), 0)::double precision * 100) AS rubber_stamp_pct\n                FROM reasoning.enrichments e\n                JOIN activity.contributions c ON c.id = e.contribution_id\n                JOIN org.people p ON p.id = c.person_id\n                WHERE e.enrichment_type = 'review_depth'\n                  AND c.created_at >= $1\n                  AND p.level = $2\n                  AND c.person_id IS NOT NULL\n                GROUP BY c.person_id\n                HAVING COUNT(*) >= 5\n            ),\n            person_stats AS (\n                SELECT avg_depth, rubber_stamp_pct\n                FROM peer_review_stats\n                WHERE person_id = $3\n            ),\n            depth_rank AS (\n                SELECT\n                    COUNT(*)::int AS peer_count,\n                    COUNT(*) FILTER (WHERE avg_depth <= (SELECT avg_depth FROM person_stats))::int AS depth_rank,\n                    COUNT(*) FILTER (WHERE rubber_stamp_pct >= (SELECT rubber_stamp_pct FROM person_stats))::int AS rubber_stamp_rank\n                FROM peer_review_stats\n            )\n            SELECT\n                ps.avg_depth AS \"avg_depth!\",\n                ps.rubber_stamp_pct AS \"rubber_stamp_pct!\",\n                dr.peer_count AS \"peer_count!\",\n                dr.depth_rank AS \"depth_rank!\",\n                dr.rubber_stamp_rank AS \"rubber_stamp_rank!\"\n            FROM person_stats ps, depth_rank dr\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_depth!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "rubber_stamp_pct!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "peer_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "depth_rank!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "rubber_stamp_rank!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "13a4bf7d51c7e63aa04a10b737f73c81a4de68e22a38ab15c0d2e3ed55e1ddc5"
+}
