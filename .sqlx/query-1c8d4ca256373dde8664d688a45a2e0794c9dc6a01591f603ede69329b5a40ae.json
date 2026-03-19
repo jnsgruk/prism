@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams\n                WHERE ($1::uuid IS NULL AND parent_team_id IS NULL)\n                   OR id = $1\n                UNION ALL\n                SELECT t.id FROM org.teams t\n                JOIN team_tree tt ON t.parent_team_id = tt.id\n            ),\n            scoped AS (\n                SELECT DISTINCT c.id, c.contribution_type, c.state, c.platform, c.person_id\n                FROM activity.contributions c\n                JOIN org.team_memberships tm ON tm.person_id = c.person_id\n                JOIN team_tree tt ON tm.team_id = tt.id\n                WHERE c.created_at >= $2\n                  AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            )\n            SELECT\n                COUNT(*) FILTER (WHERE contribution_type = 'pull_request' AND state = 'merged')::int\n                    AS \"prs_merged!: i32\",\n                COUNT(*) FILTER (WHERE contribution_type = 'pr_review')::int\n                    AS \"reviews!: i32\",\n                COUNT(*) FILTER (WHERE contribution_type = 'jira_ticket' AND state = 'closed')::int\n                    AS \"jira_closed!: i32\",\n                COUNT(*) FILTER (WHERE contribution_type = 'discourse_topic')::int\n                    AS \"discourse_topics!: i32\",\n                COUNT(*) FILTER (WHERE contribution_type = 'discourse_post')::int\n                    AS \"discourse_posts!: i32\",\n                COUNT(DISTINCT person_id)::int\n                    AS \"active_contributors!: i32\",\n                (SELECT COUNT(DISTINCT tt2.id)::int\n                 FROM team_tree tt2\n                 JOIN org.team_memberships tm2 ON tm2.team_id = tt2.id\n                 JOIN scoped s ON s.person_id = tm2.person_id)\n                    AS \"active_teams!: i32\"\n            FROM scoped\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prs_merged!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "reviews!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "jira_closed!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "discourse_topics!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "discourse_posts!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "active_contributors!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "active_teams!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "1c8d4ca256373dde8664d688a45a2e0794c9dc6a01591f603ede69329b5a40ae"
+}
