@@ -107,7 +107,7 @@ impl JiraIngestionHandlerImpl {
         // Build the initial cursor with full Jira config
         let initial_cursor = build_jira_cursor(config, &plan);
 
-        let (total_items, final_cursor) = self
+        let result = self
             .fetch_store_loop(
                 ctx,
                 run_id,
@@ -116,7 +116,16 @@ impl JiraIngestionHandlerImpl {
                 &initial_cursor,
                 ing_ctx.token.as_deref(),
             )
-            .await?;
+            .await;
+
+        let (total_items, final_cursor) = match result {
+            Ok(v) => v,
+            Err(e) => {
+                let msg = e.to_string();
+                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
+                return Err(TerminalError::new(format!("ingestion failed: {msg}")));
+            }
+        };
 
         // Extract failed_items from final cursor
         let failed_items: Vec<FailedItem> =
