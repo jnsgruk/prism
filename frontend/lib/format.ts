@@ -59,3 +59,17 @@ export const formatRelativeTime = (ts: Timestamp): string => {
   if (diffDays < 30) return `${String(diffDays)}d ago`;
   return formatDateOnly(ts);
 };
+
+/** Relative time from an ISO 8601 string: "5m ago", "2h ago", "1d ago". */
+export const formatRelativeTimeIso = (isoString: string): string => {
+  const date = new Date(isoString);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${String(diffMins)}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${String(diffHours)}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${String(diffDays)}d ago`;
+};

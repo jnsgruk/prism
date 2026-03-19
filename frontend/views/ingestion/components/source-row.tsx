@@ -1,17 +1,10 @@
+import { DOT_SEP, Stat } from "@/components/inline-stat";
+import { CancelButton, RunButton } from "@/components/run-cancel-buttons";
+import { StatusDot, stateStyles } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  Brain,
-  ChevronRight,
-  GitPullRequest,
-  Loader2,
-  MessageSquare,
-  Play,
-  RotateCcw,
-  Square,
-  UserX,
-} from "lucide-react";
+import { Brain, ChevronRight, GitPullRequest, MessageSquare, RotateCcw, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
@@ -19,7 +12,7 @@ import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 import type { GetEnrichmentPipelineStatusResponse } from "@ps/api/gen/prism/v1/reasoning_pb";
 import { cn } from "@ps/cn";
 
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTime, formatRelativeTimeIso } from "@/lib/format";
 import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
 import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
 import { BackfillDialog } from "./backfill-dialog";
@@ -42,16 +35,8 @@ export type SourceRowData =
     };
 
 // ---------------------------------------------------------------------------
-// State indicator dot
+// State helpers
 // ---------------------------------------------------------------------------
-
-const stateStyles: Record<string, { color: string; label: string }> = {
-  collecting: { color: "bg-blue-500", label: "Collecting" },
-  waiting: { color: "bg-amber-500", label: "Waiting" },
-  idle: { color: "bg-emerald-500", label: "Idle" },
-  error: { color: "bg-destructive", label: "Error" },
-  running: { color: "bg-blue-500", label: "Running" },
-};
 
 const stateFromEnum = (state: SourceState): string => {
   switch (state) {
@@ -66,23 +51,6 @@ const stateFromEnum = (state: SourceState): string => {
     default:
       return "idle";
   }
-};
-
-const StatusDot = ({ state, animate }: { state: string; animate: boolean }): React.ReactElement => {
-  const color = stateStyles[state]?.color ?? "bg-emerald-500";
-  return (
-    <span className="relative flex size-2.5">
-      {animate && (
-        <span
-          className={cn(
-            "absolute inline-flex size-full animate-ping rounded-full opacity-75",
-            color,
-          )}
-        />
-      )}
-      <span className={cn("relative inline-flex size-2.5 rounded-full", color)} />
-    </span>
-  );
 };
 
 // ---------------------------------------------------------------------------
@@ -111,39 +79,8 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
 );
 
 // ---------------------------------------------------------------------------
-// Detail expansion — secondary info shown on click
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Detail expansion — compact inline stats
 // ---------------------------------------------------------------------------
-
-const Stat = ({
-  label,
-  value,
-  icon,
-  variant,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-  variant?: "warning" | "danger";
-}): React.ReactElement => (
-  <span
-    className={cn(
-      "inline-flex items-center gap-1 text-xs tabular-nums",
-      variant === "warning" && "text-amber-600 dark:text-amber-400",
-      variant === "danger" && "text-destructive",
-      !variant && "text-muted-foreground",
-    )}
-  >
-    {icon}
-    <span className="font-medium">{value}</span>
-    <span className="text-muted-foreground">{label}</span>
-  </span>
-);
-
-const DOT_SEP = <span className="text-muted-foreground/50">·</span>;
 
 const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => {
   const rateLimitLow =
@@ -256,42 +193,6 @@ const RowIcon = ({
   }
   return <span />;
 };
-
-// ---------------------------------------------------------------------------
-// Action buttons — extracted to avoid nested ternaries
-// ---------------------------------------------------------------------------
-
-const CancelButton = ({
-  onClick,
-  isPending,
-}: {
-  onClick: () => void;
-  isPending: boolean;
-}): React.ReactElement => (
-  <Button
-    variant="ghost"
-    size="sm"
-    className="h-7 text-destructive hover:text-destructive"
-    onClick={onClick}
-    disabled={isPending}
-  >
-    {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
-    <span className="ml-1 hidden sm:inline">Cancel</span>
-  </Button>
-);
-
-const RunButton = ({
-  onClick,
-  isPending,
-}: {
-  onClick: () => void;
-  isPending: boolean;
-}): React.ReactElement => (
-  <Button variant="ghost" size="sm" className="h-7" onClick={onClick} disabled={isPending}>
-    {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-    <span className="ml-1 hidden sm:inline">Run</span>
-  </Button>
-);
 
 // ---------------------------------------------------------------------------
 // Main row component
@@ -472,18 +373,4 @@ export const SourceRow = ({
       )}
     </>
   );
-};
-
-// Local helper — matches the format module's signature but for ISO strings
-const formatRelativeTimeIso = (isoString: string): string => {
-  const date = new Date(isoString);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${String(diffMins)}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${String(diffHours)}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${String(diffDays)}d ago`;
 };
