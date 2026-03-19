@@ -1,5 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -131,27 +138,22 @@ export const RunHistoryPanel = ({
       <h2 className="mb-3 text-sm font-semibold">Run History</h2>
 
       <div className="space-y-4">
-        {/* Filters — same layout pattern as PeopleTab */}
+        {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1">
-            <Button
-              variant={sourceFilter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSourceFilter("all")}
-            >
-              All sources
-            </Button>
-            {sourceNames.map((name) => (
-              <Button
-                key={name}
-                variant={sourceFilter === name ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSourceFilter(name)}
-              >
-                {displaySourceName(name)}
-              </Button>
-            ))}
-          </div>
+          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v ?? "all")}>
+            <SelectTrigger size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sourceNames.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {displaySourceName(name)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-1">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}

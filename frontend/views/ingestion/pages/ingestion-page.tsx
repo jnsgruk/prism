@@ -1,14 +1,13 @@
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { Activity, Loader2, Play } from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
+import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
-import { SourceStatusRow } from "@/views/ingestion/components/source-status-card";
+import { SourceList } from "@/views/ingestion/components/source-list";
 import {
   useIngestionStatus,
   useListRuns,
@@ -106,31 +105,13 @@ const IngestionPage = (): React.ReactElement => {
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Sources</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRunAll}
-              disabled={triggerRun.isPending}
-            >
-              {triggerRun.isPending ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-              ) : (
-                <Play className="mr-1.5 size-3.5" />
-              )}
-              Run All
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {sources.map((source) => (
-              <SourceStatusRow key={source.name} source={source} onAction={triggerBurst} />
-            ))}
-          </div>
-        </section>
+        <IngestionSummary
+          sources={sources}
+          onRunAll={handleRunAll}
+          isPending={triggerRun.isPending}
+        />
 
-        <AiPipelineStatus />
+        <SourceList sources={sources} onAction={triggerBurst} />
 
         {runsLoading ? (
           <div className="flex justify-center py-8">

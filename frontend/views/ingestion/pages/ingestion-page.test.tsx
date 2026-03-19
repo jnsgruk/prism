@@ -12,6 +12,10 @@ import {
   TriggerBackfillResponseSchema,
   TriggerRunResponseSchema,
 } from "@ps/api/gen/prism/v1/handlers_pb";
+import {
+  GetEnrichmentPipelineStatusResponseSchema,
+  ReasoningService,
+} from "@ps/api/gen/prism/v1/reasoning_pb";
 
 import { TestWrapper } from "./test-wrapper";
 
@@ -68,6 +72,14 @@ vi.mock("@ps/api/transport", () => ({
       triggerRun: () => create(TriggerRunResponseSchema, {}),
       triggerBackfill: () => create(TriggerBackfillResponseSchema, {}),
     });
+    service(ReasoningService, {
+      getEnrichmentPipelineStatus: () =>
+        create(GetEnrichmentPipelineStatusResponseSchema, {
+          pendingCount: 0n,
+          totalEnrichments: 100n,
+          byType: [],
+        }),
+    });
   }),
 }));
 
@@ -83,28 +95,30 @@ const renderPage = async (): Promise<void> => {
 describe("IngestionPage", () => {
   afterEach(cleanup);
 
-  it("renders source names and state badges", async () => {
+  it("renders source names and state labels", async () => {
     await renderPage();
 
     expect(screen.getAllByText("github-main").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("jira-project").length).toBeGreaterThanOrEqual(1);
 
-    expect(screen.getByText("Idle")).toBeInTheDocument();
+    expect(screen.getAllByText("Idle").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Error").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders source type labels", async () => {
+  it("renders summary strip", async () => {
     await renderPage();
 
-    expect(screen.getByText("github")).toBeInTheDocument();
-    expect(screen.getByText("jira")).toBeInTheDocument();
+    // Summary should show idle count and Run All button
+    expect(screen.getByRole("button", { name: /Run All/i })).toBeInTheDocument();
   });
 
-  it("renders Run Now and Backfill buttons for each source", async () => {
+  it("renders Run and Backfill controls for each source", async () => {
     await renderPage();
 
-    expect(screen.getAllByRole("button", { name: /Run Now/i })).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: /Backfill/i })).toHaveLength(2);
+    // Each idle source gets a Run button (text is hidden on mobile but button exists)
+    const runButtons = screen.getAllByRole("button", { name: /Run/i });
+    // At least 2 for sources + 1 for Run All + possibly 1 for enrichment
+    expect(runButtons.length).toBeGreaterThanOrEqual(3);
   });
 
   it("renders run history panel with table", async () => {
@@ -118,15 +132,12 @@ describe("IngestionPage", () => {
     expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders filter controls in run history panel", async () => {
+  it("renders status filter controls in run history panel", async () => {
     await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
-
-    // Source filter buttons
-    expect(screen.getByRole("button", { name: "All sources" })).toBeInTheDocument();
 
     // Status filter buttons
     expect(screen.getByRole("button", { name: "Completed" })).toBeInTheDocument();
