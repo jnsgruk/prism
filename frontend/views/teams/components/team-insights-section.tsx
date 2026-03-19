@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CategoryTags } from "@/components/category-tags";
 import { CoverageIndicator } from "@/components/coverage-indicator";
+import { DeltaBadge } from "@/components/delta-badge";
 import { DepthHistogram } from "@/components/depth-histogram";
 import { NotableContributionCard } from "@/components/notable-contribution-card";
 import { SentimentBar } from "@/components/sentiment-bar";
@@ -23,14 +24,19 @@ const MetricValue = ({
   label,
   description,
   colorClass,
+  delta,
 }: {
   value: string;
   label: string;
   description: string;
   colorClass?: string;
+  delta?: React.ReactNode;
 }): React.ReactElement => (
   <div className="min-w-0 flex-1">
-    <span className={`text-2xl font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</span>
+    <div className="flex items-baseline gap-1.5">
+      <span className={`text-2xl font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</span>
+      {delta}
+    </div>
     <div className="mt-0.5 flex items-center gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
       <Tooltip>
@@ -94,20 +100,13 @@ export const TeamInsightsSection = ({
     return null;
   }
 
-  // Debug: log what we got so we can understand visibility
-  console.log("[Insights]", {
-    totalContributions: insights.coverage?.totalContributions,
-    enriched: insights.coverage?.enrichedContributions,
-    totalReviews: insights.reviewQuality?.totalReviews,
-    notable: insights.notableItems.length,
-  });
-
   const coverage = insights.coverage;
   const rq = insights.reviewQuality;
   const sig = insights.prSignificance;
   const topics = insights.discourseTopics;
   const notable = insights.notableItems;
   const dbs = insights.depthBySignificance;
+  const trend = insights.trend;
 
   const hasReviewData = rq && rq.totalReviews >= 10;
   const hasSignificanceData =
@@ -170,25 +169,54 @@ export const TeamInsightsSection = ({
                     <MetricValue
                       value={rq.avgDepth.toFixed(2)}
                       label="Avg depth"
-                      description="Average review depth score (1–5 scale). Higher means more thorough reviews."
+                      description="Average review depth score (1-5 scale). Higher means more thorough reviews."
                       colorClass={depthColor(rq.avgDepth)}
+                      delta={
+                        trend?.hasPrevious ? (
+                          <DeltaBadge delta={trend.avgDepthDelta} format="decimal" />
+                        ) : undefined
+                      }
                     />
                     <MetricValue
                       value={`${Math.round(rq.rubberStampPct)}%`}
                       label="Rubber-stamp"
                       description="Percentage of reviews scoring 1 (minimal/no feedback)."
                       colorClass={rq.rubberStampPct > 30 ? "text-red-600" : undefined}
+                      delta={
+                        trend?.hasPrevious ? (
+                          <DeltaBadge
+                            delta={trend.rubberStampPctDelta}
+                            format="percent"
+                            suffix="%"
+                            invert
+                          />
+                        ) : undefined
+                      }
                     />
                     <MetricValue
                       value={`${Math.round(rq.deepReviewPct)}%`}
                       label="Deep reviews"
                       description="Percentage of reviews scoring 4 or 5 (thorough feedback)."
                       colorClass={rq.deepReviewPct > 20 ? "text-emerald-600" : undefined}
+                      delta={
+                        trend?.hasPrevious ? (
+                          <DeltaBadge
+                            delta={trend.deepReviewPctDelta}
+                            format="percent"
+                            suffix="%"
+                          />
+                        ) : undefined
+                      }
                     />
                     <MetricValue
                       value={String(rq.totalReviews)}
                       label="Total reviews"
                       description="Number of reviews with depth enrichments in this period."
+                      delta={
+                        trend?.hasPrevious ? (
+                          <DeltaBadge delta={trend.reviewCountDelta} format="integer" />
+                        ) : undefined
+                      }
                     />
                   </div>
 
