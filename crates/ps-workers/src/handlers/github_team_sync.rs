@@ -4,6 +4,7 @@ use tracing::info;
 use uuid::Uuid;
 
 use super::SharedState;
+use super::ingestion_common::decrypt_required_secret;
 use super::run_lifecycle::{complete_run, create_run, fail_run};
 use crate::github::client::GitHubClient;
 use crate::github::types::GitHubTeam;
@@ -32,7 +33,7 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             "GithubTeamSyncHandler",
             "sync_teams"
         )?;
-        let token = self.decrypt_token(&ctx, config.id).await?;
+        let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
 
         let orgs = parse_orgs(&config);
         if orgs.is_empty() {
@@ -94,39 +95,6 @@ impl GithubTeamSyncHandlerImpl {
             .name("load_config")
             .await?
             .into_inner())
-    }
-
-    async fn decrypt_token(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_id: Uuid,
-    ) -> Result<String, TerminalError> {
-        // Load encrypted bytes inside ctx.run() for durability, but decrypt
-        // OUTSIDE ctx.run() so the plaintext token is never persisted in the
-        // Restate journal.
-        let repos = self.state.repos.clone();
-        let encrypted = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let encrypted = repos
-                        .config
-                        .get_encrypted_secret(source_id, "api_token")
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?
-                        .ok_or_else(|| TerminalError::new("no api_token configured"))?;
-
-                    Ok(Json::from(encrypted))
-                }
-            })
-            .name("load_encrypted_token")
-            .await?
-            .into_inner();
-
-        let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &encrypted)
-            .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
-
-        String::from_utf8(decrypted).map_err(|e| TerminalError::new(format!("invalid token: {e}")))
     }
 
     /// Sync all teams for a single GitHub org. Returns the number of teams synced.

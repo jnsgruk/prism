@@ -3,6 +3,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::ingestion_common::decrypt_optional_secret;
 use super::run_lifecycle::{complete_run, create_run};
 use crate::discourse::client::DiscourseClient;
 
@@ -178,12 +179,8 @@ impl IdentityResolutionHandlerImpl {
             .map_err(|e| TerminalError::new(format!("invalid source_id: {e}")))?;
 
         // Decrypt API key outside ctx.run() to avoid journaling plaintext.
-        let api_key = self
-            .decrypt_source_secret_optional(source_id, "api_key")
-            .await?;
-        let api_username = self
-            .decrypt_source_secret_optional(source_id, "api_username")
-            .await?;
+        let api_key = decrypt_optional_secret(&self.state, source_id, "api_key").await?;
+        let api_username = decrypt_optional_secret(&self.state, source_id, "api_username").await?;
 
         let client = DiscourseClient::new(
             self.state.http_client.clone(),
@@ -275,31 +272,6 @@ impl IdentityResolutionHandlerImpl {
             .name("ensure_pending_rows")
             .await?
             .into_inner())
-    }
-
-    async fn decrypt_source_secret_optional(
-        &self,
-        source_id: Uuid,
-        key: &str,
-    ) -> Result<Option<String>, TerminalError> {
-        let encrypted = self
-            .state
-            .repos
-            .config
-            .get_encrypted_secret(source_id, key)
-            .await
-            .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-
-        match encrypted {
-            Some(enc) => {
-                let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &enc)
-                    .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
-                let s = String::from_utf8(decrypted)
-                    .map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))?;
-                Ok(Some(s))
-            }
-            None => Ok(None),
-        }
     }
 
     async fn load_pending(
