@@ -182,7 +182,7 @@ impl DiscourseIngestionHandlerImpl {
         let mut topics_fetched = 0u32;
 
         loop {
-            let batch = fetch_batch(ctx, &self.state, config, &cursor, token).await?;
+            let batch = fetch_batch(&self.state, config, &cursor, token).await?;
 
             topics_fetched += batch.items.len() as u32;
 

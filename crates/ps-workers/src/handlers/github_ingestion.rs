@@ -163,7 +163,7 @@ impl GithubIngestionHandlerImpl {
         let mut identities_skipped = 0u32;
 
         loop {
-            let batch = fetch_batch(ctx, &self.state, config, &cursor, token).await?;
+            let batch = fetch_batch(&self.state, config, &cursor, token).await?;
 
             // Count PRs vs reviews in the batch.
             for item in &batch.items {

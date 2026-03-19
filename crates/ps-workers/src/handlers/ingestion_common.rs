@@ -239,55 +239,38 @@ pub(super) fn build_ingestion_context(
     }
 }
 
-/// Fetch a batch inside a Restate `ctx.run()` closure.
+/// Fetch a batch — NOT journaled (external API call, large response, idempotent on replay).
+///
+/// External API calls go outside `ctx.run()` because responses are large and
+/// re-executing is safe (stores use idempotent upserts). Only DB writes
+/// (`store_batch`, `advance_watermark`, run lifecycle) should be journaled.
 pub(super) async fn fetch_batch(
-    ctx: &ObjectContext<'_>,
     state: &SharedState,
     config: &SourceConfig,
     cursor: &str,
     token: Option<&str>,
 ) -> Result<SerFetchResult, TerminalError> {
-    let repos = state.repos.clone();
-    let http = state.http_client.clone();
-    let cfg = config.clone();
-    let tok = token.map(String::from);
-    let cur = cursor.to_string();
-    let source_type = config.source_type.clone();
+    let src = registry::create_source(&config.source_type)
+        .ok_or_else(|| TerminalError::new("source unavailable"))?;
+    let ic = IngestionContext {
+        repos: state.repos.clone(),
+        source_config: config.clone(),
+        http_client: state.http_client.clone(),
+        token: token.map(String::from),
+        email: None,
+        api_username: None,
+    };
+    let result = src
+        .fetch_batch(&ic, cursor)
+        .await
+        .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
 
-    Ok(ctx
-        .run(|| {
-            let repos = repos.clone();
-            let http = http.clone();
-            let cfg = cfg.clone();
-            let cur = cur.clone();
-            let source_type = source_type.clone();
-            async move {
-                let src = registry::create_source(&source_type)
-                    .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                let ic = IngestionContext {
-                    repos,
-                    source_config: cfg,
-                    http_client: http,
-                    token: tok,
-                    email: None,
-                    api_username: None,
-                };
-                let result = src
-                    .fetch_batch(&ic, &cur)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
-
-                Ok(Json::from(SerFetchResult {
-                    items: result.items,
-                    next_cursor: result.next_cursor,
-                    rate_limit: result.rate_limit,
-                    etag: result.etag,
-                }))
-            }
-        })
-        .name("fetch_batch")
-        .await?
-        .into_inner())
+    Ok(SerFetchResult {
+        items: result.items,
+        next_cursor: result.next_cursor,
+        rate_limit: result.rate_limit,
+        etag: result.etag,
+    })
 }
 
 /// Store a batch inside a Restate `ctx.run()` closure.
