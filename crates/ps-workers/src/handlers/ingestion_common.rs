@@ -196,7 +196,21 @@ pub(super) async fn fetch_store_loop(
     let mut total_items = 0i32;
 
     loop {
-        let batch = fetch_batch(ing_ctx, &cursor).await?;
+        let batch = {
+            use futures::FutureExt as _;
+            use std::panic::AssertUnwindSafe;
+            AssertUnwindSafe(fetch_batch(ing_ctx, &cursor))
+                .catch_unwind()
+                .await
+                .map_err(|panic| {
+                    let msg = panic
+                        .downcast_ref::<String>()
+                        .map(String::as_str)
+                        .or_else(|| panic.downcast_ref::<&str>().copied())
+                        .unwrap_or("unknown panic");
+                    TerminalError::new(format!("fetch panicked: {msg}"))
+                })??
+        };
 
         // Update cursor from etag if present (Jira/Discourse pattern),
         // which carries watermark state even when next_cursor is None.
