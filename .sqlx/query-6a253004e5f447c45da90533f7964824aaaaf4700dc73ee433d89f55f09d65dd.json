@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                avg_review_depth AS \"avg_review_depth: f32\",\n                review_count AS \"review_count!\",\n                rubber_stamp_pct AS \"rubber_stamp_pct: f32\",\n                deep_review_pct AS \"deep_review_pct: f32\",\n                significant_count AS \"significant_count!\",\n                notable_count AS \"notable_count!\",\n                routine_count AS \"routine_count!\"\n            FROM reasoning.insight_snapshots\n            WHERE team_id = $1\n              AND period_type = $2\n              AND period_start < $3\n            ORDER BY period_start DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_review_depth: f32",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 1,
+        "name": "review_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "rubber_stamp_pct: f32",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 3,
+        "name": "deep_review_pct: f32",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 4,
+        "name": "significant_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "notable_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "routine_count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Date"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6a253004e5f447c45da90533f7964824aaaaf4700dc73ee433d89f55f09d65dd"
+}
