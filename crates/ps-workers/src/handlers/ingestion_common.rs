@@ -287,23 +287,13 @@ pub(super) fn build_ingestion_context(
 /// re-executing is safe (stores use idempotent upserts). Only DB writes
 /// (`store_batch`, `advance_watermark`, run lifecycle) should be journaled.
 pub(super) async fn fetch_batch(
-    state: &SharedState,
-    config: &SourceConfig,
+    ing_ctx: &IngestionContext,
     cursor: &str,
-    token: Option<&str>,
 ) -> Result<SerFetchResult, TerminalError> {
-    let src = registry::create_source(&config.source_type)
+    let src = registry::create_source(&ing_ctx.source_config.source_type)
         .ok_or_else(|| TerminalError::new("source unavailable"))?;
-    let ic = IngestionContext {
-        repos: state.repos.clone(),
-        source_config: config.clone(),
-        http_client: state.http_client.clone(),
-        token: token.map(String::from),
-        email: None,
-        api_username: None,
-    };
     let result = src
-        .fetch_batch(&ic, cursor)
+        .fetch_batch(ing_ctx, cursor)
         .await
         .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
 
@@ -318,36 +308,19 @@ pub(super) async fn fetch_batch(
 /// Store a batch inside a Restate `ctx.run()` closure.
 pub(super) async fn store_batch(
     ctx: &ObjectContext<'_>,
-    state: &SharedState,
-    config: &SourceConfig,
+    ing_ctx: &IngestionContext,
     items: &[ContributionInput],
-    token: Option<&str>,
 ) -> Result<i32, TerminalError> {
-    let repos = state.repos.clone();
-    let http = state.http_client.clone();
-    let cfg = config.clone();
-    let tok = token.map(String::from);
+    let ic = ing_ctx.clone();
     let items = items.to_vec();
-    let source_type = config.source_type.clone();
 
     Ok(ctx
         .run(|| {
-            let repos = repos.clone();
-            let http = http.clone();
-            let cfg = cfg.clone();
+            let ic = ic.clone();
             let items = items.clone();
-            let source_type = source_type.clone();
             async move {
-                let src = registry::create_source(&source_type)
+                let src = registry::create_source(&ic.source_config.source_type)
                     .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                let ic = IngestionContext {
-                    repos,
-                    source_config: cfg,
-                    http_client: http,
-                    token: tok,
-                    email: None,
-                    api_username: None,
-                };
                 let count = src
                     .store_batch(&ic, &items)
                     .await
@@ -367,39 +340,22 @@ pub(super) async fn store_batch(
 /// (e.g. `"max_updated_at"` or `"max_bumped_at"`).
 pub(super) async fn advance_watermark(
     ctx: &ObjectContext<'_>,
-    state: &SharedState,
-    config: &SourceConfig,
+    ing_ctx: &IngestionContext,
     cursor: &str,
     total_items: i32,
-    token: Option<&str>,
     watermark_field: &str,
 ) -> Result<(), TerminalError> {
-    let repos = state.repos.clone();
-    let http = state.http_client.clone();
-    let cfg = config.clone();
-    let tok = token.map(String::from);
+    let ic = ing_ctx.clone();
     let wm = cursor.to_string();
-    let source_type = config.source_type.clone();
     let field = watermark_field.to_string();
 
     ctx.run(|| {
-        let repos = repos.clone();
-        let http = http.clone();
-        let cfg = cfg.clone();
+        let ic = ic.clone();
         let wm = wm.clone();
-        let source_type = source_type.clone();
         let field = field.clone();
         async move {
-            let src = registry::create_source(&source_type)
+            let src = registry::create_source(&ic.source_config.source_type)
                 .ok_or_else(|| TerminalError::new("source unavailable"))?;
-            let ic = IngestionContext {
-                repos,
-                source_config: cfg,
-                http_client: http,
-                token: tok,
-                email: None,
-                api_username: None,
-            };
             let watermark = extract_watermark(&wm, &field).unwrap_or_default();
             src.advance_watermark(&ic, &watermark, total_items)
                 .await

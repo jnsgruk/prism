@@ -1,4 +1,4 @@
-use ps_core::ingestion::FailedItem;
+use ps_core::ingestion::{FailedItem, IngestionContext};
 use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use serde::Serialize;
@@ -109,15 +109,7 @@ impl GithubIngestionHandlerImpl {
         }
 
         let result = self
-            .fetch_store_loop(
-                ctx,
-                run_id,
-                source_name,
-                config,
-                source.as_ref(),
-                &plan,
-                ing_ctx.token.as_deref(),
-            )
+            .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, source.as_ref(), &plan)
             .await;
 
         let (total_items, final_cursor) = match result {
@@ -139,16 +131,8 @@ impl GithubIngestionHandlerImpl {
 
         if failed_items.is_empty() {
             if total_items > 0 {
-                advance_watermark(
-                    ctx,
-                    &self.state,
-                    config,
-                    &final_cursor,
-                    total_items,
-                    ing_ctx.token.as_deref(),
-                    "max_updated_at",
-                )
-                .await?;
+                advance_watermark(ctx, &ing_ctx, &final_cursor, total_items, "max_updated_at")
+                    .await?;
             }
             complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
         } else if total_items == 0 {
@@ -198,16 +182,14 @@ impl GithubIngestionHandlerImpl {
     }
 
     /// Fetch and store batches in a loop, returning `(total_items, final_cursor)`.
-    #[allow(clippy::too_many_arguments)]
     async fn fetch_store_loop(
         &self,
         ctx: &ObjectContext<'_>,
         run_id: uuid::Uuid,
         source_name: &str,
-        config: &SourceConfig,
+        ing_ctx: &IngestionContext,
         source: &dyn ps_core::ingestion::Source,
         plan: &ps_core::ingestion::IngestionPlan,
-        token: Option<&str>,
     ) -> Result<(i32, String), TerminalError> {
         let mut cursor = source.initial_cursor(plan);
         let mut total_items = 0i32;
@@ -216,7 +198,7 @@ impl GithubIngestionHandlerImpl {
         let mut identities_skipped = 0u32;
 
         loop {
-            let batch = fetch_batch(&self.state, config, &cursor, token).await?;
+            let batch = fetch_batch(ing_ctx, &cursor).await?;
 
             // Count PRs vs reviews in the batch.
             for item in &batch.items {
@@ -229,7 +211,7 @@ impl GithubIngestionHandlerImpl {
 
             if !batch.items.is_empty() {
                 let batch_size = batch.items.len();
-                let stored = store_batch(ctx, &self.state, config, &batch.items, token).await?;
+                let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
                 total_items += stored;
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 {

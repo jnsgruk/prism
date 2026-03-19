@@ -10,6 +10,7 @@ use time::OffsetDateTime;
 /// All secrets are pre-decrypted once at the start of the ingestion run
 /// (outside Restate `ctx.run()` closures) so that plaintext material is
 /// never journaled by the Restate runtime.
+#[derive(Clone)]
 pub struct IngestionContext {
     pub repos: Repos,
     pub source_config: SourceConfig,

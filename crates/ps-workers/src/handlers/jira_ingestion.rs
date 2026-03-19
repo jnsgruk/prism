@@ -1,4 +1,4 @@
-use ps_core::ingestion::{FailedItem, IngestionPlan};
+use ps_core::ingestion::{FailedItem, IngestionContext, IngestionPlan};
 use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
@@ -108,14 +108,7 @@ impl JiraIngestionHandlerImpl {
         let initial_cursor = build_jira_cursor(config, &plan);
 
         let result = self
-            .fetch_store_loop(
-                ctx,
-                run_id,
-                source_name,
-                config,
-                &initial_cursor,
-                ing_ctx.token.as_deref(),
-            )
+            .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, &initial_cursor)
             .await;
 
         let (total_items, final_cursor) = match result {
@@ -137,16 +130,8 @@ impl JiraIngestionHandlerImpl {
 
         if failed_items.is_empty() {
             if total_items > 0 {
-                advance_watermark(
-                    ctx,
-                    &self.state,
-                    config,
-                    &final_cursor,
-                    total_items,
-                    ing_ctx.token.as_deref(),
-                    "max_updated_at",
-                )
-                .await?;
+                advance_watermark(ctx, &ing_ctx, &final_cursor, total_items, "max_updated_at")
+                    .await?;
             }
             complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
         } else if total_items == 0 {
@@ -195,22 +180,20 @@ impl JiraIngestionHandlerImpl {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn fetch_store_loop(
         &self,
         ctx: &ObjectContext<'_>,
         run_id: Uuid,
         source_name: &str,
-        config: &SourceConfig,
+        ing_ctx: &IngestionContext,
         initial_cursor: &str,
-        token: Option<&str>,
     ) -> Result<(i32, String), TerminalError> {
         let mut cursor = initial_cursor.to_string();
         let mut total_items = 0i32;
         let mut tickets_fetched = 0u32;
 
         loop {
-            let batch = fetch_batch(&self.state, config, &cursor, token).await?;
+            let batch = fetch_batch(ing_ctx, &cursor).await?;
 
             for item in &batch.items {
                 if item.contribution_type == ContributionType::JiraTicket {
@@ -225,7 +208,7 @@ impl JiraIngestionHandlerImpl {
             }
 
             if !batch.items.is_empty() {
-                let stored = store_batch(ctx, &self.state, config, &batch.items, token).await?;
+                let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
                 total_items += stored;
 
                 info!(
