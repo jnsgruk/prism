@@ -190,6 +190,7 @@ pub(super) async fn fetch_store_loop(
     run_id: uuid::Uuid,
     _source_name: &str,
     initial_cursor: &str,
+    watermark_field: &str,
     tracker: &mut (dyn ProgressTracker + Send),
 ) -> Result<(i32, String), TerminalError> {
     let mut cursor = initial_cursor.to_string();
@@ -236,6 +237,14 @@ pub(super) async fn fetch_store_loop(
             total_items += stored;
             tracker.count_batch(&batch.items, stored);
             batches += 1;
+
+            // Advance watermark incrementally after each batch so retries
+            // don't re-fetch already-stored data.
+            if let Some(wm) = extract_watermark(&cursor, watermark_field)
+                && !wm.is_empty()
+            {
+                advance_watermark(ctx, ing_ctx, &cursor, total_items, watermark_field).await?;
+            }
 
             tracing::debug!(batch_stored = stored, total_items, "stored batch");
         }
@@ -370,9 +379,18 @@ pub(super) async fn execute_ingestion(
     tracing::debug!(watermark = ?plan.watermark, "ingestion plan ready");
 
     let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
+    let watermark_field = source.watermark_field();
 
-    let result =
-        fetch_store_loop(ctx, &ing_ctx, run_id, source_name, &initial_cursor, tracker).await;
+    let result = fetch_store_loop(
+        ctx,
+        &ing_ctx,
+        run_id,
+        source_name,
+        &initial_cursor,
+        watermark_field,
+        tracker,
+    )
+    .await;
 
     let (total_items, final_cursor) = match result {
         Ok(v) => v,
