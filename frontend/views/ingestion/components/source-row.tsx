@@ -194,7 +194,7 @@ const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElemen
   }
 
   return (
-    <div className="border-b px-4 pb-2.5 pt-0.5">
+    <div className="border-b bg-muted/40 px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {stats.map((stat, i) => (
           <span key={i} className="flex items-center gap-x-3">
@@ -215,7 +215,7 @@ const EnrichmentDetail = ({
 }: {
   status: GetEnrichmentPipelineStatusResponse;
 }): React.ReactElement => (
-  <div className="border-b px-4 pb-2.5 pt-0.5">
+  <div className="flex items-center border-b bg-muted/40 px-4 py-2.5">
     <div className="flex items-center gap-x-3">
       <Stat label="queued" value={status.pendingCount.toString()} />
       {DOT_SEP}
