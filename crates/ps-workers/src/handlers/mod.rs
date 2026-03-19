@@ -4,6 +4,7 @@ pub mod github_ingestion;
 pub mod github_team_sync;
 pub mod identity_resolution;
 pub mod ingestion_common;
+pub mod insights;
 pub mod jira_ingestion;
 pub mod metrics_compute;
 pub mod model_catalogue;

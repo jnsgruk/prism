@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::insights::InsightsHandlerClient;
 use super::run_lifecycle::{complete_run, create_run, fail_run};
 
 /// Max contributions to process per enrichment type per batch.
@@ -263,6 +264,14 @@ impl EnrichmentHandlerImpl {
                 duration_secs = start.elapsed().as_secs(),
                 "complete"
             );
+
+            // Trigger insight snapshot recomputation after successful enrichment.
+            if total_processed > 0 {
+                ctx.service_client::<InsightsHandlerClient>()
+                    .compute_current_periods()
+                    .send();
+                debug!("triggered InsightsHandler after enrichment cycle");
+            }
         }
 
         Ok(())

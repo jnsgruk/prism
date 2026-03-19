@@ -55,6 +55,12 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         false,
     ),
     (
+        "InsightsHandler",
+        &["compute_current_periods"],
+        "Recomputes insight snapshots from enrichment data for all teams across current periods",
+        false,
+    ),
+    (
         "ModelCatalogueHandler",
         &["refresh_catalogue"],
         "Fetches available models from configured AI providers and caches them locally",

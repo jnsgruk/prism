@@ -1,6 +1,6 @@
 use crate::Error;
 use sqlx::PgPool;
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 /// Repository for read-only enrichment aggregation queries.
@@ -102,6 +102,31 @@ pub struct ReviewsReceivedRow {
     pub avg_depth_received: f64,
     pub total_reviews_received: i32,
     pub deep_review_pct: f64,
+}
+
+/// Parameters for upserting an insight snapshot.
+pub struct UpsertSnapshotParams {
+    pub team_id: Uuid,
+    pub period_start: Date,
+    pub period_end: Date,
+    pub period_type: String,
+    pub avg_review_depth: Option<f32>,
+    pub review_count: i32,
+    pub rubber_stamp_pct: Option<f32>,
+    pub deep_review_pct: Option<f32>,
+    pub depth_distribution: Vec<i32>,
+    pub constructive_count: i32,
+    pub neutral_count: i32,
+    pub critical_count: i32,
+    pub hostile_count: i32,
+    pub significant_count: i32,
+    pub notable_count: i32,
+    pub routine_count: i32,
+    pub avg_depth_on_significant: Option<f32>,
+    pub avg_depth_on_notable: Option<f32>,
+    pub avg_depth_on_routine: Option<f32>,
+    pub enrichment_coverage: serde_json::Value,
+    pub raw_insights: serde_json::Value,
 }
 
 /// Org-wide delivery summary counts.
@@ -1169,5 +1194,86 @@ impl InsightsRepo {
             active_contributors: row.active_contributors,
             active_teams: row.active_teams,
         })
+    }
+
+    // -----------------------------------------------------------------------
+    // Snapshot upsert
+    // -----------------------------------------------------------------------
+
+    /// Upsert an insight snapshot for a team/period.
+    ///
+    /// Uses `ON CONFLICT` on the `(team_id, period_start, period_type)` unique
+    /// constraint, matching the metrics snapshot pattern.
+    pub async fn upsert_snapshot(&self, p: &UpsertSnapshotParams) -> Result<Uuid, Error> {
+        let id = sqlx::query_scalar!(
+            r#"
+            INSERT INTO reasoning.insight_snapshots (
+                team_id, period_start, period_end, period_type,
+                avg_review_depth, review_count, rubber_stamp_pct, deep_review_pct,
+                depth_distribution,
+                constructive_count, neutral_count, critical_count, hostile_count,
+                significant_count, notable_count, routine_count,
+                avg_depth_on_significant, avg_depth_on_notable, avg_depth_on_routine,
+                enrichment_coverage, raw_insights,
+                computed_at
+            ) VALUES (
+                $1, $2, $3, $4,
+                $5, $6, $7, $8,
+                $9,
+                $10, $11, $12, $13,
+                $14, $15, $16,
+                $17, $18, $19,
+                $20, $21,
+                now()
+            )
+            ON CONFLICT (team_id, period_start, period_type) DO UPDATE SET
+                period_end = EXCLUDED.period_end,
+                avg_review_depth = EXCLUDED.avg_review_depth,
+                review_count = EXCLUDED.review_count,
+                rubber_stamp_pct = EXCLUDED.rubber_stamp_pct,
+                deep_review_pct = EXCLUDED.deep_review_pct,
+                depth_distribution = EXCLUDED.depth_distribution,
+                constructive_count = EXCLUDED.constructive_count,
+                neutral_count = EXCLUDED.neutral_count,
+                critical_count = EXCLUDED.critical_count,
+                hostile_count = EXCLUDED.hostile_count,
+                significant_count = EXCLUDED.significant_count,
+                notable_count = EXCLUDED.notable_count,
+                routine_count = EXCLUDED.routine_count,
+                avg_depth_on_significant = EXCLUDED.avg_depth_on_significant,
+                avg_depth_on_notable = EXCLUDED.avg_depth_on_notable,
+                avg_depth_on_routine = EXCLUDED.avg_depth_on_routine,
+                enrichment_coverage = EXCLUDED.enrichment_coverage,
+                raw_insights = EXCLUDED.raw_insights,
+                computed_at = now()
+            RETURNING id
+            "#,
+            p.team_id,
+            p.period_start,
+            p.period_end,
+            &p.period_type,
+            p.avg_review_depth,
+            p.review_count,
+            p.rubber_stamp_pct,
+            p.deep_review_pct,
+            &p.depth_distribution,
+            p.constructive_count,
+            p.neutral_count,
+            p.critical_count,
+            p.hostile_count,
+            p.significant_count,
+            p.notable_count,
+            p.routine_count,
+            p.avg_depth_on_significant,
+            p.avg_depth_on_notable,
+            p.avg_depth_on_routine,
+            &p.enrichment_coverage,
+            &p.raw_insights,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(id)
     }
 }

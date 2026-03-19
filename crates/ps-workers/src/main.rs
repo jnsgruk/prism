@@ -10,6 +10,7 @@ use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSy
 use ps_workers::handlers::identity_resolution::{
     IdentityResolutionHandler, IdentityResolutionHandlerImpl,
 };
+use ps_workers::handlers::insights::{InsightsHandler, InsightsHandlerImpl};
 use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
 use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
 use ps_workers::handlers::model_catalogue::{ModelCatalogueHandler, ModelCatalogueHandlerImpl};
@@ -66,6 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state: state.clone(),
     };
     let metrics_compute = MetricsComputeHandlerImpl {
+        state: state.clone(),
+    };
+    let insights_compute = InsightsHandlerImpl {
         state: state.clone(),
     };
 
@@ -174,6 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(discourse_ingestion.serve())
                 .bind(identity_resolution.serve())
                 .bind(metrics_compute.serve())
+                .bind(insights_compute.serve())
                 .bind(enrichment.serve())
                 .bind(model_catalogue.serve())
                 .build(),
