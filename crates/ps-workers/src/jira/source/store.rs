@@ -1,6 +1,6 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext};
 use ps_core::models::Platform;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::handlers::ingestion_common;
@@ -68,8 +68,7 @@ pub(super) async fn store_batch_impl(
     }
 
     if unresolved_count > 0 {
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             stored,
             unresolved_identities = unresolved_count,
             "stored batch — some Jira identities unresolved (upload Jira user CSV to map)"
@@ -97,8 +96,7 @@ pub(super) async fn advance_watermark_impl(
         .upsert_watermark(&ctx.source_config.name, new_watermark, items_collected)
         .await?;
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         old_watermark = ?old_watermark,
         new_watermark = new_watermark,
         items_collected,

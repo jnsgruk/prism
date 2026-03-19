@@ -1,6 +1,6 @@
 use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionContext};
 use ps_core::models::{ContributionState, ContributionType, JiraTicketData, Platform};
-use tracing::{info, warn};
+use tracing::{debug, warn};
 
 use super::{
     Cursor, MAX_RESULTS_PER_PAGE, decrypt_email, decrypt_token, parse_jira_datetime,
@@ -117,8 +117,7 @@ pub(super) async fn fetch_batch_impl(
 
     let returned = response.issues.len();
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         returned,
         project = ?current_project,
         is_last = ?response.is_last,

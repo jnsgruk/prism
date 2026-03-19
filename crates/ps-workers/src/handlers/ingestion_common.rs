@@ -188,12 +188,14 @@ pub(super) async fn fetch_store_loop(
     ctx: &ObjectContext<'_>,
     ing_ctx: &IngestionContext,
     run_id: uuid::Uuid,
-    source_name: &str,
+    _source_name: &str,
     initial_cursor: &str,
     tracker: &mut (dyn ProgressTracker + Send),
 ) -> Result<(i32, String), TerminalError> {
     let mut cursor = initial_cursor.to_string();
     let mut total_items = 0i32;
+    let mut batches = 0u32;
+    let mut last_progress_log = std::time::Instant::now();
 
     loop {
         let batch = {
@@ -218,10 +220,24 @@ pub(super) async fn fetch_store_loop(
             cursor = latest.clone();
         }
 
+        // Rate limit warning
+        if let Some(ref rl) = batch.rate_limit
+            && rl.remaining < 100
+        {
+            tracing::warn!(
+                remaining = rl.remaining,
+                limit = rl.limit,
+                "rate limit pressure"
+            );
+        }
+
         if !batch.items.is_empty() {
             let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
             total_items += stored;
             tracker.count_batch(&batch.items, stored);
+            batches += 1;
+
+            tracing::debug!(batch_stored = stored, total_items, "stored batch");
         }
 
         let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
@@ -231,7 +247,13 @@ pub(super) async fn fetch_store_loop(
             .update_run_progress_detail(run_id, total_items, &progress)
             .await
         {
-            tracing::warn!(source = source_name, "failed to update run progress: {e}");
+            tracing::debug!(error = %e, "failed to update run progress");
+        }
+
+        // Periodic progress log at info level for long-running backfills
+        if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {
+            tracing::info!(total_items, batches, "progress");
+            last_progress_log = std::time::Instant::now();
         }
 
         let Some(next_cursor) = batch.next_cursor else {
@@ -251,7 +273,7 @@ pub(super) async fn fetch_store_loop(
         .update_run_progress_detail(run_id, total_items, &final_progress)
         .await
     {
-        tracing::warn!(source = source_name, "failed to update final progress: {e}");
+        tracing::debug!(error = %e, "failed to update final progress");
     }
 
     Ok((total_items, cursor))
@@ -292,6 +314,8 @@ pub(super) async fn execute_ingestion(
     tracker: &mut (dyn ProgressTracker + Send),
     trigger_downstream: impl FnOnce(&ObjectContext<'_>),
 ) -> Result<(), TerminalError> {
+    let start = std::time::Instant::now();
+
     let source = registry::create_source(&config.source_type).ok_or_else(|| {
         TerminalError::new(format!("unsupported source type: {}", config.source_type))
     })?;
@@ -303,6 +327,16 @@ pub(super) async fn execute_ingestion(
     };
     let run_id =
         create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?;
+
+    let span = tracing::info_span!(
+        "handler",
+        handler = spec.handler_name,
+        source = source_name,
+        run_id = %run_id,
+    );
+    let _guard = span.enter();
+
+    tracing::info!("starting ingestion");
 
     // Decrypt secrets outside ctx.run() to avoid journaling plaintext
     let token = match (spec.token_key, spec.token_required) {
@@ -333,11 +367,7 @@ pub(super) async fn execute_ingestion(
         plan.watermark = Some(wm.clone());
     }
 
-    tracing::info!(
-        source = source_name,
-        watermark = ?plan.watermark,
-        "ingestion plan ready"
-    );
+    tracing::debug!(watermark = ?plan.watermark, "ingestion plan ready");
 
     let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
 
@@ -369,10 +399,15 @@ pub(super) async fn execute_ingestion(
     .await?;
 
     if total_items > 0 {
+        tracing::debug!("triggering downstream handlers");
         trigger_downstream(ctx);
     }
 
-    tracing::info!(source = source_name, total_items, "ingestion complete");
+    tracing::info!(
+        total_items,
+        duration_secs = start.elapsed().as_secs(),
+        "complete"
+    );
     Ok(())
 }
 

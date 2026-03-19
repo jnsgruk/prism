@@ -2,7 +2,7 @@ use ps_core::models::AiProvider;
 use ps_reasoning::catalogue;
 use restate_sdk::prelude::*;
 use serde::Serialize;
-use tracing::{info, warn};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 use super::SharedState;
@@ -83,7 +83,7 @@ impl ModelCatalogueHandlerImpl {
             self.update_progress(run_id, total_models, &progress).await;
 
             let Some(api_key) = self.decrypt_provider_key(secret_key_name).await else {
-                info!(provider = %provider_str, "skipping catalogue refresh — no API key configured");
+                debug!(provider = %provider_str, "skipping — no API key configured");
                 continue;
             };
 
@@ -154,7 +154,7 @@ impl ModelCatalogueHandlerImpl {
             }
             self.update_progress(run_id, total_models, &progress).await;
 
-            info!(provider = %provider_str, count, "model catalogue refreshed");
+            debug!(provider = %provider_str, count, "model catalogue refreshed");
         }
 
         // Complete or fail the run
@@ -165,7 +165,7 @@ impl ModelCatalogueHandlerImpl {
             self.update_progress(run_id, 0, &progress).await;
 
             if let Err(e) = self.state.repos.activity.fail_run(run_id, &err_msg).await {
-                warn!(error = %e, "failed to mark catalogue run as failed");
+                error!(error = %e, "failed to record run failure");
             }
             return Err(TerminalError::new(err_msg));
         }
@@ -181,7 +181,7 @@ impl ModelCatalogueHandlerImpl {
             .complete_run(run_id, total_models)
             .await
         {
-            warn!(error = %e, "failed to complete catalogue run");
+            error!(error = %e, "failed to record run completion");
         }
 
         Ok(())
@@ -197,7 +197,7 @@ impl ModelCatalogueHandlerImpl {
             .update_run_progress_detail(run_id, items, &json)
             .await
         {
-            warn!(error = %e, "failed to update catalogue progress");
+            debug!(error = %e, "failed to update catalogue progress");
         }
     }
 

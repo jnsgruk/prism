@@ -69,6 +69,8 @@ impl EnrichmentHandlerImpl {
     /// - `ctx.run()`: run creation, queue lookups (DB reads), cost logging, cleanup
     /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
+        let start = std::time::Instant::now();
+
         // Step 1: Create run record (journaled — retries reuse the same run_id)
         let run_id = create_run!(
             ctx,
@@ -77,6 +79,11 @@ impl EnrichmentHandlerImpl {
             "EnrichmentHandler",
             "run_cycle"
         )?;
+
+        let span = tracing::info_span!("handler", handler = "EnrichmentHandler", run_id = %run_id);
+        let _guard = span.enter();
+
+        info!("starting enrichment cycle");
 
         let mut total_processed = 0i32;
         let mut total_errors = 0usize;
@@ -117,7 +124,7 @@ impl EnrichmentHandlerImpl {
                 match cost_tracker.check_budget(cap).await {
                     Ok(true) => {}
                     Ok(false) => {
-                        info!(cap, "daily budget exceeded, pausing enrichment");
+                        warn!(cap, "daily budget exceeded");
                         break;
                     }
                     Err(e) => {
@@ -253,7 +260,8 @@ impl EnrichmentHandlerImpl {
             info!(
                 processed = total_processed,
                 errors = total_errors,
-                "enrichment cycle complete"
+                duration_secs = start.elapsed().as_secs(),
+                "complete"
             );
         }
 
@@ -340,7 +348,7 @@ impl EnrichmentHandlerImpl {
             .await;
 
         if let Err(e) = result {
-            warn!(error = %e, "failed to log enrichment cost");
+            debug!(error = %e, "failed to log enrichment cost");
         }
     }
 
@@ -365,7 +373,7 @@ impl EnrichmentHandlerImpl {
             Ok(count) => {
                 let deleted = count.into_inner();
                 if deleted > 0 {
-                    info!(deleted, "cleaned up fully enriched queue entries");
+                    debug!(deleted, "cleaned up fully enriched queue entries");
                 }
             }
             Err(e) => {
@@ -388,7 +396,7 @@ impl EnrichmentHandlerImpl {
             .update_run_progress_detail(run_id, items, &json)
             .await
         {
-            warn!(error = %e, "failed to update enrichment progress");
+            debug!(error = %e, "failed to update enrichment progress");
         }
     }
 }

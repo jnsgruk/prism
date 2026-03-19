@@ -5,7 +5,7 @@ use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionCo
 use ps_core::models::{
     ContributionType, DiscourseLikeData, DiscoursePostData, DiscourseTopicData, Platform,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use super::{Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, serialise_cursor};
 use crate::discourse::client::{Category, DiscourseClient, Post, PostActionUser, TopicSummary};
@@ -129,8 +129,7 @@ pub(super) async fn fetch_batch_impl(
     let topics = &response.topic_list.topics;
     let has_more_pages = response.topic_list.more_topics_url.is_some();
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         page = cur.page,
         topics = topics.len(),
         has_more = has_more_pages,
@@ -241,12 +240,7 @@ pub(super) async fn fetch_batch_impl(
         Some(serialise_cursor(&cur)?)
     };
 
-    debug!(
-        source = ctx.source_config.name,
-        items = items.len(),
-        stop,
-        "processed Discourse batch"
-    );
+    debug!(items = items.len(), stop, "processed Discourse batch");
 
     Ok(FetchResult {
         items,

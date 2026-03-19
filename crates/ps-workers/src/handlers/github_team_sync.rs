@@ -1,6 +1,6 @@
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
-use tracing::info;
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use super::SharedState;
@@ -21,10 +21,10 @@ pub trait GithubTeamSyncHandler {
 
 impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
     async fn sync_teams(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
+        let start = std::time::Instant::now();
         let source_type_key = ctx.key().to_string();
         let config = self.load_config(&ctx, &source_type_key).await?;
         let source_name = config.name.clone();
-        info!(source = %source_name, "starting GitHub team sync");
 
         let run_id = create_run!(
             ctx,
@@ -33,6 +33,12 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             "GithubTeamSyncHandler",
             "sync_teams"
         )?;
+
+        let span = tracing::info_span!("handler", handler = "GithubTeamSyncHandler", source = %source_name, run_id = %run_id);
+        let _guard = span.enter();
+
+        info!("starting team sync");
+
         let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
 
         let orgs = parse_orgs(&config);
@@ -68,7 +74,11 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
 
         complete_run!(ctx, self.state.repos, run_id, &source_name, total_teams);
 
-        info!(source = %source_name, total_teams, "GitHub team sync complete");
+        info!(
+            total_teams,
+            duration_secs = start.elapsed().as_secs(),
+            "complete"
+        );
         Ok(())
     }
 }
@@ -111,7 +121,7 @@ impl GithubTeamSyncHandlerImpl {
     ) -> Result<i32, TerminalError> {
         let all_teams = self.discover_teams(client, org).await?;
 
-        info!(org, team_count = all_teams.len(), "discovered GitHub teams");
+        debug!(org, team_count = all_teams.len(), "discovered GitHub teams");
 
         let mut synced_slugs = Vec::with_capacity(all_teams.len());
 
@@ -125,7 +135,7 @@ impl GithubTeamSyncHandlerImpl {
                 fetch_all_repos(client, org, &team.slug),
             )?;
 
-            info!(
+            debug!(
                 org,
                 team = %team.slug,
                 members = members.len(),
@@ -142,7 +152,7 @@ impl GithubTeamSyncHandlerImpl {
             .await?;
 
         if removed > 0 {
-            info!(org, removed, "removed stale GitHub teams");
+            debug!(org, removed, "removed stale GitHub teams");
         }
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]

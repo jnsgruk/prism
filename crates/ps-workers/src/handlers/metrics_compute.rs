@@ -1,7 +1,7 @@
 use ps_core::models::PeriodType;
 use restate_sdk::prelude::*;
 use time::OffsetDateTime;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use super::SharedState;
 use super::run_lifecycle::{complete_run, create_run, fail_run};
@@ -19,6 +19,8 @@ pub trait MetricsComputeHandler {
 
 impl MetricsComputeHandler for MetricsComputeHandlerImpl {
     async fn compute_current_periods(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
+        let start = std::time::Instant::now();
+
         let run_id = create_run!(
             ctx,
             self.state.repos,
@@ -27,6 +29,12 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
             "compute_current_periods"
         )?;
 
+        let span =
+            tracing::info_span!("handler", handler = "MetricsComputeHandler", run_id = %run_id);
+        let _guard = span.enter();
+
+        info!("starting metrics compute");
+
         let today = OffsetDateTime::now_utc().date();
         let mut total = 0i32;
 
@@ -34,7 +42,7 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
             match self.compute_period(*period_type, today).await {
                 Ok(count) => {
                     total += count;
-                    info!(%period_type, count, "recomputed snapshots");
+                    debug!(%period_type, count, "recomputed snapshots");
                 }
                 Err(e) => {
                     let err_msg = format!("failed to compute {period_type} snapshots: {e}");
@@ -47,7 +55,11 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
 
         complete_run!(ctx, self.state.repos, run_id, "_system", total);
 
-        info!(total, "metrics compute complete");
+        info!(
+            snapshots = total,
+            duration_secs = start.elapsed().as_secs(),
+            "complete"
+        );
         Ok(())
     }
 }

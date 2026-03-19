@@ -4,7 +4,7 @@ use ps_core::ingestion::{
     ContributionInput, ContributionMetadata, ContributionMetrics, FetchResult, IngestionContext,
 };
 use ps_core::models::{ContributionState, ContributionType, Platform, RateLimitInfo};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use super::{
     Cursor, IngestionPhase, RATE_LIMIT_SEARCH_THRESHOLD, SEARCH_BATCH_SIZE, build_graphql_client,
@@ -55,8 +55,7 @@ async fn fetch_team_repos(
     let repo = &repo_target.repo;
 
     if cur.graphql_cursor.is_none() {
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             repo = %format!("{owner}/{repo}"),
             repo_index = cur.repo_index,
             repos_total = cur.repos.len(),
@@ -76,7 +75,6 @@ async fn fetch_team_repos(
     }
 
     debug!(
-        source = ctx.source_config.name,
         %query,
         "executing GitHub search query"
     );
@@ -109,7 +107,6 @@ async fn fetch_team_repos(
     };
 
     debug!(
-        source = ctx.source_config.name,
         results = page.items.len(),
         rate_limit = page.rate_limit.remaining,
         "GitHub search query returned"
@@ -163,8 +160,7 @@ async fn fetch_team_repos(
             .iter()
             .filter(|i| i.contribution_type == ContributionType::PrReview)
             .count();
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             repo = %format!("{owner}/{repo}"),
             prs = pr_count,
             reviews = review_count,
@@ -177,8 +173,7 @@ async fn fetch_team_repos(
         Some(serialise_cursor(cur)?)
     };
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         repo = %format!("{owner}/{repo}"),
         items = items.len(),
         rate_limit_remaining = page.rate_limit.remaining,
@@ -219,10 +214,7 @@ async fn transition_to_member_search(
     let usernames = ctx.repos.org.get_all_github_team_member_usernames().await?;
 
     if usernames.is_empty() {
-        info!(
-            source = ctx.source_config.name,
-            "no team members found — skipping member search"
-        );
+        debug!("no team members found — skipping member search");
         return Ok(FetchResult {
             items: vec![],
             next_cursor: None,
@@ -239,8 +231,7 @@ async fn transition_to_member_search(
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_default();
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         users = usernames.len(),
         orgs = orgs.len(),
         "starting member search phase"
@@ -266,8 +257,7 @@ async fn fetch_member_search(
 ) -> Result<FetchResult, ps_core::Error> {
     if cur.search_user_index >= cur.search_users.len() {
         // All users searched — we're done.
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             users_searched = cur.search_users.len(),
             "member search phase complete"
         );
@@ -351,8 +341,7 @@ async fn fetch_member_search(
     // Fetch PR diffs concurrently and attach to enrichment content.
     fetch_pr_diffs(ctx, &mut items).await;
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         batch_start = cur.search_user_index,
         batch_end,
         results = page.items.len(),

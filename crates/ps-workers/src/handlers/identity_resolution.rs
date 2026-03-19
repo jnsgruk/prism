@@ -20,7 +20,7 @@ pub trait IdentityResolutionHandler {
 
 impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
     async fn resolve_identities(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
-        info!("starting identity resolution across all Discourse sources");
+        let start = std::time::Instant::now();
 
         let run_id = create_run!(
             ctx,
@@ -30,16 +30,22 @@ impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
             "resolve_identities"
         )?;
 
+        let span =
+            tracing::info_span!("handler", handler = "IdentityResolutionHandler", run_id = %run_id);
+        let _guard = span.enter();
+
+        info!("starting identity resolution");
+
         // List all enabled Discourse sources.
         let sources = self.list_discourse_sources(&ctx).await?;
 
         if sources.is_empty() {
-            info!("no enabled Discourse sources configured");
+            debug!("no enabled Discourse sources configured");
             complete_run!(ctx, self.state.repos, run_id, "_system", 0);
             return Ok(());
         }
 
-        info!(count = sources.len(), "found Discourse sources to resolve");
+        debug!(count = sources.len(), "found Discourse sources to resolve");
 
         let mut total_resolved = 0i32;
 
@@ -48,7 +54,7 @@ impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
                 Ok(count) => {
                     total_resolved += count;
                     if count > 0 {
-                        info!(
+                        debug!(
                             source = %source.name,
                             resolved = count,
                             "resolved identities for source"
@@ -67,7 +73,11 @@ impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
 
         complete_run!(ctx, self.state.repos, run_id, "_system", total_resolved);
 
-        info!(total_resolved, "identity resolution complete");
+        info!(
+            total_resolved,
+            duration_secs = start.elapsed().as_secs(),
+            "complete"
+        );
         Ok(())
     }
 }
@@ -163,7 +173,7 @@ impl IdentityResolutionHandlerImpl {
         // Ensure pending resolution rows exist for all active people.
         let ensured = self.ensure_pending_rows(ctx, platform).await?;
         if ensured > 0 {
-            info!(source = %source.name, ensured, "created pending resolution rows");
+            debug!(source = %source.name, ensured, "created pending resolution rows");
         }
 
         if source.base_url.is_empty() {
@@ -197,7 +207,7 @@ impl IdentityResolutionHandlerImpl {
             return Ok(0);
         }
 
-        info!(source = %source.name, count = pending.len(), "resolving pending identities");
+        debug!(source = %source.name, count = pending.len(), "resolving pending identities");
 
         let mut resolved_count = 0i32;
 
@@ -512,7 +522,7 @@ impl IdentityResolutionHandlerImpl {
             Ok(count) => {
                 let c = count.into_inner();
                 if c > 0 {
-                    info!(
+                    debug!(
                         platform,
                         backfilled = c,
                         "backfilled contribution person_ids"

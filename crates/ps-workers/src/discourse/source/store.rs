@@ -1,5 +1,5 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::handlers::ingestion_common;
@@ -84,17 +84,17 @@ pub(super) async fn store_batch_impl(
             .await?;
 
         if backfilled > 0 {
-            info!(
-                source = ctx.source_config.name,
-                backfilled, "backfilled person_id on older Discourse contributions"
+            debug!(
+                backfilled,
+                "backfilled person_id on older Discourse contributions"
             );
         }
     }
 
     if unresolved > 0 {
         debug!(
-            source = ctx.source_config.name,
-            stored, unresolved, "stored Discourse batch — some usernames unresolved"
+            stored,
+            unresolved, "stored Discourse batch — some usernames unresolved"
         );
     } else {
         debug!(stored, "stored Discourse batch");
@@ -119,8 +119,7 @@ pub(super) async fn advance_watermark_impl(
         .upsert_watermark(&ctx.source_config.name, new_watermark, items_collected)
         .await?;
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         old_watermark = ?old_watermark,
         new_watermark,
         items_collected,

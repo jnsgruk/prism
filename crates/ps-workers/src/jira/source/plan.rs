@@ -1,5 +1,5 @@
 use ps_core::ingestion::{IngestionContext, IngestionPlan};
-use tracing::info;
+use tracing::debug;
 
 use super::DEFAULT_LOOKBACK_DAYS;
 
@@ -25,16 +25,14 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         let wm = lookback
             .format(&time::format_description::well_known::Rfc3339)
             .ok();
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             default_watermark = ?wm,
             "no watermark found — defaulting to {DEFAULT_LOOKBACK_DAYS}-day lookback"
         );
         wm
     });
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         projects = ?projects,
         watermark = ?effective_watermark,
         "planned Jira ingestion"

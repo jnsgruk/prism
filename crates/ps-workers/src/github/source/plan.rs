@@ -1,5 +1,5 @@
 use ps_core::ingestion::{IngestionContext, IngestionPlan, RepoTarget};
-use tracing::{info, warn};
+use tracing::{debug, warn};
 
 use super::{DEFAULT_LOOKBACK_DAYS, build_rest_client, decrypt_token};
 use crate::github::repos;
@@ -77,16 +77,14 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         let wm = seven_days_ago
             .format(&time::format_description::well_known::Rfc3339)
             .ok();
-        info!(
-            source = ctx.source_config.name,
+        debug!(
             default_watermark = ?wm,
             "no watermark found — defaulting to {DEFAULT_LOOKBACK_DAYS}-day lookback"
         );
         wm
     });
 
-    info!(
-        source = ctx.source_config.name,
+    debug!(
         repos = final_repos.len(),
         watermark = ?effective_watermark,
         fallback_discovery = used_fallback,
