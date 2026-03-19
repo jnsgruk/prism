@@ -154,6 +154,16 @@ pub struct UpsertEnrichmentParams<'a> {
     pub input_preview: Option<&'a str>,
 }
 
+/// A single enrichment result ready for bulk upsert.
+pub struct EnrichmentResult {
+    pub contribution_id: Uuid,
+    pub enrichment_type: String,
+    pub value: serde_json::Value,
+    pub confidence: f32,
+    pub input_hash: String,
+    pub input_preview: String,
+}
+
 impl ReasoningRepo {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
@@ -320,6 +330,63 @@ impl ReasoningRepo {
         .map_err(Error::from)?;
 
         Ok(id)
+    }
+
+    /// Bulk upsert enrichment records using UNNEST for batch performance.
+    pub async fn bulk_upsert_enrichments(
+        &self,
+        results: &[EnrichmentResult],
+        model_name: &str,
+    ) -> Result<u64, Error> {
+        if results.is_empty() {
+            return Ok(0);
+        }
+
+        let contribution_ids: Vec<Uuid> = results.iter().map(|r| r.contribution_id).collect();
+        let enrichment_types: Vec<&str> =
+            results.iter().map(|r| r.enrichment_type.as_str()).collect();
+        let values: Vec<&serde_json::Value> = results.iter().map(|r| &r.value).collect();
+        let confidences: Vec<f32> = results.iter().map(|r| r.confidence).collect();
+        let input_hashes: Vec<&str> = results.iter().map(|r| r.input_hash.as_str()).collect();
+        let input_previews: Vec<&str> = results.iter().map(|r| r.input_preview.as_str()).collect();
+
+        let confidences_opt: Vec<Option<f32>> = confidences.iter().copied().map(Some).collect();
+
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO reasoning.enrichments
+                (contribution_id, enrichment_type, value, model_name, confidence, input_hash, input_preview)
+            SELECT * FROM UNNEST(
+                $1::uuid[],
+                $2::text[],
+                $3::jsonb[],
+                $4::text[],
+                $5::real[],
+                $6::text[],
+                $7::text[]
+            )
+            ON CONFLICT (contribution_id, enrichment_type)
+            DO UPDATE SET
+                value = EXCLUDED.value,
+                model_name = EXCLUDED.model_name,
+                confidence = EXCLUDED.confidence,
+                input_hash = EXCLUDED.input_hash,
+                input_preview = EXCLUDED.input_preview,
+                created_at = now()
+            "#,
+            &contribution_ids,
+            &enrichment_types as &[&str],
+            &values as &[&serde_json::Value],
+            &vec![model_name; results.len()] as &[&str],
+            &confidences_opt as &[Option<f32>],
+            &input_hashes as &[&str],
+            &input_previews as &[&str],
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(result.rows_affected())
     }
 
     /// Get all enrichments for a single contribution.

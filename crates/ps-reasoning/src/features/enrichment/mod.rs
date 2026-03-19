@@ -9,15 +9,17 @@ pub mod types;
 
 use std::fmt::Write as _;
 
+use futures::stream::{self, StreamExt};
 use ps_core::models::{AiProvider, TaskType};
 use ps_core::repo::ReasoningRepo;
 use ps_core::repo::reasoning::{
-    QueuedContribution, UnenrichedContribution, UpsertEnrichmentParams,
+    EnrichmentResult, QueuedContribution, UnenrichedContribution, UpsertEnrichmentParams,
 };
 use rig::client::CompletionClient;
 use rig::completion::Usage;
 use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 use crate::cost::CostTracker;
 use crate::routing::TaskRouter;
@@ -335,10 +337,30 @@ pub async fn process_enrichment_batch(
     }
 }
 
+/// Max concurrent AI API calls per batch.
+const ENRICHMENT_CONCURRENCY: usize = 10;
+
+/// A prepared item ready for concurrent AI extraction.
+struct PreparedItem {
+    contribution_id: Uuid,
+    input_text: String,
+    input_hash: String,
+    input_preview: String,
+}
+
+/// Outcome of a single AI extraction call.
+enum ItemOutcome {
+    Success {
+        result: EnrichmentResult,
+        usage: Usage,
+    },
+    Error(String),
+}
+
 /// Process a batch of queued contributions for a single enrichment type.
 ///
-/// Like `process_enrichment_batch` but reads input from the queue's structured
-/// JSONB content rather than the contribution's flat fields.
+/// Items are processed concurrently (up to `ENRICHMENT_CONCURRENCY`) for
+/// throughput, then successful results are bulk-upserted in a single query.
 pub async fn process_queued_enrichment_batch(
     router: &TaskRouter,
     repo: &ReasoningRepo,
@@ -348,85 +370,141 @@ pub async fn process_queued_enrichment_batch(
     let task_config = router.task_config(TaskType::Enrichment);
     let model_name = &task_config.model;
 
-    let mut processed = 0usize;
+    if contributions.is_empty() {
+        return BatchResult {
+            enrichment_type,
+            processed: 0,
+            errors: 0,
+            total_usage: Usage::new(),
+            first_error: None,
+        };
+    }
+
+    // Phase 1: Build all inputs synchronously (fast, no async needed).
+    let prepared: Vec<PreparedItem> = contributions
+        .iter()
+        .filter_map(|contribution| {
+            let input_text = build_input_from_queue(enrichment_type, contribution)?;
+            let input_hash = hash_input(&input_text);
+            let input_preview = input_preview(&input_text, 500);
+            Some(PreparedItem {
+                contribution_id: contribution.contribution_id,
+                input_text,
+                input_hash,
+                input_preview,
+            })
+        })
+        .collect();
+
+    let skipped = contributions.len() - prepared.len();
+    if skipped > 0 {
+        debug!(
+            enrichment = enrichment_type.as_str(),
+            skipped, "skipped contributions with empty input"
+        );
+    }
+
+    // Phase 2: Run all AI extractions concurrently.
+    let type_str = enrichment_type.as_str();
+    let outcomes: Vec<ItemOutcome> = stream::iter(prepared)
+        .map(|item| async move {
+            match extract_enrichment(router, enrichment_type, &item.input_text).await {
+                Ok((value, confidence, usage)) => ItemOutcome::Success {
+                    result: EnrichmentResult {
+                        contribution_id: item.contribution_id,
+                        enrichment_type: type_str.to_string(),
+                        value,
+                        confidence,
+                        input_hash: item.input_hash,
+                        input_preview: item.input_preview,
+                    },
+                    usage,
+                },
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    warn!(
+                        contribution_id = %item.contribution_id,
+                        enrichment = type_str,
+                        error = %err_msg,
+                        "enrichment extraction failed"
+                    );
+                    ItemOutcome::Error(err_msg)
+                }
+            }
+        })
+        .buffer_unordered(ENRICHMENT_CONCURRENCY)
+        .collect()
+        .await;
+
+    // Phase 3: Aggregate results.
+    let mut successes = Vec::new();
     let mut errors = 0usize;
-    let mut consecutive_errors = 0usize;
     let mut first_error: Option<String> = None;
     let mut total_usage = Usage::new();
 
-    for contribution in contributions {
-        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-            warn!(
-                enrichment = enrichment_type.as_str(),
-                consecutive_errors,
-                remaining = contributions.len() - processed - errors,
-                "aborting batch after consecutive errors (likely systemic issue)"
-            );
-            errors += contributions.len() - processed - errors;
-            break;
-        }
-
-        let Some(input_text) = build_input_from_queue(enrichment_type, contribution) else {
-            debug!(
-                contribution_id = %contribution.contribution_id,
-                enrichment = enrichment_type.as_str(),
-                "skipping queued contribution with empty input"
-            );
-            continue;
-        };
-
-        let input_hash = hash_input(&input_text);
-        let preview = input_preview(&input_text, 500);
-
-        let result = extract_enrichment(router, enrichment_type, &input_text).await;
-
-        match result {
-            Ok((value, confidence, usage)) => {
+    for outcome in outcomes {
+        match outcome {
+            ItemOutcome::Success { result, usage } => {
                 total_usage += usage;
-                consecutive_errors = 0;
-
-                if let Err(e) = repo
-                    .upsert_enrichment(&UpsertEnrichmentParams {
-                        contribution_id: contribution.contribution_id,
-                        enrichment_type: enrichment_type.as_str(),
-                        value: &value,
-                        model_name,
-                        confidence: Some(confidence),
-                        input_hash: Some(&input_hash),
-                        input_preview: Some(&preview),
-                    })
-                    .await
-                {
-                    warn!(
-                        contribution_id = %contribution.contribution_id,
-                        enrichment = enrichment_type.as_str(),
-                        error = %e,
-                        "failed to store enrichment"
-                    );
-                    errors += 1;
-                    continue;
-                }
-                processed += 1;
+                successes.push(result);
             }
-            Err(e) => {
-                let err_msg = e.to_string();
+            ItemOutcome::Error(msg) => {
                 if first_error.is_none() {
-                    first_error = Some(err_msg.clone());
+                    first_error = Some(msg);
                 }
-                warn!(
-                    contribution_id = %contribution.contribution_id,
-                    enrichment = enrichment_type.as_str(),
-                    error = %err_msg,
-                    "enrichment extraction failed"
-                );
                 errors += 1;
-                consecutive_errors += 1;
             }
         }
     }
 
+    // Detect systemic failures: if all items failed, flag it.
+    if errors >= MAX_CONSECUTIVE_ERRORS && successes.is_empty() {
+        warn!(
+            enrichment = type_str,
+            errors, "all items failed — likely systemic issue (wrong model, auth failure, etc.)"
+        );
+    }
+
+    // Phase 4: Bulk upsert all successful enrichments in a single query.
+    let processed = successes.len();
+    if !successes.is_empty()
+        && let Err(e) = repo.bulk_upsert_enrichments(&successes, model_name).await
+    {
+        warn!(
+            enrichment = type_str,
+            error = %e,
+            count = processed,
+            "failed to bulk upsert enrichments, falling back to individual upserts"
+        );
+        // Fallback: try individual upserts so we don't lose all results.
+        let mut fallback_ok = 0usize;
+        for r in &successes {
+            if repo
+                .upsert_enrichment(&UpsertEnrichmentParams {
+                    contribution_id: r.contribution_id,
+                    enrichment_type: &r.enrichment_type,
+                    value: &r.value,
+                    model_name,
+                    confidence: Some(r.confidence),
+                    input_hash: Some(&r.input_hash),
+                    input_preview: Some(&r.input_preview),
+                })
+                .await
+                .is_ok()
+            {
+                fallback_ok += 1;
+            }
+        }
+        info!(
+            enrichment = type_str,
+            fallback_ok,
+            total = processed,
+            "individual upsert fallback complete"
+        );
+    }
+
     info!(
-        enrichment = enrichment_type.as_str(),
+        enrichment = type_str,
         processed,
         errors,
         input_tokens = total_usage.input_tokens,

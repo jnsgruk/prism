@@ -14,9 +14,10 @@ use uuid::Uuid;
 
 use super::SharedState;
 
-/// Max contributions to process per enrichment type per cycle.
-/// Kept small so sequential AI API calls complete within Restate's inactivity timeout.
-const MAX_BATCH_SIZE: i64 = 10;
+/// Max contributions to process per enrichment type per batch.
+/// Items within a batch are processed concurrently, so this can be larger
+/// than when processing was sequential.
+const MAX_BATCH_SIZE: i64 = 50;
 
 pub struct EnrichmentHandlerImpl {
     pub state: SharedState,
@@ -59,15 +60,13 @@ struct TypeProgress {
 impl EnrichmentHandlerImpl {
     /// Run a full enrichment cycle with Restate-native journaling.
     ///
-    /// Each step is wrapped in `ctx.run()` for idempotency on replay:
-    /// - Run creation (so retries don't create duplicate run records)
-    /// - Finding unenriched contributions (DB read, journaled so replay skips)
-    /// - Storing enrichment results (DB write, idempotent via upsert)
+    /// Each iteration fetches one batch per enrichment type, then processes
+    /// all types concurrently for maximum throughput. Within each type,
+    /// items are also processed concurrently (see `process_queued_enrichment_batch`).
     ///
-    /// AI API calls are intentionally OUTSIDE `ctx.run()`:
-    /// - Responses are large (wasteful to journal)
-    /// - Re-enriching is safe (upsert with ON CONFLICT)
-    /// - No secrets in the journal (API key is in the `TaskRouter`)
+    /// Journaling strategy:
+    /// - `ctx.run()`: run creation, queue lookups (DB reads), cost logging, cleanup
+    /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
         // Step 1: Create run record (journaled — retries reuse the same run_id)
         let run_id = self.create_run(ctx).await?;
@@ -75,6 +74,22 @@ impl EnrichmentHandlerImpl {
         let mut total_processed = 0i32;
         let mut total_errors = 0usize;
         let mut first_error: Option<String> = None;
+        let mut rd_stats = TypeProgress {
+            processed: 0,
+            errors: 0,
+        };
+        let mut se_stats = TypeProgress {
+            processed: 0,
+            errors: 0,
+        };
+        let mut si_stats = TypeProgress {
+            processed: 0,
+            errors: 0,
+        };
+        let mut to_stats = TypeProgress {
+            processed: 0,
+            errors: 0,
+        };
         let mut progress = EnrichmentProgress {
             phase: "starting".into(),
             review_depth: None,
@@ -84,101 +99,115 @@ impl EnrichmentHandlerImpl {
             status_message: "Starting enrichment cycle".into(),
         };
 
-        'outer: for enrichment_type in EnrichmentType::all() {
-            let type_name = enrichment_type.as_str();
-            let mut type_processed = 0usize;
-            let mut type_errors = 0usize;
-
-            loop {
-                // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
-                let router = self.router.read().await;
-                if let Some(cap) = router.budget_cap_usd() {
-                    let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-                    match cost_tracker.check_budget(cap).await {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            info!(cap, "daily budget exceeded, pausing enrichment");
-                            break 'outer;
-                        }
-                        Err(e) => {
-                            warn!(error = %e, "failed to check budget, continuing cautiously");
-                        }
+        loop {
+            // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
+            let router = self.router.read().await;
+            if let Some(cap) = router.budget_cap_usd() {
+                let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
+                match cost_tracker.check_budget(cap).await {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        info!(cap, "daily budget exceeded, pausing enrichment");
+                        break;
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "failed to check budget, continuing cautiously");
                     }
                 }
-                drop(router);
+            }
+            drop(router);
 
-                // Step 2: Find queued contributions missing this enrichment type (journaled DB read)
-                let contributions = self.find_queued(ctx, type_name).await?;
-
-                if contributions.is_empty() {
-                    debug!(enrichment = type_name, "no more contributions to enrich");
-                    break;
+            // Step 2: Fetch one batch per enrichment type (journaled DB reads, fast)
+            let all_types = EnrichmentType::all();
+            let mut batches = Vec::with_capacity(all_types.len());
+            let mut any_non_empty = false;
+            for enrichment_type in all_types {
+                let contributions = self.find_queued(ctx, enrichment_type.as_str()).await?;
+                if !contributions.is_empty() {
+                    any_non_empty = true;
                 }
+                batches.push((*enrichment_type, contributions));
+            }
 
-                info!(
-                    enrichment = type_name,
-                    count = contributions.len(),
-                    batch_num = type_processed / MAX_BATCH_SIZE as usize + 1,
-                    "processing enrichment batch"
-                );
+            if !any_non_empty {
+                debug!("no more contributions to enrich across any type");
+                break;
+            }
 
-                // Update progress: starting this type
-                progress.phase = type_name.into();
-                progress.status_message = format!("Processing {type_name}");
-                self.update_progress(run_id, total_processed, &progress)
-                    .await;
-
-                // Step 3: AI API calls (NOT journaled — idempotent, large payloads)
-                let router = self.router.read().await;
-                let batch = enrichment::process_queued_enrichment_batch(
-                    &router,
-                    &self.state.repos.reasoning,
-                    *enrichment_type,
-                    &contributions,
-                )
+            // Update progress before AI calls
+            progress.phase = "processing".into();
+            progress.status_message = format!(
+                "Processing batches: {}",
+                batches
+                    .iter()
+                    .filter(|(_, c)| !c.is_empty())
+                    .map(|(t, c)| format!("{}={}", t.as_str(), c.len()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            self.update_progress(run_id, total_processed, &progress)
                 .await;
-                drop(router);
 
-                // Capture first error for the run record
+            // Step 3: Process ALL types concurrently (AI calls NOT journaled)
+            let router = self.router.read().await;
+            let repo = &self.state.repos.reasoning;
+            let futures: Vec<_> = batches
+                .iter()
+                .filter(|(_, contributions)| !contributions.is_empty())
+                .map(|(etype, contributions)| {
+                    enrichment::process_queued_enrichment_batch(
+                        &router,
+                        repo,
+                        *etype,
+                        contributions,
+                    )
+                })
+                .collect();
+            let results: Vec<enrichment::BatchResult> = futures::future::join_all(futures).await;
+            drop(router);
+
+            // Step 4: Aggregate results and log costs (journaled DB writes)
+            for batch in &results {
+                let type_name = batch.enrichment_type.as_str();
+
                 if first_error.is_none() {
                     first_error.clone_from(&batch.first_error);
                 }
 
-                let batch_processed = batch.processed;
-                let batch_errors = batch.errors;
-
-                // Step 4: Log cost (journaled DB write)
-                self.log_cost(ctx, type_name, &batch).await;
-
                 #[allow(clippy::cast_possible_wrap)]
                 {
-                    total_processed += batch_processed as i32;
+                    total_processed += batch.processed as i32;
                 }
-                type_processed += batch_processed;
-                type_errors += batch_errors;
-                total_errors += batch_errors;
+                total_errors += batch.errors;
 
-                // Update per-type progress (accumulates across batches)
-                let tp = TypeProgress {
-                    processed: type_processed,
-                    errors: type_errors,
+                // Update per-type cumulative stats
+                let stats = match batch.enrichment_type {
+                    EnrichmentType::ReviewDepth => &mut rd_stats,
+                    EnrichmentType::Sentiment => &mut se_stats,
+                    EnrichmentType::Significance => &mut si_stats,
+                    EnrichmentType::Topic => &mut to_stats,
                 };
-                match type_name {
-                    "review_depth" => progress.review_depth = Some(tp),
-                    "sentiment" => progress.sentiment = Some(tp),
-                    "significance" => progress.significance = Some(tp),
-                    "topic" => progress.topic = Some(tp),
-                    _ => {}
-                }
-                progress.status_message = format!(
-                    "Completed {type_name} batch: {batch_processed} processed, {batch_errors} errors ({type_processed} total)"
-                );
-                self.update_progress(run_id, total_processed, &progress)
-                    .await;
+                stats.processed += batch.processed;
+                stats.errors += batch.errors;
 
-                // Clean up fully enriched entries between batches to free queue slots
-                self.delete_fully_enriched(ctx).await;
+                self.log_cost(ctx, type_name, batch).await;
             }
+
+            // Update progress with cumulative per-type stats
+            progress.review_depth = Some(rd_stats.clone());
+            progress.sentiment = Some(se_stats.clone());
+            progress.significance = Some(si_stats.clone());
+            progress.topic = Some(to_stats.clone());
+            progress.status_message = format!(
+                "Batch complete: {} processed, {} errors ({total_processed} total)",
+                results.iter().map(|r| r.processed).sum::<usize>(),
+                results.iter().map(|r| r.errors).sum::<usize>(),
+            );
+            self.update_progress(run_id, total_processed, &progress)
+                .await;
+
+            // Clean up fully enriched entries between batches to free queue slots
+            self.delete_fully_enriched(ctx).await;
         }
 
         // Step 5: Final cleanup of any remaining fully enriched entries
