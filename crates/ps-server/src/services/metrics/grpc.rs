@@ -330,29 +330,55 @@ impl MetricsService for MetricsServiceImpl {
 
         // Compute peer context if the person has a level set
         let peer_context = if let Some(ref level) = person.level {
-            match self
-                .repos
-                .metrics
-                .compute_peer_percentiles(person_id, level, period_start, period_end)
-                .await
-            {
-                Ok(Some((count, percentile, peer_count))) => {
-                    let mut metrics = HashMap::new();
+            let since = period_start.midnight().assume_utc();
+            let (throughput_result, enrichment_result) = tokio::join!(
+                self.repos.metrics.compute_peer_percentiles(
+                    person_id,
+                    level,
+                    period_start,
+                    period_end
+                ),
+                self.repos
+                    .insights
+                    .compute_enrichment_peer_percentiles(person_id, level, since),
+            );
+
+            let mut metrics = HashMap::new();
+            let mut max_peer_count = 0i32;
+
+            if let Ok(Some((count, percentile, peer_count))) = throughput_result {
+                metrics.insert(
+                    "throughput".to_string(),
+                    Percentile {
+                        #[allow(clippy::cast_precision_loss)]
+                        value: count as f64,
+                        percentile,
+                    },
+                );
+                max_peer_count = max_peer_count.max(peer_count);
+            }
+
+            if let Ok(enrichment_percentiles) = enrichment_result {
+                for ep in enrichment_percentiles {
+                    max_peer_count = max_peer_count.max(ep.peer_count);
                     metrics.insert(
-                        "throughput".to_string(),
+                        ep.metric_name,
                         Percentile {
-                            #[allow(clippy::cast_precision_loss)]
-                            value: count as f64,
-                            percentile,
+                            value: ep.value,
+                            percentile: ep.percentile,
                         },
                     );
-                    Some(PeerComparison {
-                        level: level.clone(),
-                        peer_count,
-                        metrics,
-                    })
                 }
-                Ok(None) | Err(_) => None,
+            }
+
+            if metrics.is_empty() {
+                None
+            } else {
+                Some(PeerComparison {
+                    level: level.clone(),
+                    peer_count: max_peer_count,
+                    metrics,
+                })
             }
         } else {
             None

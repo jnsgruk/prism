@@ -129,6 +129,14 @@ pub struct UpsertSnapshotParams {
     pub raw_insights: serde_json::Value,
 }
 
+/// Enrichment-based peer percentile for a single metric.
+pub struct EnrichmentPeerPercentile {
+    pub metric_name: String,
+    pub value: f64,
+    pub percentile: f64,
+    pub peer_count: i32,
+}
+
 /// Org-wide delivery summary counts.
 pub struct DeliverySummaryRow {
     pub total_prs_merged: i32,
@@ -1275,5 +1283,90 @@ impl InsightsRepo {
         .map_err(Error::from)?;
 
         Ok(id)
+    }
+
+    /// Compute enrichment-based peer percentiles for a person relative to same-level peers.
+    ///
+    /// Returns review depth and rubber-stamp rate percentiles among peers
+    /// at the same level who have at least 5 review depth enrichments in the period.
+    pub async fn compute_enrichment_peer_percentiles(
+        &self,
+        person_id: Uuid,
+        level: &str,
+        since: OffsetDateTime,
+    ) -> Result<Vec<EnrichmentPeerPercentile>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            WITH peer_review_stats AS (
+                SELECT
+                    c.person_id,
+                    AVG((e.value->>'score')::double precision) AS avg_depth,
+                    COUNT(*)::int AS review_count,
+                    (COUNT(*) FILTER (WHERE (e.value->>'score')::int = 1)::double precision
+                     / NULLIF(COUNT(*), 0)::double precision * 100) AS rubber_stamp_pct
+                FROM reasoning.enrichments e
+                JOIN activity.contributions c ON c.id = e.contribution_id
+                JOIN org.people p ON p.id = c.person_id
+                WHERE e.enrichment_type = 'review_depth'
+                  AND c.created_at >= $1
+                  AND p.level = $2
+                  AND c.person_id IS NOT NULL
+                GROUP BY c.person_id
+                HAVING COUNT(*) >= 5
+            ),
+            person_stats AS (
+                SELECT avg_depth, rubber_stamp_pct
+                FROM peer_review_stats
+                WHERE person_id = $3
+            ),
+            depth_rank AS (
+                SELECT
+                    COUNT(*)::int AS peer_count,
+                    COUNT(*) FILTER (WHERE avg_depth <= (SELECT avg_depth FROM person_stats))::int AS depth_rank,
+                    COUNT(*) FILTER (WHERE rubber_stamp_pct >= (SELECT rubber_stamp_pct FROM person_stats))::int AS rubber_stamp_rank
+                FROM peer_review_stats
+            )
+            SELECT
+                ps.avg_depth AS "avg_depth!",
+                ps.rubber_stamp_pct AS "rubber_stamp_pct!",
+                dr.peer_count AS "peer_count!",
+                dr.depth_rank AS "depth_rank!",
+                dr.rubber_stamp_rank AS "rubber_stamp_rank!"
+            FROM person_stats ps, depth_rank dr
+            "#,
+            since,
+            level,
+            person_id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let Some(row) = rows else {
+            return Ok(vec![]);
+        };
+
+        let peer_count = row.peer_count;
+        if peer_count == 0 {
+            return Ok(vec![]);
+        }
+
+        let depth_percentile = f64::from(row.depth_rank) / f64::from(peer_count);
+        let rubber_stamp_percentile = f64::from(row.rubber_stamp_rank) / f64::from(peer_count);
+
+        Ok(vec![
+            EnrichmentPeerPercentile {
+                metric_name: "review_depth".to_string(),
+                value: row.avg_depth,
+                percentile: depth_percentile,
+                peer_count,
+            },
+            EnrichmentPeerPercentile {
+                metric_name: "rubber_stamp_rate".to_string(),
+                value: row.rubber_stamp_pct,
+                percentile: rubber_stamp_percentile,
+                peer_count,
+            },
+        ])
     }
 }

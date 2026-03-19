@@ -3,6 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { fmtFloat, fmtPercent } from "@/lib/format-metrics";
 import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
 
+const metricLabels: Record<string, string> = {
+  throughput: "Throughput",
+  review_depth: "Avg review depth",
+  rubber_stamp_rate: "Rubber-stamp rate",
+};
+
+const formatMetricValue = (name: string, value: number): string => {
+  if (name === "rubber_stamp_rate") return `${Math.round(value)}%`;
+  if (name === "review_depth") return value.toFixed(2);
+  return fmtFloat(value);
+};
+
 export const PeerContextPanel = ({
   profile,
 }: {
@@ -26,9 +38,11 @@ export const PeerContextPanel = ({
               key={name}
               className="flex items-center justify-between rounded-md border px-3 py-2"
             >
-              <span className="text-sm capitalize">{name.replace(/_/g, " ")}</span>
+              <span className="text-sm">{metricLabels[name] ?? name.replace(/_/g, " ")}</span>
               <div className="flex items-center gap-2">
-                <span className="tabular-nums text-sm font-medium">{fmtFloat(p.value)}</span>
+                <span className="tabular-nums text-sm font-medium">
+                  {formatMetricValue(name, p.value)}
+                </span>
                 <Badge variant="secondary" className="text-[10px]">
                   {fmtPercent(p.percentile)} percentile
                 </Badge>
