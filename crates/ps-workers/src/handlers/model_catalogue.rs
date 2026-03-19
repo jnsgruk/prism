@@ -18,8 +18,8 @@ pub trait ModelCatalogueHandler {
 }
 
 impl ModelCatalogueHandler for ModelCatalogueHandlerImpl {
-    async fn refresh_catalogue(&self, _ctx: Context<'_>) -> Result<(), TerminalError> {
-        self.do_refresh().await
+    async fn refresh_catalogue(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
+        self.do_refresh(&ctx).await
     }
 }
 
@@ -44,24 +44,37 @@ struct ProviderProgress {
 impl ModelCatalogueHandlerImpl {
     /// Fetch models from each configured provider and store them.
     ///
-    /// All operations are outside `ctx.run()`:
+    /// Run creation is journaled via `ctx.run()` so retries reuse the same
+    /// run ID. All other operations are outside `ctx.run()`:
     /// - API calls are read-only and safe to retry
     /// - DB writes use delete+insert in a transaction (idempotent)
     /// - No secrets should be journaled
-    async fn do_refresh(&self) -> Result<(), TerminalError> {
-        // Create run record
-        let run_id = Uuid::now_v7();
-        self.state
-            .repos
-            .activity
-            .create_run(
-                run_id,
-                "_model_catalogue",
-                "ModelCatalogueHandler",
-                "refresh_catalogue",
-            )
-            .await
-            .map_err(|e| TerminalError::new(format!("failed to create run: {e}")))?;
+    async fn do_refresh(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
+        // Create run record inside ctx.run() so retries reuse the same UUID
+        let repos = self.state.repos.clone();
+        let run_id: Uuid = ctx
+            .run(|| {
+                let repos = repos.clone();
+                async move {
+                    let id = Uuid::now_v7();
+                    repos
+                        .activity
+                        .create_run(
+                            id,
+                            "_model_catalogue",
+                            "ModelCatalogueHandler",
+                            "refresh_catalogue",
+                        )
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(id.to_string()))
+                }
+            })
+            .name("create_run")
+            .await?
+            .into_inner()
+            .parse()
+            .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))?;
 
         let mut progress = CatalogueProgress {
             phase: "starting".into(),
@@ -170,20 +183,21 @@ impl ModelCatalogueHandlerImpl {
             if let Err(e) = self.state.repos.activity.fail_run(run_id, &err_msg).await {
                 warn!(error = %e, "failed to mark catalogue run as failed");
             }
-        } else {
-            progress.phase = "completed".into();
-            progress.status_message = format!("{total_models} models cached");
-            self.update_progress(run_id, total_models, &progress).await;
+            return Err(TerminalError::new(err_msg));
+        }
 
-            if let Err(e) = self
-                .state
-                .repos
-                .activity
-                .complete_run(run_id, total_models)
-                .await
-            {
-                warn!(error = %e, "failed to complete catalogue run");
-            }
+        progress.phase = "completed".into();
+        progress.status_message = format!("{total_models} models cached");
+        self.update_progress(run_id, total_models, &progress).await;
+
+        if let Err(e) = self
+            .state
+            .repos
+            .activity
+            .complete_run(run_id, total_models)
+            .await
+        {
+            warn!(error = %e, "failed to complete catalogue run");
         }
 
         Ok(())
@@ -205,16 +219,27 @@ impl ModelCatalogueHandlerImpl {
 
     /// Decrypt a provider API key from the global secrets store.
     async fn decrypt_provider_key(&self, secret_key_name: &str) -> Option<String> {
-        let encrypted = self
+        let encrypted = match self
             .state
             .repos
             .config
             .get_global_secret(secret_key_name)
             .await
-            .ok()
-            .flatten()?;
+        {
+            Ok(Some(enc)) => enc,
+            Ok(None) => return None,
+            Err(e) => {
+                warn!(key = secret_key_name, error = %e, "failed to read provider secret");
+                return None;
+            }
+        };
 
-        let decrypted = ps_core::crypto::decrypt(&self.state.secret_key, &encrypted).ok()?;
-        String::from_utf8(decrypted).ok()
+        match ps_core::crypto::decrypt(&self.state.secret_key, &encrypted) {
+            Ok(decrypted) => String::from_utf8(decrypted).ok(),
+            Err(e) => {
+                warn!(key = secret_key_name, error = %e, "failed to decrypt provider secret");
+                None
+            }
+        }
     }
 }
