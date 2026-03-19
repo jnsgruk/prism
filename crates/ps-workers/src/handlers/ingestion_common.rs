@@ -10,7 +10,7 @@ use ps_core::models::{RateLimitInfo, SourceConfig};
 use ps_core::repo::Repos;
 use ps_core::repo::reasoning::{EnrichmentQueueEntry, content_hash};
 use restate_sdk::prelude::*;
-use tracing::{debug, error};
+use tracing::debug;
 use uuid::Uuid;
 
 use super::SharedState;
@@ -72,30 +72,7 @@ pub(super) async fn create_ingestion_run(
     handler_name: &str,
     method: &str,
 ) -> Result<Uuid, TerminalError> {
-    let repos = repos.clone();
-    let sn = source_name.to_string();
-    let handler = handler_name.to_string();
-    let method_owned = method.to_string();
-    ctx.run(|| {
-        let repos = repos.clone();
-        let sn = sn.clone();
-        let handler = handler.clone();
-        let method_owned = method_owned.clone();
-        async move {
-            let id = Uuid::now_v7();
-            repos
-                .activity
-                .create_run(id, &sn, &handler, &method_owned)
-                .await
-                .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-            Ok(Json::from(id.to_string()))
-        }
-    })
-    .name("create_run")
-    .await?
-    .into_inner()
-    .parse()
-    .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
+    super::run_lifecycle::create_run!(ctx, repos, source_name, handler_name, method)
 }
 
 /// Mark a run as complete inside a Restate `ctx.run()` closure.
@@ -106,32 +83,7 @@ pub(super) async fn complete_ingestion_run(
     source_name: &str,
     items_collected: i32,
 ) {
-    let repos = repos.clone();
-    let sn = source_name.to_string();
-    let result = ctx
-        .run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            async move {
-                repos
-                    .activity
-                    .complete_run(run_id, items_collected)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                repos
-                    .activity
-                    .clear_current_invocation_id(&sn)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("complete_run")
-        .await;
-
-    if let Err(e) = result {
-        error!(source = source_name, "failed to update run status: {e}");
-    }
+    super::run_lifecycle::complete_run!(ctx, repos, run_id, source_name, items_collected);
 }
 
 /// Mark a run as completed with warnings inside a Restate `ctx.run()` closure.
@@ -144,36 +96,15 @@ pub(super) async fn complete_ingestion_run_with_warnings(
     error_summary: &str,
     metadata: serde_json::Value,
 ) {
-    let repos = repos.clone();
-    let sn = source_name.to_string();
-    let err_msg = error_summary.to_string();
-    let meta = metadata;
-    let result = ctx
-        .run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            let err_msg = err_msg.clone();
-            let meta = meta.clone();
-            async move {
-                repos
-                    .activity
-                    .complete_run_with_warnings(run_id, items_collected, &err_msg, meta)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                repos
-                    .activity
-                    .clear_current_invocation_id(&sn)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("complete_run_with_warnings")
-        .await;
-
-    if let Err(e) = result {
-        error!(source = source_name, "failed to update run status: {e}");
-    }
+    super::run_lifecycle::complete_run_with_warnings!(
+        ctx,
+        repos,
+        run_id,
+        source_name,
+        items_collected,
+        error_summary,
+        metadata
+    );
 }
 
 /// Mark a run as failed inside a Restate `ctx.run()` closure.
@@ -184,34 +115,7 @@ pub(super) async fn fail_ingestion_run(
     source_name: &str,
     error_msg: &str,
 ) {
-    let repos = repos.clone();
-    let err = error_msg.to_string();
-    let sn = source_name.to_string();
-    let result = ctx
-        .run(|| {
-            let repos = repos.clone();
-            let err = err.clone();
-            let sn = sn.clone();
-            async move {
-                repos
-                    .activity
-                    .fail_run(run_id, &err)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                repos
-                    .activity
-                    .clear_current_invocation_id(&sn)
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("fail_run")
-        .await;
-
-    if let Err(e) = result {
-        error!(source = source_name, "failed to update run status: {e}");
-    }
+    super::run_lifecycle::fail_run!(ctx, repos, run_id, source_name, error_msg);
 }
 
 /// Decrypt a required secret. Returns an error if the secret is not configured.

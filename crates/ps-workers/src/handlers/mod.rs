@@ -7,6 +7,7 @@ pub mod ingestion_common;
 pub mod jira_ingestion;
 pub mod metrics_compute;
 pub mod model_catalogue;
+mod run_lifecycle;
 
 use ps_core::models::SourceConfig;
 use ps_core::repo::Repos;

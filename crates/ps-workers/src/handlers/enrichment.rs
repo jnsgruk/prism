@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::run_lifecycle::{complete_run, create_run, fail_run};
 
 /// Max contributions to process per enrichment type per batch.
 /// Items within a batch are processed concurrently, so this can be larger
@@ -69,7 +70,13 @@ impl EnrichmentHandlerImpl {
     /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
         // Step 1: Create run record (journaled — retries reuse the same run_id)
-        let run_id = self.create_run(ctx).await?;
+        let run_id = create_run!(
+            ctx,
+            self.state.repos,
+            "_enrichment",
+            "EnrichmentHandler",
+            "run_cycle"
+        )?;
 
         let mut total_processed = 0i32;
         let mut total_errors = 0usize;
@@ -233,10 +240,16 @@ impl EnrichmentHandlerImpl {
             } else {
                 format!("processed 0, errors {total_errors}")
             };
-            self.fail_run(ctx, run_id, &msg).await;
+            fail_run!(ctx, self.state.repos, run_id, "_enrichment", &msg);
             warn!(errors = total_errors, "enrichment cycle failed");
         } else {
-            self.complete_run(ctx, run_id, total_processed).await;
+            complete_run!(
+                ctx,
+                self.state.repos,
+                run_id,
+                "_enrichment",
+                total_processed
+            );
             info!(
                 processed = total_processed,
                 errors = total_errors,
@@ -250,27 +263,6 @@ impl EnrichmentHandlerImpl {
     // -----------------------------------------------------------------------
     // ctx.run() wrappers — journaled, idempotent on replay
     // -----------------------------------------------------------------------
-
-    async fn create_run(&self, ctx: &Context<'_>) -> Result<Uuid, TerminalError> {
-        let repos = self.state.repos.clone();
-        ctx.run(|| {
-            let repos = repos.clone();
-            async move {
-                let id = Uuid::now_v7();
-                repos
-                    .activity
-                    .create_run(id, "_enrichment", "EnrichmentHandler", "run_cycle")
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(id.to_string()))
-            }
-        })
-        .name("create_run")
-        .await?
-        .into_inner()
-        .parse()
-        .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
-    }
 
     async fn find_queued(
         &self,
@@ -349,52 +341,6 @@ impl EnrichmentHandlerImpl {
 
         if let Err(e) = result {
             warn!(error = %e, "failed to log enrichment cost");
-        }
-    }
-
-    async fn complete_run(&self, ctx: &Context<'_>, run_id: Uuid, items: i32) {
-        let repos = self.state.repos.clone();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    repos
-                        .activity
-                        .complete_run(run_id, items)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("complete_run")
-            .await;
-
-        if let Err(e) = result {
-            warn!(error = %e, "failed to complete enrichment run");
-        }
-    }
-
-    async fn fail_run(&self, ctx: &Context<'_>, run_id: Uuid, error_msg: &str) {
-        let repos = self.state.repos.clone();
-        let err = error_msg.to_string();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let err = err.clone();
-                async move {
-                    repos
-                        .activity
-                        .fail_run(run_id, &err)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("fail_run")
-            .await;
-
-        if let Err(e) = result {
-            warn!(error = %e, "failed to mark enrichment run as failed");
         }
     }
 

@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::run_lifecycle::create_run;
 
 pub struct ModelCatalogueHandlerImpl {
     pub state: SharedState,
@@ -50,31 +51,14 @@ impl ModelCatalogueHandlerImpl {
     /// - DB writes use delete+insert in a transaction (idempotent)
     /// - No secrets should be journaled
     async fn do_refresh(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
-        // Create run record inside ctx.run() so retries reuse the same UUID
-        let repos = self.state.repos.clone();
-        let run_id: Uuid = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let id = Uuid::now_v7();
-                    repos
-                        .activity
-                        .create_run(
-                            id,
-                            "_model_catalogue",
-                            "ModelCatalogueHandler",
-                            "refresh_catalogue",
-                        )
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(id.to_string()))
-                }
-            })
-            .name("create_run")
-            .await?
-            .into_inner()
-            .parse()
-            .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))?;
+        // Create run record (journaled — retries reuse the same UUID)
+        let run_id = create_run!(
+            ctx,
+            self.state.repos,
+            "_model_catalogue",
+            "ModelCatalogueHandler",
+            "refresh_catalogue"
+        )?;
 
         let mut progress = CatalogueProgress {
             phase: "starting".into(),

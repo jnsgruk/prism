@@ -1,9 +1,10 @@
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
-use tracing::{error, info};
+use tracing::info;
 use uuid::Uuid;
 
 use super::SharedState;
+use super::run_lifecycle::{complete_run, create_run, fail_run};
 use crate::github::client::GitHubClient;
 use crate::github::types::GitHubTeam;
 
@@ -24,18 +25,24 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, "starting GitHub team sync");
 
-        let run_id = self.create_run(&ctx, &source_name).await?;
+        let run_id = create_run!(
+            ctx,
+            self.state.repos,
+            &source_name,
+            "GithubTeamSyncHandler",
+            "sync_teams"
+        )?;
         let token = self.decrypt_token(&ctx, config.id).await?;
 
         let orgs = parse_orgs(&config);
         if orgs.is_empty() {
-            self.fail_run(
-                &ctx,
+            fail_run!(
+                ctx,
+                self.state.repos,
                 run_id,
                 &source_name,
-                "no orgs configured for this source",
-            )
-            .await;
+                "no orgs configured for this source"
+            );
             return Err(TerminalError::new("no orgs configured for this source"));
         }
 
@@ -52,15 +59,13 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
             match self.sync_org(&ctx, &client, config.id, org).await {
                 Ok(count) => total_teams += count,
                 Err(e) => {
-                    self.fail_run(&ctx, run_id, &source_name, &e.to_string())
-                        .await;
+                    fail_run!(ctx, self.state.repos, run_id, &source_name, &e.to_string());
                     return Err(e);
                 }
             }
         }
 
-        self.complete_run(&ctx, run_id, &source_name, total_teams)
-            .await;
+        complete_run!(ctx, self.state.repos, run_id, &source_name, total_teams);
 
         info!(source = %source_name, total_teams, "GitHub team sync complete");
         Ok(())
@@ -89,33 +94,6 @@ impl GithubTeamSyncHandlerImpl {
             .name("load_config")
             .await?
             .into_inner())
-    }
-
-    async fn create_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        source_name: &str,
-    ) -> Result<Uuid, TerminalError> {
-        let repos = self.state.repos.clone();
-        let sn = source_name.to_string();
-        ctx.run(|| {
-            let repos = repos.clone();
-            let sn = sn.clone();
-            async move {
-                let id = Uuid::now_v7();
-                repos
-                    .activity
-                    .create_run(id, &sn, "GithubTeamSyncHandler", "sync_teams")
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(id.to_string()))
-            }
-        })
-        .name("create_run")
-        .await?
-        .into_inner()
-        .parse()
-        .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
     }
 
     async fn decrypt_token(
@@ -149,64 +127,6 @@ impl GithubTeamSyncHandlerImpl {
             .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
 
         String::from_utf8(decrypted).map_err(|e| TerminalError::new(format!("invalid token: {e}")))
-    }
-
-    async fn complete_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        source_name: &str,
-        items: i32,
-    ) {
-        let repos = self.state.repos.clone();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    repos
-                        .activity
-                        .complete_run(run_id, items)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("complete_run")
-            .await;
-
-        if let Err(e) = result {
-            error!(source = source_name, "failed to update run status: {e}");
-        }
-    }
-
-    async fn fail_run(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        source_name: &str,
-        error_msg: &str,
-    ) {
-        let repos = self.state.repos.clone();
-        let err = error_msg.to_string();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let err = err.clone();
-                async move {
-                    repos
-                        .activity
-                        .fail_run(run_id, &err)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("fail_run")
-            .await;
-
-        if let Err(e) = result {
-            error!(source = source_name, "failed to update run status: {e}");
-        }
     }
 
     /// Sync all teams for a single GitHub org. Returns the number of teams synced.

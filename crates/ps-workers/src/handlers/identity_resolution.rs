@@ -1,8 +1,9 @@
 use restate_sdk::prelude::*;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::run_lifecycle::{complete_run, create_run};
 use crate::discourse::client::DiscourseClient;
 
 pub struct IdentityResolutionHandlerImpl {
@@ -20,14 +21,20 @@ impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
     async fn resolve_identities(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
         info!("starting identity resolution across all Discourse sources");
 
-        let run_id = self.create_run(&ctx).await?;
+        let run_id = create_run!(
+            ctx,
+            self.state.repos,
+            "_system",
+            "IdentityResolutionHandler",
+            "resolve_identities"
+        )?;
 
         // List all enabled Discourse sources.
         let sources = self.list_discourse_sources(&ctx).await?;
 
         if sources.is_empty() {
             info!("no enabled Discourse sources configured");
-            self.complete_run(&ctx, run_id, 0).await;
+            complete_run!(ctx, self.state.repos, run_id, "_system", 0);
             return Ok(());
         }
 
@@ -57,7 +64,7 @@ impl IdentityResolutionHandler for IdentityResolutionHandlerImpl {
             }
         }
 
-        self.complete_run(&ctx, run_id, total_resolved).await;
+        complete_run!(ctx, self.state.repos, run_id, "_system", total_resolved);
 
         info!(total_resolved, "identity resolution complete");
         Ok(())
@@ -99,54 +106,6 @@ enum ProbeResult {
 }
 
 impl IdentityResolutionHandlerImpl {
-    async fn create_run(&self, ctx: &Context<'_>) -> Result<Uuid, TerminalError> {
-        let repos = self.state.repos.clone();
-        ctx.run(|| {
-            let repos = repos.clone();
-            async move {
-                let id = Uuid::now_v7();
-                repos
-                    .activity
-                    .create_run(
-                        id,
-                        "_system",
-                        "IdentityResolutionHandler",
-                        "resolve_identities",
-                    )
-                    .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                Ok(Json::from(id.to_string()))
-            }
-        })
-        .name("create_run")
-        .await?
-        .into_inner()
-        .parse()
-        .map_err(|e| TerminalError::new(format!("invalid run_id: {e}")))
-    }
-
-    async fn complete_run(&self, ctx: &Context<'_>, run_id: Uuid, items: i32) {
-        let repos = self.state.repos.clone();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    repos
-                        .activity
-                        .complete_run(run_id, items)
-                        .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
-                    Ok(Json::from(()))
-                }
-            })
-            .name("complete_run")
-            .await;
-
-        if let Err(e) = result {
-            error!("failed to update run status: {e}");
-        }
-    }
-
     /// List all enabled Discourse sources from the config table.
     async fn list_discourse_sources(
         &self,
