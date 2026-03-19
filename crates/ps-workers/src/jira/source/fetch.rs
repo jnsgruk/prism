@@ -275,20 +275,8 @@ fn convert_issue(cur: &Cursor, issue: &JiraIssue) -> Option<ContributionInput> {
         metadata: serde_json::Value::Object(metadata),
         content: None,
         state_history,
-        enrichment_content: {
-            let description_text = fields
-                .description
-                .as_ref()
-                .map(adf_to_plain_text)
-                .unwrap_or_default();
-            Some(serde_json::json!({
-                "summary": fields.summary.as_deref().unwrap_or(""),
-                "description": description_text,
-                "issue_type": metrics_data.issue_type.as_deref().unwrap_or(""),
-                "priority": metrics_data.priority.as_deref().unwrap_or(""),
-                "labels": metrics_data.labels,
-            }))
-        },
+        // No enrichment types target jira_ticket yet — don't enqueue.
+        enrichment_content: None,
     })
 }
 

@@ -471,7 +471,9 @@ impl ReasoningRepo {
     ) -> Result<Vec<UnenrichedContribution>, Error> {
         // Different enrichment types target different contribution types.
         let (type_filter, extra_filter) = match enrichment_type {
-            "review_depth" | "sentiment" => ("pr_review", "TRUE"),
+            "review_depth" | "sentiment" => {
+                ("pr_review", "c.content IS NOT NULL AND c.content != ''")
+            }
             "significance" => (
                 "pull_request",
                 "(c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50",
@@ -533,14 +535,25 @@ impl ReasoningRepo {
 
     /// Get enrichment pipeline status: pending count, total, last run, by-type breakdown.
     pub async fn get_enrichment_status(&self) -> Result<EnrichmentStatus, Error> {
-        // Count of enrichable contributions that lack any enrichment
+        // Count of enrichable contributions that lack any enrichment.
+        // Mirrors the eligibility filters in find_queued_for_enrichment():
+        //   - pr_review: all (review_depth + sentiment)
+        //   - pull_request: only >50 lines changed (significance)
+        //   - discourse_topic: all (topic)
         let pending_count = sqlx::query_scalar!(
             r#"
             SELECT COUNT(*)::bigint as "count!: i64"
             FROM activity.contributions c
-            WHERE c.contribution_type IN ('pr_review', 'pull_request', 'discourse_topic')
-              AND NOT EXISTS (
+            WHERE NOT EXISTS (
                 SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id
+              )
+              AND (
+                (c.contribution_type = 'pr_review' AND c.content IS NOT NULL AND c.content != '')
+                OR c.contribution_type = 'discourse_topic'
+                OR (
+                  c.contribution_type = 'pull_request'
+                  AND COALESCE((c.metrics->>'additions')::int + (c.metrics->>'deletions')::int, 0) > 50
+                )
               )
             "#,
         )
@@ -731,7 +744,9 @@ impl ReasoningRepo {
                         EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'review_depth')
                         AND EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'sentiment')
                     WHEN 'pull_request' THEN
+                        -- Either already enriched, or ineligible (<=50 lines changed)
                         EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'significance')
+                        OR COALESCE((c.metrics->>'additions')::int + (c.metrics->>'deletions')::int, 0) <= 50
                     WHEN 'discourse_topic' THEN
                         EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'topic')
                     ELSE TRUE

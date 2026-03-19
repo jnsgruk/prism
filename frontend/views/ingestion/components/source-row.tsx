@@ -32,6 +32,7 @@ export type SourceRowData =
       isRunning: boolean;
       activeRunId?: string;
       itemsThisRun: number;
+      lastRunItems: number;
     };
 
 // ---------------------------------------------------------------------------
@@ -229,7 +230,7 @@ export const SourceRow = ({
     items = data.source.itemsCollected;
   } else {
     stateKey = data.isRunning ? "running" : "idle";
-    items = data.isRunning ? data.itemsThisRun : Number(data.status.totalEnrichments);
+    items = data.isRunning ? data.itemsThisRun : data.lastRunItems;
   }
 
   const stateLabel = stateStyles[stateKey]?.label ?? "Idle";

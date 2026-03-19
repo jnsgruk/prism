@@ -38,6 +38,9 @@ export const SourceList = ({
 
   const activeEnrichmentRun = enrichmentRuns?.find((r) => r.status === "running");
   const isEnrichmentRunning = !!activeEnrichmentRun;
+  const lastCompletedEnrichmentRun = enrichmentRuns?.find(
+    (r) => r.status === "completed" || r.status === "completed_with_warnings",
+  );
 
   // Sort: active first (by start time), then idle (by last run, most recent first)
   const sortedSources = useMemo(() => {
@@ -63,6 +66,7 @@ export const SourceList = ({
       isRunning: isEnrichmentRunning,
       activeRunId: activeEnrichmentRun?.id,
       itemsThisRun: activeEnrichmentRun?.itemsCollected ?? 0,
+      lastRunItems: lastCompletedEnrichmentRun?.itemsCollected ?? 0,
     };
 
     // If enrichment is running, put it with the other active rows
@@ -73,7 +77,13 @@ export const SourceList = ({
     }
 
     return sourceRows;
-  }, [sortedSources, enrichmentStatus, isEnrichmentRunning, activeEnrichmentRun]);
+  }, [
+    sortedSources,
+    enrichmentStatus,
+    isEnrichmentRunning,
+    activeEnrichmentRun,
+    lastCompletedEnrichmentRun,
+  ]);
 
   const handleTriggerRun = (name: string): void => {
     triggerRun.mutate(name, {

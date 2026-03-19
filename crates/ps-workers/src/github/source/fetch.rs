@@ -463,15 +463,22 @@ fn search_pr_to_contributions(
 
     // Build enrichment content blob for this PR.
     // Diff will be attached later by fetch_pr_diffs().
-    let pr_enrichment = serde_json::json!({
-        "title": &title,
-        "description": pr.body_text.as_deref().unwrap_or(""),
-        "labels": labels,
-        "additions": pr.additions.unwrap_or(0),
-        "deletions": pr.deletions.unwrap_or(0),
-        "changed_files": pr.changed_files.unwrap_or(0),
-        "draft": pr.is_draft.unwrap_or(false),
-    });
+    // Only PRs with >50 lines changed are eligible for significance enrichment
+    // (the only enrichment type targeting pull_requests), so skip small PRs.
+    let lines_changed = pr.additions.unwrap_or(0) + pr.deletions.unwrap_or(0);
+    let pr_enrichment = if lines_changed > 50 {
+        Some(serde_json::json!({
+            "title": &title,
+            "description": pr.body_text.as_deref().unwrap_or(""),
+            "labels": labels,
+            "additions": pr.additions.unwrap_or(0),
+            "deletions": pr.deletions.unwrap_or(0),
+            "changed_files": pr.changed_files.unwrap_or(0),
+            "draft": pr.is_draft.unwrap_or(false),
+        }))
+    } else {
+        None
+    };
 
     // Clone title before moving it — reviews need pr_title.
     let pr_title_for_reviews = title.clone();
@@ -511,7 +518,7 @@ fn search_pr_to_contributions(
         .unwrap_or_default(),
         content: None,
         state_history: Some(serde_json::Value::Array(state_history)),
-        enrichment_content: Some(pr_enrichment),
+        enrichment_content: pr_enrichment,
     });
 
     // Map reviews.
