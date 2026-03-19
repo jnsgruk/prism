@@ -37,8 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load encryption key
     let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
 
-    // Shared HTTP client
-    let http_client = reqwest::Client::new();
+    // Shared HTTP client (60s default timeout prevents indefinite hangs)
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .expect("failed to build HTTP client");
 
     // Build shared state for all handlers
     let state = SharedState {
