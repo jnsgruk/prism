@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reasoning.insight_snapshots (\n                team_id, period_start, period_end, period_type,\n                avg_review_depth, review_count, rubber_stamp_pct, deep_review_pct,\n                depth_distribution,\n                constructive_count, neutral_count, critical_count, hostile_count,\n                significant_count, notable_count, routine_count,\n                avg_depth_on_significant, avg_depth_on_notable, avg_depth_on_routine,\n                enrichment_coverage, raw_insights,\n                computed_at\n            ) VALUES (\n                $1, $2, $3, $4,\n                $5, $6, $7, $8,\n                $9,\n                $10, $11, $12, $13,\n                $14, $15, $16,\n                $17, $18, $19,\n                $20, $21,\n                now()\n            )\n            ON CONFLICT (team_id, period_start, period_type) DO UPDATE SET\n                period_end = EXCLUDED.period_end,\n                avg_review_depth = EXCLUDED.avg_review_depth,\n                review_count = EXCLUDED.review_count,\n                rubber_stamp_pct = EXCLUDED.rubber_stamp_pct,\n                deep_review_pct = EXCLUDED.deep_review_pct,\n                depth_distribution = EXCLUDED.depth_distribution,\n                constructive_count = EXCLUDED.constructive_count,\n                neutral_count = EXCLUDED.neutral_count,\n                critical_count = EXCLUDED.critical_count,\n                hostile_count = EXCLUDED.hostile_count,\n                significant_count = EXCLUDED.significant_count,\n                notable_count = EXCLUDED.notable_count,\n                routine_count = EXCLUDED.routine_count,\n                avg_depth_on_significant = EXCLUDED.avg_depth_on_significant,\n                avg_depth_on_notable = EXCLUDED.avg_depth_on_notable,\n                avg_depth_on_routine = EXCLUDED.avg_depth_on_routine,\n                enrichment_coverage = EXCLUDED.enrichment_coverage,\n                raw_insights = EXCLUDED.raw_insights,\n                computed_at = now()\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Date",
+        "Text",
+        "Float4",
+        "Int4",
+        "Float4",
+        "Float4",
+        "Int4Array",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f06f51a7f50c62c3af599a8d3a2980d756fd1bfe928e2b9e4814b3030bd09260"
+}

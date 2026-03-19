@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*)::bigint as \"count!: i64\"\n            FROM activity.contributions c\n            WHERE NOT EXISTS (\n                SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id\n              )\n              AND (\n                (c.contribution_type = 'pr_review' AND c.content IS NOT NULL AND c.content != '')\n                OR c.contribution_type = 'discourse_topic'\n                OR (\n                  c.contribution_type = 'pull_request'\n                  AND COALESCE((c.metrics->>'additions')::int + (c.metrics->>'deletions')::int, 0) > 50\n                )\n              )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b322dd792291ab2cbc2bfafca5d92afbaf3336c9249fbed7ec8f1fc70442f162"
+}
