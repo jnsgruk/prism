@@ -1,4 +1,4 @@
-use ps_core::ingestion::{FailedItem, IngestionContext, IngestionPlan};
+use ps_core::ingestion::{IngestionContext, IngestionPlan};
 use ps_core::models::{RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
@@ -7,9 +7,8 @@ use uuid::Uuid;
 use super::SharedState;
 use super::identity_resolution::IdentityResolutionHandlerClient;
 use super::ingestion_common::{
-    advance_watermark, build_ingestion_context, complete_ingestion_run,
-    complete_ingestion_run_with_warnings, create_ingestion_run, decrypt_optional_secret,
-    fail_ingestion_run, fetch_batch, load_source_config, store_batch,
+    build_ingestion_context, create_ingestion_run, decrypt_optional_secret, extract_failed_items,
+    fail_ingestion_run, fetch_batch, finalise_run, load_source_config, store_batch,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
@@ -120,61 +119,20 @@ impl DiscourseIngestionHandlerImpl {
             }
         };
 
-        // Extract failed_items from final cursor
-        let failed_items: Vec<FailedItem> =
-            serde_json::from_str::<serde_json::Value>(&final_cursor)
-                .ok()
-                .and_then(|v| v.get("failed_items").cloned())
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default();
-
-        if failed_items.is_empty() {
-            if total_items > 0
-                && let Err(e) =
-                    advance_watermark(ctx, &ing_ctx, &final_cursor, total_items, "max_bumped_at")
-                        .await
-            {
-                let msg = e.to_string();
-                fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &msg).await;
-                return Err(TerminalError::new(format!(
-                    "watermark advance failed: {msg}"
-                )));
-            }
-            complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
-        } else if total_items == 0 {
-            let summary = format!(
-                "all {} category(s) failed: {}",
-                failed_items.len(),
-                failed_items
-                    .iter()
-                    .map(|f| f.key.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-            fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &summary).await;
-        } else {
-            // Partial failure — do NOT advance watermark.
-            let summary = format!(
-                "{} category(s) failed: {}",
-                failed_items.len(),
-                failed_items
-                    .iter()
-                    .map(|f| f.key.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-            let metadata = serde_json::json!({ "failed_items": failed_items });
-            complete_ingestion_run_with_warnings(
-                ctx,
-                &self.state.repos,
-                run_id,
-                source_name,
-                total_items,
-                &summary,
-                metadata,
-            )
-            .await;
-        }
+        let failed_items = extract_failed_items(&final_cursor);
+        finalise_run(
+            ctx,
+            &self.state.repos,
+            &ing_ctx,
+            run_id,
+            source_name,
+            total_items,
+            &failed_items,
+            "category",
+            &final_cursor,
+            "max_bumped_at",
+        )
+        .await?;
 
         if total_items > 0 {
             info!(source = source_name, "triggering metrics recomputation");

@@ -5,7 +5,7 @@
 //! secrets, and running fetch/store/advance loops through Restate `ctx.run()`
 //! closures. This module extracts that boilerplate into free functions.
 
-use ps_core::ingestion::{ContributionInput, IngestionContext};
+use ps_core::ingestion::{ContributionInput, FailedItem, IngestionContext};
 use ps_core::models::{RateLimitInfo, SourceConfig};
 use ps_core::repo::Repos;
 use ps_core::repo::reasoning::{EnrichmentQueueEntry, content_hash};
@@ -270,6 +270,76 @@ pub(super) async fn advance_watermark(
     .name("advance_watermark")
     .await?;
 
+    Ok(())
+}
+
+/// Extract failed items from the final cursor JSON.
+pub(super) fn extract_failed_items(cursor: &str) -> Vec<FailedItem> {
+    serde_json::from_str::<serde_json::Value>(cursor)
+        .ok()
+        .and_then(|v| v.get("failed_items").cloned())
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default()
+}
+
+/// Finalise an ingestion run based on whether there were failures.
+///
+/// Three outcomes:
+/// - No failures → advance watermark + complete
+/// - All items failed (`total_items` == 0) → fail
+/// - Partial failure → complete with warnings (do NOT advance watermark)
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn finalise_run(
+    ctx: &ObjectContext<'_>,
+    repos: &ps_core::repo::Repos,
+    ing_ctx: &IngestionContext,
+    run_id: Uuid,
+    source_name: &str,
+    total_items: i32,
+    failed_items: &[FailedItem],
+    item_noun: &str,
+    final_cursor: &str,
+    watermark_field: &str,
+) -> Result<(), TerminalError> {
+    if failed_items.is_empty() {
+        if total_items > 0 {
+            advance_watermark(ctx, ing_ctx, final_cursor, total_items, watermark_field).await?;
+        }
+        complete_ingestion_run(ctx, repos, run_id, source_name, total_items).await;
+    } else if total_items == 0 {
+        let summary = format!(
+            "all {} {item_noun}(s) failed: {}",
+            failed_items.len(),
+            failed_items
+                .iter()
+                .map(|f| f.key.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        fail_ingestion_run(ctx, repos, run_id, source_name, &summary).await;
+    } else {
+        // Partial failure — do NOT advance watermark.
+        let summary = format!(
+            "{} {item_noun}(s) failed: {}",
+            failed_items.len(),
+            failed_items
+                .iter()
+                .map(|f| f.key.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        let metadata = serde_json::json!({ "failed_items": failed_items });
+        complete_ingestion_run_with_warnings(
+            ctx,
+            repos,
+            run_id,
+            source_name,
+            total_items,
+            &summary,
+            metadata,
+        )
+        .await;
+    }
     Ok(())
 }
 
