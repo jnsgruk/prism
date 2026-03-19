@@ -72,9 +72,35 @@ export const TeamInsightsSection = ({
     );
   }
 
-  // Don't show the panel if the query errored (service not deployed yet)
-  // or returned no data at all.
-  if (error || !insights) return null;
+  if (!insights) {
+    if (error) {
+      return (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              <CardTitle>Insights</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Failed to load insights: {error.message}
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+    // No data returned — service may not have data for this team yet
+    return null;
+  }
+
+  // Debug: log what we got so we can understand visibility
+  console.log("[Insights]", {
+    totalContributions: insights.coverage?.totalContributions,
+    enriched: insights.coverage?.enrichedContributions,
+    totalReviews: insights.reviewQuality?.totalReviews,
+    notable: insights.notableItems.length,
+  });
 
   const coverage = insights.coverage;
   const rq = insights.reviewQuality;

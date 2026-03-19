@@ -844,9 +844,9 @@ impl InsightsRepo {
                     COUNT(*)::int AS eligible
                 FROM team_contributions tc
                 CROSS JOIN (VALUES ('review_depth'), ('sentiment'), ('significance'), ('topic')) AS et(enrichment_type)
-                WHERE (et.enrichment_type IN ('review_depth', 'sentiment') AND tc.contribution_type = 'review')
+                WHERE (et.enrichment_type IN ('review_depth', 'sentiment') AND tc.contribution_type = 'pr_review')
                    OR (et.enrichment_type = 'significance' AND tc.contribution_type = 'pull_request')
-                   OR (et.enrichment_type = 'topic' AND tc.contribution_type = 'topic')
+                   OR (et.enrichment_type = 'topic' AND tc.contribution_type = 'discourse_topic')
                 GROUP BY et.enrichment_type
             ),
             type_enriched AS (
@@ -919,9 +919,9 @@ impl InsightsRepo {
                     COUNT(*)::int AS eligible
                 FROM person_contributions pc
                 CROSS JOIN (VALUES ('review_depth'), ('sentiment'), ('significance'), ('topic')) AS et(enrichment_type)
-                WHERE (et.enrichment_type IN ('review_depth', 'sentiment') AND pc.contribution_type = 'review')
+                WHERE (et.enrichment_type IN ('review_depth', 'sentiment') AND pc.contribution_type = 'pr_review')
                    OR (et.enrichment_type = 'significance' AND pc.contribution_type = 'pull_request')
-                   OR (et.enrichment_type = 'topic' AND pc.contribution_type = 'topic')
+                   OR (et.enrichment_type = 'topic' AND pc.contribution_type = 'discourse_topic')
                 GROUP BY et.enrichment_type
             ),
             type_enriched AS (
@@ -1003,7 +1003,7 @@ impl InsightsRepo {
                 JOIN activity.contributions review
                     ON review.platform = sp.platform
                     AND review.metrics->>'pr_platform_id' = sp.platform_id
-                    AND review.contribution_type = 'review'
+                    AND review.contribution_type = 'pr_review'
                 JOIN reasoning.enrichments e
                     ON e.contribution_id = review.id
                     AND e.enrichment_type = 'review_depth'
@@ -1161,13 +1161,13 @@ impl InsightsRepo {
             SELECT
                 COUNT(*) FILTER (WHERE contribution_type = 'pull_request' AND state = 'merged')::int
                     AS "prs_merged!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'review')::int
+                COUNT(*) FILTER (WHERE contribution_type = 'pr_review')::int
                     AS "reviews!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'issue' AND state = 'closed')::int
+                COUNT(*) FILTER (WHERE contribution_type = 'jira_ticket' AND state = 'closed')::int
                     AS "jira_closed!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'topic')::int
+                COUNT(*) FILTER (WHERE contribution_type = 'discourse_topic')::int
                     AS "discourse_topics!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'post')::int
+                COUNT(*) FILTER (WHERE contribution_type = 'discourse_post')::int
                     AS "discourse_posts!: i32",
                 COUNT(DISTINCT person_id)::int
                     AS "active_contributors!: i32",
