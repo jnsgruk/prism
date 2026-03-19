@@ -245,8 +245,11 @@ impl IdentityResolutionHandlerImpl {
 
         let mut resolved_count = 0i32;
 
-        for person in &pending {
-            match self.resolve_person(ctx, &client, platform, person).await {
+        for (person_index, person) in pending.iter().enumerate() {
+            match self
+                .resolve_person(ctx, &client, platform, person, person_index)
+                .await
+            {
                 Ok(Some(true)) => {
                     resolved_count += 1;
                     debug!(
@@ -385,6 +388,7 @@ impl IdentityResolutionHandlerImpl {
         client: &DiscourseClient,
         platform: &str,
         person: &PendingPerson,
+        person_index: usize,
     ) -> Result<Option<bool>, TerminalError> {
         let person_id: Uuid = person
             .person_id
@@ -412,13 +416,13 @@ impl IdentityResolutionHandlerImpl {
                         .into()),
                     }
                 })
-                .name("email_lookup")
+                .name(format!("email_lookup_{person_index}"))
                 .await?
                 .into_inner();
 
             match result {
                 LookupResult::Found(username) => {
-                    self.store_resolution(ctx, person_id, platform, &username)
+                    self.store_resolution(ctx, person_id, platform, &username, person_index)
                         .await?;
                     return Ok(Some(true));
                 }
@@ -428,9 +432,11 @@ impl IdentityResolutionHandlerImpl {
         }
 
         // Strategy 2: Username probing via existing identities.
-        let candidates = self.load_candidate_usernames(ctx, person_id).await?;
+        let candidates = self
+            .load_candidate_usernames(ctx, person_id, person_index)
+            .await?;
 
-        for candidate in &candidates {
+        for (candidate_index, candidate) in candidates.iter().enumerate() {
             let c = client.clone();
             let cand = candidate.clone();
             let result = ctx
@@ -445,13 +451,13 @@ impl IdentityResolutionHandlerImpl {
                         .into()),
                     }
                 })
-                .name("probe_username")
+                .name(format!("probe_{person_index}_{candidate_index}"))
                 .await?
                 .into_inner();
 
             match result {
                 ProbeResult::Exists => {
-                    self.store_resolution(ctx, person_id, platform, candidate)
+                    self.store_resolution(ctx, person_id, platform, candidate, person_index)
                         .await?;
                     return Ok(Some(true));
                 }
@@ -461,7 +467,8 @@ impl IdentityResolutionHandlerImpl {
         }
 
         // No match found.
-        self.store_unresolved(ctx, person_id, platform).await?;
+        self.store_unresolved(ctx, person_id, platform, person_index)
+            .await?;
         Ok(Some(false))
     }
 
@@ -469,6 +476,7 @@ impl IdentityResolutionHandlerImpl {
         &self,
         ctx: &Context<'_>,
         person_id: Uuid,
+        person_index: usize,
     ) -> Result<Vec<String>, TerminalError> {
         let repos = self.state.repos.clone();
         Ok(ctx
@@ -483,7 +491,7 @@ impl IdentityResolutionHandlerImpl {
                     Ok(Json::from(names))
                 }
             })
-            .name("load_candidates")
+            .name(format!("load_candidates_{person_index}"))
             .await?
             .into_inner())
     }
@@ -494,6 +502,7 @@ impl IdentityResolutionHandlerImpl {
         person_id: Uuid,
         platform: &str,
         username: &str,
+        person_index: usize,
     ) -> Result<(), TerminalError> {
         let repos = self.state.repos.clone();
         let p = platform.to_string();
@@ -512,7 +521,7 @@ impl IdentityResolutionHandlerImpl {
                 Ok(Json::from(()))
             }
         })
-        .name("store_resolution")
+        .name(format!("store_resolution_{person_index}"))
         .await?;
 
         Ok(())
@@ -523,6 +532,7 @@ impl IdentityResolutionHandlerImpl {
         ctx: &Context<'_>,
         person_id: Uuid,
         platform: &str,
+        person_index: usize,
     ) -> Result<(), TerminalError> {
         let repos = self.state.repos.clone();
         let p = platform.to_string();
@@ -539,7 +549,7 @@ impl IdentityResolutionHandlerImpl {
                 Ok(Json::from(()))
             }
         })
-        .name("store_unresolved")
+        .name(format!("store_unresolved_{person_index}"))
         .await?;
 
         Ok(())

@@ -99,6 +99,9 @@ impl EnrichmentHandlerImpl {
             status_message: "Starting enrichment cycle".into(),
         };
 
+        let mut iteration = 0u32;
+        let mut cleanup_counter = 0u32;
+
         loop {
             // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
             let router = self.router.read().await;
@@ -122,7 +125,9 @@ impl EnrichmentHandlerImpl {
             let mut batches = Vec::with_capacity(all_types.len());
             let mut any_non_empty = false;
             for enrichment_type in all_types {
-                let contributions = self.find_queued(ctx, enrichment_type.as_str()).await?;
+                let contributions = self
+                    .find_queued(ctx, enrichment_type.as_str(), iteration)
+                    .await?;
                 if !contributions.is_empty() {
                     any_non_empty = true;
                 }
@@ -190,7 +195,7 @@ impl EnrichmentHandlerImpl {
                 stats.processed += batch.processed;
                 stats.errors += batch.errors;
 
-                self.log_cost(ctx, type_name, batch).await;
+                self.log_cost(ctx, type_name, iteration, batch).await;
             }
 
             // Update progress with cumulative per-type stats
@@ -207,11 +212,13 @@ impl EnrichmentHandlerImpl {
                 .await;
 
             // Clean up fully enriched entries between batches to free queue slots
-            self.delete_fully_enriched(ctx).await;
+            self.delete_fully_enriched(ctx, cleanup_counter).await;
+            cleanup_counter += 1;
+            iteration += 1;
         }
 
         // Step 5: Final cleanup of any remaining fully enriched entries
-        self.delete_fully_enriched(ctx).await;
+        self.delete_fully_enriched(ctx, cleanup_counter).await;
 
         // Step 6: Complete or fail the run (journaled)
         progress.phase = "complete".into();
@@ -269,6 +276,7 @@ impl EnrichmentHandlerImpl {
         &self,
         ctx: &Context<'_>,
         enrichment_type: &str,
+        iteration: u32,
     ) -> Result<Vec<QueuedContribution>, TerminalError> {
         let repos = self.state.repos.clone();
         let etype = enrichment_type.to_string();
@@ -285,7 +293,7 @@ impl EnrichmentHandlerImpl {
                     Ok(Json::from(contributions))
                 }
             })
-            .name(format!("find_{enrichment_type}"))
+            .name(format!("find_{enrichment_type}_{iteration}"))
             .await?
             .into_inner())
     }
@@ -294,6 +302,7 @@ impl EnrichmentHandlerImpl {
         &self,
         ctx: &Context<'_>,
         enrichment_type: &str,
+        iteration: u32,
         batch: &enrichment::BatchResult,
     ) {
         if batch.total_usage.input_tokens == 0 && batch.total_usage.output_tokens == 0 {
@@ -335,7 +344,7 @@ impl EnrichmentHandlerImpl {
                     Ok(Json::from(()))
                 }
             })
-            .name(format!("log_cost_{enrichment_type}"))
+            .name(format!("log_cost_{enrichment_type}_{iteration}"))
             .await;
 
         if let Err(e) = result {
@@ -389,7 +398,7 @@ impl EnrichmentHandlerImpl {
         }
     }
 
-    async fn delete_fully_enriched(&self, ctx: &Context<'_>) {
+    async fn delete_fully_enriched(&self, ctx: &Context<'_>, cleanup_counter: u32) {
         let repos = self.state.repos.clone();
         let result = ctx
             .run(|| {
@@ -403,7 +412,7 @@ impl EnrichmentHandlerImpl {
                     Ok(Json::from(deleted))
                 }
             })
-            .name("delete_fully_enriched")
+            .name(format!("cleanup_{cleanup_counter}"))
             .await;
 
         match result {
