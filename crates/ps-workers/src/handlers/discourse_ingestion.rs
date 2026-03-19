@@ -1,14 +1,13 @@
-use ps_core::ingestion::{IngestionContext, IngestionPlan};
+use ps_core::ingestion::{ContributionInput, IngestionPlan};
 use ps_core::models::{RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
-use tracing::{info, warn};
-use uuid::Uuid;
+use tracing::info;
 
 use super::SharedState;
 use super::identity_resolution::IdentityResolutionHandlerClient;
 use super::ingestion_common::{
-    build_ingestion_context, create_ingestion_run, decrypt_optional_secret, extract_failed_items,
-    fail_ingestion_run, fetch_batch, finalise_run, load_source_config, store_batch,
+    ProgressTracker, build_ingestion_context, create_ingestion_run, decrypt_optional_secret,
+    extract_failed_items, fail_ingestion_run, finalise_run, load_source_config,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
@@ -106,9 +105,16 @@ impl DiscourseIngestionHandlerImpl {
 
         let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
 
-        let result = self
-            .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, &initial_cursor)
-            .await;
+        let mut tracker = DiscourseProgressTracker::default();
+        let result = super::ingestion_common::fetch_store_loop(
+            ctx,
+            &ing_ctx,
+            run_id,
+            source_name,
+            &initial_cursor,
+            &mut tracker,
+        )
+        .await;
 
         let (total_items, final_cursor) = match result {
             Ok(v) => v,
@@ -153,74 +159,34 @@ impl DiscourseIngestionHandlerImpl {
         );
         Ok(())
     }
+}
 
-    async fn fetch_store_loop(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: Uuid,
-        source_name: &str,
-        ing_ctx: &IngestionContext,
-        initial_cursor: &str,
-    ) -> Result<(i32, String), TerminalError> {
-        let mut cursor = initial_cursor.to_string();
-        let mut total_items = 0i32;
-        let mut topics_fetched = 0u32;
+#[derive(Default)]
+struct DiscourseProgressTracker {
+    topics_fetched: u32,
+}
 
-        loop {
-            let batch = fetch_batch(ing_ctx, &cursor).await?;
-
-            topics_fetched += batch.items.len() as u32;
-
-            // The fetch always carries the latest cursor state in etag
-            // (including updated max_bumped_at) for watermark advancement.
-            if let Some(ref latest) = batch.etag {
-                cursor = latest.clone();
-            }
-
-            if !batch.items.is_empty() {
-                let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
-                total_items += stored;
-
-                info!(
-                    source = source_name,
-                    batch_stored = stored,
-                    total_items,
-                    "stored Discourse batch"
-                );
-            }
-
-            let progress = build_progress_json(&cursor, topics_fetched, batch.rate_limit.as_ref());
-
-            if let Err(e) = self
-                .state
-                .repos
-                .activity
-                .update_run_progress_detail(run_id, total_items, &progress)
-                .await
-            {
-                warn!(source = source_name, "failed to update run progress: {e}");
-            }
-
-            if batch.next_cursor.is_none() {
-                break;
-            }
-        }
-
-        let final_progress = serde_json::json!({
-            "phase": "complete",
-            "topics_fetched": topics_fetched,
-        });
-        if let Err(e) = self
-            .state
-            .repos
-            .activity
-            .update_run_progress_detail(run_id, total_items, &final_progress)
-            .await
+impl ProgressTracker for DiscourseProgressTracker {
+    fn count_batch(&mut self, items: &[ContributionInput], _stored: i32) {
+        #[allow(clippy::cast_possible_truncation)]
         {
-            warn!(source = source_name, "failed to update final progress: {e}");
+            self.topics_fetched += items.len() as u32;
         }
+    }
 
-        Ok((total_items, cursor))
+    fn build_progress(
+        &self,
+        _cursor_json: &str,
+        rate_limit: Option<&RateLimitInfo>,
+    ) -> serde_json::Value {
+        build_progress_json(_cursor_json, self.topics_fetched, rate_limit)
+    }
+
+    fn build_final_progress(&self) -> serde_json::Value {
+        serde_json::json!({
+            "phase": "complete",
+            "topics_fetched": self.topics_fetched,
+        })
     }
 }
 

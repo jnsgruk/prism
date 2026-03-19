@@ -167,6 +167,82 @@ pub(super) async fn decrypt_optional_secret(
     }
 }
 
+/// Source-specific progress tracking for the fetch-store loop.
+pub(super) trait ProgressTracker {
+    /// Count items from a fetched batch (e.g. increment PR/ticket/topic counter).
+    fn count_batch(&mut self, items: &[ContributionInput], stored: i32);
+
+    /// Build a progress JSON object from current counters and cursor state.
+    fn build_progress(&self, cursor: &str, rate_limit: Option<&RateLimitInfo>)
+    -> serde_json::Value;
+
+    /// Build the final "complete" progress JSON.
+    fn build_final_progress(&self) -> serde_json::Value;
+}
+
+/// Unified fetch-store loop shared by all three ingestion handlers.
+///
+/// Fetches batches from the source, stores them via journaled `ctx.run()`,
+/// updates progress, and returns `(total_items, final_cursor)`.
+pub(super) async fn fetch_store_loop(
+    ctx: &ObjectContext<'_>,
+    ing_ctx: &IngestionContext,
+    run_id: uuid::Uuid,
+    source_name: &str,
+    initial_cursor: &str,
+    tracker: &mut (dyn ProgressTracker + Send),
+) -> Result<(i32, String), TerminalError> {
+    let mut cursor = initial_cursor.to_string();
+    let mut total_items = 0i32;
+
+    loop {
+        let batch = fetch_batch(ing_ctx, &cursor).await?;
+
+        // Update cursor from etag if present (Jira/Discourse pattern),
+        // which carries watermark state even when next_cursor is None.
+        if let Some(ref latest) = batch.etag {
+            cursor = latest.clone();
+        }
+
+        if !batch.items.is_empty() {
+            let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
+            total_items += stored;
+            tracker.count_batch(&batch.items, stored);
+        }
+
+        let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
+        if let Err(e) = ing_ctx
+            .repos
+            .activity
+            .update_run_progress_detail(run_id, total_items, &progress)
+            .await
+        {
+            tracing::warn!(source = source_name, "failed to update run progress: {e}");
+        }
+
+        let Some(next_cursor) = batch.next_cursor else {
+            break;
+        };
+        // For GitHub, cursor comes from next_cursor. For Jira/Discourse,
+        // cursor was already updated from etag above. In all cases, if
+        // next_cursor is Some, that's the authoritative next position.
+        cursor = next_cursor;
+    }
+
+    // Final progress
+    let final_progress = tracker.build_final_progress();
+    if let Err(e) = ing_ctx
+        .repos
+        .activity
+        .update_run_progress_detail(run_id, total_items, &final_progress)
+        .await
+    {
+        tracing::warn!(source = source_name, "failed to update final progress: {e}");
+    }
+
+    Ok((total_items, cursor))
+}
+
 /// Construct an `IngestionContext` from shared state and config.
 pub(super) fn build_ingestion_context(
     state: &SharedState,

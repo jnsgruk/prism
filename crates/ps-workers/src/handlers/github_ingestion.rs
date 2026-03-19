@@ -1,14 +1,14 @@
-use ps_core::ingestion::IngestionContext;
+use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use serde::Serialize;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::SharedState;
 use super::ingestion_common::{
-    build_ingestion_context, complete_ingestion_run, create_ingestion_run, decrypt_required_secret,
-    extract_failed_items, fail_ingestion_run, fetch_batch, finalise_run, load_source_config,
-    store_batch,
+    ProgressTracker, build_ingestion_context, complete_ingestion_run, create_ingestion_run,
+    decrypt_required_secret, extract_failed_items, fail_ingestion_run, finalise_run,
+    load_source_config,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
@@ -108,9 +108,16 @@ impl GithubIngestionHandlerImpl {
             return Ok(());
         }
 
-        let result = self
-            .fetch_store_loop(ctx, run_id, source_name, &ing_ctx, source.as_ref(), &plan)
-            .await;
+        let mut tracker = GithubProgressTracker::default();
+        let result = super::ingestion_common::fetch_store_loop(
+            ctx,
+            &ing_ctx,
+            run_id,
+            source_name,
+            &source.initial_cursor(&ing_ctx, &plan),
+            &mut tracker,
+        )
+        .await;
 
         let (total_items, final_cursor) = match result {
             Ok(v) => v,
@@ -146,95 +153,51 @@ impl GithubIngestionHandlerImpl {
         info!(source = source_name, total_items, "ingestion complete");
         Ok(())
     }
+}
 
-    /// Fetch and store batches in a loop, returning `(total_items, final_cursor)`.
-    async fn fetch_store_loop(
-        &self,
-        ctx: &ObjectContext<'_>,
-        run_id: uuid::Uuid,
-        source_name: &str,
-        ing_ctx: &IngestionContext,
-        source: &dyn ps_core::ingestion::Source,
-        plan: &ps_core::ingestion::IngestionPlan,
-    ) -> Result<(i32, String), TerminalError> {
-        let mut cursor = source.initial_cursor(ing_ctx, plan);
-        let mut total_items = 0i32;
-        let mut prs_fetched = 0u32;
-        let mut reviews_fetched = 0u32;
-        let mut identities_skipped = 0u32;
+#[derive(Default)]
+struct GithubProgressTracker {
+    prs_fetched: u32,
+    reviews_fetched: u32,
+    identities_skipped: u32,
+}
 
-        loop {
-            let batch = fetch_batch(ing_ctx, &cursor).await?;
-
-            // Count PRs vs reviews in the batch.
-            for item in &batch.items {
-                match item.contribution_type {
-                    ContributionType::PullRequest => prs_fetched += 1,
-                    ContributionType::PrReview => reviews_fetched += 1,
-                    _ => {}
-                }
+impl ProgressTracker for GithubProgressTracker {
+    fn count_batch(&mut self, items: &[ContributionInput], stored: i32) {
+        for item in items {
+            match item.contribution_type {
+                ContributionType::PullRequest => self.prs_fetched += 1,
+                ContributionType::PrReview => self.reviews_fetched += 1,
+                _ => {}
             }
-
-            if !batch.items.is_empty() {
-                let batch_size = batch.items.len();
-                let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
-                total_items += stored;
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                {
-                    identities_skipped += (batch_size as u32).saturating_sub(stored as u32);
-                }
-
-                info!(
-                    source = source_name,
-                    batch_stored = stored,
-                    total_items,
-                    "stored batch"
-                );
-            }
-
-            // Build progress JSON from cursor state.
-            let progress = build_progress_json(
-                &cursor,
-                prs_fetched,
-                reviews_fetched,
-                identities_skipped,
-                batch.rate_limit.as_ref(),
-            );
-
-            if let Err(e) = self
-                .state
-                .repos
-                .activity
-                .update_run_progress_detail(run_id, total_items, &progress)
-                .await
-            {
-                warn!(source = source_name, "failed to update run progress: {e}");
-            }
-
-            let Some(next_cursor) = batch.next_cursor else {
-                break;
-            };
-            cursor = next_cursor;
         }
-
-        // Final progress update with "complete" phase.
-        let final_progress = serde_json::json!({
-            "phase": "complete",
-            "prs_fetched": prs_fetched,
-            "reviews_fetched": reviews_fetched,
-            "identities_skipped": identities_skipped,
-        });
-        if let Err(e) = self
-            .state
-            .repos
-            .activity
-            .update_run_progress_detail(run_id, total_items, &final_progress)
-            .await
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         {
-            warn!(source = source_name, "failed to update final progress: {e}");
+            self.identities_skipped += (items.len() as u32).saturating_sub(stored as u32);
         }
+    }
 
-        Ok((total_items, cursor))
+    fn build_progress(
+        &self,
+        cursor_json: &str,
+        rate_limit: Option<&RateLimitInfo>,
+    ) -> serde_json::Value {
+        build_progress_json(
+            cursor_json,
+            self.prs_fetched,
+            self.reviews_fetched,
+            self.identities_skipped,
+            rate_limit,
+        )
+    }
+
+    fn build_final_progress(&self) -> serde_json::Value {
+        serde_json::json!({
+            "phase": "complete",
+            "prs_fetched": self.prs_fetched,
+            "reviews_fetched": self.reviews_fetched,
+            "identities_skipped": self.identities_skipped,
+        })
     }
 }
 
