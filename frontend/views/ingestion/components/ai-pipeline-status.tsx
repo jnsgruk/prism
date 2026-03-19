@@ -123,7 +123,7 @@ const AiPipelineStatus = (): React.ReactElement => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Summary stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className={`grid gap-4 ${isRunning ? "grid-cols-4" : "grid-cols-3"}`}>
           <div>
             <p className="text-xs text-muted-foreground">Pending</p>
             <p className="text-lg font-semibold tabular-nums">{status.pendingCount.toString()}</p>
@@ -134,6 +134,14 @@ const AiPipelineStatus = (): React.ReactElement => {
               {status.totalEnrichments.toString()}
             </p>
           </div>
+          {isRunning && activeRun && (
+            <div>
+              <p className="text-xs text-muted-foreground">Enriched This Run</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {activeRun.itemsCollected.toLocaleString()}
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-xs text-muted-foreground">Last Run</p>
             <p className="text-sm font-medium">{lastRunLabel}</p>
