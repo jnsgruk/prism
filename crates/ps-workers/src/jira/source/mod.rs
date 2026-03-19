@@ -22,6 +22,9 @@ pub(crate) struct Cursor {
     pub(crate) watermark: Option<String>,
     /// Configured project keys.
     pub(crate) projects: Vec<String>,
+    /// Which project we're currently fetching (index into `projects`).
+    #[serde(default)]
+    pub(crate) project_index: usize,
     /// Cursor token for Jira's cursor-based pagination.
     pub(crate) next_page_token: Option<String>,
     /// Track the latest `updated` timestamp seen across all items.
@@ -32,6 +35,9 @@ pub(crate) struct Cursor {
     pub(crate) story_points_field: Option<String>,
     /// API mode: "cloud" or "server".
     pub(crate) api_mode: String,
+    /// Items that errored during this run (for failure isolation).
+    #[serde(default)]
+    pub(crate) failed_items: Vec<ps_core::ingestion::FailedItem>,
 }
 
 #[async_trait]
@@ -70,17 +76,16 @@ impl Source for JiraSource {
     }
 
     fn initial_cursor(&self, plan: &IngestionPlan) -> String {
-        // Initial cursor is set during plan phase — the plan stores it as
-        // serialised JSON in the watermark field for the handler to extract.
-        // But we also construct a proper cursor here for the generic path.
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
-            projects: vec![],
+            projects: plan.items.clone(),
+            project_index: 0,
             next_page_token: None,
             max_updated_at: plan.watermark.clone(),
             base_url: String::new(),
             story_points_field: None,
             api_mode: "cloud".into(),
+            failed_items: vec![],
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }

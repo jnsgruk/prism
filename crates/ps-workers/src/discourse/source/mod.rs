@@ -27,6 +27,9 @@ pub(crate) struct Cursor {
     pub(crate) page: u32,
     /// Category IDs to filter (empty = all).
     pub(crate) category_ids: Vec<i64>,
+    /// Which category we're currently fetching (index into `category_ids`).
+    #[serde(default)]
+    pub(crate) category_index: usize,
     /// Minimum posts threshold.
     pub(crate) min_posts: i32,
     /// Base URL for constructing topic/post URLs.
@@ -40,6 +43,9 @@ pub(crate) struct Cursor {
     /// Category ID → name map, fetched once on page 0 and reused across pages.
     #[serde(default)]
     pub(crate) category_map: std::collections::HashMap<i64, String>,
+    /// Items that errored during this run (for failure isolation).
+    #[serde(default)]
+    pub(crate) failed_items: Vec<ps_core::ingestion::FailedItem>,
 }
 
 #[async_trait]
@@ -78,21 +84,24 @@ impl Source for DiscourseSource {
     }
 
     fn initial_cursor(&self, plan: &IngestionPlan) -> String {
-        // Note: the DiscourseIngestionHandler uses build_discourse_cursor()
-        // instead of this method, which populates base_url, instance,
-        // category_ids, and min_posts from the source config. This default
-        // is a fallback that relies on fetch_batch_impl reading base_url
-        // from settings and extracting instance from the source name.
+        let category_ids: Vec<i64> = plan
+            .items
+            .iter()
+            .filter_map(|s| s.parse::<i64>().ok())
+            .collect();
+
         let cursor = Cursor {
             watermark: plan.watermark.clone(),
             page: 0,
-            category_ids: vec![],
+            category_ids,
+            category_index: 0,
             min_posts: 0,
             base_url: String::new(),
             instance: String::new(),
             max_bumped_at: plan.watermark.clone(),
             has_more: true,
             category_map: std::collections::HashMap::new(),
+            failed_items: vec![],
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }

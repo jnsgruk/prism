@@ -75,6 +75,9 @@ pub(super) struct Cursor {
     pub(super) ingested_repos: HashSet<String>,
     /// Last rate limit remaining value (used to decide whether to skip search).
     pub(super) last_rate_limit_remaining: Option<i32>,
+    /// Items (repos) that errored during this run (for failure isolation).
+    #[serde(default)]
+    pub(super) failed_items: Vec<ps_core::ingestion::FailedItem>,
 }
 
 #[async_trait]
@@ -126,6 +129,7 @@ impl Source for GitHubSource {
             search_users: vec![],
             ingested_repos: HashSet::new(),
             last_rate_limit_remaining: None,
+            failed_items: vec![],
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }

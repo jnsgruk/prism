@@ -230,6 +230,37 @@ impl DiscourseClient {
         }
     }
 
+    /// Fetch the latest topics page for a specific category.
+    ///
+    /// Uses `/c/{category_id}/l/latest.json` (Discourse 2.7+).
+    /// `page` is 0-indexed.
+    pub async fn latest_for_category(
+        &self,
+        category_id: i64,
+        page: u32,
+    ) -> Result<LatestResponse, ps_core::Error> {
+        let url = format!("{}/c/{}/l/latest.json", self.base_url, category_id);
+
+        debug!(category_id, page, "discourse category latest request");
+
+        let req = self
+            .http
+            .get(&url)
+            .query(&[("page", page.to_string()), ("order", "activity".into())])
+            .timeout(std::time::Duration::from_secs(30));
+
+        let resp = self.auth(req).send().await.map_err(|e| {
+            ps_core::Error::Internal(format!("discourse category latest request failed: {e}"))
+        })?;
+
+        Self::handle_rate_limit(&resp)?;
+        Self::require_success(&resp)?;
+
+        resp.json()
+            .await
+            .map_err(|e| ps_core::Error::Internal(format!("discourse category latest parse: {e}")))
+    }
+
     /// Fetch the latest topics page.
     ///
     /// `page` is 0-indexed.  Returns topics sorted by latest activity.

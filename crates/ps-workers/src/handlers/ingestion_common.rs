@@ -135,7 +135,6 @@ pub(super) async fn complete_ingestion_run(
 }
 
 /// Mark a run as completed with warnings inside a Restate `ctx.run()` closure.
-#[allow(dead_code)] // Used when handlers adopt CompletedWithWarnings in the next commit.
 pub(super) async fn complete_ingestion_run_with_warnings(
     ctx: &ObjectContext<'_>,
     repos: &ps_core::repo::Repos,

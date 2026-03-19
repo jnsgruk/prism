@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures::stream::{self, StreamExt};
-use ps_core::ingestion::{ContributionInput, FetchResult, IngestionContext};
+use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionContext};
 use ps_core::models::{
     ContributionType, DiscourseLikeData, DiscoursePostData, DiscourseTopicData, Platform,
 };
@@ -34,34 +34,96 @@ pub(super) async fn fetch_batch_impl(
     let client = DiscourseClient::new(ctx.http_client.clone(), base_url, &api_key, &api_username);
 
     // Fetch categories once for name resolution (first page), then reuse from cursor.
-    if cur.page == 0 && cur.category_map.is_empty() {
+    if cur.page == 0 && cur.category_index == 0 && cur.category_map.is_empty() {
         cur.category_map = build_category_map(&client).await.unwrap_or_default();
     }
-    // Fetch the latest topics page.
-    // If rate-limited, stop pagination gracefully with the items collected so far
-    // rather than crashing the entire run.
-    let response = match client.latest(cur.page).await {
-        Ok(r) => r,
-        Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-            warn!(
-                source = ctx.source_config.name,
-                page = cur.page,
-                retry_after_secs,
-                "rate limited on Discourse latest page — stopping pagination"
-            );
+
+    // Determine which API to call: per-category or global latest
+    let response = if cur.category_ids.is_empty() {
+        // No category filter — fetch global latest (existing behavior)
+        match client.latest(cur.page).await {
+            Ok(r) => r,
+            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+                warn!(
+                    source = ctx.source_config.name,
+                    page = cur.page,
+                    retry_after_secs,
+                    "rate limited on Discourse latest page — stopping pagination"
+                );
+                return Ok(FetchResult {
+                    items: vec![],
+                    next_cursor: None,
+                    rate_limit: Some(ps_core::models::RateLimitInfo {
+                        remaining: 0,
+                        limit: 0,
+                        reset_at: time::OffsetDateTime::now_utc()
+                            + time::Duration::seconds(retry_after_secs.cast_signed()),
+                    }),
+                    etag: None,
+                });
+            }
+            Err(e) => return Err(e),
+        }
+    } else {
+        // Per-category iteration
+        let Some(&cat_id) = cur.category_ids.get(cur.category_index) else {
+            let final_cursor = serialise_cursor(&cur)?;
             return Ok(FetchResult {
                 items: vec![],
                 next_cursor: None,
-                rate_limit: Some(ps_core::models::RateLimitInfo {
-                    remaining: 0,
-                    limit: 0,
-                    reset_at: time::OffsetDateTime::now_utc()
-                        + time::Duration::seconds(retry_after_secs.cast_signed()),
-                }),
-                etag: None,
+                rate_limit: None,
+                etag: Some(final_cursor),
             });
+        };
+        match client.latest_for_category(cat_id, cur.page).await {
+            Ok(r) => r,
+            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+                warn!(
+                    source = ctx.source_config.name,
+                    category_id = cat_id,
+                    retry_after_secs,
+                    "rate limited on Discourse category page — stopping pagination"
+                );
+                return Ok(FetchResult {
+                    items: vec![],
+                    next_cursor: None,
+                    rate_limit: Some(ps_core::models::RateLimitInfo {
+                        remaining: 0,
+                        limit: 0,
+                        reset_at: time::OffsetDateTime::now_utc()
+                            + time::Duration::seconds(retry_after_secs.cast_signed()),
+                    }),
+                    etag: None,
+                });
+            }
+            Err(e) => {
+                // Record failure, skip to next category
+                warn!(
+                    source = ctx.source_config.name,
+                    category_id = cat_id,
+                    error = %e,
+                    "skipping category due to fetch error"
+                );
+                cur.failed_items.push(FailedItem {
+                    key: format!("category:{cat_id}"),
+                    error: e.to_string(),
+                });
+                cur.category_index += 1;
+                cur.page = 0;
+                let final_cursor = serialise_cursor(&cur)?;
+                let next_cursor = if cur.category_index < cur.category_ids.len() {
+                    Some(serialise_cursor(&cur)?)
+                } else {
+                    None
+                };
+                return Ok(FetchResult {
+                    items: vec![],
+                    next_cursor,
+                    rate_limit: None,
+                    etag: Some(final_cursor),
+                });
+            }
         }
-        Err(e) => return Err(e),
     };
 
     let topics = &response.topic_list.topics;
@@ -164,7 +226,15 @@ pub(super) async fn fetch_batch_impl(
     let final_cursor = serialise_cursor(&cur)?;
 
     let next_cursor = if stop {
-        None
+        if !cur.category_ids.is_empty() && cur.category_index + 1 < cur.category_ids.len() {
+            // Move to next category
+            cur.category_index += 1;
+            cur.page = 0;
+            Some(serialise_cursor(&cur)?)
+        } else {
+            // All categories exhausted (or no category filter)
+            None
+        }
     } else {
         cur.page += 1;
         cur.has_more = has_more_pages;

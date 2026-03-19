@@ -12,6 +12,7 @@ use super::{
 };
 use crate::github::client::GitHubClient;
 use crate::github::types::GraphQLSearchPr;
+use ps_core::ingestion::FailedItem;
 
 /// Max size for combined PR diff content stored in enrichment queue (~20KB).
 const MAX_DIFF_SIZE: usize = 20_000;
@@ -80,10 +81,32 @@ async fn fetch_team_repos(
         "executing GitHub search query"
     );
 
-    let page = client
+    let page = match client
         .search_pull_requests(&query, cur.graphql_cursor.as_deref())
         .await
-        .map_err(|e| ps_core::Error::Internal(format!("GitHub GraphQL error: {e}")))?;
+    {
+        Ok(page) => page,
+        Err(e) => {
+            warn!(
+                source = ctx.source_config.name,
+                repo = %format!("{owner}/{repo}"),
+                error = %e,
+                "skipping repo due to fetch error"
+            );
+            cur.failed_items.push(FailedItem {
+                key: format!("{owner}/{repo}"),
+                error: e.to_string(),
+            });
+            cur.repo_index += 1;
+            cur.graphql_cursor = None;
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: Some(serialise_cursor(cur)?),
+                rate_limit: None,
+                etag: None,
+            });
+        }
+    };
 
     debug!(
         source = ctx.source_config.name,

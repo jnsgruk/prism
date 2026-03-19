@@ -1,4 +1,4 @@
-use ps_core::ingestion::IngestionPlan;
+use ps_core::ingestion::{FailedItem, IngestionPlan};
 use ps_core::models::{ContributionType, RateLimitInfo, SourceConfig};
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use super::SharedState;
 use super::ingestion_common::{
-    advance_watermark, build_ingestion_context, complete_ingestion_run, create_ingestion_run,
-    decrypt_optional_secret, decrypt_required_secret, fail_ingestion_run, fetch_batch,
-    load_source_config, store_batch,
+    advance_watermark, build_ingestion_context, complete_ingestion_run,
+    complete_ingestion_run_with_warnings, create_ingestion_run, decrypt_optional_secret,
+    decrypt_required_secret, fail_ingestion_run, fetch_batch, load_source_config, store_batch,
 };
 use super::metrics_compute::MetricsComputeHandlerClient;
 use crate::registry;
@@ -99,6 +99,7 @@ impl JiraIngestionHandlerImpl {
 
         info!(
             source = source_name,
+            projects = ?plan.items,
             watermark = ?plan.watermark,
             "Jira ingestion plan ready"
         );
@@ -117,20 +118,62 @@ impl JiraIngestionHandlerImpl {
             )
             .await?;
 
-        if total_items > 0 {
-            advance_watermark(
-                ctx,
-                &self.state,
-                config,
-                &final_cursor,
-                total_items,
-                ing_ctx.token.as_deref(),
-                "max_updated_at",
-            )
-            .await?;
-        }
+        // Extract failed_items from final cursor
+        let failed_items: Vec<FailedItem> =
+            serde_json::from_str::<serde_json::Value>(&final_cursor)
+                .ok()
+                .and_then(|v| v.get("failed_items").cloned())
+                .and_then(|v| serde_json::from_value(v).ok())
+                .unwrap_or_default();
 
-        complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
+        if failed_items.is_empty() {
+            if total_items > 0 {
+                advance_watermark(
+                    ctx,
+                    &self.state,
+                    config,
+                    &final_cursor,
+                    total_items,
+                    ing_ctx.token.as_deref(),
+                    "max_updated_at",
+                )
+                .await?;
+            }
+            complete_ingestion_run(ctx, &self.state.repos, run_id, source_name, total_items).await;
+        } else if total_items == 0 {
+            let summary = format!(
+                "all {} project(s) failed: {}",
+                failed_items.len(),
+                failed_items
+                    .iter()
+                    .map(|f| f.key.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            fail_ingestion_run(ctx, &self.state.repos, run_id, source_name, &summary).await;
+        } else {
+            // Partial failure — do NOT advance watermark.
+            let summary = format!(
+                "{} project(s) failed: {}",
+                failed_items.len(),
+                failed_items
+                    .iter()
+                    .map(|f| f.key.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            let metadata = serde_json::json!({ "failed_items": failed_items });
+            complete_ingestion_run_with_warnings(
+                ctx,
+                &self.state.repos,
+                run_id,
+                source_name,
+                total_items,
+                &summary,
+                metadata,
+            )
+            .await;
+        }
 
         if total_items > 0 {
             info!(source = source_name, "triggering metrics recomputation");
@@ -250,11 +293,13 @@ fn build_jira_cursor(config: &SourceConfig, plan: &IngestionPlan) -> String {
     let cursor = crate::jira::source::Cursor {
         watermark: plan.watermark.clone(),
         projects,
+        project_index: 0,
         next_page_token: None,
         max_updated_at: plan.watermark.clone(),
         base_url,
         story_points_field,
         api_mode,
+        failed_items: vec![],
     };
 
     serde_json::to_string(&cursor).unwrap_or_default()
@@ -269,28 +314,42 @@ fn build_progress_json(
     let cursor: serde_json::Value =
         serde_json::from_str(cursor_json).unwrap_or(serde_json::Value::Null);
 
-    let projects = cursor
+    let projects_total = cursor
         .get("projects")
         .and_then(|v| v.as_array())
-        .map(|a| {
-            a.iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-        .unwrap_or_default();
+        .map_or(0, Vec::len);
+    let project_index = cursor
+        .get("project_index")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let current_project = cursor
+        .get("projects")
+        .and_then(|v| v.as_array())
+        .and_then(|ps| ps.get(project_index as usize))
+        .and_then(serde_json::Value::as_str);
+    let failed_count = cursor
+        .get("failed_items")
+        .and_then(|v| v.as_array())
+        .map_or(0, Vec::len);
 
-    let scope = if projects.is_empty() {
-        "all projects".to_string()
+    let status_message = if let Some(proj) = current_project {
+        format!(
+            "Fetching Jira issues from {proj} ({}/{projects_total}, {tickets_fetched} so far)",
+            project_index + 1
+        )
+    } else if projects_total > 0 {
+        format!("Jira ingestion complete ({tickets_fetched} tickets)")
     } else {
-        projects
+        format!("Fetching Jira issues ({tickets_fetched} so far)")
     };
 
-    let status_message = format!("Fetching Jira issues from {scope} ({tickets_fetched} so far)");
-
     let mut progress = serde_json::json!({
-        "phase": "jql_search",
+        "phase": current_project.map_or("complete".to_string(), |p| format!("project:{p}")),
         "tickets_fetched": tickets_fetched,
+        "projects_total": projects_total,
+        "projects_completed": project_index,
+        "current_project": current_project,
+        "failed_items": failed_count,
         "status_message": status_message,
     });
 

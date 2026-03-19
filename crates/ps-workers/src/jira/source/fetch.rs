@@ -1,4 +1,4 @@
-use ps_core::ingestion::{ContributionInput, FetchResult, IngestionContext};
+use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionContext};
 use ps_core::models::{ContributionState, ContributionType, JiraTicketData, Platform};
 use tracing::{info, warn};
 
@@ -38,18 +38,27 @@ pub(super) async fn fetch_batch_impl(
         &token,
     );
 
-    // Build JQL query — project filter is optional
-    let project_filter = if cur.projects.is_empty() {
-        String::new()
+    // Build single-project JQL when iterating per-project
+    let current_project = if cur.projects.is_empty() {
+        None
     } else {
-        let project_list = cur
-            .projects
-            .iter()
-            .map(|p| format!("\"{p}\""))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("project IN ({project_list})")
+        let Some(proj) = cur.projects.get(cur.project_index) else {
+            // All projects exhausted — done
+            let final_cursor = serialise_cursor(&cur)?;
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: None,
+                rate_limit: None,
+                etag: Some(final_cursor),
+            });
+        };
+        Some(proj.clone())
     };
+
+    let project_filter = current_project
+        .as_ref()
+        .map(|p| format!("project = \"{}\"", p.replace('"', "\\\"")))
+        .unwrap_or_default();
 
     let jql = match (project_filter.is_empty(), &cur.watermark) {
         (false, Some(wm)) => {
@@ -64,7 +73,7 @@ pub(super) async fn fetch_batch_impl(
         (true, None) => "ORDER BY updated ASC".into(),
     };
 
-    let (response, rate_limit) = client
+    let (response, rate_limit) = match client
         .search(
             &jql,
             MAX_RESULTS_PER_PAGE,
@@ -72,13 +81,46 @@ pub(super) async fn fetch_batch_impl(
             "changelog",
             cur.next_page_token.as_deref(),
         )
-        .await?;
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            if let Some(ref proj) = current_project {
+                warn!(
+                    source = ctx.source_config.name,
+                    project = proj,
+                    error = %e,
+                    "skipping project due to fetch error"
+                );
+                cur.failed_items.push(FailedItem {
+                    key: proj.clone(),
+                    error: e.to_string(),
+                });
+                cur.project_index += 1;
+                cur.next_page_token = None;
+                let final_cursor = serialise_cursor(&cur)?;
+                let next_cursor = if cur.project_index < cur.projects.len() {
+                    Some(serialise_cursor(&cur)?)
+                } else {
+                    None
+                };
+                return Ok(FetchResult {
+                    items: vec![],
+                    next_cursor,
+                    rate_limit: None,
+                    etag: Some(final_cursor),
+                });
+            }
+            return Err(e);
+        }
+    };
 
     let returned = response.issues.len();
 
     info!(
         source = ctx.source_config.name,
         returned,
+        project = ?current_project,
         is_last = ?response.is_last,
         "fetched Jira issues"
     );
@@ -117,6 +159,11 @@ pub(super) async fn fetch_batch_impl(
 
     let next_cursor = if has_more {
         cur.next_page_token = response.next_page_token;
+        Some(serialise_cursor(&cur)?)
+    } else if !cur.projects.is_empty() && cur.project_index + 1 < cur.projects.len() {
+        // Move to next project
+        cur.project_index += 1;
+        cur.next_page_token = None;
         Some(serialise_cursor(&cur)?)
     } else {
         None
