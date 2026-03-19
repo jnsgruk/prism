@@ -114,18 +114,11 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
 // Detail expansion — secondary info shown on click
 // ---------------------------------------------------------------------------
 
-const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
-  review_depth: "Review Depth",
-  sentiment: "Sentiment",
-  significance: "Significance",
-  topic: "Topic",
-};
-
 // ---------------------------------------------------------------------------
-// Stat pill — small labelled value used inside detail panels
+// Detail expansion — compact inline stats
 // ---------------------------------------------------------------------------
 
-const StatPill = ({
+const Stat = ({
   label,
   value,
   icon,
@@ -134,71 +127,84 @@ const StatPill = ({
   label: string;
   value: string;
   icon?: React.ReactNode;
-  variant?: "default" | "warning" | "danger";
+  variant?: "warning" | "danger";
 }): React.ReactElement => (
-  <div
+  <span
     className={cn(
-      "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5",
-      variant === "warning" && "border-amber-500/30 bg-amber-500/5",
-      variant === "danger" && "border-destructive/30 bg-destructive/5",
-      !variant && "bg-muted/50",
+      "inline-flex items-center gap-1 text-xs tabular-nums",
+      variant === "warning" && "text-amber-600 dark:text-amber-400",
+      variant === "danger" && "text-destructive",
+      !variant && "text-muted-foreground",
     )}
   >
     {icon}
-    <div className="flex flex-col">
-      <span className="text-[10px] leading-tight text-muted-foreground">{label}</span>
-      <span
-        className={cn(
-          "text-xs font-medium tabular-nums leading-tight",
-          variant === "warning" && "text-amber-600 dark:text-amber-400",
-          variant === "danger" && "text-destructive",
-        )}
-      >
-        {value}
-      </span>
-    </div>
-  </div>
+    <span className="font-medium">{value}</span>
+    <span className="text-muted-foreground">{label}</span>
+  </span>
 );
+
+const DOT_SEP = <span className="text-muted-foreground/50">·</span>;
 
 const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => {
   const rateLimitLow =
     detail.rateLimit && detail.rateLimit.remaining / detail.rateLimit.limit < 0.1;
 
+  const stats: React.ReactNode[] = [];
+
+  if (detail.prsFetched !== undefined) {
+    stats.push(
+      <Stat
+        key="prs"
+        label="PRs"
+        value={detail.prsFetched.toLocaleString()}
+        icon={<GitPullRequest className="size-3" />}
+      />,
+    );
+  }
+  if (detail.reviewsFetched !== undefined) {
+    stats.push(
+      <Stat
+        key="reviews"
+        label="reviews"
+        value={detail.reviewsFetched.toLocaleString()}
+        icon={<MessageSquare className="size-3" />}
+      />,
+    );
+  }
+  if (detail.identitiesSkipped !== undefined) {
+    stats.push(
+      <Stat
+        key="skipped"
+        label="skipped"
+        value={String(detail.identitiesSkipped)}
+        icon={<UserX className="size-3" />}
+        variant="warning"
+      />,
+    );
+  }
+  if (detail.rateLimit) {
+    stats.push(
+      <Stat
+        key="rate"
+        label="API calls left"
+        value={`${detail.rateLimit.remaining.toLocaleString()}/${detail.rateLimit.limit.toLocaleString()}`}
+        variant={rateLimitLow ? "danger" : undefined}
+      />,
+    );
+  }
+
   return (
-    <div className="mx-4 mb-3 mt-1 space-y-2 rounded-md border bg-muted/30 p-3">
-      <div className="flex flex-wrap gap-2">
-        {detail.prsFetched !== undefined && (
-          <StatPill
-            label="PRs"
-            value={detail.prsFetched.toLocaleString()}
-            icon={<GitPullRequest className="size-3 text-muted-foreground" />}
-          />
-        )}
-        {detail.reviewsFetched !== undefined && (
-          <StatPill
-            label="Reviews"
-            value={detail.reviewsFetched.toLocaleString()}
-            icon={<MessageSquare className="size-3 text-muted-foreground" />}
-          />
-        )}
-        {detail.identitiesSkipped !== undefined && (
-          <StatPill
-            label="Skipped"
-            value={String(detail.identitiesSkipped)}
-            icon={<UserX className="size-3" />}
-            variant="warning"
-          />
-        )}
-        {detail.rateLimit && (
-          <StatPill
-            label="API calls left"
-            value={`${detail.rateLimit.remaining.toLocaleString()} / ${detail.rateLimit.limit.toLocaleString()}`}
-            variant={rateLimitLow ? "danger" : undefined}
-          />
-        )}
+    <div className="border-b px-4 pb-2.5 pt-0.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {stats.map((stat, i) => (
+          <span key={i} className="flex items-center gap-x-3">
+            {i > 0 && DOT_SEP}
+            {stat}
+          </span>
+        ))}
       </div>
       {detail.statusMessage && (
-        <p className="truncate text-xs italic text-muted-foreground">{detail.statusMessage}</p>
+        <p className="mt-1 truncate text-xs italic text-muted-foreground">{detail.statusMessage}</p>
       )}
     </div>
   );
@@ -209,22 +215,12 @@ const EnrichmentDetail = ({
 }: {
   status: GetEnrichmentPipelineStatusResponse;
 }): React.ReactElement => (
-  <div className="mx-4 mb-3 mt-1 space-y-2 rounded-md border bg-muted/30 p-3">
-    <div className="flex flex-wrap gap-2">
-      <StatPill label="Pending" value={status.pendingCount.toString()} />
-      <StatPill label="Total enriched" value={status.totalEnrichments.toString()} />
+  <div className="border-b px-4 pb-2.5 pt-0.5">
+    <div className="flex items-center gap-x-3">
+      <Stat label="queued" value={status.pendingCount.toString()} />
+      {DOT_SEP}
+      <Stat label="enriched" value={status.totalEnrichments.toString()} />
     </div>
-    {status.byType.length > 0 && (
-      <div className="flex flex-wrap gap-2">
-        {status.byType.map((t) => (
-          <StatPill
-            key={t.enrichmentType}
-            label={ENRICHMENT_TYPE_LABELS[t.enrichmentType] ?? t.enrichmentType}
-            value={t.count.toString()}
-          />
-        ))}
-      </div>
-    )}
   </div>
 );
 
@@ -323,7 +319,7 @@ export const SourceRow = ({
 
   // Derive unified fields
   const isSource = data.kind === "source";
-  const name = isSource ? data.source.name : "AI Pipeline";
+  const name = isSource ? data.source.name : "Enrichments";
 
   let stateKey: string;
   let items: number;
@@ -418,7 +414,7 @@ export const SourceRow = ({
           className={cn(
             "group grid items-center gap-x-2 border-b px-4 py-2.5 text-sm last:border-b-0",
             "grid-cols-[1rem_1fr_auto_auto_auto]",
-            "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_5rem_auto]",
+            "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_7rem]",
           )}
         >
           {/* Expand chevron / icon */}

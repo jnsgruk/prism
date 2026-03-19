@@ -121,9 +121,10 @@ export const extractDetail = (progress: RunProgress | null): ProgressDetail | nu
     };
     hasAny = true;
   }
-  if (progress.status_message) {
+  // Only include statusMessage if there are also stats to show —
+  // otherwise it just duplicates the progress label in the main row.
+  if (hasAny && progress.status_message) {
     detail.statusMessage = progress.status_message;
-    hasAny = true;
   }
 
   return hasAny ? detail : null;
