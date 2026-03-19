@@ -182,6 +182,13 @@ pub trait Source: Send + Sync {
         .to_string()
     }
 
+    /// The cursor JSON field name that holds the watermark value.
+    ///
+    /// GitHub and Jira use `"max_updated_at"`, Discourse uses `"max_bumped_at"`.
+    fn watermark_field(&self) -> &'static str {
+        "max_updated_at"
+    }
+
     /// Report current rate limit status. Returns `None` if not tracked.
     fn rate_limit_status(&self) -> Option<RateLimitInfo> {
         None

@@ -130,7 +130,7 @@ impl DiscourseIngestionHandlerImpl {
             &failed_items,
             "category",
             &final_cursor,
-            "max_bumped_at",
+            source.watermark_field(),
         )
         .await?;
 

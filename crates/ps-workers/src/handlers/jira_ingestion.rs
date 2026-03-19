@@ -130,7 +130,7 @@ impl JiraIngestionHandlerImpl {
             &failed_items,
             "project",
             &final_cursor,
-            "max_updated_at",
+            source.watermark_field(),
         )
         .await?;
 

@@ -132,7 +132,7 @@ impl GithubIngestionHandlerImpl {
             &failed_items,
             "repo",
             &final_cursor,
-            "max_updated_at",
+            source.watermark_field(),
         )
         .await?;
 

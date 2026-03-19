@@ -120,6 +120,10 @@ impl Source for DiscourseSource {
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }
+
+    fn watermark_field(&self) -> &'static str {
+        "max_bumped_at"
+    }
 }
 
 /// Get the pre-decrypted Discourse API key from `IngestionContext`.
