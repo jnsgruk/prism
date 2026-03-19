@@ -47,7 +47,8 @@ spec:
             - name: RESTATE_URL
               value: http://restate:8080
             - name: RUST_LOG
-              value: info,ps_workers=debug,ps_core=debug
+              # value: info,ps_workers=debug,ps_core=debug
+              value: info
           resources:
             requests:
               memory: 1Gi
