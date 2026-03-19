@@ -34,15 +34,20 @@ spec:
           ports:
             - containerPort: 8080
             - containerPort: 9070
+          env:
+            - name: RESTATE_DEFAULT_NUM_PARTITIONS
+              value: "4"
+            - name: RESTATE_WORKER__INVOKER__ABORT_TIMEOUT
+              value: "5min"
           volumeMounts:
             - name: restate-data
               mountPath: /restate-data
           resources:
             requests:
-              memory: 512Mi
+              memory: 2Gi
               cpu: 100m
             limits:
-              memory: 1Gi
+              memory: 4Gi
   volumeClaimTemplates:
     - metadata:
         name: restate-data
