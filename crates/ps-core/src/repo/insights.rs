@@ -233,10 +233,10 @@ impl InsightsRepo {
                 WHERE $3
             )
             SELECT
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'constructive')::int AS "constructive!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'neutral')::int AS "neutral!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'critical')::int AS "critical!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'hostile')::int AS "hostile!: i32"
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'constructive')::int AS "constructive!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'neutral')::int AS "neutral!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'critical')::int AS "critical!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'hostile')::int AS "hostile!: i32"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
             JOIN org.team_memberships tm ON tm.person_id = c.person_id
@@ -289,10 +289,10 @@ impl InsightsRepo {
         let sentiment = sqlx::query!(
             r#"
             SELECT
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'constructive')::int AS "constructive!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'neutral')::int AS "neutral!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'critical')::int AS "critical!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'hostile')::int AS "hostile!: i32"
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'constructive')::int AS "constructive!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'neutral')::int AS "neutral!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'critical')::int AS "critical!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'sentiment' = 'hostile')::int AS "hostile!: i32"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
             WHERE e.enrichment_type = 'sentiment'
@@ -452,9 +452,9 @@ impl InsightsRepo {
                 WHERE $3
             )
             SELECT
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'significant')::int AS "significant!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'notable')::int AS "notable!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'routine')::int AS "routine!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'significant')::int AS "significant!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'notable')::int AS "notable!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'routine')::int AS "routine!: i32",
                 COALESCE(AVG(e.confidence), 0.0)::double precision AS "avg_confidence!: f64"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
@@ -489,9 +489,9 @@ impl InsightsRepo {
         let row = sqlx::query!(
             r#"
             SELECT
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'significant')::int AS "significant!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'notable')::int AS "notable!: i32",
-                COUNT(*) FILTER (WHERE e.value->>'label' = 'routine')::int AS "routine!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'significant')::int AS "significant!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'notable')::int AS "notable!: i32",
+                COUNT(*) FILTER (WHERE e.value->>'significance' = 'routine')::int AS "routine!: i32",
                 COALESCE(AVG(e.confidence), 0.0)::double precision AS "avg_confidence!: f64"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
@@ -535,7 +535,7 @@ impl InsightsRepo {
                 WHERE $3
             )
             SELECT
-                e.value->>'label' AS "category!: String",
+                COALESCE(e.value->>'primary_category', 'unknown') AS "category!: String",
                 COUNT(*)::int AS "count!: i32"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
@@ -544,7 +544,7 @@ impl InsightsRepo {
             WHERE e.enrichment_type = 'topic'
               AND c.created_at >= $2
               AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            GROUP BY e.value->>'label'
+            GROUP BY COALESCE(e.value->>'primary_category', 'unknown')
             ORDER BY COUNT(*) DESC
             "#,
             team_id,
@@ -573,14 +573,14 @@ impl InsightsRepo {
         let rows = sqlx::query!(
             r#"
             SELECT
-                e.value->>'label' AS "category!: String",
+                COALESCE(e.value->>'primary_category', 'unknown') AS "category!: String",
                 COUNT(*)::int AS "count!: i32"
             FROM reasoning.enrichments e
             JOIN activity.contributions c ON c.id = e.contribution_id
             WHERE e.enrichment_type = 'topic'
               AND c.person_id = $1
               AND c.created_at >= $2
-            GROUP BY e.value->>'label'
+            GROUP BY COALESCE(e.value->>'primary_category', 'unknown')
             ORDER BY COUNT(*) DESC
             "#,
             person_id,
@@ -635,11 +635,11 @@ impl InsightsRepo {
                         WHEN e.enrichment_type = 'review_depth'
                             AND (e.value->>'score')::int = 5 THEN 100
                         WHEN e.enrichment_type = 'significance'
-                            AND e.value->>'label' = 'significant' THEN 90
+                            AND e.value->>'significance' = 'significant' THEN 90
                         WHEN e.enrichment_type = 'review_depth'
                             AND (e.value->>'score')::int = 4 THEN 80
                         WHEN e.enrichment_type = 'significance'
-                            AND e.value->>'label' = 'notable' THEN 70
+                            AND e.value->>'significance' = 'notable' THEN 70
                         ELSE 0
                     END AS signal_score
                 FROM reasoning.enrichments e
@@ -663,7 +663,7 @@ impl InsightsRepo {
                     WHEN enrichment_type = 'review_depth'
                         THEN 'Score ' || (value->>'score') || ' — ' || COALESCE(value->>'rationale', '')
                     WHEN enrichment_type = 'significance'
-                        THEN COALESCE(value->>'label', '') || ' — ' || COALESCE(value->>'rationale', '')
+                        THEN COALESCE(value->>'significance', '') || ' — ' || COALESCE(value->>'rationale', '')
                     ELSE ''
                 END AS "value_summary!: String",
                 COALESCE(value->>'rationale', '') AS "rationale!: String",
@@ -723,11 +723,11 @@ impl InsightsRepo {
                         WHEN e.enrichment_type = 'review_depth'
                             AND (e.value->>'score')::int = 5 THEN 100
                         WHEN e.enrichment_type = 'significance'
-                            AND e.value->>'label' = 'significant' THEN 90
+                            AND e.value->>'significance' = 'significant' THEN 90
                         WHEN e.enrichment_type = 'review_depth'
                             AND (e.value->>'score')::int = 4 THEN 80
                         WHEN e.enrichment_type = 'significance'
-                            AND e.value->>'label' = 'notable' THEN 70
+                            AND e.value->>'significance' = 'notable' THEN 70
                         ELSE 0
                     END AS signal_score
                 FROM reasoning.enrichments e
@@ -749,7 +749,7 @@ impl InsightsRepo {
                     WHEN enrichment_type = 'review_depth'
                         THEN 'Score ' || (value->>'score') || ' — ' || COALESCE(value->>'rationale', '')
                     WHEN enrichment_type = 'significance'
-                        THEN COALESCE(value->>'label', '') || ' — ' || COALESCE(value->>'rationale', '')
+                        THEN COALESCE(value->>'significance', '') || ' — ' || COALESCE(value->>'rationale', '')
                     ELSE ''
                 END AS "value_summary!: String",
                 COALESCE(value->>'rationale', '') AS "rationale!: String",
@@ -985,7 +985,7 @@ impl InsightsRepo {
                 SELECT
                     c.platform,
                     c.platform_id,
-                    e.value->>'label' AS sig_label
+                    e.value->>'significance' AS sig_label
                 FROM reasoning.enrichments e
                 JOIN activity.contributions c ON c.id = e.contribution_id
                 JOIN org.team_memberships tm ON tm.person_id = c.person_id
@@ -1069,7 +1069,7 @@ impl InsightsRepo {
             sentiment_data AS (
                 SELECT
                     tt.root_id AS team_id,
-                    e.value->>'label' AS label
+                    e.value->>'sentiment' AS label
                 FROM reasoning.enrichments e
                 JOIN activity.contributions c ON c.id = e.contribution_id
                 JOIN org.team_memberships tm ON tm.person_id = c.person_id
