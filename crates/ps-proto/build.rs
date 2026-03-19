@@ -7,6 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "../../proto/prism/v1/handlers.proto",
         "../../proto/prism/v1/metrics.proto",
         "../../proto/prism/v1/reasoning.proto",
+        "../../proto/prism/v1/insights.proto",
     ];
 
     tonic_build::configure()

@@ -5,6 +5,7 @@ use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
 use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
 use ps_proto::prism::v1::handlers_service_server::HandlersServiceServer;
+use ps_proto::prism::v1::insights_service_server::InsightsServiceServer;
 use ps_proto::prism::v1::metrics_service_server::MetricsServiceServer;
 use ps_proto::prism::v1::org_service_server::OrgServiceServer;
 use ps_proto::prism::v1::reasoning_service_server::ReasoningServiceServer;
@@ -13,6 +14,7 @@ use ps_server::services::admin::AdminServiceImpl;
 use ps_server::services::auth::AuthServiceImpl;
 use ps_server::services::config::ConfigServiceImpl;
 use ps_server::services::handlers::HandlersServiceImpl;
+use ps_server::services::insights::InsightsServiceImpl;
 use ps_server::services::metrics::MetricsServiceImpl;
 use ps_server::services::org::OrgServiceImpl;
 use ps_server::services::reasoning::ReasoningServiceImpl;
@@ -54,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
     let metrics_service = MetricsServiceImpl::new(repos.clone());
+    let insights_service = InsightsServiceImpl::new(repos.clone());
     let handlers_service =
         HandlersServiceImpl::new(repos.clone(), restate_url.clone(), restate_admin_url);
 
@@ -119,6 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(ConfigServiceServer::new(config_service))
         .add_service(MetricsServiceServer::new(metrics_service))
         .add_service(HandlersServiceServer::new(handlers_service))
+        .add_service(InsightsServiceServer::new(insights_service))
         .add_service(ReasoningServiceServer::new(reasoning_service))
         .serve(addr)
         .await?;

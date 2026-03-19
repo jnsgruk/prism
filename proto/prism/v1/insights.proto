@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package prism.v1;
+
+service InsightsService {
+  // Team-level enrichment insights (review quality, PR impact, Discourse topics).
+  rpc GetTeamInsights(GetTeamInsightsRequest) returns (GetTeamInsightsResponse);
+
+  // Individual-level enrichment insights (reviewer profile, reviews received).
+  rpc GetPersonInsights(GetPersonInsightsRequest) returns (GetPersonInsightsResponse);
+
+  // Org-wide insights for the dashboard (cross-team comparison, delivery summary).
+  rpc GetOrgInsights(GetOrgInsightsRequest) returns (GetOrgInsightsResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
+
+message EnrichmentCoverage {
+  int32 total_contributions = 1;
+  int32 enriched_contributions = 2;
+  repeated TypeCoverage by_type = 3;
+}
+
+message TypeCoverage {
+  string enrichment_type = 1;
+  int32 eligible = 2;
+  int32 enriched = 3;
+}
+
+message ReviewQualitySummary {
+  double avg_depth = 1;                    // 1.0–5.0
+  repeated int32 depth_distribution = 2;   // [count_score1, ..., count_score5]
+  int32 total_reviews = 3;
+  double rubber_stamp_pct = 4;             // % scoring 1
+  double deep_review_pct = 5;              // % scoring 4 or 5
+
+  // Sentiment breakdown
+  int32 constructive_count = 6;
+  int32 neutral_count = 7;
+  int32 critical_count = 8;
+  int32 hostile_count = 9;
+
+  // Top reviewers by depth (min N reviews threshold)
+  repeated ReviewerDepth top_reviewers = 10;
+}
+
+message ReviewerDepth {
+  string person_id = 1;
+  string person_name = 2;
+  int32 review_count = 3;
+  double avg_depth = 4;
+}
+
+message SignificanceSummary {
+  int32 significant_count = 1;
+  int32 notable_count = 2;
+  int32 routine_count = 3;
+  double avg_confidence = 4;
+}
+
+message TopicCategorySummary {
+  repeated TopicCategoryCount categories = 1;
+  int32 total_classified = 2;
+}
+
+message TopicCategoryCount {
+  string category = 1;
+  int32 count = 2;
+}
+
+message NotableContribution {
+  string contribution_id = 1;
+  string title = 2;
+  string url = 3;
+  string person_name = 4;
+  string platform = 5;
+  string contribution_type = 6;
+  string enrichment_type = 7;     // which enrichment flagged this
+  string value_summary = 8;       // e.g. "Score 5 — thorough architectural review"
+  string rationale = 9;
+  double confidence = 10;
+}
+
+message DepthBySignificance {
+  double avg_depth_significant = 1;
+  double avg_depth_notable = 2;
+  double avg_depth_routine = 3;
+  int32 significant_review_count = 4;
+  int32 notable_review_count = 5;
+  int32 routine_review_count = 6;
+}
+
+// ---------------------------------------------------------------------------
+// GetTeamInsights
+// ---------------------------------------------------------------------------
+
+message GetTeamInsightsRequest {
+  string team_id = 1;
+  string period = 2;              // "last_week", "last_month", etc.
+  bool include_descendants = 3;   // true for parent team roll-ups
+}
+
+message GetTeamInsightsResponse {
+  TeamInsights insights = 1;
+}
+
+message TeamInsights {
+  EnrichmentCoverage coverage = 1;
+  ReviewQualitySummary review_quality = 2;
+  SignificanceSummary pr_significance = 3;
+  TopicCategorySummary discourse_topics = 4;
+  repeated NotableContribution notable_items = 5;
+  DepthBySignificance depth_by_significance = 6;
+}
+
+// ---------------------------------------------------------------------------
+// GetPersonInsights
+// ---------------------------------------------------------------------------
+
+message GetPersonInsightsRequest {
+  string person_id = 1;
+  string period = 2;
+}
+
+message GetPersonInsightsResponse {
+  PersonInsights insights = 1;
+}
+
+message PersonInsights {
+  EnrichmentCoverage coverage = 1;
+  ReviewerProfile reviewer_profile = 2;
+  ReviewsReceivedSummary reviews_received = 3;
+  SignificanceSummary pr_impact = 4;
+  TopicCategorySummary discourse_topics = 5;
+  repeated NotableContribution highlights = 6;
+}
+
+message ReviewerProfile {
+  double avg_depth = 1;
+  repeated int32 depth_distribution = 2;
+  int32 total_reviews_given = 3;
+  double rubber_stamp_pct = 4;
+
+  // Sentiment of their reviews
+  int32 constructive_count = 5;
+  int32 neutral_count = 6;
+  int32 critical_count = 7;
+}
+
+message ReviewsReceivedSummary {
+  double avg_depth_received = 1;
+  int32 total_reviews_received = 2;
+  double deep_review_pct = 3;      // % of reviews scoring 4+
+}
+
+// ---------------------------------------------------------------------------
+// GetOrgInsights
+// ---------------------------------------------------------------------------
+
+message GetOrgInsightsRequest {
+  string period = 1;
+  string team_id = 2;  // optional: scope to a subtree (empty = org-wide)
+}
+
+message GetOrgInsightsResponse {
+  OrgInsights insights = 1;
+}
+
+message OrgInsights {
+  EnrichmentCoverage coverage = 1;
+  ReviewQualitySummary review_quality = 2;
+  repeated TeamReviewComparison team_comparison = 3;
+  SignificanceSummary pr_significance = 4;
+  TopicCategorySummary discourse_topics = 5;
+  repeated NotableContribution org_highlights = 6;
+  OrgDeliverySummary delivery = 7;
+  DepthBySignificance depth_by_significance = 8;
+}
+
+message TeamReviewComparison {
+  string team_id = 1;
+  string team_name = 2;
+  int32 review_count = 3;
+  double avg_depth = 4;
+  double rubber_stamp_pct = 5;
+  int32 constructive_count = 6;
+  int32 neutral_count = 7;
+  int32 critical_count = 8;
+}
+
+message OrgDeliverySummary {
+  int32 total_prs_merged = 1;
+  int32 total_reviews = 2;
+  int32 total_jira_closed = 3;
+  int32 total_discourse_topics = 4;
+  int32 total_discourse_posts = 5;
+  int32 active_contributors = 6;
+  int32 active_teams = 7;
+}

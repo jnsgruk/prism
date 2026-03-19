@@ -3,6 +3,7 @@ pub mod auth;
 pub mod common;
 pub mod config;
 pub mod handlers;
+pub mod insights;
 pub mod metrics;
 pub mod org;
 pub mod reasoning;

@@ -1,6 +1,7 @@
 pub mod activity;
 pub mod auth;
 pub mod config;
+pub mod insights;
 pub mod metrics;
 pub mod org;
 pub mod pagination;
@@ -9,6 +10,7 @@ pub mod reasoning;
 pub use activity::ActivityRepo;
 pub use auth::AuthRepo;
 pub use config::ConfigRepo;
+pub use insights::InsightsRepo;
 pub use metrics::MetricsRepo;
 pub use org::OrgRepo;
 pub use pagination::{PageCursor, PageRequest, PageResponse, SortDir, SortParams};
@@ -35,6 +37,7 @@ pub struct Repos {
     pub activity: ActivityRepo,
     pub metrics: MetricsRepo,
     pub reasoning: ReasoningRepo,
+    pub insights: InsightsRepo,
 }
 
 impl Repos {
@@ -45,7 +48,8 @@ impl Repos {
             org: OrgRepo::new(pool.clone()),
             activity: ActivityRepo::new(pool.clone()),
             metrics: MetricsRepo::new(pool.clone()),
-            reasoning: ReasoningRepo::new(pool),
+            reasoning: ReasoningRepo::new(pool.clone()),
+            insights: InsightsRepo::new(pool),
         }
     }
 }
