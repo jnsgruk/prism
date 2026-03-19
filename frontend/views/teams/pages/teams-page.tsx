@@ -94,11 +94,11 @@ const TeamsPage = (): React.ReactElement => {
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
 
   // Enrichment insights (needs hasChildren for include_descendants)
-  const { data: teamInsights, isLoading: insightsLoading } = useTeamInsights(
-    effectiveTeamId,
-    periodKey,
-    hasChildren,
-  );
+  const {
+    data: teamInsights,
+    isLoading: insightsLoading,
+    error: insightsError,
+  } = useTeamInsights(effectiveTeamId, periodKey, hasChildren);
   const members = teamDetail?.members ?? [];
   const memberCount =
     selectedTeam && selectedTeam.totalMemberCount > 0
@@ -166,7 +166,11 @@ const TeamsPage = (): React.ReactElement => {
         )}
 
         {selectedTeam && (
-          <TeamInsightsSection insights={teamInsights} isLoading={insightsLoading} />
+          <TeamInsightsSection
+            insights={teamInsights}
+            isLoading={insightsLoading}
+            error={insightsError}
+          />
         )}
 
         {selectedTeam && <FlowPanel metrics={currentMetrics} />}

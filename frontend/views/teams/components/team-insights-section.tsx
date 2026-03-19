@@ -48,9 +48,11 @@ const MetricValue = ({
 export const TeamInsightsSection = ({
   insights,
   isLoading,
+  error,
 }: {
   insights: TeamInsights | undefined;
   isLoading: boolean;
+  error: Error | null;
 }): React.ReactElement | null => {
   if (isLoading) {
     return (
@@ -70,7 +72,9 @@ export const TeamInsightsSection = ({
     );
   }
 
-  if (!insights) return null;
+  // Don't show the panel if the query errored (service not deployed yet)
+  // or returned no data at all.
+  if (error || !insights) return null;
 
   const coverage = insights.coverage;
   const rq = insights.reviewQuality;
@@ -89,7 +93,9 @@ export const TeamInsightsSection = ({
 
   const hasAnyData = hasReviewData || hasSignificanceData || hasTopicData || hasNotable;
 
-  if (!hasAnyData && coverage && coverage.enrichedContributions === 0) return null;
+  // Hide the panel entirely only when there are zero enrichments AND zero coverage data.
+  // Otherwise show the "building up" empty state so users know insights are coming.
+  if (!hasAnyData && (!coverage || coverage.totalContributions === 0)) return null;
 
   const coveragePct =
     coverage && coverage.totalContributions > 0
