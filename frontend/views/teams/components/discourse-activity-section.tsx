@@ -16,7 +16,8 @@ import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { instanceLabel } from "@/lib/format-metrics";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
@@ -149,6 +150,14 @@ const DiscourseTopicsTable = ({
   period: Period;
   platform?: string;
 }): React.ReactElement => {
+  const navigate = useNavigate();
+  const handleRowClick = useCallback(
+    (row: Contribution) => {
+      navigate(`/contributions/${row.id}`);
+    },
+    [navigate],
+  );
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(10);
@@ -203,6 +212,7 @@ const DiscourseTopicsTable = ({
                 setSorting(updater);
                 setPageIndex(0);
               }}
+              onRowClick={handleRowClick}
             />
           </div>
           <DataTablePagination
