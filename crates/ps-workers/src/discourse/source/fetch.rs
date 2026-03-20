@@ -212,11 +212,13 @@ pub(super) async fn fetch_batch_impl(
 
         // Create post contributions from the topic detail
         if let Some(ref post_stream) = detail.post_stream {
-            // The first post (post_number 1) is the topic creator.
+            // The first post (post_number 1) IS the topic — merge its content
+            // into the topic contribution and skip it as a separate post.
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
                 topic_input.platform_username = first_post.username.to_lowercase();
+                topic_input.content = first_post.raw.clone();
 
-                // Capture the first post body as enrichment content for topic classification.
+                // Capture enrichment content for topic classification.
                 if let Some(ref raw) = first_post.raw {
                     topic_input.enrichment_content = Some(serde_json::json!({
                         "title": topic.title,
@@ -227,7 +229,8 @@ pub(super) async fn fetch_batch_impl(
                 }
             }
 
-            for post in &post_stream.posts {
+            // Skip post_number 1 — its content is already part of the topic.
+            for post in post_stream.posts.iter().filter(|p| p.post_number != 1) {
                 items.push(build_post_input(post, topic, &cur));
             }
 
