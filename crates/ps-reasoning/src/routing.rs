@@ -1,6 +1,8 @@
 use ps_core::models::{AiProvider, TaskType};
-use rig::client::CompletionClient as _;
+use rig::client::{CompletionClient as _, EmbeddingsClient as _};
 use rig::completion::CompletionModel as _;
+#[allow(deprecated)]
+use rig::embeddings::EmbeddingModelDyn;
 use rig::providers::{gemini, openrouter};
 use tracing::info;
 
@@ -113,6 +115,30 @@ impl TaskRouter {
         match task_config.provider {
             AiProvider::Google => Ok(ResolvedProvider::Google(self.google_client()?)),
             AiProvider::OpenRouter => Ok(ResolvedProvider::OpenRouter(self.openrouter_client()?)),
+        }
+    }
+
+    /// Build an embedding model for the configured embeddings task.
+    ///
+    /// Returns a boxed `EmbeddingModelDyn` for dynamic dispatch (the concrete
+    /// Gemini/OpenRouter embedding model types differ).
+    #[allow(deprecated)]
+    pub fn embedding_model(&self) -> Result<Box<dyn EmbeddingModelDyn>, ProviderError> {
+        let task_config = self.config.tasks.get(TaskType::Embeddings);
+        match task_config.provider {
+            AiProvider::Google => {
+                let client = self.google_client()?;
+                let model = client.embedding_model(&task_config.model);
+                Ok(Box::new(model))
+            }
+            AiProvider::OpenRouter => {
+                // OpenRouter doesn't support embeddings — fall back to Google
+                // or return an error. For now, error out clearly.
+                Err(ProviderError::NotConfigured(
+                    "OpenRouter does not support embedding models; configure Google for embeddings"
+                        .into(),
+                ))
+            }
         }
     }
 
