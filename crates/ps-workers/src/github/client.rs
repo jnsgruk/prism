@@ -395,6 +395,18 @@ pub enum GitHubError {
     InvalidPathSegment { label: String, value: String },
 }
 
+impl GitHubError {
+    /// Returns `true` for transient errors that are worth retrying
+    /// (server errors, timeouts, connection resets).
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Api { status, .. } => status.is_server_error(),
+            Self::Http(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+            Self::InvalidPathSegment { .. } => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

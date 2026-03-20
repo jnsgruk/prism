@@ -83,6 +83,18 @@ pub enum GraphQLClientError {
     Parse { message: String, body: String },
 }
 
+impl GraphQLClientError {
+    /// Returns `true` for transient errors that are worth retrying
+    /// (server errors, timeouts, connection resets).
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Api { status, .. } => status.is_server_error(),
+            Self::Http(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+            Self::GraphQL { .. } | Self::Parse { .. } => false,
+        }
+    }
+}
+
 impl GitHubGraphQLClient {
     pub fn new(http: reqwest::Client, base_url: &str, token: &str) -> Self {
         // Derive GraphQL endpoint from REST base URL.
