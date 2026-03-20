@@ -22,6 +22,11 @@ service ReasoningService {
   rpc GetEnrichmentsByContributions(GetEnrichmentsByContributionsRequest) returns (GetEnrichmentsByContributionsResponse);
   rpc GetEnrichmentPipelineStatus(GetEnrichmentPipelineStatusRequest) returns (GetEnrichmentPipelineStatusResponse);
   rpc DeleteEnrichmentsByType(DeleteEnrichmentsByTypeRequest) returns (DeleteEnrichmentsByTypeResponse);
+
+  // Similarity (embeddings)
+  rpc FindSimilar(FindSimilarRequest) returns (FindSimilarResponse);
+  rpc SearchByText(SearchByTextRequest) returns (SearchByTextResponse);
+  rpc GetEmbeddingStatus(GetEmbeddingStatusRequest) returns (GetEmbeddingStatusResponse);
 }
 
 // ---------------------------------------------------------------------------
@@ -207,4 +212,50 @@ message DeleteEnrichmentsByTypeRequest {
 
 message DeleteEnrichmentsByTypeResponse {
   int64 deleted_count = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Similarity (embeddings)
+// ---------------------------------------------------------------------------
+
+message FindSimilarRequest {
+  string contribution_id = 1;
+  int32 limit = 2;             // default 10, max 50
+  optional string platform = 3; // filter results by platform
+}
+
+message SearchByTextRequest {
+  string query_text = 1;
+  int32 limit = 2;              // default 10, max 50
+  optional string platform = 3;  // filter results by platform
+}
+
+message SimilarItem {
+  string contribution_id = 1;
+  string title = 2;
+  string platform = 3;
+  string contribution_type = 4;
+  string state = 5;
+  string author_name = 6;
+  string external_url = 7;
+  double distance = 8;          // cosine distance (0 = identical)
+  string created_at = 9;        // ISO 8601 timestamp
+}
+
+message FindSimilarResponse {
+  repeated SimilarItem items = 1;
+}
+
+message SearchByTextResponse {
+  repeated SimilarItem items = 1;
+}
+
+message GetEmbeddingStatusRequest {}
+
+message GetEmbeddingStatusResponse {
+  int64 queued_count = 1;
+  int64 embedded_count = 2;
+  int64 total_eligible = 3;
+  optional string last_embedded_at = 4;  // ISO 8601 timestamp
+  double coverage_percent = 5;           // embedded / total_eligible * 100
 }

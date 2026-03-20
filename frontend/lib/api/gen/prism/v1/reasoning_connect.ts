@@ -6,10 +6,14 @@
 import {
   DeleteEnrichmentsByTypeRequest,
   DeleteEnrichmentsByTypeResponse,
+  FindSimilarRequest,
+  FindSimilarResponse,
   GetAiSettingsRequest,
   GetAiSettingsResponse,
   GetCostSummaryRequest,
   GetCostSummaryResponse,
+  GetEmbeddingStatusRequest,
+  GetEmbeddingStatusResponse,
   GetEnrichmentPipelineStatusRequest,
   GetEnrichmentPipelineStatusResponse,
   GetEnrichmentsByContributionsRequest,
@@ -22,6 +26,8 @@ import {
   ListAiModelsResponse,
   RefreshModelCatalogueRequest,
   RefreshModelCatalogueResponse,
+  SearchByTextRequest,
+  SearchByTextResponse,
   SetProviderSecretRequest,
   SetProviderSecretResponse,
   TestProviderRequest,
@@ -151,6 +157,35 @@ export const ReasoningService = {
       name: "DeleteEnrichmentsByType",
       I: DeleteEnrichmentsByTypeRequest,
       O: DeleteEnrichmentsByTypeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Similarity (embeddings)
+     *
+     * @generated from rpc prism.v1.ReasoningService.FindSimilar
+     */
+    findSimilar: {
+      name: "FindSimilar",
+      I: FindSimilarRequest,
+      O: FindSimilarResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.SearchByText
+     */
+    searchByText: {
+      name: "SearchByText",
+      I: SearchByTextRequest,
+      O: SearchByTextResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.ReasoningService.GetEmbeddingStatus
+     */
+    getEmbeddingStatus: {
+      name: "GetEmbeddingStatus",
+      I: GetEmbeddingStatusRequest,
+      O: GetEmbeddingStatusResponse,
       kind: MethodKind.Unary,
     },
   },

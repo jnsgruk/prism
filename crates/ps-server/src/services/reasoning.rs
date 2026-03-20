@@ -6,14 +6,16 @@ use ps_proto::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::prism::v1::{
     AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
     DeleteEnrichmentsByTypeResponse, Enrichment as ProtoEnrichment, EnrichmentTypeCount,
-    GetAiSettingsRequest, GetAiSettingsResponse, GetCostSummaryRequest, GetCostSummaryResponse,
-    GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
-    GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
-    GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
-    GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
-    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, SetProviderSecretRequest,
-    SetProviderSecretResponse, TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest,
-    UpdateAiSettingsResponse,
+    FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
+    GetCostSummaryRequest, GetCostSummaryResponse, GetEmbeddingStatusRequest,
+    GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
+    GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
+    GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
+    GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
+    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, SearchByTextRequest,
+    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
+    SimilarItem as ProtoSimilarItem, TestProviderRequest, TestProviderResponse,
+    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
@@ -684,6 +686,137 @@ impl ReasoningService for ReasoningServiceImpl {
             #[allow(clippy::cast_possible_wrap)]
             deleted_count: deleted as i64,
         }))
+    }
+
+    // -------------------------------------------------------------------
+    // Similarity (embeddings)
+    // -------------------------------------------------------------------
+
+    async fn find_similar(
+        &self,
+        request: Request<FindSimilarRequest>,
+    ) -> Result<Response<FindSimilarResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let contribution_id: Uuid = req
+            .contribution_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid contribution_id"))?;
+
+        let limit = i64::from(req.limit.clamp(1, 50));
+        let platform = if req.platform.as_deref().is_some_and(|p| !p.is_empty()) {
+            req.platform.as_deref()
+        } else {
+            None
+        };
+
+        let results = self
+            .repos
+            .reasoning
+            .find_similar_to_contribution(contribution_id, limit, platform)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(FindSimilarResponse {
+            items: results.into_iter().map(similar_to_proto).collect(),
+        }))
+    }
+
+    async fn search_by_text(
+        &self,
+        request: Request<SearchByTextRequest>,
+    ) -> Result<Response<SearchByTextResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.query_text.is_empty() {
+            return Err(Status::invalid_argument("query_text is required"));
+        }
+
+        let limit = i64::from(req.limit.clamp(1, 50));
+        let platform = if req.platform.as_deref().is_some_and(|p| !p.is_empty()) {
+            req.platform.as_deref()
+        } else {
+            None
+        };
+
+        // Embed the query text on-the-fly. Drop the router lock before the
+        // API call so concurrent UpdateAiSettings writes aren't blocked.
+        let model = {
+            let router = self.router.read().await;
+            router
+                .embedding_model()
+                .map_err(|e| Status::unavailable(format!("embedding model not available: {e}")))?
+        };
+
+        #[allow(deprecated)]
+        let embedding = model.embed_text(&req.query_text).await.map_err(|e| {
+            error!(error = %e, "failed to embed query text");
+            Status::internal("failed to generate query embedding")
+        })?;
+
+        let truncated = ps_reasoning::features::embeddings::truncate_embedding(&embedding);
+
+        let results = self
+            .repos
+            .reasoning
+            .find_similar(&truncated, limit, platform, None)
+            .await
+            .map_err(db_err)?;
+
+        Ok(Response::new(SearchByTextResponse {
+            items: results.into_iter().map(similar_to_proto).collect(),
+        }))
+    }
+
+    async fn get_embedding_status(
+        &self,
+        request: Request<GetEmbeddingStatusRequest>,
+    ) -> Result<Response<GetEmbeddingStatusResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let status = self
+            .repos
+            .reasoning
+            .get_embedding_status()
+            .await
+            .map_err(db_err)?;
+
+        #[allow(clippy::cast_precision_loss)]
+        let coverage = if status.total_eligible > 0 {
+            status.embedded_count as f64 / status.total_eligible as f64 * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(Response::new(GetEmbeddingStatusResponse {
+            queued_count: status.queued_count,
+            embedded_count: status.embedded_count,
+            total_eligible: status.total_eligible,
+            last_embedded_at: status.last_embedded_at.map(|t| {
+                t.format(&time::format_description::well_known::Rfc3339)
+                    .unwrap_or_default()
+            }),
+            coverage_percent: coverage,
+        }))
+    }
+}
+
+fn similar_to_proto(s: ps_core::repo::reasoning::SimilarContribution) -> ProtoSimilarItem {
+    ProtoSimilarItem {
+        contribution_id: s.contribution_id.to_string(),
+        title: s.title.unwrap_or_default(),
+        platform: s.platform,
+        contribution_type: s.contribution_type,
+        state: s.state.unwrap_or_default(),
+        author_name: s.author_name.unwrap_or_default(),
+        external_url: s.external_url.unwrap_or_default(),
+        distance: s.distance,
+        created_at: s
+            .created_at
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_default(),
     }
 }
 
