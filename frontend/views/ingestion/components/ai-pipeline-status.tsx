@@ -1,165 +1,181 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { DOT_SEP, Stat } from "@/components/inline-stat";
+import { CancelButton, RunButton } from "@/components/run-cancel-buttons";
+import { StatusDot } from "@/components/status-dot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Loader2, Play, Sparkles, Square } from "lucide-react";
+import { Brain } from "lucide-react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
-import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
+import { formatRelativeTimeIso } from "@/lib/format";
 import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
+import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
 import {
   useCancelHandlerRun,
   useListRuns,
   useTriggerHandler,
 } from "@/views/ingestion/hooks/use-ingestion";
 
-const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
-  review_depth: "Review Depth",
-  sentiment: "Sentiment",
-  significance: "Significance",
-  topic: "Topic",
-};
+// ---------------------------------------------------------------------------
+// Shared handler action hook
+// ---------------------------------------------------------------------------
 
-const EmbeddingSection = (): React.ReactElement => {
-  const { data: embStatus } = useEmbeddingStatus();
+const useHandlerActions = (
+  handlerName: string,
+  method: string,
+): {
+  isRunning: boolean;
+  activeRun: { id: string; itemsCollected: number } | undefined;
+  trigger: () => void;
+  cancel: () => void;
+  isPending: boolean;
+} => {
   const triggerHandler = useTriggerHandler();
   const cancelRun = useCancelHandlerRun();
 
-  const { data: embRuns } = useListRuns(undefined, {
-    refetchInterval: 5_000,
-    handlerName: "EmbeddingHandler",
+  const { data: runs } = useListRuns(undefined, {
+    refetchInterval: 2_000,
+    handlerName,
   });
-  const activeEmbRun = embRuns?.find((r) => r.status === "running");
-  const isEmbRunning = !!activeEmbRun;
+  const activeRun = runs?.find((r) => r.status === "running");
 
-  const handleTriggerEmb = (): void => {
+  const trigger = useCallback(() => {
     triggerHandler.mutate(
-      { handlerName: "EmbeddingHandler", method: "run_cycle", key: "" },
+      { handlerName, method, key: "" },
       {
-        onSuccess: () => toast.success("Embedding run started"),
+        onSuccess: () => toast.success(`${handlerName} started`),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to trigger embedding"),
+          toast.error(err instanceof Error ? err.message : `Failed to trigger ${handlerName}`),
       },
     );
-  };
+  }, [triggerHandler, handlerName, method]);
 
-  const handleCancelEmb = (): void => {
-    if (!activeEmbRun) return;
-    cancelRun.mutate(activeEmbRun.id, {
-      onSuccess: () => toast.success("Embedding run cancelled"),
+  const cancel = useCallback(() => {
+    if (!activeRun) return;
+    cancelRun.mutate(activeRun.id, {
+      onSuccess: () => toast.success(`${handlerName} cancelled`),
       onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
     });
+  }, [cancelRun, activeRun, handlerName]);
+
+  return {
+    isRunning: !!activeRun,
+    activeRun,
+    trigger,
+    cancel,
+    isPending: triggerHandler.isPending || cancelRun.isPending,
   };
+};
 
-  if (!embStatus) return <></>;
+// ---------------------------------------------------------------------------
+// Enrichment row
+// ---------------------------------------------------------------------------
 
-  const lastEmbLabel = embStatus.lastEmbeddedAt
-    ? formatRelativeTime(embStatus.lastEmbeddedAt)
-    : "Never";
+const EnrichmentRow = (): React.ReactElement => {
+  const { data: status } = useEnrichmentPipelineStatus();
+  const actions = useHandlerActions("EnrichmentHandler", "run_cycle");
+
+  const lastRunLabel = status?.lastEnrichmentAt
+    ? formatRelativeTimeIso(status.lastEnrichmentAt)
+    : undefined;
 
   return (
-    <>
-      <Separator />
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-muted-foreground">Embeddings</p>
-          {isEmbRunning ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleCancelEmb}
-              disabled={cancelRun.isPending}
-            >
-              <Square className="mr-1.5 size-3.5" />
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTriggerEmb}
-              disabled={triggerHandler.isPending}
-            >
-              <Play className="mr-1.5 size-3.5" />
-              Run Embedding
-            </Button>
-          )}
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Queued</p>
-            <p className="text-lg font-semibold tabular-nums">{embStatus.queuedCount.toString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Embedded</p>
-            <p className="text-lg font-semibold tabular-nums">
-              {embStatus.embeddedCount.toString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Coverage</p>
-            <p className="text-lg font-semibold tabular-nums">
-              {Math.round(embStatus.coveragePercent)}%
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Last Run</p>
-            <p className="text-sm font-medium">{lastEmbLabel}</p>
-          </div>
-        </div>
-        {/* Coverage progress bar */}
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${Math.min(embStatus.coveragePercent, 100)}%` }}
-          />
-        </div>
+    <div className="grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1fr_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_7rem]">
+      <span className="hidden sm:block" />
+      {/* Name + status */}
+      <div className="flex min-w-0 items-center gap-2">
+        <StatusDot state={actions.isRunning ? "running" : "idle"} animate={actions.isRunning} />
+        <span className="truncate font-medium">Enrichments</span>
       </div>
-    </>
+
+      {/* Stats */}
+      <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        {status && Number(status.pendingCount) > 0 && (
+          <>
+            <Stat label="queued" value={status.pendingCount.toString()} />
+          </>
+        )}
+        {actions.isRunning && actions.activeRun && (
+          <>
+            {status && Number(status.pendingCount) > 0 && DOT_SEP}
+            <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
+          </>
+        )}
+        {!actions.isRunning && lastRunLabel && (
+          <span className="text-xs text-muted-foreground">{lastRunLabel}</span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex shrink-0 items-center justify-end">
+        {actions.isRunning ? (
+          <CancelButton onClick={actions.cancel} isPending={actions.isPending} />
+        ) : (
+          <RunButton onClick={actions.trigger} isPending={actions.isPending} />
+        )}
+      </div>
+    </div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Embedding row
+// ---------------------------------------------------------------------------
+
+const EmbeddingRow = (): React.ReactElement => {
+  const { data: embStatus } = useEmbeddingStatus();
+  const actions = useHandlerActions("EmbeddingHandler", "run_cycle");
+
+  const lastRunLabel = embStatus?.lastEmbeddedAt
+    ? formatRelativeTimeIso(embStatus.lastEmbeddedAt)
+    : undefined;
+
+  const coverage = embStatus ? Math.round(embStatus.coveragePercent) : null;
+
+  return (
+    <div className="grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1fr_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_7rem]">
+      <span className="hidden sm:block" />
+      {/* Name + status */}
+      <div className="flex min-w-0 items-center gap-2">
+        <StatusDot state={actions.isRunning ? "running" : "idle"} animate={actions.isRunning} />
+        <span className="truncate font-medium">Embeddings</span>
+      </div>
+
+      {/* Stats */}
+      <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        {coverage !== null && <Stat label="coverage" value={`${coverage}%`} />}
+        {embStatus && Number(embStatus.queuedCount) > 0 && (
+          <>
+            {coverage !== null && DOT_SEP}
+            <Stat label="queued" value={embStatus.queuedCount.toString()} />
+          </>
+        )}
+        {!actions.isRunning && lastRunLabel && (
+          <span className="text-xs text-muted-foreground">{lastRunLabel}</span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex shrink-0 items-center justify-end">
+        {actions.isRunning ? (
+          <CancelButton onClick={actions.cancel} isPending={actions.isPending} />
+        ) : (
+          <RunButton onClick={actions.trigger} isPending={actions.isPending} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main card
+// ---------------------------------------------------------------------------
+
 const AiPipelineStatus = (): React.ReactElement => {
-  const { data: status, isLoading } = useEnrichmentPipelineStatus();
-  const triggerHandler = useTriggerHandler();
-  const cancelRun = useCancelHandlerRun();
+  const { isLoading: enrichLoading } = useEnrichmentPipelineStatus();
+  const { isLoading: embLoading } = useEmbeddingStatus();
 
-  // Check if there's an active enrichment run
-  const { data: runs } = useListRuns(undefined, {
-    refetchInterval: 5_000,
-    handlerName: "EnrichmentHandler",
-  });
-  const activeRun = runs?.find((r) => r.status === "running");
-  const isRunning = !!activeRun;
-
-  const handleTrigger = (): void => {
-    triggerHandler.mutate(
-      { handlerName: "EnrichmentHandler", method: "run_cycle", key: "" },
-      {
-        onSuccess: () => {
-          toast.success("Enrichment run started");
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Failed to trigger enrichment");
-        },
-      },
-    );
-  };
-
-  const handleCancel = (): void => {
-    if (!activeRun) return;
-    cancelRun.mutate(activeRun.id, {
-      onSuccess: () => {
-        toast.success("Enrichment run cancelled");
-      },
-      onError: (err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to cancel");
-      },
-    });
-  };
-
-  if (isLoading) {
+  if (enrichLoading && embLoading) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -168,7 +184,7 @@ const AiPipelineStatus = (): React.ReactElement => {
             AI Pipeline
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </CardContent>
@@ -176,116 +192,27 @@ const AiPipelineStatus = (): React.ReactElement => {
     );
   }
 
-  if (!status) return <></>;
-
-  const lastRunLabel = status.lastEnrichmentAt
-    ? formatRelativeTime(status.lastEnrichmentAt)
-    : "Never";
-
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Brain className="size-4" />
-            AI Pipeline
-          </CardTitle>
-          {isRunning ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleCancel}
-              disabled={cancelRun.isPending}
-            >
-              {cancelRun.isPending ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-              ) : (
-                <Square className="mr-1.5 size-3.5" />
-              )}
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTrigger}
-              disabled={triggerHandler.isPending}
-            >
-              {triggerHandler.isPending ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-              ) : (
-                <Play className="mr-1.5 size-3.5" />
-              )}
-              Run Enrichment
-            </Button>
-          )}
-        </div>
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <Brain className="size-4" />
+          AI Pipeline
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Summary stats */}
-        <div className={`grid gap-4 ${isRunning ? "grid-cols-4" : "grid-cols-3"}`}>
-          <div>
-            <p className="text-xs text-muted-foreground">Pending</p>
-            <p className="text-lg font-semibold tabular-nums">{status.pendingCount.toString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Total Enrichments</p>
-            <p className="text-lg font-semibold tabular-nums">
-              {status.totalEnrichments.toString()}
-            </p>
-          </div>
-          {isRunning && activeRun && (
-            <div>
-              <p className="text-xs text-muted-foreground">Enriched This Run</p>
-              <p className="text-lg font-semibold tabular-nums">
-                {activeRun.itemsCollected.toLocaleString()}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className="text-xs text-muted-foreground">Last Run</p>
-            <p className="text-sm font-medium">{lastRunLabel}</p>
-          </div>
+      <CardContent className="px-0 pb-0">
+        {/* Column headers — desktop only */}
+        <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_7rem] sm:items-center sm:gap-x-2">
+          <span />
+          <span>Handler</span>
+          <span>Status</span>
+          <span className="text-right">Actions</span>
         </div>
-
-        {/* By-type breakdown */}
-        {status.byType.length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Enrichments by Type</p>
-              <div className="flex flex-wrap gap-2">
-                {status.byType.map((t) => (
-                  <Badge key={t.enrichmentType} variant="secondary" className="gap-1">
-                    <Sparkles className="size-3" />
-                    {ENRICHMENT_TYPE_LABELS[t.enrichmentType] ?? t.enrichmentType}
-                    <span className="ml-0.5 tabular-nums">{t.count.toString()}</span>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Embedding pipeline section */}
-        <EmbeddingSection />
+        <EnrichmentRow />
+        <EmbeddingRow />
       </CardContent>
     </Card>
   );
-};
-
-const formatRelativeTime = (isoString: string): string => {
-  const date = new Date(isoString);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
 };
 
 export { AiPipelineStatus };
