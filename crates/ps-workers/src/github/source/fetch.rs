@@ -819,9 +819,10 @@ pub(crate) async fn fetch_single_pr_diff(
                 combined.push_str(patch);
 
                 if combined.len() >= MAX_DIFF_SIZE {
-                    // Truncate on a line boundary.
-                    let truncated = &combined[..MAX_DIFF_SIZE];
-                    let at_line = truncated.rfind('\n').unwrap_or(MAX_DIFF_SIZE);
+                    // Truncate on a line boundary (floor to char boundary first
+                    // to avoid panicking on multi-byte UTF-8 characters).
+                    let safe_end = combined.floor_char_boundary(MAX_DIFF_SIZE);
+                    let at_line = combined[..safe_end].rfind('\n').unwrap_or(safe_end);
                     combined.truncate(at_line);
                     combined.push_str("\n...(truncated)");
                     return DiffFetchResult::Ok(combined);
