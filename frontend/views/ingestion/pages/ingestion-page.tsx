@@ -1,12 +1,14 @@
 import { PageHeader } from "@/components/page-header";
-import { Activity, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, Database, Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
+import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
+import { IngestionActions, IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
 import { SourceList } from "@/views/ingestion/components/source-list";
 import {
   useIngestionStatus,
@@ -15,7 +17,7 @@ import {
 } from "@/views/ingestion/hooks/use-ingestion";
 
 const POLL_INTERVAL_BURST = 1_000;
-const POLL_INTERVAL_ACTIVE = 3_000;
+const POLL_INTERVAL_ACTIVE = 2_000;
 const POLL_INTERVAL_IDLE = 30_000;
 const BURST_DURATION = 10_000;
 
@@ -99,19 +101,35 @@ const IngestionPage = (): React.ReactElement => {
     );
   }
 
-  const sourceNames = [...sources.map((s) => s.name), "_enrichment"];
+  const sourceNames = sources.map((s) => s.name);
 
   return (
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
-        <IngestionSummary
-          sources={sources}
-          onRunAll={handleRunAll}
-          isPending={triggerRun.isPending}
-        />
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                  <Database className="size-4" />
+                  Ingestion Pipeline
+                </CardTitle>
+                <IngestionSummary sources={sources} />
+              </div>
+              <IngestionActions
+                sources={sources}
+                onRunAll={handleRunAll}
+                isPending={triggerRun.isPending}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-0">
+            <SourceList sources={sources} onAction={triggerBurst} />
+          </CardContent>
+        </Card>
 
-        <SourceList sources={sources} onAction={triggerBurst} />
+        <AiPipelineStatus />
 
         {runsLoading ? (
           <div className="flex justify-center py-8">

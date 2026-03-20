@@ -4,36 +4,17 @@ import { StatusDot, stateStyles } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Brain, ChevronRight, GitPullRequest, MessageSquare, RotateCcw, UserX } from "lucide-react";
+import { ChevronRight, GitPullRequest, MessageSquare, RotateCcw, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
-import type { GetEnrichmentPipelineStatusResponse } from "@ps/api/gen/prism/v1/reasoning_pb";
 import { cn } from "@ps/cn";
 
-import { formatRelativeTime, formatRelativeTimeIso } from "@/lib/format";
+import { formatRelativeTime } from "@/lib/format";
 import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
 import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
 import { BackfillDialog } from "./backfill-dialog";
-
-// ---------------------------------------------------------------------------
-// Types for the unified row model
-// ---------------------------------------------------------------------------
-
-export type SourceRowData =
-  | {
-      kind: "source";
-      source: SourceStatus;
-    }
-  | {
-      kind: "enrichment";
-      status: GetEnrichmentPipelineStatusResponse;
-      isRunning: boolean;
-      activeRunId?: string;
-      itemsThisRun: number;
-      lastRunItems: number;
-    };
 
 // ---------------------------------------------------------------------------
 // State helpers
@@ -148,166 +129,45 @@ const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElemen
   );
 };
 
-const EnrichmentDetail = ({
-  status,
-}: {
-  status: GetEnrichmentPipelineStatusResponse;
-}): React.ReactElement => (
-  <div className="flex items-center border-b bg-muted/40 px-4 py-2.5">
-    <div className="flex items-center gap-x-3">
-      <Stat label="queued" value={status.pendingCount.toString()} />
-      {DOT_SEP}
-      <Stat label="enriched" value={status.totalEnrichments.toString()} />
-    </div>
-  </div>
-);
-
-// ---------------------------------------------------------------------------
-// Row icon cell — first column
-// ---------------------------------------------------------------------------
-
-const RowIcon = ({
-  isSource,
-  hasDetail,
-  isActive,
-  expanded,
-}: {
-  isSource: boolean;
-  hasDetail: boolean;
-  isActive: boolean;
-  expanded: boolean;
-}): React.ReactElement => {
-  if (hasDetail && isActive) {
-    return (
-      <CollapsibleTrigger className="flex items-center justify-center">
-        <ChevronRight
-          className={cn(
-            "size-3.5 text-muted-foreground transition-transform",
-            expanded && "rotate-90",
-          )}
-        />
-      </CollapsibleTrigger>
-    );
-  }
-  if (!isSource) {
-    return <Brain className="size-3.5 text-muted-foreground" />;
-  }
-  return <span />;
-};
-
 // ---------------------------------------------------------------------------
 // Main row component
 // ---------------------------------------------------------------------------
 
 export const SourceRow = ({
-  data,
+  source,
   onTriggerRun,
   onCancelRun,
-  onTriggerEnrichment,
-  onCancelEnrichment,
   onAction,
   isPending,
 }: {
-  data: SourceRowData;
+  source: SourceStatus;
   onTriggerRun?: (name: string) => void;
   onCancelRun?: (name: string) => void;
-  onTriggerEnrichment?: () => void;
-  onCancelEnrichment?: (runId: string) => void;
   onAction?: () => void;
   isPending?: boolean;
 }): React.ReactElement => {
   const [expanded, setExpanded] = useState(false);
   const [showBackfill, setShowBackfill] = useState(false);
 
-  // Derive unified fields
-  const isSource = data.kind === "source";
-  const name = isSource ? data.source.name : "Enrichments";
-
-  let stateKey: string;
-  let items: number;
-  if (isSource) {
-    stateKey = stateFromEnum(data.source.state);
-    items = data.source.itemsCollected;
-  } else {
-    stateKey = data.isRunning ? "running" : "idle";
-    items = data.isRunning ? data.itemsThisRun : data.lastRunItems;
-  }
-
+  const stateKey = stateFromEnum(source.state);
   const stateLabel = stateStyles[stateKey]?.label ?? "Idle";
-  const isActive = stateKey === "collecting" || stateKey === "waiting" || stateKey === "running";
+  const isActive = stateKey === "collecting" || stateKey === "waiting";
 
   const progress = useMemo((): NormalisedProgress | null => {
     if (!isActive) return null;
-    if (isSource) {
-      const raw = parseProgress(data.source.progressJson);
-      return normaliseProgress(data.source.sourceType, raw);
-    }
-    // Enrichment: derive from pending + total
-    const pending = Number(data.status.pendingCount);
-    const total = pending + data.itemsThisRun;
-    if (total > 0 && data.isRunning) {
-      return {
-        percent: Math.round((data.itemsThisRun / total) * 100),
-        label: `${data.itemsThisRun.toLocaleString()}/${total.toLocaleString()}`,
-      };
-    }
-    return { percent: null, label: "Processing" };
-  }, [isSource, isActive, data]);
+    const raw = parseProgress(source.progressJson);
+    return normaliseProgress(source.sourceType, raw);
+  }, [isActive, source.progressJson, source.sourceType]);
 
   const detail = useMemo((): ProgressDetail | null => {
-    if (!isSource || !isActive) return null;
-    const raw = parseProgress(data.source.progressJson);
+    if (!isActive) return null;
+    const raw = parseProgress(source.progressJson);
     return extractDetail(raw);
-  }, [isSource, isActive, data]);
+  }, [isActive, source.progressJson]);
 
-  const hasDetail = isSource ? !!detail : true;
-  const lastRun = isSource ? data.source.lastRun : undefined;
-  const lastRunIso = !isSource ? data.status.lastEnrichmentAt : undefined;
-
-  let relativeTime: string;
-  if (isSource) {
-    relativeTime = lastRun ? formatRelativeTime(lastRun) : "Never";
-  } else {
-    relativeTime = lastRunIso ? formatRelativeTimeIso(lastRunIso) : "Never";
-  }
-
-  // Render actions for this row
-  const renderActions = (): React.ReactElement => {
-    const pending = !!isPending;
-    if (isSource && isActive) {
-      return <CancelButton onClick={() => onCancelRun?.(data.source.name)} isPending={pending} />;
-    }
-    if (isSource) {
-      return (
-        <>
-          <RunButton onClick={() => onTriggerRun?.(data.source.name)} isPending={pending} />
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-1.5"
-                    onClick={() => setShowBackfill(true)}
-                  />
-                }
-              >
-                <RotateCcw className="size-3.5" />
-              </TooltipTrigger>
-              <TooltipContent>Backfill</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </>
-      );
-    }
-    // Enrichment
-    if (data.isRunning && data.activeRunId) {
-      const runId = data.activeRunId;
-      return <CancelButton onClick={() => onCancelEnrichment?.(runId)} isPending={pending} />;
-    }
-    return <RunButton onClick={() => onTriggerEnrichment?.()} isPending={pending} />;
-  };
+  const hasDetail = !!detail;
+  const relativeTime = source.lastRun ? formatRelativeTime(source.lastRun) : "Never";
+  const pending = !!isPending;
 
   return (
     <>
@@ -319,18 +179,24 @@ export const SourceRow = ({
             "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_7rem]",
           )}
         >
-          {/* Expand chevron / icon */}
-          <RowIcon
-            isSource={isSource}
-            hasDetail={hasDetail}
-            isActive={isActive}
-            expanded={expanded}
-          />
+          {/* Expand chevron */}
+          {hasDetail && isActive ? (
+            <CollapsibleTrigger className="flex items-center justify-center">
+              <ChevronRight
+                className={cn(
+                  "size-3.5 text-muted-foreground transition-transform",
+                  expanded && "rotate-90",
+                )}
+              />
+            </CollapsibleTrigger>
+          ) : (
+            <span />
+          )}
 
           {/* Name + status */}
           <div className="flex min-w-0 items-center gap-2">
             <StatusDot state={stateKey} animate={isActive} />
-            <span className="truncate font-medium">{name}</span>
+            <span className="truncate font-medium">{source.name}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">{stateLabel}</span>
           </div>
 
@@ -344,17 +210,41 @@ export const SourceRow = ({
           </div>
 
           {/* Items */}
-          <span className="hidden text-right tabular-nums sm:block">{items.toLocaleString()}</span>
+          <span className="hidden text-right tabular-nums sm:block">
+            {source.itemsCollected.toLocaleString()}
+          </span>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center justify-end gap-1">{renderActions()}</div>
+          <div className="flex shrink-0 items-center justify-end gap-1">
+            {isActive ? (
+              <CancelButton onClick={() => onCancelRun?.(source.name)} isPending={pending} />
+            ) : (
+              <>
+                <RunButton onClick={() => onTriggerRun?.(source.name)} isPending={pending} />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-1.5"
+                          onClick={() => setShowBackfill(true)}
+                        />
+                      }
+                    >
+                      <RotateCcw className="size-3.5" />
+                    </TooltipTrigger>
+                    <TooltipContent>Backfill</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Expandable detail */}
-        <CollapsibleContent>
-          {isSource && detail && <SourceDetail detail={detail} />}
-          {!isSource && <EnrichmentDetail status={data.status} />}
-        </CollapsibleContent>
+        <CollapsibleContent>{detail && <SourceDetail detail={detail} />}</CollapsibleContent>
       </Collapsible>
 
       {/* Mobile progress — shown below the row on small screens */}
@@ -364,14 +254,12 @@ export const SourceRow = ({
         </div>
       )}
 
-      {isSource && (
-        <BackfillDialog
-          sourceName={data.source.name}
-          open={showBackfill}
-          onOpenChange={setShowBackfill}
-          onAction={onAction}
-        />
-      )}
+      <BackfillDialog
+        sourceName={source.name}
+        open={showBackfill}
+        onOpenChange={setShowBackfill}
+        onAction={onAction}
+      />
     </>
   );
 };
