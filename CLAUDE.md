@@ -477,6 +477,15 @@ loop {
 
 **Incremental watermark advancement**: After each successful `store_batch()`, the watermark is advanced immediately. On retry, only the last incomplete batch needs re-fetching — not the entire run.
 
+#### Transient Error Retry
+
+All external API calls inside `fetch_batch()` must be wrapped with `retry_transient()` from `crates/ps-workers/src/retry.rs`. This retries up to 3 times with exponential backoff (1s, 2s, 4s) for transient errors (5xx, timeouts, connection resets), while non-transient errors short-circuit immediately.
+
+- **Error classification** — HTTP clients (Jira, Discourse) must use `ps_core::Error::HttpStatus { status, message }` instead of `Error::Internal` for non-2xx responses, so `is_transient()` can inspect the status code. GitHub uses its own error types with their own `is_transient()` methods.
+- **Call-site visibility** — retry wrapping is explicit at each fetch call site, not hidden inside the client. The `is_transient` classifier is passed as a function pointer.
+- **Journal safety** — all retry sites are inside `fetch_batch()` which runs outside `ctx.run()`. Never introduce `ctx.run()` inside a retry loop.
+- **Rate limits are not transient** — 429 responses are handled separately via `Error::RateLimit` and durable sleep, not via retry.
+
 #### ProgressTracker Trait
 
 Each handler implements source-specific progress reporting:
