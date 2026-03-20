@@ -49,6 +49,7 @@ impl OrgRepo {
         }
 
         let platform_str = platform.to_string();
+        let usernames_lower: Vec<String> = usernames.iter().map(|u| u.to_lowercase()).collect();
         let rows = sqlx::query!(
             r#"
             SELECT platform_username, person_id
@@ -57,7 +58,7 @@ impl OrgRepo {
               AND platform_username = ANY($2)
             "#,
             platform_str,
-            usernames,
+            &usernames_lower,
         )
         .fetch_all(&self.pool)
         .await
@@ -124,13 +125,18 @@ impl OrgRepo {
             return Ok(HashMap::new());
         }
 
-        let usernames: Vec<String> = users.iter().map(|(u, _)| u.clone()).collect();
+        // Normalise usernames to lowercase for case-insensitive matching.
+        let users_lower: Vec<(String, Option<String>)> = users
+            .iter()
+            .map(|(u, d)| (u.to_lowercase(), d.clone()))
+            .collect();
+        let usernames: Vec<String> = users_lower.iter().map(|(u, _)| u.clone()).collect();
 
         // Resolve existing identities first.
         let mut map = self.batch_resolve_person_ids(platform, &usernames).await?;
 
         // Collect users that need to be created.
-        let new_users: Vec<&(String, Option<String>)> = users
+        let new_users: Vec<&(String, Option<String>)> = users_lower
             .iter()
             .filter(|(u, _)| !u.is_empty() && !map.contains_key(u))
             .collect();
@@ -251,7 +257,7 @@ impl OrgRepo {
                 ids.push(Uuid::now_v7());
                 person_ids.push(person_id);
                 platforms.push("jira".to_string());
-                usernames.push(record.email.clone());
+                usernames.push(record.email.to_lowercase());
                 user_ids.push(record.account_id.clone());
                 mapped_count += 1;
             } else {

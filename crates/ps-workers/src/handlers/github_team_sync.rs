@@ -303,7 +303,7 @@ async fn fetch_all_members(
             .await
             .map_err(|e| TerminalError::new(format!("GitHub API error: {e}")))?;
 
-        members.extend(result.items.into_iter().map(|u| u.login));
+        members.extend(result.items.into_iter().map(|u| u.login.to_lowercase()));
 
         match result.next_page {
             Some(next) => page = next,

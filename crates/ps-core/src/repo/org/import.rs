@@ -346,7 +346,7 @@ async fn map_identities(
     let ids: Vec<Uuid> = valid.iter().map(|_| Uuid::now_v7()).collect();
     let person_ids: Vec<Uuid> = vec![resolved_id; valid.len()];
     let platforms: Vec<&str> = valid.iter().map(|i| i.platform.as_str()).collect();
-    let usernames: Vec<&str> = valid.iter().map(|i| i.username.as_str()).collect();
+    let usernames: Vec<String> = valid.iter().map(|i| i.username.to_lowercase()).collect();
 
     let result = sqlx::query_scalar!(
         r#"
@@ -359,7 +359,7 @@ async fn map_identities(
         &ids,
         &person_ids,
         &platforms as &[&str],
-        &usernames as &[&str],
+        &usernames,
     )
     .fetch_all(&mut *tx)
     .await

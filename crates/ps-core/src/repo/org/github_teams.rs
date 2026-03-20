@@ -99,13 +99,14 @@ impl OrgRepo {
         .map_err(Error::from)?;
 
         if !usernames.is_empty() {
+            let usernames_lower: Vec<String> = usernames.iter().map(|u| u.to_lowercase()).collect();
             sqlx::query!(
                 r#"
                 INSERT INTO org.github_team_members (github_team_id, github_username, last_synced_at)
                 SELECT $1, unnest($2::text[]), now()
                 "#,
                 github_team_id,
-                usernames,
+                &usernames_lower,
             )
             .execute(&mut *tx)
             .await

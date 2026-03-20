@@ -195,7 +195,7 @@ pub(super) async fn fetch_batch_impl(
         if let Some(ref post_stream) = detail.post_stream {
             // The first post (post_number 1) is the topic creator.
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
-                topic_input.platform_username = first_post.username.clone();
+                topic_input.platform_username = first_post.username.to_lowercase();
 
                 // Capture the first post body as enrichment content for topic classification.
                 if let Some(ref raw) = first_post.raw {
@@ -332,7 +332,7 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
         platform,
         contribution_type: ContributionType::DiscoursePost,
         platform_id: post.id.to_string(),
-        platform_username: post.username.clone(),
+        platform_username: post.username.to_lowercase(),
         title: Some(topic.title.clone()),
         url: Some(url),
         state: None,
@@ -344,7 +344,7 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
             "topic_id": post.topic_id,
             "topic_title": topic.title,
             "post_number": post.post_number,
-            "username": post.username,
+            "username": post.username.to_lowercase(),
             "display_name": post.name,
         }),
         content: post.raw.clone(),
@@ -419,8 +419,8 @@ fn build_like_input(
     ContributionInput {
         platform,
         contribution_type: ContributionType::DiscourseLike,
-        platform_id: format!("like-{}-{}", post.id, liker.username),
-        platform_username: liker.username.clone(),
+        platform_id: format!("like-{}-{}", post.id, liker.username.to_lowercase()),
+        platform_username: liker.username.to_lowercase(),
         title: Some(topic.title.clone()),
         url: Some(url),
         state: None,
@@ -429,11 +429,11 @@ fn build_like_input(
         closed_at: None,
         metrics: serde_json::to_value(&metrics_data).unwrap_or_default(),
         metadata: serde_json::json!({
-            "post_author": post.username,
+            "post_author": post.username.to_lowercase(),
             "topic_id": post.topic_id,
             "topic_title": topic.title,
             "post_number": post.post_number,
-            "username": liker.username,
+            "username": liker.username.to_lowercase(),
             "display_name": liker.name,
         }),
         content: None,

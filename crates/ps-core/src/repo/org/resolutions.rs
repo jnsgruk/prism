@@ -77,6 +77,7 @@ impl OrgRepo {
         platform_username: &str,
     ) -> Result<(), Error> {
         let identity_id = Uuid::now_v7();
+        let username_lower = platform_username.to_lowercase();
 
         // Create the platform identity.
         sqlx::query!(
@@ -89,7 +90,7 @@ impl OrgRepo {
             identity_id,
             person_id,
             platform,
-            platform_username,
+            username_lower,
         )
         .execute(&self.pool)
         .await
@@ -139,6 +140,7 @@ impl OrgRepo {
     ) -> Result<(), Error> {
         // Create or update the platform identity.
         let identity_id = Uuid::now_v7();
+        let username_lower = platform_username.to_lowercase();
         sqlx::query!(
             r#"
             INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
@@ -149,7 +151,7 @@ impl OrgRepo {
             identity_id,
             person_id,
             platform,
-            platform_username,
+            username_lower,
         )
         .execute(&self.pool)
         .await

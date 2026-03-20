@@ -34,7 +34,10 @@ pub(super) async fn store_batch_impl(
     let mut skipped = 0usize;
 
     for item in items {
-        let Some(person_id) = person_map.get(&item.platform_username).copied() else {
+        let Some(person_id) = person_map
+            .get(&item.platform_username.to_lowercase())
+            .copied()
+        else {
             skipped += 1;
             continue;
         };

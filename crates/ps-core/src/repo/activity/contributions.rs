@@ -199,7 +199,7 @@ impl ActivityRepo {
             WHERE c.platform = $1
               AND c.person_id IS NULL
               AND pi.platform = $1
-              AND pi.platform_username = c.metadata->>'username'
+              AND pi.platform_username = LOWER(c.metadata->>'username')
             "#,
             platform,
         )
