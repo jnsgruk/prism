@@ -7,6 +7,7 @@ use super::{
     serialise_cursor,
 };
 use crate::jira::client::{JiraChangeHistory, JiraIssue};
+use crate::retry::retry_transient;
 
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
@@ -74,15 +75,22 @@ pub(super) async fn fetch_batch_impl(
         (true, None) => "ORDER BY updated ASC".into(),
     };
 
-    let (response, rate_limit) = match client
-        .search(
-            &jql,
-            MAX_RESULTS_PER_PAGE,
-            "summary,description,status,issuetype,priority,labels,assignee,reporter,created,updated,resolutiondate,parent",
-            "changelog",
-            cur.next_page_token.as_deref(),
-        )
-        .await
+    let fields = "summary,description,status,issuetype,priority,labels,assignee,reporter,created,updated,resolutiondate,parent";
+    let next_page_token = cur.next_page_token.clone();
+    let (response, rate_limit) = match retry_transient(
+        current_project.as_deref().unwrap_or("jira search"),
+        ps_core::Error::is_transient,
+        || {
+            client.search(
+                &jql,
+                MAX_RESULTS_PER_PAGE,
+                fields,
+                "changelog",
+                next_page_token.as_deref(),
+            )
+        },
+    )
+    .await
     {
         Ok(result) => result,
         Err(e) => {

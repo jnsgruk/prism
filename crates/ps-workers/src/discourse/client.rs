@@ -378,9 +378,10 @@ impl DiscourseClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(ps_core::Error::Internal(format!(
-                "discourse connection test returned {status}: {body}"
-            )));
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: format!("discourse connection test returned {status}: {body}"),
+            });
         }
 
         let about: AboutResponse = resp.json().await.unwrap_or(AboutResponse {
@@ -496,12 +497,11 @@ impl DiscourseClient {
         let status = resp.status();
         if !status.is_success() {
             // We can't consume the response here because we don't own it.
-            // The caller will get a parse error which is fine — this catches
-            // the rate-limit case above.  For other errors, the JSON parse
-            // will produce a descriptive error.
-            return Err(ps_core::Error::Internal(format!(
-                "discourse API returned {status}"
-            )));
+            // Preserve the status code so callers can classify transient errors.
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: format!("discourse API returned {status}"),
+            });
         }
         Ok(())
     }

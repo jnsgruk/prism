@@ -9,6 +9,7 @@ use tracing::{debug, warn};
 
 use super::{Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, serialise_cursor};
 use crate::discourse::client::{Category, DiscourseClient, Post, PostActionUser, TopicSummary};
+use crate::retry::retry_transient;
 
 pub(super) async fn fetch_batch_impl(
     ctx: &IngestionContext,
@@ -41,7 +42,12 @@ pub(super) async fn fetch_batch_impl(
     // Determine which API to call: per-category or global latest
     let response = if cur.category_ids.is_empty() {
         // No category filter — fetch global latest (existing behavior)
-        match client.latest(cur.page).await {
+        let page = cur.page;
+        match retry_transient("discourse latest", ps_core::Error::is_transient, || {
+            client.latest(page)
+        })
+        .await
+        {
             Ok(r) => r,
             Err(ps_core::Error::RateLimit { retry_after_secs }) => {
                 warn!(
@@ -77,7 +83,14 @@ pub(super) async fn fetch_batch_impl(
                 skipped_diffs: vec![],
             });
         };
-        match client.latest_for_category(cat_id, cur.page).await {
+        let page = cur.page;
+        match retry_transient(
+            &format!("category:{cat_id}"),
+            ps_core::Error::is_transient,
+            || client.latest_for_category(cat_id, page),
+        )
+        .await
+        {
             Ok(r) => r,
             Err(ps_core::Error::RateLimit { retry_after_secs }) => {
                 warn!(
@@ -162,7 +175,13 @@ pub(super) async fn fetch_batch_impl(
         .map(|topic_id| {
             let client = &client;
             async move {
-                match client.topic(topic_id).await {
+                match retry_transient(
+                    &format!("topic:{topic_id}"),
+                    ps_core::Error::is_transient,
+                    || client.topic(topic_id),
+                )
+                .await
+                {
                     Ok(detail) => Some((topic_id, detail)),
                     Err(e) => {
                         warn!(topic_id, "failed to fetch topic detail: {e}");
@@ -375,13 +394,20 @@ async fn fetch_likes_for_posts(
             let topic = &topic;
             let cur = &cur;
             async move {
-                match client.post_likers(post.id).await {
+                let post_id = post.id;
+                match retry_transient(
+                    &format!("post_likers:{post_id}"),
+                    ps_core::Error::is_transient,
+                    || client.post_likers(post_id),
+                )
+                .await
+                {
                     Ok(likers) => likers
                         .iter()
                         .map(|liker| build_like_input(liker, &post, topic, cur))
                         .collect::<Vec<_>>(),
                     Err(e) => {
-                        warn!(post_id = post.id, "failed to fetch post likers: {e}");
+                        warn!(post_id, "failed to fetch post likers: {e}");
                         vec![]
                     }
                 }

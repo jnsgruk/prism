@@ -240,9 +240,10 @@ impl JiraClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(ps_core::Error::Internal(format!(
-                "jira search returned {status}: {body}"
-            )));
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: format!("jira search returned {status}: {body}"),
+            });
         }
 
         let search_resp: SearchResponse = resp
@@ -291,9 +292,10 @@ impl JiraClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(ps_core::Error::Internal(format!(
-                "jira issue {key} returned {status}: {body}"
-            )));
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: format!("jira issue {key} returned {status}: {body}"),
+            });
         }
 
         resp.json()
@@ -316,9 +318,10 @@ impl JiraClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            return Err(ps_core::Error::Internal(format!(
-                "jira connection test returned {status}: {body}"
-            )));
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: format!("jira connection test returned {status}: {body}"),
+            });
         }
 
         let body: serde_json::Value = resp.json().await.unwrap_or_default();
