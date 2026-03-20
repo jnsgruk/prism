@@ -1,4 +1,5 @@
 pub mod discourse_ingestion;
+pub mod embedding;
 pub mod enrichment;
 pub mod github_ingestion;
 pub mod github_team_sync;

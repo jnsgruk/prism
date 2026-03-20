@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ps_core::models::TaskType;
-use ps_core::repo::reasoning::QueuedContribution;
+use ps_core::repo::reasoning::{EmbeddingQueueEntry, QueuedContribution};
 use ps_reasoning::cost::CostTracker;
 use ps_reasoning::features::enrichment;
 use ps_reasoning::features::enrichment::types::EnrichmentType;
@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
+use super::embedding::EmbeddingHandlerClient;
 use super::insights::InsightsHandlerClient;
 use super::run_lifecycle::{complete_run, create_run, fail_run};
 
@@ -69,6 +70,7 @@ impl EnrichmentHandlerImpl {
     /// Journaling strategy:
     /// - `ctx.run()`: run creation, queue lookups (DB reads), cost logging, cleanup
     /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
+    #[allow(clippy::too_many_lines)]
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
@@ -186,6 +188,13 @@ impl EnrichmentHandlerImpl {
             let results: Vec<enrichment::BatchResult> = futures::future::join_all(futures).await;
             drop(router);
 
+            // Enqueue enriched contributions for embedding (per-batch, not accumulated)
+            let batch_ids: Vec<Uuid> = batches
+                .iter()
+                .flat_map(|(_, contributions)| contributions.iter().map(|c| c.contribution_id))
+                .collect();
+            self.enqueue_embeddings(ctx, &batch_ids).await;
+
             // Step 4: Aggregate results and log costs (journaled DB writes)
             for batch in &results {
                 let type_name = batch.enrichment_type.as_str();
@@ -265,12 +274,18 @@ impl EnrichmentHandlerImpl {
                 "complete"
             );
 
-            // Trigger insight snapshot recomputation after successful enrichment.
+            // Trigger downstream handlers after successful enrichment.
             if total_processed > 0 {
                 ctx.service_client::<InsightsHandlerClient>()
                     .compute_current_periods()
                     .send();
                 debug!("triggered InsightsHandler after enrichment cycle");
+
+                // Trigger embedding handler (fire-and-forget)
+                ctx.service_client::<EmbeddingHandlerClient>()
+                    .run_cycle()
+                    .send();
+                debug!("triggered EmbeddingHandler after enrichment cycle");
             }
         }
 
@@ -393,6 +408,55 @@ impl EnrichmentHandlerImpl {
     // -----------------------------------------------------------------------
     // Non-journaled helpers
     // -----------------------------------------------------------------------
+
+    /// Enqueue enriched contributions for embedding (journaled).
+    async fn enqueue_embeddings(&self, ctx: &Context<'_>, contribution_ids: &[Uuid]) {
+        if contribution_ids.is_empty() {
+            return;
+        }
+
+        // Deduplicate
+        let mut unique: Vec<Uuid> = contribution_ids.to_vec();
+        unique.sort_unstable();
+        unique.dedup();
+
+        let entries: Vec<EmbeddingQueueEntry> = unique
+            .into_iter()
+            .map(|id| EmbeddingQueueEntry {
+                contribution_id: id,
+                content_hash: String::new(), // computed at embed time from full text + enrichments
+            })
+            .collect();
+
+        let repos = self.state.repos.clone();
+        let result = ctx
+            .run(|| {
+                let repos = repos.clone();
+                let entries = entries;
+                async move {
+                    let count = repos
+                        .reasoning
+                        .bulk_enqueue_embeddings(&entries)
+                        .await
+                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    Ok(Json::from(count))
+                }
+            })
+            .name("enqueue_embeddings")
+            .await;
+
+        match result {
+            Ok(count) => {
+                let enqueued = count.into_inner();
+                if enqueued > 0 {
+                    debug!(enqueued, "enqueued contributions for embedding");
+                }
+            }
+            Err(e) => {
+                warn!(error = %e, "failed to enqueue contributions for embedding");
+            }
+        }
+    }
 
     /// Update run progress (NOT journaled — best-effort, doesn't affect replay).
     async fn update_progress(&self, run_id: Uuid, items: i32, progress: &EnrichmentProgress) {

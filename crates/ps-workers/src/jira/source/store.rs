@@ -1,5 +1,6 @@
 use ps_core::ingestion::{ContributionInput, IngestionContext};
 use ps_core::models::Platform;
+use ps_core::repo::reasoning::EmbeddingQueueEntry;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
@@ -64,6 +65,25 @@ pub(super) async fn store_batch_impl(
             ingestion_common::enqueue_enrichments(&ctx.repos, &resolved_items, &upserted).await
         {
             warn!(source = ctx.source_config.name, error = %e, "failed to enqueue enrichments");
+        }
+
+        // Jira tickets don't have enrichment in W1, so enqueue directly for
+        // embedding from raw text. When Jira enrichment is added, this moves
+        // to the enrichment-first path.
+        let embedding_entries: Vec<EmbeddingQueueEntry> = upserted
+            .iter()
+            .map(|(id, _)| EmbeddingQueueEntry {
+                contribution_id: *id,
+                content_hash: String::new(),
+            })
+            .collect();
+        if let Err(e) = ctx
+            .repos
+            .reasoning
+            .bulk_enqueue_embeddings(&embedding_entries)
+            .await
+        {
+            warn!(source = ctx.source_config.name, error = %e, "failed to enqueue Jira embeddings");
         }
     }
 

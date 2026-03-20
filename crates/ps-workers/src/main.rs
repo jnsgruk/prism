@@ -4,6 +4,7 @@ use ps_workers::handlers::SharedState;
 use ps_workers::handlers::discourse_ingestion::{
     DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
 };
+use ps_workers::handlers::embedding::{EmbeddingHandler, EmbeddingHandlerImpl};
 use ps_workers::handlers::enrichment::{EnrichmentHandler, EnrichmentHandlerImpl};
 use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
 use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
@@ -137,6 +138,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let enrichment = EnrichmentHandlerImpl {
         state: state.clone(),
+        router: ai_router.clone(),
+    };
+
+    let embedding = EmbeddingHandlerImpl {
+        state: state.clone(),
         router: ai_router,
     };
 
@@ -180,6 +186,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(metrics_compute.serve())
                 .bind(insights_compute.serve())
                 .bind(enrichment.serve())
+                .bind(embedding.serve())
                 .bind(model_catalogue.serve())
                 .build(),
         )
