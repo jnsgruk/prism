@@ -479,6 +479,7 @@ impl HandlersService for HandlersServiceImpl {
             // Map service handlers to their well-known source names
             match req.handler_name.as_str() {
                 "EnrichmentHandler" => Some("_enrichment".into()),
+                "EmbeddingHandler" => Some("_embedding".into()),
                 "ModelCatalogueHandler" => Some("_model_catalogue".into()),
                 _ => None,
             }
@@ -531,12 +532,32 @@ impl HandlersService for HandlersServiceImpl {
             return Err(Status::failed_precondition("run is not active"));
         }
 
-        // Try to cancel via Restate if this is a source-based handler
+        // Service handlers (prefixed with "_") have no Restate object key —
+        // cancel the DB record and attempt Restate cancellation via stored invocation ID.
+        let is_service_handler = run.source_name.starts_with('_');
+
         if run.source_name == "_system" {
-            // For system handlers, just cancel the specific run in the DB
+            // System handlers: just cancel the specific run in the DB
             self.repos
                 .activity
                 .cancel_run_by_id(run_id)
+                .await
+                .map_err(db_err)?;
+        } else if is_service_handler {
+            // Service handlers (_enrichment, _embedding, etc.)
+            if let Some(inv_id) = self
+                .repos
+                .activity
+                .get_current_invocation_id(&run.source_name)
+                .await
+                .map_err(db_err)?
+            {
+                self.cancel_restate_invocation(&run.source_name, &inv_id)
+                    .await;
+            }
+            self.repos
+                .activity
+                .cancel_active_runs(&run.source_name)
                 .await
                 .map_err(db_err)?;
         } else {

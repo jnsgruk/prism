@@ -61,6 +61,12 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         false,
     ),
     (
+        "EmbeddingHandler",
+        &["run_cycle"],
+        "Generates vector embeddings for contributions using the configured AI provider",
+        false,
+    ),
+    (
         "ModelCatalogueHandler",
         &["refresh_catalogue"],
         "Fetches available models from configured AI providers and caches them locally",

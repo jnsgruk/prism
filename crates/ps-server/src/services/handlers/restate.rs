@@ -213,10 +213,21 @@ impl HandlersServiceImpl {
             .await
             .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
 
+        let status = resp.status();
         let resp_body: serde_json::Value = resp
             .json()
             .await
             .map_err(|e| Status::internal(format!("failed to parse Restate response: {e}")))?;
+
+        if !status.is_success() {
+            let message = resp_body
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown error");
+            return Err(Status::internal(format!(
+                "Restate returned {status}: {message}"
+            )));
+        }
 
         resp_body
             .get("invocationId")
