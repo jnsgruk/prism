@@ -1,19 +1,25 @@
 mod backup;
 mod contributions;
+mod embed;
 mod metrics;
 mod people;
 mod restore;
 mod runs;
+mod search;
+mod similar;
 mod sources;
 mod status;
 mod trigger;
 
 pub use backup::backup;
 pub use contributions::contributions;
+pub use embed::embed_status;
 pub use metrics::metrics;
 pub use people::people;
 pub use restore::restore;
 pub use runs::runs;
+pub use search::search;
+pub use similar::similar;
 pub use sources::sources;
 pub use status::status;
 pub use trigger::{backfill, trigger};

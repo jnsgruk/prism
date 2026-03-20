@@ -2,6 +2,7 @@ use ps_proto::prism::v1::{
     admin_service_client::AdminServiceClient, auth_service_client::AuthServiceClient,
     config_service_client::ConfigServiceClient, handlers_service_client::HandlersServiceClient,
     metrics_service_client::MetricsServiceClient, org_service_client::OrgServiceClient,
+    reasoning_service_client::ReasoningServiceClient,
 };
 use tonic::transport::Channel;
 
@@ -20,6 +21,7 @@ pub struct Clients {
     pub handlers: HandlersServiceClient<AuthedChannel>,
     pub metrics: MetricsServiceClient<AuthedChannel>,
     pub org: OrgServiceClient<AuthedChannel>,
+    pub reasoning: ReasoningServiceClient<AuthedChannel>,
 }
 
 impl tonic::service::Interceptor for AuthInterceptor {
@@ -49,6 +51,7 @@ pub fn connect(server_url: &str, token: Option<&String>) -> anyhow::Result<Clien
         config: ConfigServiceClient::with_interceptor(channel.clone(), auth.clone()),
         handlers: HandlersServiceClient::with_interceptor(channel.clone(), auth.clone()),
         metrics: MetricsServiceClient::with_interceptor(channel.clone(), auth.clone()),
-        org: OrgServiceClient::with_interceptor(channel, auth),
+        org: OrgServiceClient::with_interceptor(channel.clone(), auth.clone()),
+        reasoning: ReasoningServiceClient::with_interceptor(channel, auth),
     })
 }

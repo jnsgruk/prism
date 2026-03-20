@@ -102,6 +102,37 @@ enum Command {
         #[arg(long)]
         since: Option<String>,
     },
+
+    /// Show embedding pipeline status
+    EmbedStatus,
+
+    /// Find similar contributions to a given contribution
+    Similar {
+        /// Contribution ID (UUID)
+        contribution_id: String,
+
+        /// Max results (default 10)
+        #[arg(long, default_value = "10")]
+        limit: i32,
+
+        /// Filter by platform
+        #[arg(long)]
+        platform: Option<String>,
+    },
+
+    /// Free-text similarity search across all contributions
+    Search {
+        /// Query text
+        query: String,
+
+        /// Max results (default 10)
+        #[arg(long, default_value = "10")]
+        limit: i32,
+
+        /// Filter by platform
+        #[arg(long)]
+        platform: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -133,5 +164,16 @@ async fn main() -> Result<()> {
             commands::contributions(&mut clients, &person, platform.as_deref(), since.as_deref())
                 .await
         }
+        Command::EmbedStatus => commands::embed_status(&mut clients).await,
+        Command::Similar {
+            contribution_id,
+            limit,
+            platform,
+        } => commands::similar(&mut clients, &contribution_id, limit, platform.as_deref()).await,
+        Command::Search {
+            query,
+            limit,
+            platform,
+        } => commands::search(&mut clients, &query, limit, platform.as_deref()).await,
     }
 }
