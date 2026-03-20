@@ -49,7 +49,7 @@ export const HandlersTab = (): React.ReactElement => {
 
   const { ingestionHandlers, systemHandlers } = useMemo(() => {
     if (!handlers) return { ingestionHandlers: [], systemHandlers: [] };
-    const ingestionNames = new Set(["EnrichmentHandler"]);
+    const ingestionNames = new Set(["EnrichmentHandler", "EmbeddingHandler"]);
     return {
       ingestionHandlers: handlers.filter((h) => h.requiresKey || ingestionNames.has(h.name)),
       systemHandlers: handlers.filter((h) => !h.requiresKey && !ingestionNames.has(h.name)),

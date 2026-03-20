@@ -11,6 +11,9 @@ const LoginPage = lazy(() => import("@/views/login/pages/login-page"));
 const SetupPage = lazy(() => import("@/views/setup/pages/setup-page"));
 const PeopleListPage = lazy(() => import("@/views/people/pages/people-list-page"));
 const PersonProfilePage = lazy(() => import("@/views/people/pages/person-profile-page"));
+const ContributionDetailPage = lazy(
+  () => import("@/views/contributions/pages/contribution-detail-page"),
+);
 const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page"));
 
 export const App = (): React.ReactElement => (
@@ -23,6 +26,7 @@ export const App = (): React.ReactElement => (
         <Route path="/people" element={<PeopleListPage />} />
         <Route path="/people/:personId" element={<PersonProfilePage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/contributions/:contributionId" element={<ContributionDetailPage />} />
         <Route path="/ingestion" element={<IngestionPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />

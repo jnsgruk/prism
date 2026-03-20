@@ -7,6 +7,7 @@ import { Brain, Loader2, Play, Sparkles, Square } from "lucide-react";
 import { toast } from "sonner";
 
 import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
+import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
 import {
   useCancelHandlerRun,
   useListRuns,
@@ -18,6 +19,105 @@ const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
   sentiment: "Sentiment",
   significance: "Significance",
   topic: "Topic",
+};
+
+const EmbeddingSection = (): React.ReactElement => {
+  const { data: embStatus } = useEmbeddingStatus();
+  const triggerHandler = useTriggerHandler();
+  const cancelRun = useCancelHandlerRun();
+
+  const { data: embRuns } = useListRuns(undefined, {
+    refetchInterval: 5_000,
+    handlerName: "EmbeddingHandler",
+  });
+  const activeEmbRun = embRuns?.find((r) => r.status === "running");
+  const isEmbRunning = !!activeEmbRun;
+
+  const handleTriggerEmb = (): void => {
+    triggerHandler.mutate(
+      { handlerName: "EmbeddingHandler", method: "run_cycle", key: "" },
+      {
+        onSuccess: () => toast.success("Embedding run started"),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to trigger embedding"),
+      },
+    );
+  };
+
+  const handleCancelEmb = (): void => {
+    if (!activeEmbRun) return;
+    cancelRun.mutate(activeEmbRun.id, {
+      onSuccess: () => toast.success("Embedding run cancelled"),
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel"),
+    });
+  };
+
+  if (!embStatus) return <></>;
+
+  const lastEmbLabel = embStatus.lastEmbeddedAt
+    ? formatRelativeTime(embStatus.lastEmbeddedAt)
+    : "Never";
+
+  return (
+    <>
+      <Separator />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-muted-foreground">Embeddings</p>
+          {isEmbRunning ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleCancelEmb}
+              disabled={cancelRun.isPending}
+            >
+              <Square className="mr-1.5 size-3.5" />
+              Cancel
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTriggerEmb}
+              disabled={triggerHandler.isPending}
+            >
+              <Play className="mr-1.5 size-3.5" />
+              Run Embedding
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Queued</p>
+            <p className="text-lg font-semibold tabular-nums">{embStatus.queuedCount.toString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Embedded</p>
+            <p className="text-lg font-semibold tabular-nums">
+              {embStatus.embeddedCount.toString()}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Coverage</p>
+            <p className="text-lg font-semibold tabular-nums">
+              {Math.round(embStatus.coveragePercent)}%
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Last Run</p>
+            <p className="text-sm font-medium">{lastEmbLabel}</p>
+          </div>
+        </div>
+        {/* Coverage progress bar */}
+        <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${Math.min(embStatus.coveragePercent, 100)}%` }}
+          />
+        </div>
+      </div>
+    </>
+  );
 };
 
 const AiPipelineStatus = (): React.ReactElement => {
@@ -166,6 +266,9 @@ const AiPipelineStatus = (): React.ReactElement => {
             </div>
           </>
         )}
+
+        {/* Embedding pipeline section */}
+        <EmbeddingSection />
       </CardContent>
     </Card>
   );
