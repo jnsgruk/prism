@@ -247,6 +247,19 @@ pub(super) async fn fetch_store_loop(
                 wait_secs = wait.as_secs(),
                 "rate limit exhausted, sleeping durably before retry"
             );
+
+            // Update progress before sleeping so the UI reflects the
+            // exhausted rate limit rather than showing a stale snapshot.
+            let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
+            if let Err(e) = ing_ctx
+                .repos
+                .activity
+                .update_run_progress_detail(run_id, total_items, &progress)
+                .await
+            {
+                tracing::debug!(error = %e, "failed to update run progress");
+            }
+
             ctx.sleep(wait).await?;
             // Don't advance cursor — retry the same position after sleep.
             continue;
