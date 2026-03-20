@@ -3,8 +3,6 @@
 //! Each provider has a `fetch_models` function that calls the provider's
 //! model-listing endpoint and returns a normalized `Vec<AiModel>`.
 
-use std::fmt::Write as _;
-
 use ps_core::models::{AiModel, AiProvider};
 use tracing::debug;
 
@@ -59,6 +57,9 @@ struct GeminiModel {
     supported_generation_methods: Vec<String>,
 }
 
+/// Maximum number of pages to fetch from the Gemini model listing API.
+const MAX_GOOGLE_PAGES: usize = 50;
+
 async fn fetch_google_models(
     http: &reqwest::Client,
     api_key: &str,
@@ -66,45 +67,39 @@ async fn fetch_google_models(
     let mut all_models = Vec::new();
     let mut page_token: Option<String> = None;
 
-    loop {
-        let mut url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models?key={api_key}&pageSize=100"
-        );
+    for _ in 0..MAX_GOOGLE_PAGES {
+        let mut request = http
+            .get("https://generativelanguage.googleapis.com/v1beta/models")
+            .query(&[("key", api_key), ("pageSize", "100")]);
         if let Some(ref token) = page_token {
-            let _ = write!(url, "&pageToken={token}");
+            request = request.query(&[("pageToken", token.as_str())]);
         }
 
-        let resp: GeminiListResponse = http
-            .get(&url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let resp: GeminiListResponse = request.send().await?.error_for_status()?.json().await?;
 
         for m in resp.models {
             // Strip "models/" prefix to get the usable model ID
             let id = m.name.strip_prefix("models/").unwrap_or(&m.name);
 
+            let has_generate = m
+                .supported_generation_methods
+                .iter()
+                .any(|s| s == "generateContent");
+            let has_embed = m
+                .supported_generation_methods
+                .iter()
+                .any(|s| s == "embedContent");
+
             let mut capabilities = Vec::new();
-            for method in &m.supported_generation_methods {
-                match method.as_str() {
-                    "generateContent" => {
-                        if !capabilities.contains(&"completion".to_string()) {
-                            capabilities.push("completion".into());
-                        }
-                        // Flash and Pro models support tool use
-                        if (id.contains("flash") || id.contains("pro"))
-                            && !capabilities.contains(&"tool_use".to_string())
-                        {
-                            capabilities.push("tool_use".into());
-                        }
-                    }
-                    "embedContent" => {
-                        capabilities.push("embeddings".into());
-                    }
-                    _ => {}
+            if has_generate {
+                capabilities.push("completion".into());
+                // Flash and Pro models support tool use
+                if id.contains("flash") || id.contains("pro") {
+                    capabilities.push("tool_use".into());
                 }
+            }
+            if has_embed {
+                capabilities.push("embeddings".into());
             }
 
             all_models.push(AiModel {
