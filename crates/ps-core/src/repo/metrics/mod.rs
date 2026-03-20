@@ -5,7 +5,8 @@ mod snapshots;
 mod sources;
 
 pub use contributions::{
-    ContributionDetailRow, ListContributionsParams, ListPersonContributionsParams,
+    ContributionDetailRow, ContributionFullRow, ListContributionsParams,
+    ListPersonContributionsParams,
 };
 pub use discourse::{DiscourseActivityRow, DiscourseCategoryRow, DiscourseContributorRow};
 pub use person::{PeerPercentileRow, PersonActivityRow};

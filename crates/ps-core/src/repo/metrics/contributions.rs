@@ -47,6 +47,25 @@ pub struct ContributionDetailRow {
     pub total_count: i64,
 }
 
+/// A full contribution row returned by `get_contribution_by_id`.
+pub struct ContributionFullRow {
+    pub id: Uuid,
+    pub person_id: Option<Uuid>,
+    pub person_name: String,
+    pub platform: Platform,
+    pub contribution_type: ContributionType,
+    pub platform_id: String,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub state: Option<ContributionState>,
+    pub content: Option<String>,
+    pub created_at: time::OffsetDateTime,
+    pub updated_at: Option<time::OffsetDateTime>,
+    pub closed_at: Option<time::OffsetDateTime>,
+    pub metrics: serde_json::Value,
+    pub metadata: serde_json::Value,
+}
+
 impl MetricsRepo {
     /// List individual contributions for a team's members, with filtering and pagination.
     ///
@@ -149,5 +168,63 @@ impl MetricsRepo {
                 .collect(),
             total_count,
         ))
+    }
+
+    /// Fetch a single contribution by ID with full detail (including content).
+    #[allow(clippy::type_complexity)]
+    pub async fn get_contribution_by_id(
+        &self,
+        contribution_id: Uuid,
+    ) -> Result<Option<ContributionFullRow>, Error> {
+        let row: Option<(
+            Uuid,                         // id
+            Option<Uuid>,                 // person_id
+            String,                       // person_name
+            String,                       // platform
+            String,                       // contribution_type
+            String,                       // platform_id
+            Option<String>,               // title
+            Option<String>,               // url
+            Option<String>,               // state
+            Option<String>,               // content
+            time::OffsetDateTime,         // created_at
+            Option<time::OffsetDateTime>, // updated_at
+            Option<time::OffsetDateTime>, // closed_at
+            serde_json::Value,            // metrics
+            serde_json::Value,            // metadata
+        )> = sqlx::query_as(
+            r"
+            SELECT c.id, c.person_id, COALESCE(p.name, ''),
+                   c.platform, c.contribution_type, c.platform_id,
+                   c.title, c.url, c.state, c.content,
+                   c.created_at, c.updated_at, c.closed_at,
+                   c.metrics, c.metadata
+            FROM activity.contributions c
+            LEFT JOIN org.people p ON p.id = c.person_id
+            WHERE c.id = $1
+            ",
+        )
+        .bind(contribution_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| ContributionFullRow {
+            id: r.0,
+            person_id: r.1,
+            person_name: r.2,
+            platform: r.3.parse().unwrap_or(Platform::Github),
+            contribution_type: r.4.parse().unwrap_or(ContributionType::PullRequest),
+            platform_id: r.5,
+            title: r.6,
+            url: r.7,
+            state: r.8.and_then(|s: String| s.parse().ok()),
+            content: r.9,
+            created_at: r.10,
+            updated_at: r.11,
+            closed_at: r.12,
+            metrics: r.13,
+            metadata: r.14,
+        }))
     }
 }

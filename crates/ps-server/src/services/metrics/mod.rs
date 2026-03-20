@@ -1,7 +1,7 @@
 mod grpc;
 
 use ps_core::repo::Repos;
-use ps_core::repo::metrics::ContributionDetailRow;
+use ps_core::repo::metrics::{ContributionDetailRow, ContributionFullRow};
 use ps_proto::prism::v1::{
     Contribution, DiscourseInstanceMetrics as ProtoDiscourseInstanceMetrics, PeriodType,
     TeamMetrics,
@@ -122,6 +122,88 @@ fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics 
     }
 }
 
+/// Convert a `ContributionFullRow` to a proto `Contribution` with all detail fields.
+fn contribution_full_to_proto(r: ContributionFullRow) -> Contribution {
+    let repo = if let Some(s) = r.metadata.get("repo").and_then(|v| v.as_str()) {
+        s.to_string()
+    } else {
+        match r.platform_id.splitn(3, '/').collect::<Vec<_>>().as_slice() {
+            [owner, repo, ..] => format!("{owner}/{repo}"),
+            _ => String::new(),
+        }
+    };
+    let is_discourse = r.platform.is_discourse();
+    let review_count = if is_discourse {
+        json_i32(&r.metrics, "post_count")
+    } else {
+        json_i32(&r.metrics, "review_count")
+    };
+    let category = if is_discourse {
+        r.metrics
+            .get("category")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    } else {
+        String::new()
+    };
+
+    let labels = r
+        .metrics
+        .get("labels")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let head_ref = r
+        .metrics
+        .get("head_ref")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let base_ref = r
+        .metrics
+        .get("base_ref")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let draft = r
+        .metrics
+        .get("draft")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+
+    Contribution {
+        id: r.id.to_string(),
+        person_name: r.person_name,
+        person_id: r.person_id.map(|id| id.to_string()).unwrap_or_default(),
+        platform: r.platform.to_string(),
+        contribution_type: r.contribution_type.to_string(),
+        platform_id: r.platform_id,
+        title: r.title.unwrap_or_default(),
+        url: r.url.unwrap_or_default(),
+        state: r.state.map(|s| s.to_string()).unwrap_or_default(),
+        created_at: Some(to_timestamp(r.created_at)),
+        updated_at: r.updated_at.map(to_timestamp),
+        closed_at: r.closed_at.map(to_timestamp),
+        content: r.content.unwrap_or_default(),
+        additions: json_i32(&r.metrics, "additions"),
+        deletions: json_i32(&r.metrics, "deletions"),
+        changed_files: json_i32(&r.metrics, "changed_files"),
+        review_count,
+        review_hours: json_f32(&r.metrics, "review_hours"),
+        repo,
+        category,
+        labels,
+        head_ref,
+        base_ref,
+        draft,
+    }
+}
+
 /// Convert a `ContributionDetailRow` to a proto `Contribution`.
 ///
 /// Used by both `list_team_contributions` and `list_person_contributions`.
@@ -171,5 +253,13 @@ fn contribution_detail_to_proto(r: ContributionDetailRow) -> Contribution {
         review_hours: json_f32(&r.metrics, "review_hours"),
         repo,
         category,
+        // Detail-only fields — empty in list RPCs.
+        content: String::new(),
+        updated_at: None,
+        person_id: String::new(),
+        labels: Vec::new(),
+        head_ref: String::new(),
+        base_ref: String::new(),
+        draft: false,
     }
 }

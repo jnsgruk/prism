@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { ExternalLink, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
@@ -317,6 +318,14 @@ export const ContributionTable = ({
     return prStates;
   })();
 
+  const navigate = useNavigate();
+  const handleRowClick = useCallback(
+    (row: Contribution) => {
+      navigate(`/contributions/${row.id}`);
+    },
+    [navigate],
+  );
+
   const isPersonMode = !!personId;
   const columns = useMemo((): ColumnDef<Contribution, unknown>[] => {
     if (isDiscourse) {
@@ -447,6 +456,7 @@ export const ContributionTable = ({
                 setSorting(updater);
                 setPageIndex(0);
               }}
+              onRowClick={handleRowClick}
             />
           </div>
           <DataTablePagination

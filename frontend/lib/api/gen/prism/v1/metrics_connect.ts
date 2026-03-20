@@ -6,6 +6,8 @@
 import {
   CompareTeamsRequest,
   CompareTeamsResponse,
+  GetContributionRequest,
+  GetContributionResponse,
   GetDiscourseActivityRequest,
   GetDiscourseActivityResponse,
   GetFlowMetricsRequest,
@@ -63,6 +65,15 @@ export const MetricsService = {
       name: "ListTeamContributions",
       I: ListTeamContributionsRequest,
       O: ListTeamContributionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc prism.v1.MetricsService.GetContribution
+     */
+    getContribution: {
+      name: "GetContribution",
+      I: GetContributionRequest,
+      O: GetContributionResponse,
       kind: MethodKind.Unary,
     },
     /**

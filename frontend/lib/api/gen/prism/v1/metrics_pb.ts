@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file prism/v1/metrics.proto.
  */
 export const file_prism_v1_metrics: GenFile /*@__PURE__*/ = fileDesc(
-  "ChZwcmlzbS92MS9tZXRyaWNzLnByb3RvEghwcmlzbS52MSJICgZQZXJpb2QSIgoEdHlwZRgBIAEoDjIULnByaXNtLnYxLlBlcmlvZFR5cGUSDQoFc3RhcnQYAiABKAkSCwoDZW5kGAMgASgJIp0GCgtUZWFtTWV0cmljcxIPCgd0ZWFtX2lkGAEgASgJEhEKCXRlYW1fbmFtZRgCIAEoCRIgCgZwZXJpb2QYAyABKAsyEC5wcmlzbS52MS5QZXJpb2QSEgoKdGhyb3VnaHB1dBgEIAEoBRIjChthdmdfcmV2aWV3X3R1cm5hcm91bmRfaG91cnMYBSABKAISFAoMbWVtYmVyX2NvdW50GAYgASgFEjoKC3Jhd19tZXRyaWNzGAcgAygLMiUucHJpc20udjEuVGVhbU1ldHJpY3MuUmF3TWV0cmljc0VudHJ5EiMKG3Jldmlld190dXJuYXJvdW5kX3A3NV9ob3VycxgIIAEoAhIjChtyZXZpZXdfdHVybmFyb3VuZF9wOTBfaG91cnMYCSABKAISIwobcmV2aWV3X3R1cm5hcm91bmRfcDk5X2hvdXJzGAogASgCEhwKFGF2Z19jeWNsZV90aW1lX2hvdXJzGAsgASgCEg8KB3dpcF9hdmcYDCABKAISFwoPZmxvd19lZmZpY2llbmN5GA0gASgCEhcKD2xlYWRfdGltZV9ob3VycxgOIAEoAhIYChBzb3VyY2VfcGxhdGZvcm1zGA8gAygJEiAKGGRpc2NvdXJzZV90b3BpY3NfY3JlYXRlZBgQIAEoBRIXCg9kaXNjb3Vyc2VfcG9zdHMYESABKAUSGQoRZGlzY291cnNlX3JlcGxpZXMYEiABKAUSHQoVZGlzY291cnNlX2xpa2VzX2dpdmVuGBMgASgFEiAKGGRpc2NvdXJzZV9saWtlc19yZWNlaXZlZBgUIAEoBRIfChdkaXNjb3Vyc2Vfc29sdmVkX3RvcGljcxgVIAEoBRIlCh1kaXNjb3Vyc2VfYWN0aXZlX3BhcnRpY2lwYW50cxgWIAEoBRJBChVkaXNjb3Vyc2VfYnlfaW5zdGFuY2UYFyADKAsyIi5wcmlzbS52MS5EaXNjb3Vyc2VJbnN0YW5jZU1ldHJpY3MaMQoPUmF3TWV0cmljc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEikAEKGERpc2NvdXJzZUluc3RhbmNlTWV0cmljcxIQCghpbnN0YW5jZRgBIAEoCRIWCg50b3BpY3NfY3JlYXRlZBgCIAEoBRINCgVwb3N0cxgDIAEoBRIPCgdyZXBsaWVzGAQgASgFEhMKC2xpa2VzX2dpdmVuGAUgASgFEhUKDXNvbHZlZF90b3BpY3MYBiABKAUiSgoVR2V0VGVhbU1ldHJpY3NSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kIkAKFkdldFRlYW1NZXRyaWNzUmVzcG9uc2USJgoHbWV0cmljcxgBIAEoCzIVLnByaXNtLnYxLlRlYW1NZXRyaWNzIkkKE0NvbXBhcmVUZWFtc1JlcXVlc3QSEAoIdGVhbV9pZHMYASADKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kIj4KFENvbXBhcmVUZWFtc1Jlc3BvbnNlEiYKB21ldHJpY3MYASADKAsyFS5wcmlzbS52MS5UZWFtTWV0cmljcyIUChJMaXN0UGVyaW9kc1JlcXVlc3QiOAoTTGlzdFBlcmlvZHNSZXNwb25zZRIhCgdwZXJpb2RzGAEgAygLMhAucHJpc20udjEuUGVyaW9kIt4CChxMaXN0VGVhbUNvbnRyaWJ1dGlvbnNSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kEh4KEWNvbnRyaWJ1dGlvbl90eXBlGAMgASgJSACIAQESEgoFc3RhdGUYBCABKAlIAYgBARIRCglwYWdlX3NpemUYBSABKAUSEgoKcGFnZV9pbmRleBgGIAEoBRIXCgpzb3J0X2ZpZWxkGAcgASgJSAKIAQESFgoJc29ydF9kZXNjGAggASgISAOIAQESEwoGc2VhcmNoGAkgASgJSASIAQESFQoIcGxhdGZvcm0YCiABKAlIBYgBAUIUChJfY29udHJpYnV0aW9uX3R5cGVCCAoGX3N0YXRlQg0KC19zb3J0X2ZpZWxkQgwKCl9zb3J0X2Rlc2NCCQoHX3NlYXJjaEILCglfcGxhdGZvcm0ihAMKDENvbnRyaWJ1dGlvbhIKCgJpZBgBIAEoCRITCgtwZXJzb25fbmFtZRgCIAEoCRIQCghwbGF0Zm9ybRgDIAEoCRIZChFjb250cmlidXRpb25fdHlwZRgEIAEoCRITCgtwbGF0Zm9ybV9pZBgFIAEoCRINCgV0aXRsZRgGIAEoCRILCgN1cmwYByABKAkSDQoFc3RhdGUYCCABKAkSLgoKY3JlYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoJY2xvc2VkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCglhZGRpdGlvbnMYCyABKAUSEQoJZGVsZXRpb25zGAwgASgFEhUKDWNoYW5nZWRfZmlsZXMYDSABKAUSFAoMcmV2aWV3X2NvdW50GA4gASgFEhQKDHJldmlld19ob3VycxgPIAEoAhIMCgRyZXBvGBAgASgJEhAKCGNhdGVnb3J5GBEgASgJImMKHUxpc3RUZWFtQ29udHJpYnV0aW9uc1Jlc3BvbnNlEi0KDWNvbnRyaWJ1dGlvbnMYASADKAsyFi5wcmlzbS52MS5Db250cmlidXRpb24SEwoLdG90YWxfY291bnQYAiABKAUiUgobR2V0SW5kaXZpZHVhbFByb2ZpbGVSZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIgCgZwZXJpb2QYAiABKAsyEC5wcmlzbS52MS5QZXJpb2QihgIKHEdldEluZGl2aWR1YWxQcm9maWxlUmVzcG9uc2USEQoJcGVyc29uX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEQoJdGVhbV9uYW1lGAMgASgJEg0KBWxldmVsGAQgASgJEjIKCmlkZW50aXRpZXMYBSADKAsyHi5wcmlzbS52MS5QbGF0Zm9ybUlkZW50aXR5SW5mbxI/ChRhY3Rpdml0eV9ieV9wbGF0Zm9ybRgGIAMoCzIhLnByaXNtLnYxLlBsYXRmb3JtQWN0aXZpdHlTdW1tYXJ5Ei4KDHBlZXJfY29udGV4dBgHIAEoCzIYLnByaXNtLnYxLlBlZXJDb21wYXJpc29uIjoKFFBsYXRmb3JtSWRlbnRpdHlJbmZvEhAKCHBsYXRmb3JtGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJIrgBChdQbGF0Zm9ybUFjdGl2aXR5U3VtbWFyeRIQCghwbGF0Zm9ybRgBIAEoCRIaChJjb250cmlidXRpb25fY291bnQYAiABKAUSPwoHbWV0cmljcxgDIAMoCzIuLnByaXNtLnYxLlBsYXRmb3JtQWN0aXZpdHlTdW1tYXJ5Lk1ldHJpY3NFbnRyeRouCgxNZXRyaWNzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgBOgI4ASKxAQoOUGVlckNvbXBhcmlzb24SDQoFbGV2ZWwYASABKAkSEgoKcGVlcl9jb3VudBgCIAEoBRI2CgdtZXRyaWNzGAMgAygLMiUucHJpc20udjEuUGVlckNvbXBhcmlzb24uTWV0cmljc0VudHJ5GkQKDE1ldHJpY3NFbnRyeRILCgNrZXkYASABKAkSIwoFdmFsdWUYAiABKAsyFC5wcmlzbS52MS5QZXJjZW50aWxlOgI4ASIvCgpQZXJjZW50aWxlEg0KBXZhbHVlGAEgASgBEhIKCnBlcmNlbnRpbGUYAiABKAEi3gIKHkxpc3RQZXJzb25Db250cmlidXRpb25zUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSFQoIcGxhdGZvcm0YAiABKAlIAIgBARIeChFjb250cmlidXRpb25fdHlwZRgDIAEoCUgBiAEBEhIKBXNpbmNlGAQgASgJSAKIAQESEQoJcGFnZV9zaXplGAUgASgFEhIKCnBhZ2VfaW5kZXgYBiABKAUSFwoKc29ydF9maWVsZBgHIAEoCUgDiAEBEhYKCXNvcnRfZGVzYxgIIAEoCEgEiAEBEhIKBXN0YXRlGAkgASgJSAWIAQESEwoGc2VhcmNoGAogASgJSAaIAQFCCwoJX3BsYXRmb3JtQhQKEl9jb250cmlidXRpb25fdHlwZUIICgZfc2luY2VCDQoLX3NvcnRfZmllbGRCDAoKX3NvcnRfZGVzY0IICgZfc3RhdGVCCQoHX3NlYXJjaCJlCh9MaXN0UGVyc29uQ29udHJpYnV0aW9uc1Jlc3BvbnNlEi0KDWNvbnRyaWJ1dGlvbnMYASADKAsyFi5wcmlzbS52MS5Db250cmlidXRpb24SEwoLdG90YWxfY291bnQYAiABKAUiSgoVR2V0Rmxvd01ldHJpY3NSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kIvUBChZHZXRGbG93TWV0cmljc1Jlc3BvbnNlEhwKFGF2Z19jeWNsZV90aW1lX2hvdXJzGAEgASgBEhMKC3dpcF9hdmVyYWdlGAIgASgBEhIKCnRocm91Z2hwdXQYAyABKAUSFwoPZmxvd19lZmZpY2llbmN5GAQgASgBEhcKD2xlYWRfdGltZV9ob3VycxgFIAEoARI3ChB0aHJvdWdocHV0X3RyZW5kGAYgAygLMh0ucHJpc20udjEuVGhyb3VnaHB1dERhdGFQb2ludBIpCgl3aXBfdHJlbmQYByADKAsyFi5wcmlzbS52MS5XaXBEYXRhUG9pbnQiswEKE1Rocm91Z2hwdXREYXRhUG9pbnQSDAoEZGF0ZRgBIAEoCRINCgVjb3VudBgCIAEoBRIOCgZzb3VyY2UYAyABKAkSPgoJYnlfc291cmNlGAQgAygLMisucHJpc20udjEuVGhyb3VnaHB1dERhdGFQb2ludC5CeVNvdXJjZUVudHJ5Gi8KDUJ5U291cmNlRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ASIpCgxXaXBEYXRhUG9pbnQSDAoEZGF0ZRgBIAEoCRILCgN3aXAYAiABKAEidAobR2V0RGlzY291cnNlQWN0aXZpdHlSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kEhUKCGluc3RhbmNlGAMgASgJSACIAQFCCwoJX2luc3RhbmNlIsgBChxHZXREaXNjb3Vyc2VBY3Rpdml0eVJlc3BvbnNlEjYKFWNhdGVnb3J5X2Rpc3RyaWJ1dGlvbhgBIAMoCzIXLnByaXNtLnYxLkNhdGVnb3J5Q291bnQSPAoOYWN0aXZpdHlfdHJlbmQYAiADKAsyJC5wcmlzbS52MS5EaXNjb3Vyc2VBY3Rpdml0eURhdGFQb2ludBIyChB0b3BfY29udHJpYnV0b3JzGAMgAygLMhgucHJpc20udjEuVG9wQ29udHJpYnV0b3IiQAoNQ2F0ZWdvcnlDb3VudBIQCghjYXRlZ29yeRgBIAEoCRIOCgZ0b3BpY3MYAiABKAUSDQoFcG9zdHMYAyABKAUiagoaRGlzY291cnNlQWN0aXZpdHlEYXRhUG9pbnQSDAoEZGF0ZRgBIAEoCRIOCgZ0b3BpY3MYAiABKAUSDQoFcG9zdHMYAyABKAUSDQoFbGlrZXMYBCABKAUSEAoIaW5zdGFuY2UYBSABKAkieAoOVG9wQ29udHJpYnV0b3ISEQoJcGVyc29uX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGdG9waWNzGAMgASgFEg0KBXBvc3RzGAQgASgFEhYKDmxpa2VzX3JlY2VpdmVkGAUgASgFEg4KBnNvbHZlZBgGIAEoBSpvCgpQZXJpb2RUeXBlEhsKF1BFUklPRF9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQUEVSSU9EX1RZUEVfV0VFSxABEhUKEVBFUklPRF9UWVBFX01PTlRIEAISFwoTUEVSSU9EX1RZUEVfUVVBUlRFUhADMv0FCg5NZXRyaWNzU2VydmljZRJTCg5HZXRUZWFtTWV0cmljcxIfLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVxdWVzdBogLnByaXNtLnYxLkdldFRlYW1NZXRyaWNzUmVzcG9uc2USTQoMQ29tcGFyZVRlYW1zEh0ucHJpc20udjEuQ29tcGFyZVRlYW1zUmVxdWVzdBoeLnByaXNtLnYxLkNvbXBhcmVUZWFtc1Jlc3BvbnNlEkoKC0xpc3RQZXJpb2RzEhwucHJpc20udjEuTGlzdFBlcmlvZHNSZXF1ZXN0Gh0ucHJpc20udjEuTGlzdFBlcmlvZHNSZXNwb25zZRJoChVMaXN0VGVhbUNvbnRyaWJ1dGlvbnMSJi5wcmlzbS52MS5MaXN0VGVhbUNvbnRyaWJ1dGlvbnNSZXF1ZXN0GicucHJpc20udjEuTGlzdFRlYW1Db250cmlidXRpb25zUmVzcG9uc2USZQoUR2V0SW5kaXZpZHVhbFByb2ZpbGUSJS5wcmlzbS52MS5HZXRJbmRpdmlkdWFsUHJvZmlsZVJlcXVlc3QaJi5wcmlzbS52MS5HZXRJbmRpdmlkdWFsUHJvZmlsZVJlc3BvbnNlEm4KF0xpc3RQZXJzb25Db250cmlidXRpb25zEigucHJpc20udjEuTGlzdFBlcnNvbkNvbnRyaWJ1dGlvbnNSZXF1ZXN0GikucHJpc20udjEuTGlzdFBlcnNvbkNvbnRyaWJ1dGlvbnNSZXNwb25zZRJTCg5HZXRGbG93TWV0cmljcxIfLnByaXNtLnYxLkdldEZsb3dNZXRyaWNzUmVxdWVzdBogLnByaXNtLnYxLkdldEZsb3dNZXRyaWNzUmVzcG9uc2USZQoUR2V0RGlzY291cnNlQWN0aXZpdHkSJS5wcmlzbS52MS5HZXREaXNjb3Vyc2VBY3Rpdml0eVJlcXVlc3QaJi5wcmlzbS52MS5HZXREaXNjb3Vyc2VBY3Rpdml0eVJlc3BvbnNlYgZwcm90bzM",
+  "ChZwcmlzbS92MS9tZXRyaWNzLnByb3RvEghwcmlzbS52MSJICgZQZXJpb2QSIgoEdHlwZRgBIAEoDjIULnByaXNtLnYxLlBlcmlvZFR5cGUSDQoFc3RhcnQYAiABKAkSCwoDZW5kGAMgASgJIp0GCgtUZWFtTWV0cmljcxIPCgd0ZWFtX2lkGAEgASgJEhEKCXRlYW1fbmFtZRgCIAEoCRIgCgZwZXJpb2QYAyABKAsyEC5wcmlzbS52MS5QZXJpb2QSEgoKdGhyb3VnaHB1dBgEIAEoBRIjChthdmdfcmV2aWV3X3R1cm5hcm91bmRfaG91cnMYBSABKAISFAoMbWVtYmVyX2NvdW50GAYgASgFEjoKC3Jhd19tZXRyaWNzGAcgAygLMiUucHJpc20udjEuVGVhbU1ldHJpY3MuUmF3TWV0cmljc0VudHJ5EiMKG3Jldmlld190dXJuYXJvdW5kX3A3NV9ob3VycxgIIAEoAhIjChtyZXZpZXdfdHVybmFyb3VuZF9wOTBfaG91cnMYCSABKAISIwobcmV2aWV3X3R1cm5hcm91bmRfcDk5X2hvdXJzGAogASgCEhwKFGF2Z19jeWNsZV90aW1lX2hvdXJzGAsgASgCEg8KB3dpcF9hdmcYDCABKAISFwoPZmxvd19lZmZpY2llbmN5GA0gASgCEhcKD2xlYWRfdGltZV9ob3VycxgOIAEoAhIYChBzb3VyY2VfcGxhdGZvcm1zGA8gAygJEiAKGGRpc2NvdXJzZV90b3BpY3NfY3JlYXRlZBgQIAEoBRIXCg9kaXNjb3Vyc2VfcG9zdHMYESABKAUSGQoRZGlzY291cnNlX3JlcGxpZXMYEiABKAUSHQoVZGlzY291cnNlX2xpa2VzX2dpdmVuGBMgASgFEiAKGGRpc2NvdXJzZV9saWtlc19yZWNlaXZlZBgUIAEoBRIfChdkaXNjb3Vyc2Vfc29sdmVkX3RvcGljcxgVIAEoBRIlCh1kaXNjb3Vyc2VfYWN0aXZlX3BhcnRpY2lwYW50cxgWIAEoBRJBChVkaXNjb3Vyc2VfYnlfaW5zdGFuY2UYFyADKAsyIi5wcmlzbS52MS5EaXNjb3Vyc2VJbnN0YW5jZU1ldHJpY3MaMQoPUmF3TWV0cmljc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEikAEKGERpc2NvdXJzZUluc3RhbmNlTWV0cmljcxIQCghpbnN0YW5jZRgBIAEoCRIWCg50b3BpY3NfY3JlYXRlZBgCIAEoBRINCgVwb3N0cxgDIAEoBRIPCgdyZXBsaWVzGAQgASgFEhMKC2xpa2VzX2dpdmVuGAUgASgFEhUKDXNvbHZlZF90b3BpY3MYBiABKAUiSgoVR2V0VGVhbU1ldHJpY3NSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kIkAKFkdldFRlYW1NZXRyaWNzUmVzcG9uc2USJgoHbWV0cmljcxgBIAEoCzIVLnByaXNtLnYxLlRlYW1NZXRyaWNzIkkKE0NvbXBhcmVUZWFtc1JlcXVlc3QSEAoIdGVhbV9pZHMYASADKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kIj4KFENvbXBhcmVUZWFtc1Jlc3BvbnNlEiYKB21ldHJpY3MYASADKAsyFS5wcmlzbS52MS5UZWFtTWV0cmljcyIUChJMaXN0UGVyaW9kc1JlcXVlc3QiOAoTTGlzdFBlcmlvZHNSZXNwb25zZRIhCgdwZXJpb2RzGAEgAygLMhAucHJpc20udjEuUGVyaW9kIt4CChxMaXN0VGVhbUNvbnRyaWJ1dGlvbnNSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSIAoGcGVyaW9kGAIgASgLMhAucHJpc20udjEuUGVyaW9kEh4KEWNvbnRyaWJ1dGlvbl90eXBlGAMgASgJSACIAQESEgoFc3RhdGUYBCABKAlIAYgBARIRCglwYWdlX3NpemUYBSABKAUSEgoKcGFnZV9pbmRleBgGIAEoBRIXCgpzb3J0X2ZpZWxkGAcgASgJSAKIAQESFgoJc29ydF9kZXNjGAggASgISAOIAQESEwoGc2VhcmNoGAkgASgJSASIAQESFQoIcGxhdGZvcm0YCiABKAlIBYgBAUIUChJfY29udHJpYnV0aW9uX3R5cGVCCAoGX3N0YXRlQg0KC19zb3J0X2ZpZWxkQgwKCl9zb3J0X2Rlc2NCCQoHX3NlYXJjaEILCglfcGxhdGZvcm0iMQoWR2V0Q29udHJpYnV0aW9uUmVxdWVzdBIXCg9jb250cmlidXRpb25faWQYASABKAkiRwoXR2V0Q29udHJpYnV0aW9uUmVzcG9uc2USLAoMY29udHJpYnV0aW9uGAEgASgLMhYucHJpc20udjEuQ29udHJpYnV0aW9uIpsECgxDb250cmlidXRpb24SCgoCaWQYASABKAkSEwoLcGVyc29uX25hbWUYAiABKAkSEAoIcGxhdGZvcm0YAyABKAkSGQoRY29udHJpYnV0aW9uX3R5cGUYBCABKAkSEwoLcGxhdGZvcm1faWQYBSABKAkSDQoFdGl0bGUYBiABKAkSCwoDdXJsGAcgASgJEg0KBXN0YXRlGAggASgJEi4KCmNyZWF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi0KCWNsb3NlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJYWRkaXRpb25zGAsgASgFEhEKCWRlbGV0aW9ucxgMIAEoBRIVCg1jaGFuZ2VkX2ZpbGVzGA0gASgFEhQKDHJldmlld19jb3VudBgOIAEoBRIUCgxyZXZpZXdfaG91cnMYDyABKAISDAoEcmVwbxgQIAEoCRIQCghjYXRlZ29yeRgRIAEoCRIPCgdjb250ZW50GBIgASgJEi4KCnVwZGF0ZWRfYXQYEyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhEKCXBlcnNvbl9pZBgUIAEoCRIOCgZsYWJlbHMYFSADKAkSEAoIaGVhZF9yZWYYFiABKAkSEAoIYmFzZV9yZWYYFyABKAkSDQoFZHJhZnQYGCABKAgiYwodTGlzdFRlYW1Db250cmlidXRpb25zUmVzcG9uc2USLQoNY29udHJpYnV0aW9ucxgBIAMoCzIWLnByaXNtLnYxLkNvbnRyaWJ1dGlvbhITCgt0b3RhbF9jb3VudBgCIAEoBSJSChtHZXRJbmRpdmlkdWFsUHJvZmlsZVJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJEiAKBnBlcmlvZBgCIAEoCzIQLnByaXNtLnYxLlBlcmlvZCKGAgocR2V0SW5kaXZpZHVhbFByb2ZpbGVSZXNwb25zZRIRCglwZXJzb25faWQYASABKAkSDAoEbmFtZRgCIAEoCRIRCgl0ZWFtX25hbWUYAyABKAkSDQoFbGV2ZWwYBCABKAkSMgoKaWRlbnRpdGllcxgFIAMoCzIeLnByaXNtLnYxLlBsYXRmb3JtSWRlbnRpdHlJbmZvEj8KFGFjdGl2aXR5X2J5X3BsYXRmb3JtGAYgAygLMiEucHJpc20udjEuUGxhdGZvcm1BY3Rpdml0eVN1bW1hcnkSLgoMcGVlcl9jb250ZXh0GAcgASgLMhgucHJpc20udjEuUGVlckNvbXBhcmlzb24iOgoUUGxhdGZvcm1JZGVudGl0eUluZm8SEAoIcGxhdGZvcm0YASABKAkSEAoIdXNlcm5hbWUYAiABKAkiuAEKF1BsYXRmb3JtQWN0aXZpdHlTdW1tYXJ5EhAKCHBsYXRmb3JtGAEgASgJEhoKEmNvbnRyaWJ1dGlvbl9jb3VudBgCIAEoBRI/CgdtZXRyaWNzGAMgAygLMi4ucHJpc20udjEuUGxhdGZvcm1BY3Rpdml0eVN1bW1hcnkuTWV0cmljc0VudHJ5Gi4KDE1ldHJpY3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAE6AjgBIrEBCg5QZWVyQ29tcGFyaXNvbhINCgVsZXZlbBgBIAEoCRISCgpwZWVyX2NvdW50GAIgASgFEjYKB21ldHJpY3MYAyADKAsyJS5wcmlzbS52MS5QZWVyQ29tcGFyaXNvbi5NZXRyaWNzRW50cnkaRAoMTWV0cmljc0VudHJ5EgsKA2tleRgBIAEoCRIjCgV2YWx1ZRgCIAEoCzIULnByaXNtLnYxLlBlcmNlbnRpbGU6AjgBIi8KClBlcmNlbnRpbGUSDQoFdmFsdWUYASABKAESEgoKcGVyY2VudGlsZRgCIAEoASLeAgoeTGlzdFBlcnNvbkNvbnRyaWJ1dGlvbnNSZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIVCghwbGF0Zm9ybRgCIAEoCUgAiAEBEh4KEWNvbnRyaWJ1dGlvbl90eXBlGAMgASgJSAGIAQESEgoFc2luY2UYBCABKAlIAogBARIRCglwYWdlX3NpemUYBSABKAUSEgoKcGFnZV9pbmRleBgGIAEoBRIXCgpzb3J0X2ZpZWxkGAcgASgJSAOIAQESFgoJc29ydF9kZXNjGAggASgISASIAQESEgoFc3RhdGUYCSABKAlIBYgBARITCgZzZWFyY2gYCiABKAlIBogBAUILCglfcGxhdGZvcm1CFAoSX2NvbnRyaWJ1dGlvbl90eXBlQggKBl9zaW5jZUINCgtfc29ydF9maWVsZEIMCgpfc29ydF9kZXNjQggKBl9zdGF0ZUIJCgdfc2VhcmNoImUKH0xpc3RQZXJzb25Db250cmlidXRpb25zUmVzcG9uc2USLQoNY29udHJpYnV0aW9ucxgBIAMoCzIWLnByaXNtLnYxLkNvbnRyaWJ1dGlvbhITCgt0b3RhbF9jb3VudBgCIAEoBSJKChVHZXRGbG93TWV0cmljc1JlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIgCgZwZXJpb2QYAiABKAsyEC5wcmlzbS52MS5QZXJpb2Qi9QEKFkdldEZsb3dNZXRyaWNzUmVzcG9uc2USHAoUYXZnX2N5Y2xlX3RpbWVfaG91cnMYASABKAESEwoLd2lwX2F2ZXJhZ2UYAiABKAESEgoKdGhyb3VnaHB1dBgDIAEoBRIXCg9mbG93X2VmZmljaWVuY3kYBCABKAESFwoPbGVhZF90aW1lX2hvdXJzGAUgASgBEjcKEHRocm91Z2hwdXRfdHJlbmQYBiADKAsyHS5wcmlzbS52MS5UaHJvdWdocHV0RGF0YVBvaW50EikKCXdpcF90cmVuZBgHIAMoCzIWLnByaXNtLnYxLldpcERhdGFQb2ludCKzAQoTVGhyb3VnaHB1dERhdGFQb2ludBIMCgRkYXRlGAEgASgJEg0KBWNvdW50GAIgASgFEg4KBnNvdXJjZRgDIAEoCRI+CglieV9zb3VyY2UYBCADKAsyKy5wcmlzbS52MS5UaHJvdWdocHV0RGF0YVBvaW50LkJ5U291cmNlRW50cnkaLwoNQnlTb3VyY2VFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBIikKDFdpcERhdGFQb2ludBIMCgRkYXRlGAEgASgJEgsKA3dpcBgCIAEoASJ0ChtHZXREaXNjb3Vyc2VBY3Rpdml0eVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIgCgZwZXJpb2QYAiABKAsyEC5wcmlzbS52MS5QZXJpb2QSFQoIaW5zdGFuY2UYAyABKAlIAIgBAUILCglfaW5zdGFuY2UiyAEKHEdldERpc2NvdXJzZUFjdGl2aXR5UmVzcG9uc2USNgoVY2F0ZWdvcnlfZGlzdHJpYnV0aW9uGAEgAygLMhcucHJpc20udjEuQ2F0ZWdvcnlDb3VudBI8Cg5hY3Rpdml0eV90cmVuZBgCIAMoCzIkLnByaXNtLnYxLkRpc2NvdXJzZUFjdGl2aXR5RGF0YVBvaW50EjIKEHRvcF9jb250cmlidXRvcnMYAyADKAsyGC5wcmlzbS52MS5Ub3BDb250cmlidXRvciJACg1DYXRlZ29yeUNvdW50EhAKCGNhdGVnb3J5GAEgASgJEg4KBnRvcGljcxgCIAEoBRINCgVwb3N0cxgDIAEoBSJqChpEaXNjb3Vyc2VBY3Rpdml0eURhdGFQb2ludBIMCgRkYXRlGAEgASgJEg4KBnRvcGljcxgCIAEoBRINCgVwb3N0cxgDIAEoBRINCgVsaWtlcxgEIAEoBRIQCghpbnN0YW5jZRgFIAEoCSJ4Cg5Ub3BDb250cmlidXRvchIRCglwZXJzb25faWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZ0b3BpY3MYAyABKAUSDQoFcG9zdHMYBCABKAUSFgoObGlrZXNfcmVjZWl2ZWQYBSABKAUSDgoGc29sdmVkGAYgASgFKm8KClBlcmlvZFR5cGUSGwoXUEVSSU9EX1RZUEVfVU5TUEVDSUZJRUQQABIUChBQRVJJT0RfVFlQRV9XRUVLEAESFQoRUEVSSU9EX1RZUEVfTU9OVEgQAhIXChNQRVJJT0RfVFlQRV9RVUFSVEVSEAMy1QYKDk1ldHJpY3NTZXJ2aWNlElMKDkdldFRlYW1NZXRyaWNzEh8ucHJpc20udjEuR2V0VGVhbU1ldHJpY3NSZXF1ZXN0GiAucHJpc20udjEuR2V0VGVhbU1ldHJpY3NSZXNwb25zZRJNCgxDb21wYXJlVGVhbXMSHS5wcmlzbS52MS5Db21wYXJlVGVhbXNSZXF1ZXN0Gh4ucHJpc20udjEuQ29tcGFyZVRlYW1zUmVzcG9uc2USSgoLTGlzdFBlcmlvZHMSHC5wcmlzbS52MS5MaXN0UGVyaW9kc1JlcXVlc3QaHS5wcmlzbS52MS5MaXN0UGVyaW9kc1Jlc3BvbnNlEmgKFUxpc3RUZWFtQ29udHJpYnV0aW9ucxImLnByaXNtLnYxLkxpc3RUZWFtQ29udHJpYnV0aW9uc1JlcXVlc3QaJy5wcmlzbS52MS5MaXN0VGVhbUNvbnRyaWJ1dGlvbnNSZXNwb25zZRJWCg9HZXRDb250cmlidXRpb24SIC5wcmlzbS52MS5HZXRDb250cmlidXRpb25SZXF1ZXN0GiEucHJpc20udjEuR2V0Q29udHJpYnV0aW9uUmVzcG9uc2USZQoUR2V0SW5kaXZpZHVhbFByb2ZpbGUSJS5wcmlzbS52MS5HZXRJbmRpdmlkdWFsUHJvZmlsZVJlcXVlc3QaJi5wcmlzbS52MS5HZXRJbmRpdmlkdWFsUHJvZmlsZVJlc3BvbnNlEm4KF0xpc3RQZXJzb25Db250cmlidXRpb25zEigucHJpc20udjEuTGlzdFBlcnNvbkNvbnRyaWJ1dGlvbnNSZXF1ZXN0GikucHJpc20udjEuTGlzdFBlcnNvbkNvbnRyaWJ1dGlvbnNSZXNwb25zZRJTCg5HZXRGbG93TWV0cmljcxIfLnByaXNtLnYxLkdldEZsb3dNZXRyaWNzUmVxdWVzdBogLnByaXNtLnYxLkdldEZsb3dNZXRyaWNzUmVzcG9uc2USZQoUR2V0RGlzY291cnNlQWN0aXZpdHkSJS5wcmlzbS52MS5HZXREaXNjb3Vyc2VBY3Rpdml0eVJlcXVlc3QaJi5wcmlzbS52MS5HZXREaXNjb3Vyc2VBY3Rpdml0eVJlc3BvbnNlYgZwcm90bzM",
   [file_google_protobuf_timestamp],
 );
 
@@ -403,6 +403,40 @@ export const ListTeamContributionsRequestSchema: GenMessage<ListTeamContribution
   messageDesc(file_prism_v1_metrics, 9);
 
 /**
+ * @generated from message prism.v1.GetContributionRequest
+ */
+export type GetContributionRequest = Message<"prism.v1.GetContributionRequest"> & {
+  /**
+   * @generated from field: string contribution_id = 1;
+   */
+  contributionId: string;
+};
+
+/**
+ * Describes the message prism.v1.GetContributionRequest.
+ * Use `create(GetContributionRequestSchema)` to create a new message.
+ */
+export const GetContributionRequestSchema: GenMessage<GetContributionRequest> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 10);
+
+/**
+ * @generated from message prism.v1.GetContributionResponse
+ */
+export type GetContributionResponse = Message<"prism.v1.GetContributionResponse"> & {
+  /**
+   * @generated from field: prism.v1.Contribution contribution = 1;
+   */
+  contribution?: Contribution;
+};
+
+/**
+ * Describes the message prism.v1.GetContributionResponse.
+ * Use `create(GetContributionResponseSchema)` to create a new message.
+ */
+export const GetContributionResponseSchema: GenMessage<GetContributionResponse> /*@__PURE__*/ =
+  messageDesc(file_prism_v1_metrics, 11);
+
+/**
  * @generated from message prism.v1.Contribution
  */
 export type Contribution = Message<"prism.v1.Contribution"> & {
@@ -492,6 +526,45 @@ export type Contribution = Message<"prism.v1.Contribution"> & {
    * @generated from field: string category = 17;
    */
   category: string;
+
+  /**
+   * Detail fields (populated by GetContribution, empty in list RPCs).
+   *
+   * @generated from field: string content = 18;
+   */
+  content: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 19;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: string person_id = 20;
+   */
+  personId: string;
+
+  /**
+   * PR-specific: labels, branch names.
+   *
+   * @generated from field: repeated string labels = 21;
+   */
+  labels: string[];
+
+  /**
+   * @generated from field: string head_ref = 22;
+   */
+  headRef: string;
+
+  /**
+   * @generated from field: string base_ref = 23;
+   */
+  baseRef: string;
+
+  /**
+   * @generated from field: bool draft = 24;
+   */
+  draft: boolean;
 };
 
 /**
@@ -500,7 +573,7 @@ export type Contribution = Message<"prism.v1.Contribution"> & {
  */
 export const ContributionSchema: GenMessage<Contribution> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  10,
+  12,
 );
 
 /**
@@ -523,7 +596,7 @@ export type ListTeamContributionsResponse = Message<"prism.v1.ListTeamContributi
  * Use `create(ListTeamContributionsResponseSchema)` to create a new message.
  */
 export const ListTeamContributionsResponseSchema: GenMessage<ListTeamContributionsResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 11);
+  messageDesc(file_prism_v1_metrics, 13);
 
 /**
  * @generated from message prism.v1.GetIndividualProfileRequest
@@ -545,7 +618,7 @@ export type GetIndividualProfileRequest = Message<"prism.v1.GetIndividualProfile
  * Use `create(GetIndividualProfileRequestSchema)` to create a new message.
  */
 export const GetIndividualProfileRequestSchema: GenMessage<GetIndividualProfileRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 12);
+  messageDesc(file_prism_v1_metrics, 14);
 
 /**
  * @generated from message prism.v1.GetIndividualProfileResponse
@@ -592,7 +665,7 @@ export type GetIndividualProfileResponse = Message<"prism.v1.GetIndividualProfil
  * Use `create(GetIndividualProfileResponseSchema)` to create a new message.
  */
 export const GetIndividualProfileResponseSchema: GenMessage<GetIndividualProfileResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 13);
+  messageDesc(file_prism_v1_metrics, 15);
 
 /**
  * @generated from message prism.v1.PlatformIdentityInfo
@@ -614,7 +687,7 @@ export type PlatformIdentityInfo = Message<"prism.v1.PlatformIdentityInfo"> & {
  * Use `create(PlatformIdentityInfoSchema)` to create a new message.
  */
 export const PlatformIdentityInfoSchema: GenMessage<PlatformIdentityInfo> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 14);
+  messageDesc(file_prism_v1_metrics, 16);
 
 /**
  * @generated from message prism.v1.PlatformActivitySummary
@@ -645,7 +718,7 @@ export type PlatformActivitySummary = Message<"prism.v1.PlatformActivitySummary"
  * Use `create(PlatformActivitySummarySchema)` to create a new message.
  */
 export const PlatformActivitySummarySchema: GenMessage<PlatformActivitySummary> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 15);
+  messageDesc(file_prism_v1_metrics, 17);
 
 /**
  * @generated from message prism.v1.PeerComparison
@@ -673,7 +746,7 @@ export type PeerComparison = Message<"prism.v1.PeerComparison"> & {
  */
 export const PeerComparisonSchema: GenMessage<PeerComparison> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  16,
+  18,
 );
 
 /**
@@ -699,7 +772,7 @@ export type Percentile = Message<"prism.v1.Percentile"> & {
  */
 export const PercentileSchema: GenMessage<Percentile> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  17,
+  19,
 );
 
 /**
@@ -772,7 +845,7 @@ export type ListPersonContributionsRequest = Message<"prism.v1.ListPersonContrib
  * Use `create(ListPersonContributionsRequestSchema)` to create a new message.
  */
 export const ListPersonContributionsRequestSchema: GenMessage<ListPersonContributionsRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 18);
+  messageDesc(file_prism_v1_metrics, 20);
 
 /**
  * @generated from message prism.v1.ListPersonContributionsResponse
@@ -795,7 +868,7 @@ export type ListPersonContributionsResponse =
  * Use `create(ListPersonContributionsResponseSchema)` to create a new message.
  */
 export const ListPersonContributionsResponseSchema: GenMessage<ListPersonContributionsResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 19);
+  messageDesc(file_prism_v1_metrics, 21);
 
 /**
  * @generated from message prism.v1.GetFlowMetricsRequest
@@ -817,7 +890,7 @@ export type GetFlowMetricsRequest = Message<"prism.v1.GetFlowMetricsRequest"> & 
  * Use `create(GetFlowMetricsRequestSchema)` to create a new message.
  */
 export const GetFlowMetricsRequestSchema: GenMessage<GetFlowMetricsRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 20);
+  messageDesc(file_prism_v1_metrics, 22);
 
 /**
  * @generated from message prism.v1.GetFlowMetricsResponse
@@ -864,7 +937,7 @@ export type GetFlowMetricsResponse = Message<"prism.v1.GetFlowMetricsResponse"> 
  * Use `create(GetFlowMetricsResponseSchema)` to create a new message.
  */
 export const GetFlowMetricsResponseSchema: GenMessage<GetFlowMetricsResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 21);
+  messageDesc(file_prism_v1_metrics, 23);
 
 /**
  * @generated from message prism.v1.ThroughputDataPoint
@@ -901,7 +974,7 @@ export type ThroughputDataPoint = Message<"prism.v1.ThroughputDataPoint"> & {
  */
 export const ThroughputDataPointSchema: GenMessage<ThroughputDataPoint> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  22,
+  24,
 );
 
 /**
@@ -925,7 +998,7 @@ export type WipDataPoint = Message<"prism.v1.WipDataPoint"> & {
  */
 export const WipDataPointSchema: GenMessage<WipDataPoint> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  23,
+  25,
 );
 
 /**
@@ -955,7 +1028,7 @@ export type GetDiscourseActivityRequest = Message<"prism.v1.GetDiscourseActivity
  * Use `create(GetDiscourseActivityRequestSchema)` to create a new message.
  */
 export const GetDiscourseActivityRequestSchema: GenMessage<GetDiscourseActivityRequest> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 24);
+  messageDesc(file_prism_v1_metrics, 26);
 
 /**
  * @generated from message prism.v1.GetDiscourseActivityResponse
@@ -982,7 +1055,7 @@ export type GetDiscourseActivityResponse = Message<"prism.v1.GetDiscourseActivit
  * Use `create(GetDiscourseActivityResponseSchema)` to create a new message.
  */
 export const GetDiscourseActivityResponseSchema: GenMessage<GetDiscourseActivityResponse> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 25);
+  messageDesc(file_prism_v1_metrics, 27);
 
 /**
  * @generated from message prism.v1.CategoryCount
@@ -1010,7 +1083,7 @@ export type CategoryCount = Message<"prism.v1.CategoryCount"> & {
  */
 export const CategoryCountSchema: GenMessage<CategoryCount> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  26,
+  28,
 );
 
 /**
@@ -1050,7 +1123,7 @@ export type DiscourseActivityDataPoint = Message<"prism.v1.DiscourseActivityData
  * Use `create(DiscourseActivityDataPointSchema)` to create a new message.
  */
 export const DiscourseActivityDataPointSchema: GenMessage<DiscourseActivityDataPoint> /*@__PURE__*/ =
-  messageDesc(file_prism_v1_metrics, 27);
+  messageDesc(file_prism_v1_metrics, 29);
 
 /**
  * @generated from message prism.v1.TopContributor
@@ -1093,7 +1166,7 @@ export type TopContributor = Message<"prism.v1.TopContributor"> & {
  */
 export const TopContributorSchema: GenMessage<TopContributor> /*@__PURE__*/ = messageDesc(
   file_prism_v1_metrics,
-  28,
+  30,
 );
 
 /**
@@ -1164,6 +1237,14 @@ export const MetricsService: GenService<{
     methodKind: "unary";
     input: typeof ListTeamContributionsRequestSchema;
     output: typeof ListTeamContributionsResponseSchema;
+  };
+  /**
+   * @generated from rpc prism.v1.MetricsService.GetContribution
+   */
+  getContribution: {
+    methodKind: "unary";
+    input: typeof GetContributionRequestSchema;
+    output: typeof GetContributionResponseSchema;
   };
   /**
    * Phase 2: individual profile and flow metrics

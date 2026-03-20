@@ -5,21 +5,21 @@ use ps_core::repo::metrics::{ListContributionsParams, ListPersonContributionsPar
 use ps_proto::prism::v1::metrics_service_server::MetricsService;
 use ps_proto::prism::v1::{
     CategoryCount, CompareTeamsRequest, CompareTeamsResponse, Contribution,
-    DiscourseActivityDataPoint, GetDiscourseActivityRequest, GetDiscourseActivityResponse,
-    GetFlowMetricsRequest, GetFlowMetricsResponse, GetIndividualProfileRequest,
-    GetIndividualProfileResponse, GetTeamMetricsRequest, GetTeamMetricsResponse,
-    ListPeriodsRequest, ListPeriodsResponse, ListPersonContributionsRequest,
-    ListPersonContributionsResponse, ListTeamContributionsRequest, ListTeamContributionsResponse,
-    PeerComparison, Percentile, Period, PlatformActivitySummary, PlatformIdentityInfo, TeamMetrics,
-    ThroughputDataPoint, TopContributor, WipDataPoint,
+    DiscourseActivityDataPoint, GetContributionRequest, GetContributionResponse,
+    GetDiscourseActivityRequest, GetDiscourseActivityResponse, GetFlowMetricsRequest,
+    GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse,
+    GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse,
+    ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest,
+    ListTeamContributionsResponse, PeerComparison, Percentile, Period, PlatformActivitySummary,
+    PlatformIdentityInfo, TeamMetrics, ThroughputDataPoint, TopContributor, WipDataPoint,
 };
 use time::OffsetDateTime;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
 use super::{
-    MetricsServiceImpl, contribution_detail_to_proto, format_date, parse_date, parse_period_type,
-    period_type_to_proto, snapshot_to_proto,
+    MetricsServiceImpl, contribution_detail_to_proto, contribution_full_to_proto, format_date,
+    parse_date, parse_period_type, period_type_to_proto, snapshot_to_proto,
 };
 use crate::services::common::{db_err, require_auth};
 
@@ -262,6 +262,33 @@ impl MetricsService for MetricsServiceImpl {
         Ok(Response::new(ListTeamContributionsResponse {
             contributions,
             total_count: total_count as i32,
+        }))
+    }
+
+    async fn get_contribution(
+        &self,
+        request: Request<GetContributionRequest>,
+    ) -> Result<Response<GetContributionResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let contribution_id: Uuid = req
+            .contribution_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid contribution_id"))?;
+
+        let row = self
+            .repos
+            .metrics
+            .get_contribution_by_id(contribution_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("contribution not found"))?;
+
+        let contribution = contribution_full_to_proto(row);
+
+        Ok(Response::new(GetContributionResponse {
+            contribution: Some(contribution),
         }))
     }
 

@@ -9,6 +9,7 @@ service MetricsService {
   rpc CompareTeams(CompareTeamsRequest) returns (CompareTeamsResponse);
   rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
   rpc ListTeamContributions(ListTeamContributionsRequest) returns (ListTeamContributionsResponse);
+  rpc GetContribution(GetContributionRequest) returns (GetContributionResponse);
 
   // Phase 2: individual profile and flow metrics
   rpc GetIndividualProfile(GetIndividualProfileRequest) returns (GetIndividualProfileResponse);
@@ -112,6 +113,14 @@ message ListTeamContributionsRequest {
   optional string platform = 10;
 }
 
+message GetContributionRequest {
+  string contribution_id = 1;
+}
+
+message GetContributionResponse {
+  Contribution contribution = 1;
+}
+
 message Contribution {
   string id = 1;
   string person_name = 2;
@@ -131,6 +140,15 @@ message Contribution {
   string repo = 16;
   // Category name (e.g. Discourse category, Jira project).
   string category = 17;
+  // Detail fields (populated by GetContribution, empty in list RPCs).
+  string content = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  string person_id = 20;
+  // PR-specific: labels, branch names.
+  repeated string labels = 21;
+  string head_ref = 22;
+  string base_ref = 23;
+  bool draft = 24;
 }
 
 message ListTeamContributionsResponse {

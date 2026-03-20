@@ -165,5 +165,13 @@ export const useListPersonContributions = (
     enabled: personId.length > 0,
   });
 
+export const useContribution = (contributionId: string): UseQueryResult<Contribution, Error> =>
+  useQuery({
+    queryKey: [...metricsKeys.all, "contribution", contributionId] as const,
+    queryFn: () => metricsClient.getContribution({ contributionId }),
+    select: (data): Contribution => data.contribution!,
+    enabled: contributionId.length > 0,
+  });
+
 export type { Contribution, GetFlowMetricsResponse, GetIndividualProfileResponse };
 export { PeriodType };
