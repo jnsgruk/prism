@@ -11,7 +11,7 @@ pub mod types;
 use std::fmt::Write as _;
 
 use futures::stream::{self, StreamExt};
-use ps_core::models::TaskType;
+use ps_core::models::{AiProvider, TaskType};
 use ps_core::repo::ReasoningRepo;
 use ps_core::repo::reasoning::{EnrichmentResult, QueuedContribution, UpsertEnrichmentParams};
 use rig::completion::Usage;
@@ -38,6 +38,24 @@ pub struct BatchResult {
 
 /// Max errors before flagging a systemic issue.
 const MAX_CONSECUTIVE_ERRORS: usize = 3;
+
+/// Max length for error messages stored in `BatchResult.first_error`.
+///
+/// Provider errors can contain sensitive data (partial API keys in auth
+/// failures, internal URLs). Truncating limits exposure surface.
+const MAX_ERROR_LENGTH: usize = 200;
+
+/// Truncate an error message to a safe length for storage and logging.
+fn sanitize_error(msg: &str) -> String {
+    if msg.len() <= MAX_ERROR_LENGTH {
+        msg.to_string()
+    } else {
+        format!(
+            "{}… (truncated)",
+            &msg[..msg.floor_char_boundary(MAX_ERROR_LENGTH)]
+        )
+    }
+}
 
 /// Build the input text for an enrichment from the queue's structured JSONB content.
 ///
@@ -255,7 +273,7 @@ pub async fn process_queued_enrichment_batch(
                     usage,
                 },
                 Err(e) => {
-                    let err_msg = e.to_string();
+                    let err_msg = sanitize_error(&e.to_string());
                     warn!(
                         contribution_id = %item.contribution_id,
                         enrichment = type_str,
@@ -361,14 +379,14 @@ pub async fn process_queued_enrichment_batch(
 /// keeping DB writes journaled and idempotent on replay.
 pub async fn log_enrichment_cost(
     cost_tracker: &CostTracker,
-    provider_name: &str,
+    provider: AiProvider,
     model_name: &str,
     batch: &BatchResult,
 ) {
     if batch.total_usage.input_tokens > 0 || batch.total_usage.output_tokens > 0 {
         cost_tracker
             .log_usage(
-                provider_name,
+                provider,
                 model_name,
                 TaskType::Enrichment,
                 &batch.total_usage,

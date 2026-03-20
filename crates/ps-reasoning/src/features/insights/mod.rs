@@ -1,5 +1,3 @@
-pub mod types;
-
 use futures::stream::{self, StreamExt};
 use ps_core::models::PeriodType;
 use ps_core::repo::Repos;

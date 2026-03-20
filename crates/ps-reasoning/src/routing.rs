@@ -6,6 +6,15 @@ use tracing::info;
 
 use crate::types::{AiConfig, AiTaskConfig, AiTaskRouting};
 
+/// Lightweight model used for Google connection tests.
+const GOOGLE_TEST_MODEL: &str = "gemini-2.5-flash";
+
+/// Lightweight model used for `OpenRouter` connection tests.
+const OPENROUTER_TEST_MODEL: &str = "openai/gpt-4.1-nano";
+
+/// Minimal prompt for connection tests.
+const TEST_PROMPT: &str = "Say hello in one word.";
+
 /// Error type for provider routing.
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
@@ -112,21 +121,15 @@ impl TaskRouter {
         match provider {
             AiProvider::Google => {
                 let client = self.google_client()?;
-                let model = client.completion_model("gemini-2.5-flash");
-                let req = model
-                    .completion_request("Say hello in one word.")
-                    .max_tokens(10)
-                    .build();
+                let model = client.completion_model(GOOGLE_TEST_MODEL);
+                let req = model.completion_request(TEST_PROMPT).max_tokens(10).build();
                 let _resp = model.completion(req).await?;
                 Ok(())
             }
             AiProvider::OpenRouter => {
                 let client = self.openrouter_client()?;
-                let model = client.completion_model("openai/gpt-4.1-nano");
-                let req = model
-                    .completion_request("Say hello in one word.")
-                    .max_tokens(10)
-                    .build();
+                let model = client.completion_model(OPENROUTER_TEST_MODEL);
+                let req = model.completion_request(TEST_PROMPT).max_tokens(10).build();
                 let _resp = model.completion(req).await?;
                 Ok(())
             }

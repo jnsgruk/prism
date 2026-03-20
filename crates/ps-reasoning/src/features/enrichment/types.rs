@@ -5,11 +5,14 @@
 //! `Deserialize` (for JSONB storage), and live here rather than in `ps-core`
 //! because they are reasoning-specific.
 
+use std::fmt;
+use std::str::FromStr;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// The type of enrichment, used as the `enrichment_type` column value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EnrichmentType {
     ReviewDepth,
     Sentiment,
@@ -35,6 +38,26 @@ impl EnrichmentType {
             Self::Significance,
             Self::Topic,
         ]
+    }
+}
+
+impl fmt::Display for EnrichmentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for EnrichmentType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "review_depth" => Ok(Self::ReviewDepth),
+            "sentiment" => Ok(Self::Sentiment),
+            "significance" => Ok(Self::Significance),
+            "topic" => Ok(Self::Topic),
+            _ => Err(format!("invalid EnrichmentType: {s}")),
+        }
     }
 }
 
@@ -120,11 +143,29 @@ pub enum Significance {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TopicClassification {
     /// Primary topic category.
-    pub primary_category: String,
+    pub primary_category: TopicCategory,
     /// Optional secondary category.
-    pub secondary_category: Option<String>,
+    pub secondary_category: Option<TopicCategory>,
     /// Brief rationale for the classification (1-2 sentences).
     pub rationale: String,
     /// Confidence in the assessment (0.0 to 1.0).
     pub confidence: f32,
+}
+
+/// The possible topic categories for a Discourse topic.
+///
+/// These match the categories defined in the topic classification prompt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TopicCategory {
+    Question,
+    Announcement,
+    Discussion,
+    BugReport,
+    FeatureRequest,
+    Tutorial,
+    Showcase,
+    Blog,
+    Meta,
+    Other,
 }

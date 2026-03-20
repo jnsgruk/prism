@@ -320,11 +320,11 @@ impl EnrichmentHandlerImpl {
         let repos = self.state.repos.clone();
         let router = self.router.read().await;
         let task_config = router.task_config(TaskType::Enrichment);
-        let provider = task_config.provider.as_str().to_string();
+        let provider = task_config.provider;
         let model = task_config.model.clone();
         drop(router);
 
-        let cost = ps_reasoning::cost::estimate_cost(&model, &batch.total_usage);
+        let cost = ps_reasoning::cost::estimate_cost(provider, &model, &batch.total_usage);
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let input_tokens = batch.total_usage.input_tokens as i32;
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
@@ -335,13 +335,12 @@ impl EnrichmentHandlerImpl {
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
-                let provider = provider.clone();
                 let model = model.clone();
                 async move {
                     repos
                         .reasoning
                         .log_api_usage(
-                            &provider,
+                            provider.as_str(),
                             &model,
                             "enrichment",
                             input_tokens,
