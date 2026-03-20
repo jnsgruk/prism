@@ -86,10 +86,15 @@ impl EmbeddingHandlerImpl {
             let router = self.router.read().await;
             let task_config = router.task_config(TaskType::Embeddings);
             let model_name = task_config.model.clone();
-            let model = router.embedding_model().map_err(|e| {
-                TerminalError::new(format!("failed to resolve embedding model: {e}"))
-            })?;
-            (model_name, model)
+            match router.embedding_model() {
+                Ok(model) => (model_name, model),
+                Err(e) => {
+                    let msg = format!("failed to resolve embedding model: {e}");
+                    warn!(%msg);
+                    fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
+                    return Err(TerminalError::new(msg));
+                }
+            }
         };
 
         // Step 4: Fetch queued batch (journaled — DB read)
@@ -105,14 +110,22 @@ impl EmbeddingHandlerImpl {
         info!(batch_size, "processing embedding batch");
 
         // Step 5: Process batch (NOT journaled — API calls are idempotent on replay)
-        let result = embeddings::process_embedding_batch(
+        let result = match embeddings::process_embedding_batch(
             &items,
             embedding_model.as_ref(),
             &self.state.repos,
             &model_name,
         )
         .await
-        .map_err(|e| TerminalError::new(format!("embedding error: {e}")))?;
+        {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("embedding error: {e}");
+                warn!(%msg);
+                fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
+                return Err(TerminalError::new(msg));
+            }
+        };
 
         // Step 6: Log cost (journaled)
         self.log_cost(ctx, &model_name, &result).await;

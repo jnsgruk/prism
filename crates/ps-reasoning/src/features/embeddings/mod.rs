@@ -7,8 +7,11 @@ use tracing::{info, warn};
 
 use self::text::build_embedding_text;
 
-/// Number of dimensions to keep after MRL truncation.
-pub const EMBEDDING_DIMS: usize = 1024;
+/// Number of dimensions for stored embeddings.
+///
+/// Gemini Embedding 2 natively produces 768 dimensions.
+/// If a model returns more, we truncate via MRL; if fewer, we use as-is.
+pub const EMBEDDING_DIMS: usize = 768;
 
 /// Truncate a Rig embedding (f64) to `EMBEDDING_DIMS` dimensions and convert to f32.
 pub fn truncate_embedding(embedding: &rig::embeddings::Embedding) -> Vec<f32> {
