@@ -98,11 +98,14 @@ export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, stri
   });
 };
 
-export const useListHandlers = (): UseQueryResult<HandlerInfo[], Error> =>
+export const useListHandlers = (options?: {
+  refetchInterval?: number | false;
+}): UseQueryResult<HandlerInfo[], Error> =>
   useQuery({
     queryKey: handlersKeys.handlers(),
     queryFn: () => handlersClient.listHandlers({}),
     select: (data): HandlerInfo[] => data.handlers,
+    refetchInterval: options?.refetchInterval,
   });
 
 export const useTriggerHandler = (): UseMutationResult<
@@ -118,6 +121,7 @@ export const useTriggerHandler = (): UseMutationResult<
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
       queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.handlers() });
     },
   });
 };
@@ -131,10 +135,10 @@ export const useCancelHandlerRun = (): UseMutationResult<
 
   return useMutation({
     mutationFn: (runId: string) => handlersClient.cancelHandlerRun({ runId }),
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
-      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
-      await queryClient.refetchQueries({ queryKey: handlersKeys.handlers() });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.handlers() });
     },
   });
 };

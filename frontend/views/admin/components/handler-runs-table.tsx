@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -13,12 +13,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
 
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { RunDetailDialog } from "@/components/run-detail-dialog";
+import { RunHistoryCard } from "@/components/run-history-card";
 import { formatDuration, formatTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
-import type { StatusFilter } from "@/lib/run-status";
 
 const displayName = (name: string): string => name.replace("Handler", "");
 
@@ -79,7 +76,7 @@ const handlerRunColumns: ColumnDef<HandlerRun, unknown>[] = [
   },
 ];
 
-export const HandlerRunsTable = ({
+export const HandlerRunsCard = ({
   runs,
   handlers,
   onCancelRun,
@@ -90,15 +87,7 @@ export const HandlerRunsTable = ({
   onCancelRun: (runId: string) => void;
   cancelPending: boolean;
 }): React.ReactElement => {
-  const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
   const [handlerFilter, setHandlerFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [pageSize, setPageSize] = useState(10);
-  const [pageIndex, setPageIndex] = useState(0);
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [handlerFilter, statusFilter, pageSize]);
 
   const { ingestionHandlers, systemHandlers } = useMemo(() => {
     const ingestionNames = new Set(["EnrichmentHandler"]);
@@ -109,116 +98,54 @@ export const HandlerRunsTable = ({
   }, [handlers]);
 
   const filteredRuns = useMemo(() => {
-    let result = runs;
-    if (handlerFilter !== "all") {
-      result = result.filter((r) => r.handlerName === handlerFilter);
-    }
-    if (statusFilter !== "all") {
-      result = result.filter((r) => r.status === statusFilter);
-    } else {
-      // Default: exclude running entries (visible in sections above)
-      result = result.filter((r) => r.status !== "running");
-    }
-    return result;
-  }, [runs, handlerFilter, statusFilter]);
+    if (handlerFilter === "all") return runs;
+    return runs.filter((r) => r.handlerName === handlerFilter);
+  }, [runs, handlerFilter]);
 
-  const totalCount = filteredRuns.length;
-  const pageRuns = filteredRuns.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
-  const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
-
-  const handleNextPage = useCallback(() => {
-    setPageIndex((i) => i + 1);
-  }, []);
-
-  const handlePrevPage = useCallback(() => {
-    setPageIndex((i) => Math.max(0, i - 1));
-  }, []);
-
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-  }, []);
+  const entityDropdown = (
+    <Select value={handlerFilter} onValueChange={(v) => v !== null && setHandlerFilter(v)}>
+      <SelectTrigger size="sm">
+        <SelectValue placeholder="All handlers" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All handlers</SelectItem>
+        {ingestionHandlers.length > 0 && (
+          <SelectGroup>
+            <SelectLabel>Ingestion</SelectLabel>
+            {ingestionHandlers.map((h) => (
+              <SelectItem key={h.name} value={h.name}>
+                {displayName(h.name)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
+        {systemHandlers.length > 0 && (
+          <SelectGroup>
+            <SelectLabel>System</SelectLabel>
+            {systemHandlers.map((h) => (
+              <SelectItem key={h.name} value={h.name}>
+                {displayName(h.name)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
+      </SelectContent>
+    </Select>
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        {/* Handler filter — grouped select */}
-        <Select value={handlerFilter} onValueChange={(v) => v !== null && setHandlerFilter(v)}>
-          <SelectTrigger className="h-8 w-48 text-xs">
-            <SelectValue placeholder="All handlers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All handlers</SelectItem>
-            {ingestionHandlers.length > 0 && (
-              <SelectGroup>
-                <SelectLabel>Ingestion</SelectLabel>
-                {ingestionHandlers.map((h) => (
-                  <SelectItem key={h.name} value={h.name}>
-                    {displayName(h.name)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-            {systemHandlers.length > 0 && (
-              <SelectGroup>
-                <SelectLabel>System</SelectLabel>
-                {systemHandlers.map((h) => (
-                  <SelectItem key={h.name} value={h.name}>
-                    {displayName(h.name)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-          </SelectContent>
-        </Select>
-
-        {/* Status filter — select */}
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => v !== null && setStatusFilter(v as StatusFilter)}
-        >
-          <SelectTrigger className="h-8 w-40 text-xs">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="completed_with_warnings">Partial</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-            <SelectItem value="running">Running</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <DataTable columns={handlerRunColumns} data={pageRuns} onRowClick={setSelectedRun} />
-
-      <DataTablePagination
-        totalCount={totalCount}
-        pageSize={pageSize}
-        pageIndex={pageIndex}
-        hasNextPage={hasNextPage}
-        onPageSizeChange={handlePageSizeChange}
-        onPreviousPage={handlePrevPage}
-        onNextPage={handleNextPage}
-      />
-
-      {selectedRun && (
-        <RunDetailDialog
-          run={selectedRun}
-          title={`${displayName(selectedRun.handlerName)}.${selectedRun.handlerMethod}`}
-          description={
-            selectedRun.sourceName === "_system"
-              ? "Run details"
-              : `Source: ${selectedRun.sourceName}`
-          }
-          open={!!selectedRun}
-          onOpenChange={(open) => {
-            if (!open) setSelectedRun(null);
-          }}
-          onCancel={onCancelRun}
-          cancelPending={cancelPending}
-        />
-      )}
-    </div>
+    <RunHistoryCard
+      runs={filteredRuns}
+      columns={handlerRunColumns}
+      entityDropdown={entityDropdown}
+      entityFilter={handlerFilter}
+      runTitle={(run) => `${displayName(run.handlerName)}.${run.handlerMethod}`}
+      runDescription={(run) =>
+        run.sourceName === "_system" ? "Run details" : `Source: ${run.sourceName}`
+      }
+      onCancel={onCancelRun}
+      cancelPending={cancelPending}
+      excludeRunningByDefault
+    />
   );
 };

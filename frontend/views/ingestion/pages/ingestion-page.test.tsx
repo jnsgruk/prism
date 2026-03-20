@@ -128,9 +128,9 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Collapsed header shows status count pills
-    expect(screen.getByText("1 completed")).toBeInTheDocument();
-    expect(screen.getByText("1 failed")).toBeInTheDocument();
+    // Collapsed header shows status counts (number and label are split across elements)
+    expect(screen.getByText((_, el) => el?.textContent === "1 completed")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.textContent === "1 failed")).toBeInTheDocument();
   });
 
   it("expands run history to show filters and table", async () => {
