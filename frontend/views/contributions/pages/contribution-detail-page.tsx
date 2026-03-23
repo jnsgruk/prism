@@ -6,6 +6,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContribution } from "@/lib/hooks/use-metrics";
+import {
+  ContributionState,
+  ContributionType,
+  EnrichmentType,
+} from "@ps/api/gen/canonical/prism/v1/common_pb";
+import {
+  contributionStateLabel,
+  contributionTypeLabel as ctLabel,
+  enrichmentTypeKey,
+  enrichmentTypeLabel as etDisplayLabel,
+  platformLabel,
+} from "@/lib/proto-display";
 import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useEnrichments } from "@/views/admin/hooks/use-enrichment";
 import { RelatedItems } from "@/views/contributions/components/related-items";
@@ -37,34 +49,17 @@ const formatTimestamp = (ts?: Timestamp): string => {
   );
 };
 
-const contributionTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    pull_request: "Pull Request",
-    pr_review: "PR Review",
-    jira_ticket: "Jira Ticket",
-    discourse_topic: "Discourse Topic",
-    discourse_post: "Discourse Post",
-    discourse_like: "Discourse Like",
-  };
-  return labels[type] ?? type;
-};
-
-const platformIcon = (platform: string): string => {
-  if (platform === "github") return "GitHub";
-  if (platform === "jira") return "Jira";
-  if (platform.startsWith("discourse")) return "Discourse";
-  return platform;
-};
-
-const stateBadgeVariant = (state: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (state.toLowerCase()) {
-    case "merged":
-    case "approved":
+const stateBadgeVariant = (
+  state: ContributionState,
+): "default" | "secondary" | "destructive" | "outline" => {
+  switch (state) {
+    case ContributionState.MERGED:
+    case ContributionState.APPROVED:
       return "default";
-    case "open":
+    case ContributionState.OPEN:
       return "outline";
-    case "closed":
-    case "changes_requested":
+    case ContributionState.CLOSED:
+    case ContributionState.CHANGES_REQUESTED:
       return "destructive";
     default:
       return "secondary";
@@ -75,45 +70,35 @@ const stateBadgeVariant = (state: string): "default" | "secondary" | "destructiv
 // Enrichment helpers
 // ---------------------------------------------------------------------------
 
-const enrichmentLabel = (type: string, valueJson: string): string => {
+const enrichmentLabel = (type: EnrichmentType, valueJson: string): string => {
   try {
     const v = JSON.parse(valueJson);
     switch (type) {
-      case "significance":
-        return v.label ?? type;
-      case "review_depth":
+      case EnrichmentType.SIGNIFICANCE:
+        return v.label ?? enrichmentTypeKey(type);
+      case EnrichmentType.REVIEW_DEPTH:
         return `Depth: ${v.score}/5`;
-      case "sentiment":
-        return v.sentiment ?? v.label ?? type;
-      case "topic":
-        return v.primary_category ?? type;
+      case EnrichmentType.SENTIMENT:
+        return v.sentiment ?? v.label ?? enrichmentTypeKey(type);
+      case EnrichmentType.TOPIC:
+        return v.primary_category ?? enrichmentTypeKey(type);
       default:
-        return type;
+        return enrichmentTypeKey(type);
     }
   } catch {
-    return type;
+    return enrichmentTypeKey(type);
   }
 };
 
-const enrichmentVariant = (type: string): "default" | "secondary" | "outline" => {
+const enrichmentVariant = (type: EnrichmentType): "default" | "secondary" | "outline" => {
   switch (type) {
-    case "significance":
+    case EnrichmentType.SIGNIFICANCE:
       return "default";
-    case "review_depth":
+    case EnrichmentType.REVIEW_DEPTH:
       return "secondary";
     default:
       return "outline";
   }
-};
-
-const enrichmentTypeName = (type: string): string => {
-  const names: Record<string, string> = {
-    significance: "Significance",
-    review_depth: "Review Depth",
-    sentiment: "Sentiment",
-    topic: "Topic",
-  };
-  return names[type] ?? type;
 };
 
 const enrichmentRationale = (valueJson: string): string | null => {
@@ -166,7 +151,7 @@ const EnrichmentBadge = ({ enrichment }: { enrichment: Enrichment }): React.Reac
         {badge}
       </PopoverTrigger>
       <PopoverContent className="w-80 space-y-2 text-sm" side="bottom" align="start">
-        <p className="font-medium">{enrichmentTypeName(enrichment.enrichmentType)}</p>
+        <p className="font-medium">{etDisplayLabel(enrichment.enrichmentType)}</p>
         {rationale && <p className="text-muted-foreground">{rationale}</p>}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {enrichment.modelName && <span>Model: {enrichment.modelName}</span>}
@@ -261,14 +246,14 @@ const ContributionDetailPage = (): React.ReactElement | null => {
     );
   }
 
-  const isPR = contribution.contributionType === "pull_request";
-  const isReview = contribution.contributionType === "pr_review";
+  const isPR = contribution.contributionType === ContributionType.PULL_REQUEST;
+  const isReview = contribution.contributionType === ContributionType.PR_REVIEW;
 
   return (
     <>
       <PageHeader
         title={contribution.title || "Untitled"}
-        description={`${platformIcon(contribution.platform)} \u00b7 ${contributionTypeLabel(contribution.contributionType)}`}
+        description={`${platformLabel(contribution.platform)} \u00b7 ${ctLabel(contribution.contributionType)}`}
         actions={
           <div className="flex items-center gap-2">
             {contribution.url && (
@@ -278,7 +263,7 @@ const ContributionDetailPage = (): React.ReactElement | null => {
                 render={<a href={contribution.url} target="_blank" rel="noopener noreferrer" />}
               >
                 <ExternalLink className="mr-1 size-3.5" />
-                Open in {platformIcon(contribution.platform)}
+                Open in {platformLabel(contribution.platform)}
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -300,7 +285,7 @@ const ContributionDetailPage = (): React.ReactElement | null => {
                     variant={stateBadgeVariant(contribution.state)}
                     className="text-[10px] uppercase"
                   >
-                    {contribution.state}
+                    {contributionStateLabel(contribution.state)}
                   </Badge>
                   {contribution.draft && (
                     <Badge variant="outline" className="text-[10px] uppercase">

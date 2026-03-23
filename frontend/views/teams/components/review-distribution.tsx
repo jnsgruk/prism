@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import type { ContributionFilters } from "@/lib/hooks/use-metrics";
 import { useListTeamContributions } from "@/lib/hooks/use-metrics";
@@ -23,7 +24,7 @@ export const ReviewDistribution = ({
 }): React.ReactElement | null => {
   // Fetch all reviews (large page to get distribution data)
   const filters: ContributionFilters = {
-    contributionType: "pr_review",
+    contributionType: ContributionType.PR_REVIEW,
     pageSize: 500,
     pageIndex: 0,
   };

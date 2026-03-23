@@ -17,10 +17,11 @@ pub(super) async fn handle_list_people(
     active_only: Option<bool>,
     search: Option<String>,
     team_id: Option<String>,
-    filter: Option<String>,
+    filter: i32,
     pagination: ps_proto::canonical::prism::v1::PaginationRequest,
     sort_msg: ps_proto::canonical::prism::v1::SortOrder,
 ) -> Result<Response<ListPeopleResponse>, Status> {
+    let filter = crate::services::common::person_filter_to_str(filter);
     let team_id: Option<Uuid> = team_id
         .map(|id| id.parse::<Uuid>())
         .transpose()

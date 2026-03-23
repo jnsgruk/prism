@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ps_proto::canonical::prism::v1::ListRunsRequest;
+use ps_proto::canonical::prism::v1::{ListRunsRequest, RunStatus};
 
 use crate::client::Clients;
 use crate::format;
@@ -29,12 +29,21 @@ pub async fn runs(clients: &mut Clients, source: Option<String>) -> Result<()> {
     for run in &response.runs {
         let short_id = run.id.get(..8).unwrap_or(&run.id);
 
+        let status_str = match RunStatus::try_from(run.status) {
+            Ok(RunStatus::Running) => "running",
+            Ok(RunStatus::Completed) => "completed",
+            Ok(RunStatus::CompletedWithWarnings) => "warnings",
+            Ok(RunStatus::Failed) => "failed",
+            Ok(RunStatus::Cancelled) => "cancelled",
+            _ => "unknown",
+        };
+
         println!(
             "{:<10} {:<18} {:<22} {:<12} {:>6} {:>10}",
             short_id,
             run.source_name,
             format::timestamp(run.started_at.as_ref()),
-            run.status,
+            status_str,
             run.items_collected,
             format::duration_between(run.started_at.as_ref(), run.completed_at.as_ref()),
         );

@@ -5,6 +5,8 @@ syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
+
 // InsightsService provides aggregated views over AI enrichment data at
 // team, person, and organisation levels. Data is derived from enrichments
 // stored by the ReasoningService pipeline.
@@ -138,8 +140,8 @@ message InsightTrend {
 
 message GetTeamInsightsRequest {
   string team_id = 1;
-  // Period preset: "last_week", "last_month", "last_quarter".
-  string period = 2;
+  // Time window for insight aggregation.
+  InsightPeriod period = 2;
   // When true, include contributions from all descendant teams.
   bool include_descendants = 3;
 }
@@ -161,8 +163,8 @@ message TeamInsights {
 
 message GetPersonInsightsRequest {
   string person_id = 1;
-  // Period preset: "last_week", "last_month", "last_quarter".
-  string period = 2;
+  // Time window for insight aggregation.
+  InsightPeriod period = 2;
 }
 
 message GetPersonInsightsResponse {
@@ -207,8 +209,8 @@ message ReviewsReceivedSummary {
 }
 
 message GetOrgInsightsRequest {
-  // Period preset: "last_week", "last_month", "last_quarter".
-  string period = 1;
+  // Time window for insight aggregation.
+  InsightPeriod period = 1;
   // Optional: scope to a subtree rooted at this team. Empty for org-wide.
   string team_id = 2;
 }

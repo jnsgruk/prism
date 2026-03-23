@@ -7,6 +7,7 @@ import { Brain } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { formatRelativeTime } from "@/lib/format";
 import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
 import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
@@ -37,7 +38,7 @@ const useHandlerActions = (
     refetchInterval: 2_000,
     handlerName,
   });
-  const activeRun = runs?.find((r) => r.status === "running");
+  const activeRun = runs?.find((r) => r.status === RunStatus.RUNNING);
 
   const trigger = useCallback(() => {
     triggerHandler.mutate(

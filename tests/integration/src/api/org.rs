@@ -2,6 +2,7 @@ use crate::define_api_test;
 use ps_proto::canonical::prism::v1::org_service_client::OrgServiceClient;
 use ps_proto::canonical::prism::v1::{
     GetTeamRequest, ImportDirectoryRequest, ListPeopleRequest, ListTeamsRequest,
+    Platform as ProtoPlatform,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -139,7 +140,10 @@ define_api_test!(list_people_after_import, |server| async move {
     assert_eq!(alice.name, "Alice Smith");
     assert_eq!(alice.email.as_deref(), Some("alice@example.com"));
     assert_eq!(alice.identities.len(), 1);
-    assert_eq!(alice.identities[0].platform, "github");
+    assert_eq!(
+        alice.identities[0].platform,
+        i32::from(ProtoPlatform::Github)
+    );
     assert_eq!(alice.identities[0].username, "alicegh");
 
     let bob = &resp.people[1];

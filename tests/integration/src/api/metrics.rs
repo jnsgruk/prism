@@ -3,8 +3,9 @@ use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionState, ContributionType, Platform, TeamType};
 use ps_proto::canonical::prism::v1::metrics_service_client::MetricsServiceClient;
 use ps_proto::canonical::prism::v1::{
-    GetContributionRequest, GetFlowMetricsRequest, GetIndividualProfileRequest,
-    GetTeamMetricsRequest, ListPeriodsRequest, ListTeamContributionsRequest, Period, PeriodType,
+    ContributionType as ProtoContributionType, GetContributionRequest, GetFlowMetricsRequest,
+    GetIndividualProfileRequest, GetTeamMetricsRequest, ListPeriodsRequest,
+    ListTeamContributionsRequest, Period, PeriodType, Platform as ProtoPlatform,
 };
 use time::OffsetDateTime;
 use tonic::Request;
@@ -201,14 +202,15 @@ define_api_test!(list_team_contributions, |server| async move {
     let mut req = Request::new(ListTeamContributionsRequest {
         team_id: team_id.to_string(),
         period: Some(past_period()),
-        contribution_type: None,
-        state: None,
+        contribution_type: 0, // UNSPECIFIED
+        state: 0,             // UNSPECIFIED
         page_size: 2,
         page_index: 0,
         sort_field: None,
         sort_desc: None,
         search: None,
-        platform: None,
+        platform: 0, // UNSPECIFIED
+        platform_instance: None,
     });
     auth(&mut req, &token);
 
@@ -257,8 +259,11 @@ define_api_test!(get_contribution_by_id, |server| async move {
 
     let c = resp.contribution.expect("contribution present");
     assert_eq!(c.title, "PR PR-GET-1");
-    assert_eq!(c.platform, "github");
-    assert_eq!(c.contribution_type, "pull_request");
+    assert_eq!(c.platform, i32::from(ProtoPlatform::Github));
+    assert_eq!(
+        c.contribution_type,
+        i32::from(ProtoContributionType::PullRequest)
+    );
 });
 
 // ---------------------------------------------------------------------------
@@ -355,7 +360,10 @@ define_api_test!(get_individual_profile, |server| async move {
 
     assert_eq!(resp.name, "Alice");
     assert!(!resp.identities.is_empty());
-    assert_eq!(resp.identities[0].platform, "github");
+    assert_eq!(
+        resp.identities[0].platform,
+        i32::from(ProtoPlatform::Github)
+    );
     assert_eq!(resp.identities[0].username, "testuser");
 });
 

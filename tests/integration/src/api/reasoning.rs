@@ -1,10 +1,11 @@
 use crate::define_api_test;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
-    AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest, GetAiSettingsRequest,
-    GetCostSummaryRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
-    GetEnrichmentsRequest, GetStorageHealthRequest, ListAiModelsRequest,
-    RefreshModelCatalogueRequest, SetProviderSecretRequest, UpdateAiSettingsRequest,
+    AiProvider, AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest,
+    GetAiSettingsRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
+    ListAiModelsRequest, RefreshModelCatalogueRequest, SetProviderSecretRequest,
+    UpdateAiSettingsRequest,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -53,7 +54,7 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
     // Update enrichment config
     let mut req = Request::new(UpdateAiSettingsRequest {
         enrichment: Some(AiTaskConfig {
-            provider: "google".into(),
+            provider: AiProvider::Google.into(),
             model: "gemini-2.0-flash".into(),
         }),
         insights: None,
@@ -71,7 +72,7 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
 
     let settings = resp.settings.expect("settings present");
     let enrichment = settings.enrichment.expect("enrichment config");
-    assert_eq!(enrichment.provider, "google");
+    assert_eq!(enrichment.provider, i32::from(AiProvider::Google));
     assert_eq!(enrichment.model, "gemini-2.0-flash");
     assert_eq!(settings.budget_cap_usd, Some(50.0));
 
@@ -86,7 +87,7 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
 
     let settings = resp.settings.expect("settings present");
     let enrichment = settings.enrichment.expect("enrichment config");
-    assert_eq!(enrichment.provider, "google");
+    assert_eq!(enrichment.provider, i32::from(AiProvider::Google));
     assert_eq!(enrichment.model, "gemini-2.0-flash");
     assert_eq!(settings.budget_cap_usd, Some(50.0));
 });
@@ -100,7 +101,7 @@ define_api_test!(set_provider_secret_updates_status, |server| async move {
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(SetProviderSecretRequest {
-        provider: "google".into(),
+        provider: AiProvider::Google.into(),
         secret_value: "test-api-key-12345".into(),
     });
     auth(&mut req, &token);
@@ -134,7 +135,7 @@ define_api_test!(set_provider_secret_unknown_provider, |server| async move {
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(SetProviderSecretRequest {
-        provider: "unknown-provider".into(),
+        provider: 99, // invalid provider value
         secret_value: "key".into(),
     });
     auth(&mut req, &token);
@@ -156,7 +157,7 @@ define_api_test!(set_provider_secret_empty_value, |server| async move {
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(SetProviderSecretRequest {
-        provider: "google".into(),
+        provider: AiProvider::Google.into(),
         secret_value: String::new(),
     });
     auth(&mut req, &token);
@@ -222,7 +223,7 @@ define_api_test!(list_ai_models_empty, |server| async move {
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(ListAiModelsRequest {
-        provider: String::new(),
+        provider: 0, // UNSPECIFIED — returns all providers
         capability: String::new(),
     });
     auth(&mut req, &token);
@@ -360,7 +361,8 @@ define_api_test!(find_similar_empty, |server| async move {
     let mut req = Request::new(FindSimilarRequest {
         contribution_id: contribution_id.to_string(),
         limit: 5,
-        platform: None,
+        platform: 0, // UNSPECIFIED — returns all platforms
+        platform_instance: None,
     });
     auth(&mut req, &token);
 
@@ -382,7 +384,7 @@ define_api_test!(delete_enrichments_by_type_empty_type, |server| async move {
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let mut req = Request::new(DeleteEnrichmentsByTypeRequest {
-        enrichment_type: String::new(),
+        enrichment_type: 0, // UNSPECIFIED — should be rejected
     });
     auth(&mut req, &token);
 

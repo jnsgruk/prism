@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEmbeddingSimilar } from "@/lib/hooks/use-embeddings";
+import { contributionTypeLabel, platformLabel } from "@/lib/proto-display";
+import type { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { SimilarItem } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { Layers, Link2 } from "lucide-react";
 import { Link } from "react-router";
@@ -22,9 +24,9 @@ const SimilarItemRow = ({ item }: { item: SimilarItem }): React.ReactElement => 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.title || "Untitled"}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="capitalize">{item.platform}</span>
+          <span className="capitalize">{platformLabel(item.platform)}</span>
           <span>&middot;</span>
-          <span>{item.contributionType.replace("_", " ")}</span>
+          <span>{contributionTypeLabel(item.contributionType)}</span>
           {item.state && (
             <>
               <span>&middot;</span>
@@ -53,9 +55,9 @@ const CrossPlatformLink = ({ item }: { item: SimilarItem }): React.ReactElement 
       </p>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Badge variant="secondary" className="text-[10px] uppercase">
-          {item.platform}
+          {platformLabel(item.platform)}
         </Badge>
-        <span>{item.contributionType.replace("_", " ")}</span>
+        <span>{contributionTypeLabel(item.contributionType)}</span>
         <span>&middot; {item.distance.toFixed(2)}</span>
       </div>
     </div>
@@ -67,7 +69,7 @@ export const RelatedItems = ({
   currentPlatform,
 }: {
   contributionId: string;
-  currentPlatform?: string;
+  currentPlatform?: Platform;
 }): React.ReactElement | null => {
   const { data, isLoading } = useEmbeddingSimilar(contributionId, {
     limit: 10,

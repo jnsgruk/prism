@@ -15,7 +15,9 @@ use super::{
     HANDLER_DEFS, HandlersServiceImpl, derive_state, handler_for_platform, known_handlers,
     validate_restate_identifier,
 };
-use crate::services::common::{db_err, require_auth, to_timestamp};
+use crate::services::common::{
+    db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp,
+};
 
 #[tonic::async_trait]
 impl HandlersService for HandlersServiceImpl {
@@ -66,9 +68,12 @@ impl HandlersService for HandlersServiceImpl {
                     String::new()
                 };
 
+                let (source_type, _platform_instance) =
+                    platform_to_proto(&s.source_type.to_string());
+
                 SourceStatus {
                     name: s.name,
-                    source_type: s.source_type.to_string(),
+                    source_type,
                     state: state.into(),
                     last_run,
                     next_run: None, // TODO: compute from schedule_cron
@@ -110,7 +115,7 @@ impl HandlersService for HandlersServiceImpl {
                 source_name: r.source_name,
                 started_at: Some(to_timestamp(r.started_at)),
                 completed_at: r.completed_at.map(to_timestamp),
-                status: r.status.to_string(),
+                status: run_status_to_proto(&r.status),
                 items_collected: r.items_collected.unwrap_or(0),
                 error_message: r.error_message,
                 rate_limit_waits_seconds: 0,

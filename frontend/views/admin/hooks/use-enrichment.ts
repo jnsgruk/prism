@@ -2,6 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { EnrichmentType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   DeleteEnrichmentsByTypeResponse,
   Enrichment,
@@ -50,7 +51,7 @@ export const useEnrichmentsByContributions = (
 export const useDeleteEnrichmentsByType = (): UseMutationResult<
   DeleteEnrichmentsByTypeResponse,
   Error,
-  { enrichmentType: string }
+  { enrichmentType: EnrichmentType }
 > => {
   const queryClient = useQueryClient();
   return useMutation({

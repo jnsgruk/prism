@@ -21,6 +21,11 @@ import {
   defaultPeriodKey,
 } from "@/views/teams/components/period-selector";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
+import {
+  ContributionState,
+  ContributionType,
+  Platform,
+} from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { useGetIndividualProfile } from "@/lib/hooks/use-metrics";
 import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
@@ -54,12 +59,12 @@ const PersonProfilePage = (): React.ReactElement => {
     );
   }
 
-  const github = profile?.activityByPlatform.find((a) => a.platform === "github");
+  const github = profile?.activityByPlatform.find((a) => a.platform === Platform.GITHUB);
   const prCount = github?.metrics["pull_request_count"] ?? 0;
   const reviewCount = github?.metrics["pr_review_count"] ?? 0;
   const discourseCount =
     profile?.activityByPlatform
-      .filter((a) => a.platform.startsWith("discourse"))
+      .filter((a) => a.platform === Platform.DISCOURSE)
       .reduce((sum, a) => sum + a.contributionCount, 0) ?? 0;
 
   return (
@@ -156,8 +161,8 @@ const PersonProfilePage = (): React.ReactElement => {
                   <CardContent className="pt-0">
                     <ContributionTable
                       personId={personId}
-                      defaultContributionType="pull_request"
-                      defaultState="merged"
+                      defaultContributionType={ContributionType.PULL_REQUEST}
+                      defaultState={ContributionState.MERGED}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -189,7 +194,10 @@ const PersonProfilePage = (): React.ReactElement => {
                 </CardHeader>
                 <CollapsibleContent>
                   <CardContent className="pt-0">
-                    <ContributionTable personId={personId} defaultContributionType="pr_review" />
+                    <ContributionTable
+                      personId={personId}
+                      defaultContributionType={ContributionType.PR_REVIEW}
+                    />
                   </CardContent>
                 </CollapsibleContent>
               </Card>
@@ -225,7 +233,7 @@ const PersonProfilePage = (): React.ReactElement => {
                   </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <ContributionTable personId={personId} defaultPlatform="discourse-%" />
+                      <ContributionTable personId={personId} defaultPlatform={Platform.DISCOURSE} />
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

@@ -13,7 +13,7 @@ use time::OffsetDateTime;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
-use super::common::{db_err, require_auth};
+use super::common::{db_err, insight_period_to_str, require_auth};
 
 pub struct InsightsServiceImpl {
     repos: Repos,
@@ -216,7 +216,9 @@ impl InsightsService for InsightsServiceImpl {
             .team_id
             .parse()
             .map_err(|_| Status::invalid_argument("invalid team_id"))?;
-        let since = parse_period_since(&req.period)?;
+        let period_str = insight_period_to_str(req.period)
+            .ok_or_else(|| Status::invalid_argument("invalid period"))?;
+        let since = parse_period_since(&period_str)?;
         let descendants = req.include_descendants;
 
         let (review_quality, top_reviewers, significance, topics, notable, coverage, depth_by_sig) =
@@ -252,7 +254,7 @@ impl InsightsService for InsightsServiceImpl {
 
         // Fetch previous-period snapshot for trend deltas
         let trend =
-            if let Ok((period_type, period_start)) = parse_period_snapshot_params(&req.period) {
+            if let Ok((period_type, period_start)) = parse_period_snapshot_params(&period_str) {
                 let prev = self
                     .repos
                     .insights
@@ -289,7 +291,9 @@ impl InsightsService for InsightsServiceImpl {
             .person_id
             .parse()
             .map_err(|_| Status::invalid_argument("invalid person_id"))?;
-        let since = parse_period_since(&req.period)?;
+        let person_period_str = insight_period_to_str(req.period)
+            .ok_or_else(|| Status::invalid_argument("invalid period"))?;
+        let since = parse_period_since(&person_period_str)?;
 
         let (review_quality, reviews_received, significance, topics, notable, coverage) =
             tokio::try_join!(
@@ -360,7 +364,9 @@ impl InsightsService for InsightsServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        let since = parse_period_since(&req.period)?;
+        let org_period_str = insight_period_to_str(req.period)
+            .ok_or_else(|| Status::invalid_argument("invalid period"))?;
+        let since = parse_period_since(&org_period_str)?;
         let team_id: Option<Uuid> = if req.team_id.is_empty() {
             None
         } else {
@@ -443,19 +449,20 @@ impl InsightsService for InsightsServiceImpl {
         let (total, enriched, by_type) = coverage;
 
         // Fetch previous-period snapshot for trend deltas
-        let trend =
-            if let Ok((period_type, period_start)) = parse_period_snapshot_params(&req.period) {
-                let prev = self
-                    .repos
-                    .insights
-                    .get_previous_snapshot(root_team_id, period_start, &period_type)
-                    .await
-                    .ok()
-                    .flatten();
-                prev.map(|p| build_trend(&review_quality, &significance, &p))
-            } else {
-                None
-            };
+        let trend = if let Ok((period_type, period_start)) =
+            parse_period_snapshot_params(&org_period_str)
+        {
+            let prev = self
+                .repos
+                .insights
+                .get_previous_snapshot(root_team_id, period_start, &period_type)
+                .await
+                .ok()
+                .flatten();
+            prev.map(|p| build_trend(&review_quality, &significance, &p))
+        } else {
+            None
+        };
 
         Ok(Response::new(GetOrgInsightsResponse {
             insights: Some(OrgInsights {

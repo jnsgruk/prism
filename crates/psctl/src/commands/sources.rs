@@ -32,7 +32,7 @@ pub async fn sources(clients: &mut Clients) -> Result<()> {
         println!(
             "{:<20} {:<10} {:<9} {:<16} {}",
             source.name,
-            source.source_type,
+            super::contributions::proto_platform_display(source.source_type),
             if source.enabled { "yes" } else { "no" },
             if secrets.is_empty() {
                 "—".to_string()

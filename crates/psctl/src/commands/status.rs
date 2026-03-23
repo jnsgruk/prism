@@ -26,7 +26,7 @@ pub async fn status(clients: &mut Clients) -> Result<()> {
         println!(
             "{:<20} {:<10} {:<12} {:<22} {:>6}",
             source.name,
-            source.source_type,
+            super::contributions::proto_platform_display(source.source_type),
             format::source_state(source.state),
             format::timestamp(source.last_run.as_ref()),
             source.items_collected,

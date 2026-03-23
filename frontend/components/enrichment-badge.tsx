@@ -5,6 +5,7 @@ import { formatTimestamp } from "@/lib/format";
 import { Brain, MessageCircle, Sparkles, Star, Tag } from "lucide-react";
 
 import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { enrichmentTypeKey, enrichmentTypeLabel as etLabel } from "@/lib/proto-display";
 
 // ---------------------------------------------------------------------------
 // Types parsed from the enrichment value_json
@@ -103,10 +104,11 @@ interface EnrichmentBadgeProps {
 /** A clickable badge that shows enrichment score/label, with a popover for provenance. */
 const EnrichmentBadge = ({ enrichment }: EnrichmentBadgeProps): React.ReactElement => {
   const parsed = JSON.parse(enrichment.valueJson || "{}") as Record<string, unknown>;
-  const icon = ENRICHMENT_ICONS[enrichment.enrichmentType] ?? <Brain className="size-3" />;
-  const label = ENRICHMENT_LABELS[enrichment.enrichmentType] ?? enrichment.enrichmentType;
-  const displayLabel = badgeLabel(enrichment.enrichmentType, parsed);
-  const variant = badgeVariant(enrichment.enrichmentType, parsed);
+  const etKey = enrichmentTypeKey(enrichment.enrichmentType);
+  const icon = ENRICHMENT_ICONS[etKey] ?? <Brain className="size-3" />;
+  const label = ENRICHMENT_LABELS[etKey] ?? etLabel(enrichment.enrichmentType);
+  const displayLabel = badgeLabel(etKey, parsed);
+  const variant = badgeVariant(etKey, parsed);
   const confidence = (parsed.confidence as number) ?? 0;
   const rationale = (parsed.rationale as string) ?? "";
 

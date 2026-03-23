@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { platformKey } from "@/lib/proto-display";
 import { cn } from "@ps/cn";
 
 import { formatRelativeTime } from "@/lib/format";
@@ -156,7 +157,7 @@ export const SourceRow = ({
   const progress = useMemo((): NormalisedProgress | null => {
     if (!isActive) return null;
     const raw = parseProgress(source.progressJson);
-    return normaliseProgress(source.sourceType, raw);
+    return normaliseProgress(platformKey(source.sourceType), raw);
   }, [isActive, source.progressJson, source.sourceType]);
 
   const detail = useMemo((): ProgressDetail | null => {

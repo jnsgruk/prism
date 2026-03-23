@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { aiProviderKey } from "@/lib/proto-display";
 import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 import { AiCostSection } from "@/views/admin/components/ai-cost-tab";
@@ -47,8 +49,8 @@ import {
 } from "@/views/admin/hooks/use-ai-settings";
 
 const PROVIDERS = [
-  { value: "google", label: "Google Gemini" },
-  { value: "openrouter", label: "OpenRouter" },
+  { value: AiProvider.GOOGLE, label: "Google Gemini" },
+  { value: AiProvider.OPENROUTER, label: "OpenRouter" },
 ];
 
 const TASK_TYPES = [
@@ -103,20 +105,22 @@ export const AiSettingsTab = (): React.ReactElement => {
       <ProviderCredentialsSection
         secretStatus={settings?.providerSecretStatus ?? {}}
         onSetSecret={(provider, value) => {
+          const key = aiProviderKey(provider);
           setSecret.mutate(
             { provider, secretValue: value },
             {
-              onSuccess: () => toast.success(`${provider} API key saved`),
+              onSuccess: () => toast.success(`${key} API key saved`),
               onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to save"),
             },
           );
         }}
         onTestProvider={(provider) => {
+          const key = aiProviderKey(provider);
           testProvider.mutate(
             { provider },
             {
               onSuccess: (res) => {
-                if (res.success) toast.success(`${provider} connection OK`);
+                if (res.success) toast.success(`${key} connection OK`);
                 else toast.error(res.errorMessage || "Connection failed");
               },
               onError: (err) => toast.error(err instanceof Error ? err.message : "Test failed"),
@@ -186,8 +190,8 @@ const ProviderCredentialsSection = ({
   isRefreshing,
 }: {
   secretStatus: Record<string, boolean>;
-  onSetSecret: (provider: string, value: string) => void;
-  onTestProvider: (provider: string) => void;
+  onSetSecret: (provider: AiProvider, value: string) => void;
+  onTestProvider: (provider: AiProvider) => void;
   onRefreshModels: () => void;
   isSettingSecret: boolean;
   isTesting: boolean;
@@ -217,7 +221,7 @@ const ProviderCredentialsSection = ({
         <ProviderKeyRow
           key={p.value}
           label={p.label}
-          isSet={!!secretStatus[p.value]}
+          isSet={!!secretStatus[aiProviderKey(p.value)]}
           onSave={(value) => onSetSecret(p.value, value)}
           onTest={() => onTestProvider(p.value)}
           isSaving={isSettingSecret}
@@ -329,7 +333,7 @@ const ModelCombobox = ({
   onSelect,
   disabled,
 }: {
-  provider: string;
+  provider: AiProvider;
   capability: string;
   value: string;
   onSelect: (modelId: string) => void;
@@ -424,13 +428,13 @@ const TaskRoutingSection = ({
   onUpdate: (req: Record<string, unknown>) => void;
   isUpdating: boolean;
 }): React.ReactElement => {
-  const getTaskConfig = (key: string): { provider: string; model: string } => {
-    if (!settings) return { provider: "google", model: "" };
+  const getTaskConfig = (key: string): { provider: AiProvider; model: string } => {
+    if (!settings) return { provider: AiProvider.GOOGLE, model: "" };
     const cfg = settings[key as keyof typeof settings];
     if (cfg && typeof cfg === "object" && "provider" in cfg) {
-      return cfg as { provider: string; model: string };
+      return cfg as unknown as { provider: AiProvider; model: string };
     }
-    return { provider: "google", model: "" };
+    return { provider: AiProvider.GOOGLE, model: "" };
   };
 
   return (
@@ -450,8 +454,11 @@ const TaskRoutingSection = ({
                   <p className="text-xs text-muted-foreground">{task.description}</p>
                 </div>
                 <Select
-                  value={config.provider}
-                  onValueChange={(provider) => {
+                  value={aiProviderKey(config.provider)}
+                  onValueChange={(providerKey) => {
+                    const provider =
+                      PROVIDERS.find((p) => aiProviderKey(p.value) === providerKey)?.value ??
+                      AiProvider.GOOGLE;
                     onUpdate({ [task.key]: { provider, model: config.model } });
                   }}
                   disabled={isUpdating}
@@ -461,7 +468,7 @@ const TaskRoutingSection = ({
                   </SelectTrigger>
                   <SelectContent>
                     {PROVIDERS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
+                      <SelectItem key={p.value} value={aiProviderKey(p.value)}>
                         {p.label}
                       </SelectItem>
                     ))}

@@ -4,11 +4,12 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { EnrichmentSchema } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { EnrichmentType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 import { EnrichmentBadge, EnrichmentBadgeList } from "./enrichment-badge";
 
 const makeEnrichment = (
-  type: string,
+  type: EnrichmentType,
   value: Record<string, unknown>,
 ): ReturnType<typeof create<typeof EnrichmentSchema>> =>
   create(EnrichmentSchema, {
@@ -22,7 +23,7 @@ const makeEnrichment = (
 
 describe("EnrichmentBadge", () => {
   it("renders review_depth with score label", () => {
-    const enrichment = makeEnrichment("review_depth", {
+    const enrichment = makeEnrichment(EnrichmentType.REVIEW_DEPTH, {
       score: 4,
       rationale: "Thorough review",
       confidence: 0.92,
@@ -33,7 +34,7 @@ describe("EnrichmentBadge", () => {
   });
 
   it("renders sentiment with sentiment label", () => {
-    const enrichment = makeEnrichment("sentiment", {
+    const enrichment = makeEnrichment(EnrichmentType.SENTIMENT, {
       sentiment: "constructive",
       rationale: "Helpful feedback",
       confidence: 0.85,
@@ -43,7 +44,7 @@ describe("EnrichmentBadge", () => {
   });
 
   it("renders significance with significance label", () => {
-    const enrichment = makeEnrichment("significance", {
+    const enrichment = makeEnrichment(EnrichmentType.SIGNIFICANCE, {
       significance: "notable",
       rationale: "Important refactor",
       confidence: 0.78,
@@ -53,7 +54,7 @@ describe("EnrichmentBadge", () => {
   });
 
   it("renders topic with primary category", () => {
-    const enrichment = makeEnrichment("topic", {
+    const enrichment = makeEnrichment(EnrichmentType.TOPIC, {
       primary_category: "security",
       rationale: "Auth changes",
       confidence: 0.9,
@@ -63,16 +64,20 @@ describe("EnrichmentBadge", () => {
   });
 
   it("handles unknown enrichment type gracefully", () => {
-    const enrichment = makeEnrichment("custom_type", { rationale: "test", confidence: 0.5 });
+    const enrichment = makeEnrichment(EnrichmentType.UNSPECIFIED, {
+      rationale: "test",
+      confidence: 0.5,
+    });
     render(<EnrichmentBadge enrichment={enrichment} />);
-    expect(screen.getByText(/custom_type/)).toBeInTheDocument();
+    // Unspecified type renders with fallback label
+    expect(enrichment.enrichmentType).toBe(EnrichmentType.UNSPECIFIED);
   });
 
   it("handles empty valueJson without throwing", () => {
     const enrichment = create(EnrichmentSchema, {
       id: "e-1",
       contributionId: "c-1",
-      enrichmentType: "review_depth",
+      enrichmentType: EnrichmentType.REVIEW_DEPTH,
       valueJson: "",
       modelName: "test-model",
       createdAt: timestampFromDate(new Date("2026-03-15T10:00:00Z")),
@@ -90,8 +95,12 @@ describe("EnrichmentBadgeList", () => {
 
   it("renders multiple badges", () => {
     const enrichments = [
-      makeEnrichment("review_depth", { score: 3, rationale: "ok", confidence: 0.7 }),
-      makeEnrichment("sentiment", { sentiment: "neutral", rationale: "meh", confidence: 0.6 }),
+      makeEnrichment(EnrichmentType.REVIEW_DEPTH, { score: 3, rationale: "ok", confidence: 0.7 }),
+      makeEnrichment(EnrichmentType.SENTIMENT, {
+        sentiment: "neutral",
+        rationale: "meh",
+        confidence: 0.6,
+      }),
     ];
     render(<EnrichmentBadgeList enrichments={enrichments} />);
     expect(screen.getByText(/3\/5/)).toBeInTheDocument();

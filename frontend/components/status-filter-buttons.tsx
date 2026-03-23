@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { StatusFilter } from "@/lib/run-status";
 
 const filters: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "completed", label: "Completed" },
-  { value: "completed_with_warnings", label: "Partial" },
-  { value: "failed", label: "Failed" },
-  { value: "running", label: "Running" },
+  { value: RunStatus.COMPLETED, label: "Completed" },
+  { value: RunStatus.COMPLETED_WITH_WARNINGS, label: "Partial" },
+  { value: RunStatus.FAILED, label: "Failed" },
+  { value: RunStatus.RUNNING, label: "Running" },
 ];
 
 export const StatusFilterButtons = ({

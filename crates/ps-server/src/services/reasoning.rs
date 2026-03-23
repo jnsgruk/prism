@@ -24,7 +24,11 @@ use tracing::{error, info};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use super::common::{db_err, require_auth, to_timestamp};
+use super::common::{
+    ai_provider_to_proto, contribution_state_to_proto, contribution_type_to_proto, db_err,
+    enrichment_type_to_proto, platform_to_proto, proto_to_ai_provider_str,
+    proto_to_enrichment_type_str, proto_to_platform_str, require_auth, to_timestamp,
+};
 
 pub struct ReasoningServiceImpl {
     repos: Repos,
@@ -200,27 +204,30 @@ impl ReasoningServiceImpl {
 
 fn task_config_to_proto(tc: &AiTaskConfig) -> ProtoAiTaskConfig {
     ProtoAiTaskConfig {
-        provider: tc.provider.to_string(),
+        provider: ai_provider_to_proto(tc.provider.as_str()),
         model: tc.model.clone(),
     }
 }
 
 fn proto_to_task_config(p: &ProtoAiTaskConfig) -> Option<AiTaskConfig> {
-    let provider = p.provider.parse().ok()?;
+    let provider_str = proto_to_ai_provider_str(p.provider)?;
+    let provider = provider_str.parse().ok()?;
     Some(AiTaskConfig {
         provider,
         model: p.model.clone(),
     })
 }
 
-/// Secret key name for a provider.
+/// Secret key name for a provider (given proto enum i32).
 #[allow(clippy::result_large_err)]
-fn provider_secret_key(provider: &str) -> Result<&'static str, Status> {
-    match provider {
-        "google" => Ok("google_api_key"),
-        "openrouter" => Ok("openrouter_api_key"),
+fn provider_secret_key(provider: i32) -> Result<(&'static str, &'static str), Status> {
+    let provider_str = proto_to_ai_provider_str(provider)
+        .ok_or_else(|| Status::invalid_argument("unknown provider"))?;
+    match provider_str.as_str() {
+        "google" => Ok(("google", "google_api_key")),
+        "openrouter" => Ok(("openrouter", "openrouter_api_key")),
         _ => Err(Status::invalid_argument(format!(
-            "unknown provider: {provider}"
+            "unknown provider: {provider_str}"
         ))),
     }
 }
@@ -326,7 +333,7 @@ impl ReasoningService for ReasoningServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        let secret_key_name = provider_secret_key(&req.provider)?;
+        let (provider_name, secret_key_name) = provider_secret_key(req.provider)?;
 
         if req.secret_value.is_empty() {
             return Err(Status::invalid_argument("secret_value is required"));
@@ -348,14 +355,14 @@ impl ReasoningService for ReasoningServiceImpl {
         // Update the router with the new Rig provider client
         {
             let mut router = self.router.write().await;
-            match req.provider.as_str() {
+            match provider_name {
                 "google" => router.set_google(&req.secret_value),
                 "openrouter" => router.set_openrouter(&req.secret_value),
                 _ => {}
             }
         }
 
-        info!(provider = %req.provider, "provider secret set");
+        info!(provider = %provider_name, "provider secret set");
 
         // Auto-trigger model catalogue refresh so the admin gets up-to-date models
         self.trigger_catalogue_refresh().await;
@@ -370,11 +377,7 @@ impl ReasoningService for ReasoningServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        let provider = if req.provider.is_empty() {
-            None
-        } else {
-            Some(req.provider.as_str())
-        };
+        let provider_str = proto_to_ai_provider_str(req.provider);
         let capability = if req.capability.is_empty() {
             None
         } else {
@@ -384,7 +387,7 @@ impl ReasoningService for ReasoningServiceImpl {
         let models = self
             .repos
             .config
-            .list_ai_models(provider, capability)
+            .list_ai_models(provider_str.as_deref(), capability)
             .await
             .map_err(db_err)?;
 
@@ -392,7 +395,7 @@ impl ReasoningService for ReasoningServiceImpl {
             .into_iter()
             .map(|m| AiModelInfo {
                 id: m.id,
-                provider: m.provider.to_string(),
+                provider: ai_provider_to_proto(m.provider.as_str()),
                 display_name: m.display_name,
                 description: m.description.unwrap_or_default(),
                 context_length: m.context_length.unwrap_or(0),
@@ -447,10 +450,11 @@ impl ReasoningService for ReasoningServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        let provider: ps_core::models::AiProvider = req
-            .provider
+        let provider_str = proto_to_ai_provider_str(req.provider)
+            .ok_or_else(|| Status::invalid_argument("unknown provider"))?;
+        let provider: ps_core::models::AiProvider = provider_str
             .parse()
-            .map_err(|_| Status::invalid_argument(format!("unknown provider: {}", req.provider)))?;
+            .map_err(|_| Status::invalid_argument(format!("unknown provider: {provider_str}")))?;
 
         let router = self.router.read().await;
         match router.test_provider(provider).await {
@@ -558,7 +562,7 @@ impl ReasoningService for ReasoningServiceImpl {
         let model_breakdown: Vec<ps_proto::canonical::prism::v1::ModelSpend> = model_breakdown
             .into_iter()
             .map(|m| ps_proto::canonical::prism::v1::ModelSpend {
-                provider: m.provider,
+                provider: ai_provider_to_proto(&m.provider),
                 model: m.model,
                 task_type: m.task_type,
                 cost_usd: m.total_cost_usd,
@@ -657,7 +661,7 @@ impl ReasoningService for ReasoningServiceImpl {
                 .by_type
                 .into_iter()
                 .map(|t| EnrichmentTypeCount {
-                    enrichment_type: t.enrichment_type,
+                    enrichment_type: enrichment_type_to_proto(&t.enrichment_type),
                     count: t.total_count,
                 })
                 .collect(),
@@ -671,18 +675,17 @@ impl ReasoningService for ReasoningServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        if req.enrichment_type.is_empty() {
-            return Err(Status::invalid_argument("enrichment_type is required"));
-        }
+        let enrichment_type_str = proto_to_enrichment_type_str(req.enrichment_type)
+            .ok_or_else(|| Status::invalid_argument("enrichment_type is required"))?;
 
         let deleted = self
             .repos
             .reasoning
-            .delete_enrichments_by_type(&req.enrichment_type)
+            .delete_enrichments_by_type(&enrichment_type_str)
             .await
             .map_err(db_err)?;
 
-        info!(enrichment_type = %req.enrichment_type, deleted, "enrichments deleted for re-enrichment");
+        info!(enrichment_type = %enrichment_type_str, deleted, "enrichments deleted for re-enrichment");
 
         Ok(Response::new(DeleteEnrichmentsByTypeResponse {
             #[allow(clippy::cast_possible_wrap)]
@@ -707,16 +710,12 @@ impl ReasoningService for ReasoningServiceImpl {
             .map_err(|_| Status::invalid_argument("invalid contribution_id"))?;
 
         let limit = i64::from(req.limit.clamp(1, 50));
-        let platform = if req.platform.as_deref().is_some_and(|p| !p.is_empty()) {
-            req.platform.as_deref()
-        } else {
-            None
-        };
+        let platform_str = proto_to_platform_str(req.platform, req.platform_instance.as_deref());
 
         let results = self
             .repos
             .reasoning
-            .find_similar_to_contribution(contribution_id, limit, platform)
+            .find_similar_to_contribution(contribution_id, limit, platform_str.as_deref())
             .await
             .map_err(db_err)?;
 
@@ -737,11 +736,7 @@ impl ReasoningService for ReasoningServiceImpl {
         }
 
         let limit = i64::from(req.limit.clamp(1, 50));
-        let platform = if req.platform.as_deref().is_some_and(|p| !p.is_empty()) {
-            req.platform.as_deref()
-        } else {
-            None
-        };
+        let platform_str = proto_to_platform_str(req.platform, req.platform_instance.as_deref());
 
         // Embed the query text on-the-fly. Drop the router lock before the
         // API call so concurrent UpdateAiSettings writes aren't blocked.
@@ -763,7 +758,7 @@ impl ReasoningService for ReasoningServiceImpl {
         let results = self
             .repos
             .reasoning
-            .find_similar(&truncated, limit, platform, None)
+            .find_similar(&truncated, limit, platform_str.as_deref(), None)
             .await
             .map_err(db_err)?;
 
@@ -803,12 +798,14 @@ impl ReasoningService for ReasoningServiceImpl {
 }
 
 fn similar_to_proto(s: ps_core::repo::reasoning::SimilarContribution) -> ProtoSimilarItem {
+    let (platform, platform_instance) = platform_to_proto(&s.platform);
     ProtoSimilarItem {
         contribution_id: s.contribution_id.to_string(),
         title: s.title.unwrap_or_default(),
-        platform: s.platform,
-        contribution_type: s.contribution_type,
-        state: s.state.unwrap_or_default(),
+        platform,
+        contribution_type: contribution_type_to_proto(&s.contribution_type),
+        state: contribution_state_to_proto(s.state.as_deref().unwrap_or("")),
+        platform_instance,
         author_name: s.author_name.unwrap_or_default(),
         external_url: s.external_url.unwrap_or_default(),
         distance: s.distance,
@@ -820,7 +817,7 @@ fn enrichment_to_proto(e: ps_core::repo::reasoning::EnrichmentRecord) -> ProtoEn
     ProtoEnrichment {
         id: e.id.to_string(),
         contribution_id: e.contribution_id.to_string(),
-        enrichment_type: e.enrichment_type,
+        enrichment_type: enrichment_type_to_proto(&e.enrichment_type),
         value_json: e.value.to_string(),
         model_name: e.model_name,
         confidence: e.confidence,

@@ -7,6 +7,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
+import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { platformLabel } from "@/lib/proto-display";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
 
 import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
@@ -24,7 +26,8 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
   const base = baseSourceType(source.sourceType);
-  const sourceLabel = SOURCE_TYPES.find((t) => t.value === base)?.label ?? source.sourceType;
+  const sourceLabel =
+    SOURCE_TYPES.find((t) => t.value === base)?.label ?? platformLabel(source.sourceType);
 
   const handleToggleEnabled = (): void => {
     updateSource.mutate({ sourceId: source.id, enabled: !source.enabled });
@@ -63,7 +66,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
         </div>
 
         <div className="flex items-center gap-1">
-          {source.sourceType === "github" && (
+          {source.sourceType === Platform.GITHUB && (
             <Button
               variant="ghost"
               size="icon-sm"

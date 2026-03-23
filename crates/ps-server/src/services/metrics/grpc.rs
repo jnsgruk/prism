@@ -21,7 +21,10 @@ use super::{
     MetricsServiceImpl, contribution_detail_to_proto, contribution_full_to_proto, format_date,
     parse_date, parse_period_type, period_type_to_proto, snapshot_to_proto,
 };
-use crate::services::common::{db_err, require_auth};
+use crate::services::common::{
+    db_err, platform_to_proto, proto_to_contribution_state_str, proto_to_contribution_type_str,
+    proto_to_platform_str, require_auth,
+};
 
 #[tonic::async_trait]
 impl MetricsService for MetricsServiceImpl {
@@ -230,12 +233,12 @@ impl MetricsService for MetricsServiceImpl {
         let page_size = if req.page_size > 0 { req.page_size } else { 25 };
         let offset = req.page_index * page_size;
 
-        let contribution_type = req.contribution_type.as_deref();
-        let state = req.state.as_deref();
+        let contribution_type_str = proto_to_contribution_type_str(req.contribution_type);
+        let state_str = proto_to_contribution_state_str(req.state);
+        let platform_str = proto_to_platform_str(req.platform, req.platform_instance.as_deref());
         let search = req.search.as_deref().filter(|s| !s.is_empty());
         let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
         let sort_desc = req.sort_desc.unwrap_or(true);
-        let platform = req.platform.as_deref().filter(|s| !s.is_empty());
 
         let (rows, total_count) = self
             .repos
@@ -244,14 +247,14 @@ impl MetricsService for MetricsServiceImpl {
                 team_id,
                 period_start,
                 period_end,
-                contribution_type,
-                state,
+                contribution_type: contribution_type_str.as_deref(),
+                state: state_str.as_deref(),
                 search,
                 sort_field,
                 sort_desc,
                 page_size,
                 offset,
-                platform,
+                platform: platform_str.as_deref(),
             })
             .await
             .map_err(db_err)?;
@@ -347,8 +350,10 @@ impl MetricsService for MetricsServiceImpl {
                 if let Some(v) = a.avg_cycle_time_hours {
                     metrics.insert("avg_cycle_time_hours".to_string(), v);
                 }
+                let (platform, platform_instance) = platform_to_proto(&a.platform);
                 PlatformActivitySummary {
-                    platform: a.platform,
+                    platform,
+                    platform_instance,
                     contribution_count: a.contribution_count,
                     metrics,
                 }
@@ -418,9 +423,13 @@ impl MetricsService for MetricsServiceImpl {
             level: person.level.unwrap_or_default(),
             identities: identities
                 .into_iter()
-                .map(|i| PlatformIdentityInfo {
-                    platform: i.platform,
-                    username: i.platform_username,
+                .map(|i| {
+                    let (platform, platform_instance) = platform_to_proto(&i.platform);
+                    PlatformIdentityInfo {
+                        platform,
+                        username: i.platform_username,
+                        platform_instance,
+                    }
                 })
                 .collect(),
             activity_by_platform,
@@ -443,8 +452,8 @@ impl MetricsService for MetricsServiceImpl {
         let page_size = if req.page_size > 0 { req.page_size } else { 25 };
         let offset = req.page_index * page_size;
 
-        let platform = req.platform.as_deref().filter(|s| !s.is_empty());
-        let contribution_type = req.contribution_type.as_deref().filter(|s| !s.is_empty());
+        let platform_str = proto_to_platform_str(req.platform, req.platform_instance.as_deref());
+        let contribution_type_str = proto_to_contribution_type_str(req.contribution_type);
         let since = req
             .since
             .as_deref()
@@ -453,7 +462,7 @@ impl MetricsService for MetricsServiceImpl {
             .transpose()?;
         let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
         let sort_desc = req.sort_desc.unwrap_or(true);
-        let state = req.state.as_deref().filter(|s| !s.is_empty());
+        let state_str = proto_to_contribution_state_str(req.state);
         let search = req.search.as_deref().filter(|s| !s.is_empty());
 
         let (rows, total_count) = self
@@ -461,14 +470,14 @@ impl MetricsService for MetricsServiceImpl {
             .metrics
             .list_person_contributions(&ListPersonContributionsParams {
                 person_id,
-                platform,
-                contribution_type,
+                platform: platform_str.as_deref(),
+                contribution_type: contribution_type_str.as_deref(),
                 since,
                 sort_field,
                 sort_desc,
                 page_size,
                 offset,
-                state,
+                state: state_str.as_deref(),
                 search,
             })
             .await

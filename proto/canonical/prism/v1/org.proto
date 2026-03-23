@@ -107,10 +107,12 @@ message Person {
 
 // PlatformIdentity links a person to an external platform account.
 message PlatformIdentity {
-  // Platform identifier (e.g. "github", "jira", "discourse-ubuntu").
-  string platform = 1;
+  // Platform this identity belongs to.
+  Platform platform = 1;
   // Username on the external platform.
   string username = 2;
+  // Instance identifier for multi-instance platforms (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 3;
 }
 
 message ListTeamsRequest {
@@ -180,8 +182,8 @@ message ListPeopleRequest {
   optional string search = 2;
   // Filter to people assigned to this team.
   optional string team_id = 3;
-  // Filter preset: "unassigned" or "inactive".
-  optional string filter = 4;
+  // Filter preset.
+  PersonFilter filter = 4;
   PaginationRequest pagination = 10;
   SortOrder sort = 11;
 }

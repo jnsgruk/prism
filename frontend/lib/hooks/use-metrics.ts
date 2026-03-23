@@ -3,6 +3,11 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
 import type {
+  ContributionState,
+  ContributionType,
+  Platform,
+} from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type {
   Contribution,
   GetFlowMetricsResponse,
   GetIndividualProfileResponse,
@@ -37,6 +42,7 @@ export const metricsKeys = {
       filters.pageSize,
       filters.pageIndex,
       filters.platform ?? "",
+      filters.platformInstance ?? "",
     ] as const,
   flow: (teamId: string, period: Period) =>
     [...metricsKeys.all, "flow", teamId, periodKey(period)] as const,
@@ -60,14 +66,15 @@ export const metricsKeys = {
 };
 
 export interface ContributionFilters {
-  contributionType?: string;
-  state?: string;
+  contributionType?: ContributionType;
+  state?: ContributionState;
   search?: string;
   sortField?: string;
   sortDesc?: boolean;
   pageSize: number;
   pageIndex: number;
-  platform?: string;
+  platform?: Platform;
+  platformInstance?: string;
 }
 
 export const useCompareTeams = (
@@ -107,6 +114,7 @@ export const useListTeamContributions = (
         pageSize: filters.pageSize,
         pageIndex: filters.pageIndex,
         platform: filters.platform,
+        platformInstance: filters.platformInstance,
       }),
     enabled: teamId.length > 0,
   });
@@ -122,14 +130,15 @@ export const useGetFlowMetrics = (
   });
 
 export interface PersonContributionFilters {
-  platform?: string;
-  contributionType?: string;
+  platform?: Platform;
+  platformInstance?: string;
+  contributionType?: ContributionType;
   since?: string;
   sortField?: string;
   sortDesc?: boolean;
   pageSize: number;
   pageIndex: number;
-  state?: string;
+  state?: ContributionState;
   search?: string;
 }
 
@@ -153,6 +162,7 @@ export const useListPersonContributions = (
       metricsClient.listPersonContributions({
         personId,
         platform: filters.platform,
+        platformInstance: filters.platformInstance,
         contributionType: filters.contributionType,
         since: filters.since,
         state: filters.state,

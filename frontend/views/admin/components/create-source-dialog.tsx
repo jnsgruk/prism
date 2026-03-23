@@ -27,6 +27,7 @@ import type { JsonObject } from "@bufbuild/protobuf";
 import { useCreateSource, useSetSecret } from "@ps/hooks/use-config";
 import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
 
+import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { BufferedSecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
 import { SECRET_KEYS_BY_TYPE, SOURCE_TYPES } from "@/views/admin/lib/source-types";
@@ -91,8 +92,10 @@ export const CreateSourceDialog = (): React.ReactElement => {
     try {
       // Create the source with settings
       const settingsPayload = Object.keys(settings).length > 0 ? settings : undefined;
+      const platformEnum =
+        SOURCE_TYPES.find((t) => t.value === sourceType)?.platform ?? Platform.GITHUB;
       const result = await createSource.mutateAsync({
-        sourceType,
+        sourceType: platformEnum,
         name,
         settings: settingsPayload,
       });

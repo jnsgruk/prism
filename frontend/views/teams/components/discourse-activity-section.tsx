@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
-import { instanceLabel } from "@/lib/format-metrics";
+
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -30,6 +30,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { platformLabel } from "@/lib/proto-display";
 import type {
   Contribution,
   Period,
@@ -46,9 +48,9 @@ import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity
 // Topics table columns
 // ---------------------------------------------------------------------------
 
-const discourseTypeLabel = (contributionType: string): string => {
-  if (contributionType === "discourse_topic") return "Topic";
-  if (contributionType === "discourse_like") return "Like";
+const discourseTypeLabel = (ct: ContributionType): string => {
+  if (ct === ContributionType.DISCOURSE_TOPIC) return "Topic";
+  if (ct === ContributionType.DISCOURSE_LIKE) return "Like";
   return "Post";
 };
 
@@ -100,7 +102,7 @@ const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
   cell: ({ row }) => (
-    <span className="text-muted-foreground">{instanceLabel(row.original.platform)}</span>
+    <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>
   ),
   enableSorting: false,
 };
@@ -144,11 +146,11 @@ const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution, unkno
 const DiscourseTopicsTable = ({
   teamId,
   period,
-  platform,
+  platformInstance,
 }: {
   teamId: string;
   period: Period;
-  platform?: string;
+  platformInstance?: string;
 }): React.ReactElement => {
   const navigate = useNavigate();
   const handleRowClick = useCallback(
@@ -167,16 +169,16 @@ const DiscourseTopicsTable = ({
   const activeSortCol = sorting[0] as SortingState[number] | undefined;
 
   const filters: ContributionFilters = {
-    contributionType: "discourse_%",
+    platform: Platform.DISCOURSE,
+    platformInstance,
     search: debouncedSearch || undefined,
     sortField: activeSortCol?.id,
     sortDesc: activeSortCol?.desc,
     pageSize,
     pageIndex,
-    platform,
   };
 
-  const columns = useMemo(() => buildTopicColumns(!platform), [platform]);
+  const columns = useMemo(() => buildTopicColumns(!platformInstance), [platformInstance]);
 
   const { data, isLoading } = useListTeamContributions(teamId, period, filters);
   const topics = data?.contributions ?? [];
@@ -336,7 +338,7 @@ export const DiscourseActivitySection = ({
   // Fetch discourse sources for instance filter
   const { data: sources } = useListSources();
   const discourseSources = useMemo(
-    () => (sources ?? []).filter((s) => s.sourceType.startsWith("discourse")),
+    () => (sources ?? []).filter((s) => s.sourceType === Platform.DISCOURSE),
     [sources],
   );
 
@@ -407,15 +409,19 @@ export const DiscourseActivitySection = ({
                     <SelectValue>
                       {instanceFilter === "all"
                         ? "All instances"
-                        : (discourseSources.find((s) => s.sourceType === instanceFilter)?.name ??
-                          instanceFilter)}
+                        : (discourseSources.find(
+                            (s) => (s.platformInstance || s.name) === instanceFilter,
+                          )?.name ?? instanceFilter)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All instances</SelectItem>
                     {discourseSources.map((s) => (
-                      <SelectItem key={s.sourceType} value={s.sourceType}>
-                        {s.name || s.sourceType}
+                      <SelectItem
+                        key={s.platformInstance || s.name}
+                        value={s.platformInstance || s.name}
+                      >
+                        {s.name || platformLabel(s.sourceType, s.platformInstance)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -505,7 +511,11 @@ export const DiscourseActivitySection = ({
                 {/* Topics table (server-side paginated) */}
                 <div>
                   <h4 className="mb-3 text-sm font-medium">Contributions</h4>
-                  <DiscourseTopicsTable teamId={teamId} period={period} platform={instance} />
+                  <DiscourseTopicsTable
+                    teamId={teamId}
+                    period={period}
+                    platformInstance={instance}
+                  />
                 </div>
 
                 {/* Top contributors (client-side) */}

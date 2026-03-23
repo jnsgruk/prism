@@ -1,7 +1,7 @@
 use crate::define_api_test;
 use ps_proto::canonical::prism::v1::config_service_client::ConfigServiceClient;
 use ps_proto::canonical::prism::v1::{
-    CreateSourceRequest, DeleteSourceRequest, GetSourceRequest, ListSourcesRequest,
+    CreateSourceRequest, DeleteSourceRequest, GetSourceRequest, ListSourcesRequest, Platform,
     SetSecretRequest, TestConnectionRequest, UpdateSourceRequest,
 };
 use tonic::Request;
@@ -21,7 +21,7 @@ define_api_test!(create_source_and_list, |server| async move {
 
     // Create a GitHub source
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "My GitHub".into(),
         settings: None,
         schedule_cron: None,
@@ -35,7 +35,7 @@ define_api_test!(create_source_and_list, |server| async move {
         .into_inner();
 
     let source = create_resp.source.expect("source should be present");
-    assert_eq!(source.source_type, "github");
+    assert_eq!(source.source_type, i32::from(Platform::Github));
     assert_eq!(source.name, "My GitHub");
     assert!(source.enabled); // default enabled
 
@@ -59,7 +59,7 @@ define_api_test!(get_source_returns_details, |server| async move {
 
     // Create
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "jira".into(),
+        source_type: Platform::Jira.into(),
         name: "My Jira".into(),
         settings: None,
         schedule_cron: Some("0 */6 * * *".into()),
@@ -89,7 +89,7 @@ define_api_test!(get_source_returns_details, |server| async move {
         .expect("source");
 
     assert_eq!(fetched.id, created.id);
-    assert_eq!(fetched.source_type, "jira");
+    assert_eq!(fetched.source_type, i32::from(Platform::Jira));
     assert_eq!(fetched.name, "My Jira");
     assert_eq!(fetched.schedule_cron.as_deref(), Some("0 */6 * * *"));
     assert!(fetched.created_at.is_some());
@@ -102,7 +102,7 @@ define_api_test!(update_source_toggles_enabled, |server| async move {
 
     // Create
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "Toggle Test".into(),
         settings: None,
         schedule_cron: None,
@@ -164,7 +164,7 @@ define_api_test!(delete_source, |server| async move {
 
     // Create
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "To Delete".into(),
         settings: None,
         schedule_cron: None,
@@ -207,7 +207,7 @@ define_api_test!(set_secret_and_test_connection, |server| async move {
 
     // Create a GitHub source
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "GitHub With Secret".into(),
         settings: None,
         schedule_cron: None,
@@ -270,7 +270,7 @@ define_api_test!(test_connection_fails_without_secrets, |server| async move {
 
     // Create a GitHub source without setting any secrets
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "GitHub No Secret".into(),
         settings: None,
         schedule_cron: None,

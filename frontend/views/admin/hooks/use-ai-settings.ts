@@ -2,6 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   AiSettings,
   ListAiModelsResponse,
@@ -48,7 +49,7 @@ export const useUpdateAiSettings = (): UseMutationResult<
 export const useSetProviderSecret = (): UseMutationResult<
   SetProviderSecretResponse,
   Error,
-  { provider: string; secretValue: string }
+  { provider: AiProvider; secretValue: string }
 > => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -67,7 +68,7 @@ export const useSetProviderSecret = (): UseMutationResult<
 export const useTestProvider = (): UseMutationResult<
   TestProviderResponse,
   Error,
-  { provider: string }
+  { provider: AiProvider }
 > =>
   useMutation({
     mutationFn: (req) => client.testProvider(req),
@@ -84,11 +85,11 @@ export const useStorageHealth = (): UseQueryResult<
   });
 
 export const useAiModels = (
-  provider: string = "",
+  provider?: AiProvider,
   capability: string = "",
 ): UseQueryResult<ListAiModelsResponse, Error> =>
   useQuery({
-    queryKey: aiKeys.models(provider, capability),
+    queryKey: aiKeys.models(String(provider ?? ""), capability),
     queryFn: () => client.listAiModels({ provider, capability }),
     staleTime: 5 * 60 * 1_000, // 5 minutes
   });

@@ -7,11 +7,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   GetStatusResponseSchema,
   HandlersService,
+  HandlerRunSchema,
   ListRunsResponseSchema,
   SourceState,
+  SourceStatusSchema,
   TriggerBackfillResponseSchema,
   TriggerRunResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   GetEnrichmentPipelineStatusResponseSchema,
   ReasoningService,
@@ -19,48 +22,46 @@ import {
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 const mockSources = [
-  {
+  create(SourceStatusSchema, {
     name: "github-main",
-    sourceType: "github",
+    sourceType: Platform.GITHUB,
     state: SourceState.IDLE,
     lastRun: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
     itemsCollected: 142,
-    rateLimitInfo: {},
-  },
-  {
+  }),
+  create(SourceStatusSchema, {
     name: "jira-project",
-    sourceType: "jira",
+    sourceType: Platform.JIRA,
     state: SourceState.ERROR,
     lastRun: timestampFromDate(new Date("2026-03-11T08:30:00Z")),
     itemsCollected: 0,
-    rateLimitInfo: {},
-  },
+  }),
 ];
 
 const mockRuns = [
-  {
+  create(HandlerRunSchema, {
     id: "run-1",
     sourceName: "github-main",
     startedAt: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
     completedAt: timestampFromDate(new Date("2026-03-12T10:05:00Z")),
-    status: "completed",
+    status: RunStatus.COMPLETED,
     itemsCollected: 142,
     rateLimitWaitsSeconds: 0,
     handlerName: "GithubIngestionHandler",
     handlerMethod: "run_ingestion",
-  },
-  {
+  }),
+  create(HandlerRunSchema, {
     id: "run-2",
     sourceName: "jira-project",
     startedAt: timestampFromDate(new Date("2026-03-11T08:30:00Z")),
     completedAt: timestampFromDate(new Date("2026-03-11T08:31:00Z")),
-    status: "failed",
+    status: RunStatus.FAILED,
     itemsCollected: 0,
     errorMessage: "Authentication failed: invalid token",
     rateLimitWaitsSeconds: 0,
     handlerName: "GithubIngestionHandler",
     handlerMethod: "run_ingestion",
-  },
+  }),
 ];
 
 vi.mock("@ps/api/transport", () => ({

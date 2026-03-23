@@ -11,6 +11,8 @@ import {
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import type { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { aiProviderLabel } from "@/lib/proto-display";
 import { useCostSummary } from "@/views/admin/hooks/use-ai-cost";
 
 export const AiCostSection = (): React.ReactElement => {
@@ -195,7 +197,7 @@ const ModelBreakdownTable = ({
   data,
 }: {
   data: {
-    provider: string;
+    provider: AiProvider;
     model: string;
     taskType: string;
     costUsd: number;
@@ -227,7 +229,7 @@ const ModelBreakdownTable = ({
             <TableBody>
               {data.map((row, i) => (
                 <TableRow key={`${row.provider}-${row.model}-${row.taskType}-${i}`}>
-                  <TableCell>{row.provider}</TableCell>
+                  <TableCell>{aiProviderLabel(row.provider)}</TableCell>
                   <TableCell className="font-mono text-xs">{row.model}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="text-[10px] uppercase">

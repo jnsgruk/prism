@@ -8,6 +8,8 @@ use ps_proto::canonical::prism::v1::{
 use tonic::Status;
 use uuid::Uuid;
 
+use crate::services::common::platform_to_proto;
+
 /// Build `Person` proto messages from person rows + their platform identities.
 pub(super) fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Person> {
     // Index identities by person_id for O(N+M) instead of O(N*M) lookup.
@@ -23,9 +25,13 @@ pub(super) fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -
                 .get(&p.id)
                 .map(|ids| {
                     ids.iter()
-                        .map(|i| PlatformIdentity {
-                            platform: i.platform.clone(),
-                            username: i.platform_username.clone(),
+                        .map(|i| {
+                            let (platform, platform_instance) = platform_to_proto(&i.platform);
+                            PlatformIdentity {
+                                platform,
+                                username: i.platform_username.clone(),
+                                platform_instance,
+                            }
                         })
                         .collect()
                 })

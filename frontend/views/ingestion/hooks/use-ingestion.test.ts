@@ -9,36 +9,39 @@ import {
   CancelRunResponseSchema,
   GetStatusResponseSchema,
   HandlersService,
+  HandlerRunSchema,
   ListHandlersResponseSchema,
   ListRunsResponseSchema,
   SourceState,
+  SourceStatusSchema,
   TriggerBackfillResponseSchema,
   TriggerHandlerResponseSchema,
   TriggerRunResponseSchema,
   TriggerTeamSyncResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 const mockSources = [
-  {
+  create(SourceStatusSchema, {
     name: "github-main",
-    sourceType: "github",
+    sourceType: Platform.GITHUB,
     state: SourceState.IDLE,
     lastRun: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
     itemsCollected: 42,
-  },
+  }),
 ];
 
 const mockRuns = [
-  {
+  create(HandlerRunSchema, {
     id: "run-1",
     sourceName: "github-main",
     startedAt: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
-    status: "completed",
+    status: RunStatus.COMPLETED,
     itemsCollected: 42,
     handlerName: "GithubIngestionHandler",
     handlerMethod: "run_ingestion",
-  },
+  }),
 ];
 
 const mockHandlers = [

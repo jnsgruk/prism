@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
 // HandlersService provides visibility and control over Restate-based background
@@ -49,8 +50,8 @@ enum SourceState {
 message SourceStatus {
   // Source name matching the ConfigService source name.
   string name = 1;
-  // Platform type (e.g. "github", "jira", "discourse").
-  string source_type = 2;
+  // Platform this source connects to.
+  Platform source_type = 2;
   SourceState state = 3;
   optional google.protobuf.Timestamp last_run = 4;
   optional google.protobuf.Timestamp next_run = 5;
@@ -69,8 +70,8 @@ message HandlerRun {
   string source_name = 2;
   google.protobuf.Timestamp started_at = 3;
   optional google.protobuf.Timestamp completed_at = 4;
-  // Run status: "running", "completed", "completed_with_warnings", "failed", "cancelled".
-  string status = 5;
+  // Run outcome.
+  RunStatus status = 5;
   int32 items_collected = 6;
   optional string error_message = 7;
   // Cumulative seconds spent waiting for rate limits during this run.

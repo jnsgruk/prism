@@ -2,7 +2,7 @@ use crate::define_api_test;
 use ps_proto::canonical::prism::v1::config_service_client::ConfigServiceClient;
 use ps_proto::canonical::prism::v1::handlers_service_client::HandlersServiceClient;
 use ps_proto::canonical::prism::v1::{
-    CreateSourceRequest, GetStatusRequest, ListRunsRequest, TriggerBackfillRequest,
+    CreateSourceRequest, GetStatusRequest, ListRunsRequest, Platform, TriggerBackfillRequest,
     TriggerRunRequest,
 };
 use tonic::Request;
@@ -36,7 +36,7 @@ define_api_test!(get_status_shows_enabled_sources, |server| async move {
     // Create an enabled source via ConfigService
     let mut config_client = ConfigServiceClient::new(server.channel.clone());
     let mut req = Request::new(CreateSourceRequest {
-        source_type: "github".into(),
+        source_type: Platform::Github.into(),
         name: "test-github".into(),
         settings: None,
         schedule_cron: None,
@@ -59,7 +59,7 @@ define_api_test!(get_status_shows_enabled_sources, |server| async move {
         .into_inner();
     assert_eq!(resp.sources.len(), 1);
     assert_eq!(resp.sources[0].name, "test-github");
-    assert_eq!(resp.sources[0].source_type, "github");
+    assert_eq!(resp.sources[0].source_type, i32::from(Platform::Github));
 });
 
 define_api_test!(list_runs_empty, |server| async move {

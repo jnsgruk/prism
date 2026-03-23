@@ -10,7 +10,9 @@ use time::Date;
 use time::macros::format_description;
 use tonic::Status;
 
-use super::common::to_timestamp;
+use super::common::{
+    contribution_state_to_proto, contribution_type_to_proto, platform_to_proto, to_timestamp,
+};
 
 /// ISO 8601 date-only format (YYYY-MM-DD).
 const DATE_FMT: &[time::format_description::BorrowedFormatItem<'_>] =
@@ -176,16 +178,20 @@ fn contribution_full_to_proto(r: ContributionFullRow) -> Contribution {
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
 
+    let (platform, platform_instance) = platform_to_proto(&r.platform.to_string());
+
     Contribution {
         id: r.id.to_string(),
         person_name: r.person_name,
         person_id: r.person_id.map(|id| id.to_string()).unwrap_or_default(),
-        platform: r.platform.to_string(),
-        contribution_type: r.contribution_type.to_string(),
+        platform,
+        contribution_type: contribution_type_to_proto(r.contribution_type.as_str()),
         platform_id: r.platform_id,
         title: r.title.unwrap_or_default(),
         url: r.url.unwrap_or_default(),
-        state: r.state.map(|s| s.to_string()).unwrap_or_default(),
+        state: r
+            .state
+            .map_or(0, |s| contribution_state_to_proto(s.as_str())),
         created_at: Some(to_timestamp(r.created_at)),
         updated_at: r.updated_at.map(to_timestamp),
         closed_at: r.closed_at.map(to_timestamp),
@@ -201,6 +207,7 @@ fn contribution_full_to_proto(r: ContributionFullRow) -> Contribution {
         head_ref,
         base_ref,
         draft,
+        platform_instance,
     }
 }
 
@@ -235,15 +242,19 @@ fn contribution_detail_to_proto(r: ContributionDetailRow) -> Contribution {
         String::new()
     };
 
+    let (platform, platform_instance) = platform_to_proto(&r.platform.to_string());
+
     Contribution {
         id: r.id.to_string(),
         person_name: r.person_name,
-        platform: r.platform.to_string(),
-        contribution_type: r.contribution_type.to_string(),
+        platform,
+        contribution_type: contribution_type_to_proto(r.contribution_type.as_str()),
         platform_id: r.platform_id,
         title: r.title.unwrap_or_default(),
         url: r.url.unwrap_or_default(),
-        state: r.state.map(|s| s.to_string()).unwrap_or_default(),
+        state: r
+            .state
+            .map_or(0, |s| contribution_state_to_proto(s.as_str())),
         created_at: Some(to_timestamp(r.created_at)),
         closed_at: r.closed_at.map(to_timestamp),
         additions: json_i32(&r.metrics, "additions"),
@@ -253,6 +264,7 @@ fn contribution_detail_to_proto(r: ContributionDetailRow) -> Contribution {
         review_hours: json_f32(&r.metrics, "review_hours"),
         repo,
         category,
+        platform_instance,
         // Detail-only fields — empty in list RPCs.
         content: String::new(),
         updated_at: None,

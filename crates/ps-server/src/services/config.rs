@@ -16,7 +16,8 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::common::{
-    db_err, prost_struct_to_serde_json, require_auth, serde_json_to_prost_struct, to_timestamp,
+    db_err, platform_to_proto, prost_struct_to_serde_json, proto_to_platform_str, require_auth,
+    serde_json_to_prost_struct, to_timestamp,
 };
 
 pub struct ConfigServiceImpl {
@@ -41,10 +42,11 @@ fn build_source_proto(
     secret_status: HashMap<String, bool>,
 ) -> SourceConfig {
     let settings_struct = serde_json_to_prost_struct(&source.settings);
+    let (source_type, platform_instance) = platform_to_proto(&source.source_type.to_string());
 
     SourceConfig {
         id: source.id.to_string(),
-        source_type: source.source_type.to_string(),
+        source_type,
         name: source.name.clone(),
         enabled: source.enabled,
         settings: Some(settings_struct),
@@ -52,6 +54,7 @@ fn build_source_proto(
         schedule_cron: source.schedule_cron.clone(),
         created_at: Some(to_timestamp(source.created_at)),
         updated_at: Some(to_timestamp(source.updated_at)),
+        platform_instance,
     }
 }
 
@@ -151,9 +154,10 @@ impl ConfigService for ConfigServiceImpl {
         if req.name.is_empty() {
             return Err(Status::invalid_argument("name is required"));
         }
-        if req.source_type.is_empty() {
-            return Err(Status::invalid_argument("source_type is required"));
-        }
+
+        // Convert proto platform enum to string for DB storage
+        let base_source_type = proto_to_platform_str(req.source_type, None)
+            .ok_or_else(|| Status::invalid_argument("source_type is required"))?;
 
         let settings = match &req.settings {
             Some(s) => prost_struct_to_serde_json(s),
@@ -164,12 +168,12 @@ impl ConfigService for ConfigServiceImpl {
 
         // For Discourse, the source_type must be instance-qualified (e.g.
         // "discourse-ubuntu") so it parses into Platform::Discourse(instance).
-        // The frontend sends "discourse"; derive the suffix from the source name.
-        let effective_source_type = if req.source_type == "discourse" {
+        // The frontend sends Platform::Discourse; derive the suffix from the source name.
+        let effective_source_type = if base_source_type == "discourse" {
             let slug = slugify_source_name(&req.name);
             format!("discourse-{slug}")
         } else {
-            req.source_type.clone()
+            base_source_type.clone()
         };
 
         let s = self
@@ -188,7 +192,7 @@ impl ConfigService for ConfigServiceImpl {
                 other => db_err(other),
             })?;
 
-        info!(source_id = %source_id, name = %req.name, source_type = %req.source_type, "source created");
+        info!(source_id = %source_id, name = %req.name, source_type = %effective_source_type, "source created");
 
         Ok(Response::new(CreateSourceResponse {
             source: Some(build_source_proto(&s, HashMap::new())),

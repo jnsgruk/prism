@@ -38,9 +38,21 @@ import {
   useRemovePersonFromTeam,
 } from "@/views/admin/hooks/use-admin";
 import { flattenTeams } from "@/views/admin/lib/team-utils";
+import { PersonFilter } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
 
 type Filter = "all" | "unassigned" | "inactive";
+
+const filterToEnum = (f: Filter): PersonFilter | undefined => {
+  switch (f) {
+    case "unassigned":
+      return PersonFilter.UNASSIGNED;
+    case "inactive":
+      return PersonFilter.INACTIVE;
+    default:
+      return undefined;
+  }
+};
 
 const columns = [personNameColumn, personTeamColumn];
 
@@ -68,7 +80,7 @@ export const PeopleTab = (): React.ReactElement => {
 
   const { data, isLoading, isError, error } = usePaginatedPeople({
     search: debouncedSearch || undefined,
-    filter: filter === "all" ? undefined : filter,
+    filter: filterToEnum(filter),
     pageSize,
     pageToken: pageTokens[pageIndex] ?? "",
     sortField,

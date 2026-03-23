@@ -4,6 +4,7 @@ syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -30,10 +31,13 @@ service ConfigService {
 // returned — only a boolean map indicating which secrets are set.
 message SourceConfig {
   string id = 1;
-  // Platform type (e.g. "github", "jira", "discourse").
-  string source_type = 2;
+  // Platform this source connects to.
+  Platform source_type = 2;
   // Human-readable name for this source.
   string name = 3;
+  // Instance identifier for multi-instance platforms (e.g. "ubuntu" for Discourse).
+  // Empty for single-instance platforms like GitHub.
+  optional string platform_instance = 10;
   // Whether ingestion is enabled for this source.
   bool enabled = 4;
   // Platform-specific settings (e.g. org name, base URL, categories).
@@ -61,8 +65,8 @@ message GetSourceResponse {
 }
 
 message CreateSourceRequest {
-  // Platform type (e.g. "github", "jira", "discourse").
-  string source_type = 1;
+  // Platform this source connects to.
+  Platform source_type = 1;
   string name = 2;
   google.protobuf.Struct settings = 3;
   optional string schedule_cron = 4;

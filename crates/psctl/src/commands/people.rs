@@ -1,13 +1,15 @@
 use anyhow::Result;
-use ps_proto::canonical::prism::v1::{ListPeopleRequest, PaginationRequest, SortOrder};
+use ps_proto::canonical::prism::v1::{
+    ListPeopleRequest, PaginationRequest, PersonFilter, Platform, SortOrder,
+};
 
 use crate::client::Clients;
 
 pub async fn people(clients: &mut Clients, team: Option<&str>, unresolved: bool) -> Result<()> {
-    let filter = if unresolved {
-        Some("unassigned".to_string())
+    let filter: i32 = if unresolved {
+        PersonFilter::Unassigned.into()
     } else {
-        None
+        PersonFilter::Unspecified.into()
     };
 
     let response = clients
@@ -44,7 +46,17 @@ pub async fn people(clients: &mut Clients, team: Option<&str>, unresolved: bool)
         let identities: Vec<String> = person
             .identities
             .iter()
-            .map(|i| format!("{}:{}", i.platform, i.username))
+            .map(|i| {
+                let platform_name = match Platform::try_from(i.platform) {
+                    Ok(Platform::Github) => "github",
+                    Ok(Platform::Jira) => "jira",
+                    Ok(Platform::Discourse) => "discourse",
+                    Ok(Platform::Launchpad) => "launchpad",
+                    Ok(Platform::Mattermost) => "mattermost",
+                    _ => "unknown",
+                };
+                format!("{platform_name}:{}", i.username)
+            })
             .collect();
 
         println!(

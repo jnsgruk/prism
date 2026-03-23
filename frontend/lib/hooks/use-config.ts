@@ -3,6 +3,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   CreateSourceResponse,
   DeleteSourceResponse,
@@ -41,13 +42,13 @@ export const useGetSource = (sourceId: string): UseQueryResult<SourceConfig | un
 export const useCreateSource = (): UseMutationResult<
   CreateSourceResponse,
   Error,
-  { sourceType: string; name: string; settings?: JsonObject; scheduleCron?: string }
+  { sourceType: Platform; name: string; settings?: JsonObject; scheduleCron?: string }
 > => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (req: {
-      sourceType: string;
+      sourceType: Platform;
       name: string;
       settings?: JsonObject;
       scheduleCron?: string;

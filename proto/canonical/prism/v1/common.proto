@@ -1,5 +1,5 @@
 // Shared infrastructure types used across multiple Prism services.
-// This file contains pagination, sorting, and other cross-cutting message
+// This file contains pagination, sorting, domain enums, and other cross-cutting
 // definitions that are not specific to any single service domain.
 syntax = "proto3";
 
@@ -29,4 +29,98 @@ message SortOrder {
   string field = 1;
   // When true, sort in descending order. Defaults to ascending.
   bool descending = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Domain enums
+// ---------------------------------------------------------------------------
+
+// Platform identifies the external platform a data source connects to. For
+// platforms that support multiple instances (e.g. Discourse), the instance name
+// is carried in a separate `platform_instance` field on the containing message.
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_GITHUB = 1;
+  PLATFORM_JIRA = 2;
+  PLATFORM_DISCOURSE = 3;
+  PLATFORM_LAUNCHPAD = 4;
+  PLATFORM_MATTERMOST = 5;
+  PLATFORM_GOOGLE_DRIVE = 6;
+  PLATFORM_MAILING_LIST = 7;
+}
+
+// ContributionType classifies the kind of work item ingested from an external
+// platform.
+enum ContributionType {
+  CONTRIBUTION_TYPE_UNSPECIFIED = 0;
+  CONTRIBUTION_TYPE_PULL_REQUEST = 1;
+  CONTRIBUTION_TYPE_PR_REVIEW = 2;
+  CONTRIBUTION_TYPE_JIRA_TICKET = 3;
+  CONTRIBUTION_TYPE_DISCOURSE_TOPIC = 4;
+  CONTRIBUTION_TYPE_DISCOURSE_POST = 5;
+  CONTRIBUTION_TYPE_DISCOURSE_LIKE = 6;
+}
+
+// ContributionState represents the lifecycle state of a contribution. Values
+// cover both shared states (open, closed, merged) and platform-specific states
+// (GitHub review verdicts, Jira in-progress).
+enum ContributionState {
+  CONTRIBUTION_STATE_UNSPECIFIED = 0;
+  CONTRIBUTION_STATE_OPEN = 1;
+  CONTRIBUTION_STATE_CLOSED = 2;
+  CONTRIBUTION_STATE_MERGED = 3;
+  CONTRIBUTION_STATE_IN_PROGRESS = 4;
+  // GitHub review verdicts.
+  CONTRIBUTION_STATE_APPROVED = 5;
+  CONTRIBUTION_STATE_CHANGES_REQUESTED = 6;
+  CONTRIBUTION_STATE_COMMENTED = 7;
+  CONTRIBUTION_STATE_PENDING = 8;
+  CONTRIBUTION_STATE_DISMISSED = 9;
+  // Jira terminal states.
+  CONTRIBUTION_STATE_DONE = 10;
+}
+
+// RunStatus represents the outcome of a Restate handler run.
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_RUNNING = 1;
+  RUN_STATUS_COMPLETED = 2;
+  RUN_STATUS_COMPLETED_WITH_WARNINGS = 3;
+  RUN_STATUS_FAILED = 4;
+  RUN_STATUS_CANCELLED = 5;
+}
+
+// AiProvider identifies a supported AI inference provider.
+enum AiProvider {
+  AI_PROVIDER_UNSPECIFIED = 0;
+  AI_PROVIDER_GOOGLE = 1;
+  AI_PROVIDER_OPENROUTER = 2;
+}
+
+// EnrichmentType classifies the kind of AI enrichment applied to a
+// contribution.
+enum EnrichmentType {
+  ENRICHMENT_TYPE_UNSPECIFIED = 0;
+  ENRICHMENT_TYPE_REVIEW_DEPTH = 1;
+  ENRICHMENT_TYPE_SENTIMENT = 2;
+  ENRICHMENT_TYPE_SIGNIFICANCE = 3;
+  ENRICHMENT_TYPE_TOPIC = 4;
+}
+
+// PersonFilter selects a preset filter for the ListPeople RPC.
+enum PersonFilter {
+  PERSON_FILTER_UNSPECIFIED = 0;
+  // People not assigned to any team.
+  PERSON_FILTER_UNASSIGNED = 1;
+  // People marked as inactive.
+  PERSON_FILTER_INACTIVE = 2;
+}
+
+// InsightPeriod selects the time window for insight aggregation.
+enum InsightPeriod {
+  INSIGHT_PERIOD_UNSPECIFIED = 0;
+  INSIGHT_PERIOD_LAST_WEEK = 1;
+  INSIGHT_PERIOD_LAST_MONTH = 2;
+  INSIGHT_PERIOD_LAST_QUARTER = 3;
+  INSIGHT_PERIOD_LAST_YEAR = 4;
 }

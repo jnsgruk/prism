@@ -3,6 +3,7 @@ import { createRouterTransport } from "@connectrpc/connect";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   GetAiSettingsResponseSchema,
   GetStorageHealthResponseSchema,
@@ -20,7 +21,7 @@ vi.mock("@ps/api/transport", () => ({
     service(ReasoningService, {
       getAiSettings: () =>
         create(GetAiSettingsResponseSchema, {
-          settings: { enrichment: { provider: "openrouter", model: "test-model" } },
+          settings: { enrichment: { provider: AiProvider.OPENROUTER, model: "test-model" } },
         }),
       updateAiSettings: () => create(UpdateAiSettingsResponseSchema, {}),
       setProviderSecret: () => create(SetProviderSecretResponseSchema, {}),
@@ -51,7 +52,7 @@ describe("AI settings hooks", () => {
       const { result } = renderHook(() => useAiSettings(), { wrapper: TestWrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.enrichment?.provider).toBe("openrouter");
+      expect(result.current.data?.enrichment?.provider).toBe(AiProvider.OPENROUTER);
     });
   });
 
@@ -61,7 +62,7 @@ describe("AI settings hooks", () => {
       const { useUpdateAiSettings } = await import("./use-ai-settings");
       const { result } = renderHook(() => useUpdateAiSettings(), { wrapper: TestWrapper });
 
-      result.current.mutate({ enrichment: { provider: "google", model: "gemini-flash" } });
+      result.current.mutate({ enrichment: { provider: AiProvider.GOOGLE, model: "gemini-flash" } });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
@@ -73,7 +74,7 @@ describe("AI settings hooks", () => {
       const { useSetProviderSecret } = await import("./use-ai-settings");
       const { result } = renderHook(() => useSetProviderSecret(), { wrapper: TestWrapper });
 
-      result.current.mutate({ provider: "openrouter", secretValue: "sk-xxx" });
+      result.current.mutate({ provider: AiProvider.OPENROUTER, secretValue: "sk-xxx" });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
@@ -85,7 +86,7 @@ describe("AI settings hooks", () => {
       const { useTestProvider } = await import("./use-ai-settings");
       const { result } = renderHook(() => useTestProvider(), { wrapper: TestWrapper });
 
-      result.current.mutate({ provider: "openrouter" });
+      result.current.mutate({ provider: AiProvider.OPENROUTER });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data?.success).toBe(true);
@@ -107,7 +108,7 @@ describe("AI settings hooks", () => {
     it("fetches models for a provider and capability", async () => {
       vi.useRealTimers();
       const { useAiModels } = await import("./use-ai-settings");
-      const { result } = renderHook(() => useAiModels("openrouter", "chat"), {
+      const { result } = renderHook(() => useAiModels(AiProvider.OPENROUTER, "chat"), {
         wrapper: TestWrapper,
       });
 

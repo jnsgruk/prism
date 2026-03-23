@@ -15,7 +15,8 @@ pub async fn similar(
         .find_similar(FindSimilarRequest {
             contribution_id: contribution_id.to_string(),
             limit,
-            platform: platform.map(String::from),
+            platform: super::contributions::platform_str_to_proto(platform.unwrap_or("")),
+            platform_instance: None,
         })
         .await?
         .into_inner();
@@ -38,8 +39,8 @@ pub fn print_similar_items(items: &[SimilarItem]) {
         println!(
             "{:<38} {:<10} {:<16} {:<8.3} {}",
             item.contribution_id,
-            item.platform,
-            item.contribution_type,
+            super::contributions::proto_platform_display(item.platform),
+            super::contributions::proto_contribution_type_display(item.contribution_type),
             item.distance,
             format::truncate(&item.title, 50),
         );

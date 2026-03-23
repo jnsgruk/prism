@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
 // MetricsService provides read access to pre-computed engineering metrics
@@ -129,18 +130,20 @@ message ListPeriodsResponse {
 message ListTeamContributionsRequest {
   string team_id = 1;
   Period period = 2;
-  // Filter by contribution type: "pull_request", "pr_review", "jira_ticket", etc.
-  optional string contribution_type = 3;
-  // Filter by state: "merged", "open", "closed", "in_progress", "APPROVED", etc.
-  optional string state = 4;
+  // Filter by contribution type.
+  ContributionType contribution_type = 3;
+  // Filter by lifecycle state.
+  ContributionState state = 4;
   int32 page_size = 5;
   int32 page_index = 6;
   optional string sort_field = 7;
   optional bool sort_desc = 8;
   // Free-text search across title, author, and repo.
   optional string search = 9;
-  // Filter by platform: "github", "discourse-ubuntu", etc.
-  optional string platform = 10;
+  // Filter by platform.
+  Platform platform = 10;
+  // Filter by platform instance (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 11;
 }
 
 message GetContributionRequest {
@@ -156,17 +159,19 @@ message GetContributionResponse {
 message Contribution {
   string id = 1;
   string person_name = 2;
-  // Platform identifier (e.g. "github", "jira", "discourse-ubuntu").
-  string platform = 3;
-  // Contribution type (e.g. "pull_request", "pr_review", "jira_ticket").
-  string contribution_type = 4;
+  // Platform this contribution was ingested from.
+  Platform platform = 3;
+  // Kind of work item.
+  ContributionType contribution_type = 4;
   // External platform identifier.
   string platform_id = 5;
   string title = 6;
   // URL to the contribution on the external platform.
   string url = 7;
-  // State (e.g. "merged", "open", "closed", "in_progress").
-  string state = 8;
+  // Lifecycle state.
+  ContributionState state = 8;
+  // Instance identifier for multi-instance platforms (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 25;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp closed_at = 10;
   // PR-specific: lines added.
@@ -222,15 +227,19 @@ message GetIndividualProfileResponse {
 
 // PlatformIdentityInfo carries the platform and username for display.
 message PlatformIdentityInfo {
-  string platform = 1;
+  Platform platform = 1;
   string username = 2;
+  // Instance identifier for multi-instance platforms.
+  optional string platform_instance = 3;
 }
 
 // PlatformActivitySummary aggregates contribution counts and platform-specific
 // metrics for a single platform.
 message PlatformActivitySummary {
-  // Platform identifier: "github", "jira", "discourse-ubuntu", etc.
-  string platform = 1;
+  // Platform this activity is from.
+  Platform platform = 1;
+  // Instance identifier for multi-instance platforms.
+  optional string platform_instance = 4;
   int32 contribution_count = 2;
   // Flexible key-value metrics per platform.
   map<string, double> metrics = 3;
@@ -256,20 +265,22 @@ message Percentile {
 
 message ListPersonContributionsRequest {
   string person_id = 1;
-  // Filter by platform: "github", "jira", "discourse-ubuntu", etc.
-  optional string platform = 2;
+  // Filter by platform.
+  Platform platform = 2;
   // Filter by contribution type.
-  optional string contribution_type = 3;
+  ContributionType contribution_type = 3;
   // Only contributions created on or after this date (YYYY-MM-DD).
   optional string since = 4;
   int32 page_size = 5;
   int32 page_index = 6;
   optional string sort_field = 7;
   optional bool sort_desc = 8;
-  // Filter by state: "merged", "open", "closed", "in_progress", "APPROVED", etc.
-  optional string state = 9;
+  // Filter by lifecycle state.
+  ContributionState state = 9;
   // Free-text search across title and repo.
   optional string search = 10;
+  // Filter by platform instance (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 11;
 }
 
 message ListPersonContributionsResponse {

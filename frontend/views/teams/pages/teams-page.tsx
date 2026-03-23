@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
+import { ContributionState, ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
 import { useTeamInsights } from "@/views/teams/hooks/use-insights";
 import { CommunityPanel } from "@/views/teams/components/community-panel";
@@ -234,8 +235,8 @@ const TeamsPage = (): React.ReactElement => {
                     <ContributionTable
                       teamId={effectiveTeamId}
                       period={period}
-                      defaultContributionType="pull_request"
-                      defaultState="merged"
+                      defaultContributionType={ContributionType.PULL_REQUEST}
+                      defaultState={ContributionState.MERGED}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -275,7 +276,7 @@ const TeamsPage = (): React.ReactElement => {
                     <ContributionTable
                       teamId={effectiveTeamId}
                       period={period}
-                      defaultContributionType="pr_review"
+                      defaultContributionType={ContributionType.PR_REVIEW}
                     />
                   </CardContent>
                 </CollapsibleContent>

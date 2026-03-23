@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
 // ReasoningService manages the AI reasoning pipeline — provider configuration,
@@ -53,8 +54,8 @@ service ReasoningService {
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
 message AiTaskConfig {
-  // AI provider: "google" or "openrouter".
-  string provider = 1;
+  // AI inference provider.
+  AiProvider provider = 1;
   // Model identifier (e.g. "gemini-3.1-flash-lite", "anthropic/claude-sonnet-4").
   string model = 2;
 }
@@ -94,8 +95,8 @@ message UpdateAiSettingsResponse {
 }
 
 message SetProviderSecretRequest {
-  // AI provider: "google" or "openrouter".
-  string provider = 1;
+  // AI inference provider.
+  AiProvider provider = 1;
   // Plaintext API key. Encrypted at rest using AES-256-GCM.
   string secret_value = 2;
 }
@@ -103,9 +104,10 @@ message SetProviderSecretRequest {
 message SetProviderSecretResponse {}
 
 message TestProviderRequest {
-  // AI provider: "google" or "openrouter".
-  string provider = 1;
+  // AI inference provider.
+  AiProvider provider = 1;
 }
+
 
 message TestProviderResponse {
   bool success = 1;
@@ -123,8 +125,8 @@ message GetStorageHealthResponse {
 message AiModelInfo {
   // Model identifier used in API calls.
   string id = 1;
-  // Provider name (e.g. "google", "openrouter").
-  string provider = 2;
+  // AI inference provider.
+  AiProvider provider = 2;
   // Human-readable model name.
   string display_name = 3;
   string description = 4;
@@ -139,8 +141,8 @@ message AiModelInfo {
 }
 
 message ListAiModelsRequest {
-  // Filter by provider (empty returns all).
-  string provider = 1;
+  // Filter by provider. UNSPECIFIED returns all providers.
+  AiProvider provider = 1;
   // Filter by capability (empty returns all).
   string capability = 2;
 }
@@ -191,7 +193,7 @@ message TaskSpend {
 
 // ModelSpend aggregates AI costs for a specific provider + model + task combination.
 message ModelSpend {
-  string provider = 1;
+  AiProvider provider = 1;
   string model = 2;
   string task_type = 3;
   double cost_usd = 4;
@@ -204,8 +206,8 @@ message ModelSpend {
 message Enrichment {
   string id = 1;
   string contribution_id = 2;
-  // Enrichment type: "review_depth", "sentiment", "significance", "topic".
-  string enrichment_type = 3;
+  // Kind of enrichment.
+  EnrichmentType enrichment_type = 3;
   // Structured JSON result (score, label, rationale).
   string value_json = 4;
   // AI model used to generate this enrichment.
@@ -251,13 +253,13 @@ message GetEnrichmentPipelineStatusResponse {
 
 // EnrichmentTypeCount is a count of enrichments for a single type.
 message EnrichmentTypeCount {
-  string enrichment_type = 1;
+  EnrichmentType enrichment_type = 1;
   int64 count = 2;
 }
 
 message DeleteEnrichmentsByTypeRequest {
-  // Enrichment type to delete: "review_depth", "sentiment", "significance", "topic".
-  string enrichment_type = 1;
+  // Kind of enrichment to delete.
+  EnrichmentType enrichment_type = 1;
 }
 
 message DeleteEnrichmentsByTypeResponse {
@@ -269,8 +271,10 @@ message FindSimilarRequest {
   string contribution_id = 1;
   // Maximum number of results (default 10, max 50).
   int32 limit = 2;
-  // Filter results by platform.
-  optional string platform = 3;
+  // Filter results by platform. UNSPECIFIED returns all platforms.
+  Platform platform = 3;
+  // Filter by platform instance (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 4;
 }
 
 message SearchByTextRequest {
@@ -278,18 +282,22 @@ message SearchByTextRequest {
   string query_text = 1;
   // Maximum number of results (default 10, max 50).
   int32 limit = 2;
-  // Filter results by platform.
-  optional string platform = 3;
+  // Filter results by platform. UNSPECIFIED returns all platforms.
+  Platform platform = 3;
+  // Filter by platform instance (e.g. "ubuntu" for Discourse).
+  optional string platform_instance = 4;
 }
 
 // SimilarItem represents a contribution found via semantic similarity search.
 message SimilarItem {
   string contribution_id = 1;
   string title = 2;
-  // Platform identifier (e.g. "github", "discourse-ubuntu").
-  string platform = 3;
-  string contribution_type = 4;
-  string state = 5;
+  // Platform this contribution was ingested from.
+  Platform platform = 3;
+  ContributionType contribution_type = 4;
+  ContributionState state = 5;
+  // Instance identifier for multi-instance platforms.
+  optional string platform_instance = 10;
   string author_name = 6;
   // URL on the external platform.
   string external_url = 7;

@@ -86,7 +86,8 @@ export const SecretForm = ({ source }: { source: SourceConfig }): React.ReactEle
   );
 };
 
-/** Buffered secret form — stores values in local state for later submission (no source ID needed). */
+/** Buffered secret form — stores values in local state for later submission (no source ID needed).
+ *  sourceType is the string key from SOURCE_TYPES (e.g. "github"), not a Platform enum. */
 export const BufferedSecretForm = ({
   sourceType,
   secrets,
@@ -96,7 +97,7 @@ export const BufferedSecretForm = ({
   secrets: Record<string, string>;
   onSecretsChange: (secrets: Record<string, string>) => void;
 }): React.ReactElement => {
-  const secretKeys = SECRET_KEYS_BY_TYPE[baseSourceType(sourceType)] ?? ["api_token"];
+  const secretKeys = SECRET_KEYS_BY_TYPE[sourceType] ?? ["api_token"];
 
   if (secretKeys.length === 0) {
     return (

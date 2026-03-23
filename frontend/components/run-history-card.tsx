@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -50,9 +51,10 @@ export const RunHistoryCard = ({
   const statusCounts = useMemo(() => {
     const counts = { completed: 0, failed: 0, running: 0 };
     for (const r of runs) {
-      if (r.status === "completed" || r.status === "completed_with_warnings") counts.completed++;
-      else if (r.status === "failed") counts.failed++;
-      else if (r.status === "running") counts.running++;
+      if (r.status === RunStatus.COMPLETED || r.status === RunStatus.COMPLETED_WITH_WARNINGS)
+        counts.completed++;
+      else if (r.status === RunStatus.FAILED) counts.failed++;
+      else if (r.status === RunStatus.RUNNING) counts.running++;
     }
     return counts;
   }, [runs]);
@@ -66,7 +68,7 @@ export const RunHistoryCard = ({
     if (statusFilter !== "all") {
       result = result.filter((r) => r.status === statusFilter);
     } else if (excludeRunningByDefault) {
-      result = result.filter((r) => r.status !== "running");
+      result = result.filter((r) => r.status !== RunStatus.RUNNING);
     }
     return result;
   }, [runs, statusFilter, excludeRunningByDefault]);

@@ -11,13 +11,19 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { create } from "@bufbuild/protobuf";
 import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { PeriodSchema } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import {
+  ContributionState,
+  ContributionType,
+  Platform,
+} from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { contributionStateLabel, platformLabel } from "@/lib/proto-display";
 import type {
   Contribution,
   ContributionFilters,
   PersonContributionFilters,
 } from "@/lib/hooks/use-metrics";
 import { useListTeamContributions, useListPersonContributions } from "@/lib/hooks/use-metrics";
-import { instanceLabel } from "@/lib/format-metrics";
+
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 const formatTimestamp = (ts?: Timestamp): string => {
@@ -30,17 +36,17 @@ const formatTimestamp = (ts?: Timestamp): string => {
   );
 };
 
-const stateBadgeVariant = (state: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (state.toLowerCase()) {
-    case "merged":
+const stateBadgeVariant = (
+  state: ContributionState,
+): "default" | "secondary" | "destructive" | "outline" => {
+  switch (state) {
+    case ContributionState.MERGED:
+    case ContributionState.APPROVED:
       return "default";
-    case "open":
+    case ContributionState.OPEN:
       return "outline";
-    case "closed":
-      return "destructive";
-    case "approved":
-      return "default";
-    case "changes_requested":
+    case ContributionState.CLOSED:
+    case ContributionState.CHANGES_REQUESTED:
       return "destructive";
     default:
       return "secondary";
@@ -137,7 +143,7 @@ const prStateColumn: ColumnDef<Contribution, unknown> = {
   cell: ({ row }) =>
     row.original.state ? (
       <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px] uppercase">
-        {row.original.state}
+        {contributionStateLabel(row.original.state)}
       </Badge>
     ) : (
       "\u2014"
@@ -152,7 +158,7 @@ const reviewStateColumn: ColumnDef<Contribution, unknown> = {
   cell: ({ row }) =>
     row.original.state ? (
       <Badge variant={stateBadgeVariant(row.original.state)} className="text-[10px]">
-        {row.original.state}
+        {contributionStateLabel(row.original.state)}
       </Badge>
     ) : (
       "\u2014"
@@ -220,9 +226,9 @@ const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const discourseTypeLabel = (contributionType: string): string => {
-  if (contributionType === "discourse_topic") return "Topic";
-  if (contributionType === "discourse_like") return "Like";
+const discourseTypeLabel = (ct: ContributionType): string => {
+  if (ct === ContributionType.DISCOURSE_TOPIC) return "Topic";
+  if (ct === ContributionType.DISCOURSE_LIKE) return "Like";
   return "Post";
 };
 
@@ -241,7 +247,7 @@ const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
   cell: ({ row }) => (
-    <span className="text-muted-foreground">{instanceLabel(row.original.platform)}</span>
+    <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>
   ),
   enableSorting: false,
 };
@@ -250,45 +256,27 @@ const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
 // State filters
 // ---------------------------------------------------------------------------
 
-type PrStateFilter = "all" | "merged" | "open" | "closed";
-type ReviewStateFilter = "all" | "APPROVED" | "COMMENTED" | "CHANGES_REQUESTED" | "DISMISSED";
-type StateFilter = PrStateFilter | ReviewStateFilter;
+type StateFilterValue = "all" | ContributionState;
 
-const allStateFilters = new Set<string>([
+const prStates: StateFilterValue[] = [
   "all",
-  "merged",
-  "open",
-  "closed",
-  "APPROVED",
-  "COMMENTED",
-  "CHANGES_REQUESTED",
-  "DISMISSED",
-]);
-
-const parseStateFilter = (value?: string): StateFilter =>
-  value && allStateFilters.has(value) ? (value as StateFilter) : "all";
-
-const prStates: PrStateFilter[] = ["all", "merged", "open", "closed"];
-const reviewStates: ReviewStateFilter[] = [
+  ContributionState.MERGED,
+  ContributionState.OPEN,
+  ContributionState.CLOSED,
+];
+const reviewStates: StateFilterValue[] = [
   "all",
-  "APPROVED",
-  "COMMENTED",
-  "CHANGES_REQUESTED",
-  "DISMISSED",
+  ContributionState.APPROVED,
+  ContributionState.COMMENTED,
+  ContributionState.CHANGES_REQUESTED,
+  ContributionState.DISMISSED,
 ];
 
-const stateLabel = (s: string): string => {
-  const labels: Record<string, string> = {
-    all: "All",
-    merged: "Merged",
-    open: "Open",
-    closed: "Closed",
-    APPROVED: "Approved",
-    COMMENTED: "Commented",
-    CHANGES_REQUESTED: "Changes Requested",
-    DISMISSED: "Dismissed",
-  };
-  return labels[s] ?? s;
+const parseStateFilter = (value?: ContributionState): StateFilterValue => value ?? "all";
+
+const stateLabel = (s: StateFilterValue): string => {
+  if (s === "all") return "All";
+  return contributionStateLabel(s);
 };
 
 export const ContributionTable = ({
@@ -302,17 +290,15 @@ export const ContributionTable = ({
   teamId?: string;
   personId?: string;
   period?: Period;
-  defaultContributionType?: string;
-  defaultState?: string;
-  defaultPlatform?: string;
+  defaultContributionType?: ContributionType;
+  defaultState?: ContributionState;
+  defaultPlatform?: Platform;
 }): React.ReactElement => {
-  const isReview = defaultContributionType === "pr_review";
-  const isDiscourse =
-    (defaultContributionType?.startsWith("discourse") ?? false) ||
-    (defaultPlatform?.startsWith("discourse") ?? false);
-  const [stateFilter, setStateFilter] = useState<StateFilter>(parseStateFilter(defaultState));
+  const isReview = defaultContributionType === ContributionType.PR_REVIEW;
+  const isDiscourse = defaultPlatform === Platform.DISCOURSE;
+  const [stateFilter, setStateFilter] = useState<StateFilterValue>(parseStateFilter(defaultState));
 
-  const activeStates: StateFilter[] = (() => {
+  const activeStates: StateFilterValue[] = (() => {
     if (isDiscourse) return [];
     if (isReview) return reviewStates;
     return prStates;
@@ -358,9 +344,11 @@ export const ContributionTable = ({
   const sortField = activeSortCol?.id;
   const sortDesc = activeSortCol?.desc;
 
+  const activeState = stateFilter === "all" ? undefined : stateFilter;
+
   const teamFilters: ContributionFilters = {
     contributionType: defaultContributionType,
-    state: stateFilter === "all" ? undefined : stateFilter,
+    state: activeState,
     search: debouncedSearch || undefined,
     sortField,
     sortDesc,
@@ -372,7 +360,7 @@ export const ContributionTable = ({
   const personFilters: PersonContributionFilters = {
     contributionType: isDiscourse ? undefined : defaultContributionType,
     platform: defaultPlatform,
-    state: stateFilter === "all" ? undefined : stateFilter,
+    state: activeState,
     search: debouncedSearch || undefined,
     sortField,
     sortDesc,

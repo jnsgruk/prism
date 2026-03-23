@@ -2,6 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import type { PersonFilter } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   GetTeamResponse,
   GetTeamTreeResponse,
@@ -59,7 +60,7 @@ export const useListPeople = (): UseQueryResult<Person[], Error> =>
 
 export interface PeopleQueryParams {
   search?: string;
-  filter?: string;
+  filter?: PersonFilter;
   teamId?: string;
   pageSize: number;
   pageToken?: string;

@@ -11,6 +11,7 @@ import {
 import { AlertTriangle, Loader2, Square } from "lucide-react";
 
 import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 import { formatDuration, formatFullTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
@@ -33,7 +34,7 @@ export const RunDetailDialog = ({
   cancelPending?: boolean;
 }): React.ReactElement => {
   const runConfig = statusConfig[run.status] ?? defaultStatus;
-  const isRunning = run.status === "running";
+  const isRunning = run.status === RunStatus.RUNNING;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,16 +88,16 @@ export const RunDetailDialog = ({
           {run.errorMessage && (
             <div>
               <p className="text-xs text-muted-foreground">
-                {run.status === "completed_with_warnings" ? "Warnings" : "Error"}
+                {run.status === RunStatus.COMPLETED_WITH_WARNINGS ? "Warnings" : "Error"}
               </p>
               <div
                 className={`mt-1 rounded-md px-3 py-2 text-sm ${
-                  run.status === "completed_with_warnings"
+                  run.status === RunStatus.COMPLETED_WITH_WARNINGS
                     ? "border bg-muted/50 text-foreground"
                     : "bg-destructive/10 text-destructive"
                 }`}
               >
-                {run.status === "completed_with_warnings" && (
+                {run.status === RunStatus.COMPLETED_WITH_WARNINGS && (
                   <div className="mb-1 flex items-center gap-1.5 font-medium">
                     <AlertTriangle className="size-3.5" />
                     Partial completion

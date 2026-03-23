@@ -10,17 +10,19 @@ import {
   GetSourceResponseSchema,
   ListSourcesResponseSchema,
   SetSecretResponseSchema,
+  SourceConfigSchema,
   TestConnectionResponseSchema,
   UpdateSourceResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/config_pb";
+import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { TestWrapper } from "@ps/test-utils";
 
-const mockSource = {
-  sourceId: "src-1",
-  sourceType: "github",
+const mockSource = create(SourceConfigSchema, {
+  id: "src-1",
+  sourceType: Platform.GITHUB,
   name: "github-main",
   enabled: true,
-};
+});
 
 vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
@@ -56,7 +58,7 @@ describe("config hooks", () => {
       const { result } = renderHook(() => useGetSource("src-1"), { wrapper: TestWrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.sourceType).toBe("github");
+      expect(result.current.data?.sourceType).toBe(Platform.GITHUB);
     });
 
     it("is disabled when sourceId is empty", async () => {
@@ -74,7 +76,7 @@ describe("config hooks", () => {
       const { result } = renderHook(() => useCreateSource(), { wrapper: TestWrapper });
 
       result.current.mutate({
-        sourceType: "github",
+        sourceType: Platform.GITHUB,
         name: "new-source",
       });
 

@@ -14,7 +14,8 @@ pub async fn search(
         .search_by_text(SearchByTextRequest {
             query_text: query.to_string(),
             limit,
-            platform: platform.map(String::from),
+            platform: super::contributions::platform_str_to_proto(platform.unwrap_or("")),
+            platform_instance: None,
         })
         .await?
         .into_inner();

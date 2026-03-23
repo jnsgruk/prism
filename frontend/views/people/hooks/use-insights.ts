@@ -2,6 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
+import type { InsightPeriod } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { PersonInsights } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { InsightsService } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { transport } from "@ps/api/transport";
@@ -11,7 +12,7 @@ const insightsClient = createClient(InsightsService, transport);
 
 export const personInsightsKeys = {
   all: ["insights", "person"] as const,
-  person: (personId: string, period: string) =>
+  person: (personId: string, period: InsightPeriod) =>
     [...personInsightsKeys.all, personId, period] as const,
 };
 
