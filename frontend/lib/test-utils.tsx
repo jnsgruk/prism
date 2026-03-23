@@ -1,6 +1,7 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, type RenderOptions } from "@testing-library/react";
+import type { queries } from "@testing-library/dom";
+import { cleanup, render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import { afterEach } from "vitest";
 
 export const createTestQueryClient = (): QueryClient =>
@@ -29,7 +30,8 @@ export const TestWrapper = ({ children }: { children: React.ReactNode }): React.
 export const renderWithProviders = (
   ui: React.ReactElement,
   options?: Omit<RenderOptions, "wrapper">,
-): ReturnType<typeof render> => render(ui, { wrapper: TestWrapper, ...options });
+): RenderResult<typeof queries, HTMLElement, HTMLElement> =>
+  render(ui, { wrapper: TestWrapper, ...options });
 
 /** Call in describe() blocks to auto-cleanup after each test. */
 export const setupCleanup = (): void => {

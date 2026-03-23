@@ -1,6 +1,6 @@
 # Plan 54 — Frontend Test Coverage
 
-**Status:** In Progress — Phase 1 complete
+**Status:** In Progress — Phase 2 complete
 **Created:** 2026-03-23
 
 ## Problem Statement
@@ -142,7 +142,7 @@ This plan proposes a phased approach to build meaningful frontend test coverage,
 
 ---
 
-### Phase 2 — React Hook Tests
+### Phase 2 — React Hook Tests [COMPLETE]
 
 **Goal:** Test hooks that contain meaningful logic beyond simple React Query wrappers. Focus on query key construction, conditional enables, mutation side effects (invalidation chains, token storage), and timeout-based patterns.
 
@@ -192,9 +192,11 @@ This plan proposes a phased approach to build meaningful frontend test coverage,
 
 **Estimated scope:** ~8 new test files.
 
+**Result:** 60 test cases across 6 test files. All pass. Tests cover query key construction, conditional enables (`useGetSource` disabled on empty ID), mutation success callbacks (token storage, query invalidation), timer-based debouncing, and all CRUD operations across auth, config, ingestion, AI settings, and admin hooks.
+
 ---
 
-### Phase 3 — Component Integration Tests
+### Phase 3 — Component Integration Tests [NEXT]
 
 **Goal:** Test components that contain meaningful data transformation, conditional rendering logic, or user interaction handling. Not testing visual appearance — testing behaviour.
 
