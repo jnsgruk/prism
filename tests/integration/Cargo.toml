@@ -41,3 +41,4 @@ wiremock.workspace = true
 reqwest.workspace = true
 async-trait.workspace = true
 futures.workspace = true
+ps-reasoning = { path = "../../crates/ps-reasoning" }
