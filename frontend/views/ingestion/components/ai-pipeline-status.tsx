@@ -7,7 +7,7 @@ import { Brain } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-import { formatRelativeTimeIso } from "@/lib/format";
+import { formatRelativeTime } from "@/lib/format";
 import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
 import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
 import {
@@ -76,7 +76,7 @@ const EnrichmentRow = (): React.ReactElement => {
   const actions = useHandlerActions("EnrichmentHandler", "run_cycle");
 
   const lastRunLabel = status?.lastEnrichmentAt
-    ? formatRelativeTimeIso(status.lastEnrichmentAt)
+    ? formatRelativeTime(status.lastEnrichmentAt)
     : undefined;
 
   return (
@@ -127,7 +127,7 @@ const EmbeddingRow = (): React.ReactElement => {
   const actions = useHandlerActions("EmbeddingHandler", "run_cycle");
 
   const lastRunLabel = embStatus?.lastEmbeddedAt
-    ? formatRelativeTimeIso(embStatus.lastEmbeddedAt)
+    ? formatRelativeTime(embStatus.lastEmbeddedAt)
     : undefined;
 
   const coverage = embStatus ? Math.round(embStatus.coveragePercent) : null;

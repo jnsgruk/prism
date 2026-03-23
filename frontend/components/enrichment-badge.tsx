@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { formatTimestamp } from "@/lib/format";
 import { Brain, MessageCircle, Sparkles, Star, Tag } from "lucide-react";
 
 import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
@@ -136,20 +137,7 @@ const EnrichmentBadge = ({ enrichment }: EnrichmentBadgeProps): React.ReactEleme
           </div>
           <div className="flex justify-between">
             <span>Created</span>
-            <span>
-              {enrichment.createdAt
-                ? new Date(enrichment.createdAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  }) +
-                  " " +
-                  new Date(enrichment.createdAt).toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
-                : "—"}
-            </span>
+            <span>{formatTimestamp(enrichment.createdAt)}</span>
           </div>
           {enrichment.inputHash && (
             <div className="flex justify-between">

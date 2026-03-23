@@ -24,7 +24,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use super::common::{db_err, require_auth};
+use super::common::{db_err, require_auth, to_timestamp};
 
 pub struct ReasoningServiceImpl {
     repos: Repos,
@@ -409,12 +409,17 @@ impl ReasoningService for ReasoningServiceImpl {
             .list_global_settings("ai.models_refreshed.")
             .await
             .map_err(db_err)?;
-        let last_refreshed: std::collections::HashMap<String, String> = settings
+        let last_refreshed: std::collections::HashMap<String, prost_types::Timestamp> = settings
             .into_iter()
             .filter_map(|s| {
                 let provider_name = s.key.strip_prefix("ai.models_refreshed.")?;
-                let ts = s.value.as_str()?.to_string();
-                Some((provider_name.to_string(), ts))
+                let iso = s.value.as_str()?;
+                let dt = time::OffsetDateTime::parse(
+                    iso,
+                    &time::format_description::well_known::Rfc3339,
+                )
+                .ok()?;
+                Some((provider_name.to_string(), to_timestamp(dt)))
             })
             .collect();
 
@@ -647,10 +652,7 @@ impl ReasoningService for ReasoningServiceImpl {
         Ok(Response::new(GetEnrichmentPipelineStatusResponse {
             pending_count: status.pending_count,
             total_enrichments: status.total_enrichments,
-            last_enrichment_at: status.last_enrichment_at.map(|t| {
-                t.format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_default()
-            }),
+            last_enrichment_at: status.last_enrichment_at.map(to_timestamp),
             by_type: status
                 .by_type
                 .into_iter()
@@ -794,10 +796,7 @@ impl ReasoningService for ReasoningServiceImpl {
             queued_count: status.queued_count,
             embedded_count: status.embedded_count,
             total_eligible: status.total_eligible,
-            last_embedded_at: status.last_embedded_at.map(|t| {
-                t.format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_default()
-            }),
+            last_embedded_at: status.last_embedded_at.map(to_timestamp),
             coverage_percent: coverage,
         }))
     }
@@ -813,10 +812,7 @@ fn similar_to_proto(s: ps_core::repo::reasoning::SimilarContribution) -> ProtoSi
         author_name: s.author_name.unwrap_or_default(),
         external_url: s.external_url.unwrap_or_default(),
         distance: s.distance,
-        created_at: s
-            .created_at
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap_or_default(),
+        created_at: Some(to_timestamp(s.created_at)),
     }
 }
 
@@ -830,9 +826,6 @@ fn enrichment_to_proto(e: ps_core::repo::reasoning::EnrichmentRecord) -> ProtoEn
         confidence: e.confidence,
         input_hash: e.input_hash,
         input_preview: e.input_preview,
-        created_at: e
-            .created_at
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap_or_default(),
+        created_at: Some(to_timestamp(e.created_at)),
     }
 }

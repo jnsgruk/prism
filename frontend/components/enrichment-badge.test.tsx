@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +17,7 @@ const makeEnrichment = (
     enrichmentType: type,
     valueJson: JSON.stringify(value),
     modelName: "test-model",
-    createdAt: "2026-03-15T10:00:00Z",
+    createdAt: timestampFromDate(new Date("2026-03-15T10:00:00Z")),
   });
 
 describe("EnrichmentBadge", () => {
@@ -74,7 +75,7 @@ describe("EnrichmentBadge", () => {
       enrichmentType: "review_depth",
       valueJson: "",
       modelName: "test-model",
-      createdAt: "2026-03-15T10:00:00Z",
+      createdAt: timestampFromDate(new Date("2026-03-15T10:00:00Z")),
     });
     const { container } = render(<EnrichmentBadge enrichment={enrichment} />);
     expect(container.firstChild).not.toBeNull();

@@ -15,9 +15,10 @@ pub async fn embed_status(clients: &mut Clients) -> Result<()> {
     println!("  Embedded:  {}", resp.embedded_count);
     println!("  Eligible:  {}", resp.total_eligible);
     println!("  Coverage:  {:.1}%", resp.coverage_percent);
-    if let Some(last) = &resp.last_embedded_at {
-        println!("  Last run:  {last}");
-    }
+    println!(
+        "  Last run:  {}",
+        crate::format::timestamp(resp.last_embedded_at.as_ref())
+    );
 
     Ok(())
 }
