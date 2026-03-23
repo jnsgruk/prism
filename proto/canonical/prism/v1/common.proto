@@ -1,0 +1,32 @@
+// Shared infrastructure types used across multiple Prism services.
+// This file contains pagination, sorting, and other cross-cutting message
+// definitions that are not specific to any single service domain.
+syntax = "proto3";
+
+package canonical.prism.v1;
+
+// PaginationRequest carries page size and cursor for paginated list RPCs.
+message PaginationRequest {
+  // Maximum number of items to return per page.
+  int32 page_size = 1;
+  // Opaque cursor returned by a previous response's PaginationResponse.next_page_token.
+  // Empty for the first page.
+  string page_token = 2;
+}
+
+// PaginationResponse carries the cursor for the next page and the total count
+// of items matching the query.
+message PaginationResponse {
+  // Opaque cursor for the next page. Empty when there are no more results.
+  string next_page_token = 1;
+  // Total number of items matching the query across all pages.
+  int32 total_count = 2;
+}
+
+// SortOrder specifies the field and direction for sorting list results.
+message SortOrder {
+  // Field name to sort by. Valid values depend on the RPC.
+  string field = 1;
+  // When true, sort in descending order. Defaults to ascending.
+  bool descending = 2;
+}

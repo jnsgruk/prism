@@ -1,22 +1,38 @@
+// Authentication and initial setup: user login, session management, and the
+// first-run setup wizard. Also hosts backup preview and restore RPCs which
+// must be accessible before authentication is established.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// AuthService handles authentication, session management, and the initial
+// setup wizard. Backup preview and restore are here because they must be
+// callable before any user account exists.
 service AuthService {
+  // GetSetupStatus returns whether the initial admin account has been created.
   rpc GetSetupStatus(GetSetupStatusRequest) returns (GetSetupStatusResponse);
+  // CompleteSetup creates the first admin user and returns a session token.
   rpc CompleteSetup(CompleteSetupRequest) returns (CompleteSetupResponse);
+  // PreviewBackup accepts a streamed backup archive and returns its metadata
+  // without applying any changes.
   rpc PreviewBackup(stream PreviewBackupRequest) returns (PreviewBackupResponse);
+  // RestoreBackup applies a streamed backup archive, replacing all data.
+  // Returns a new session token for the restored admin user.
   rpc RestoreBackup(stream RestoreBackupRequest) returns (RestoreBackupResponse);
+  // Login authenticates a user by username and password.
   rpc Login(LoginRequest) returns (LoginResponse);
+  // Logout invalidates the current session.
   rpc Logout(LogoutRequest) returns (LogoutResponse);
+  // GetCurrentUser returns the authenticated user's profile.
   rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
 }
 
 message GetSetupStatusRequest {}
 
 message GetSetupStatusResponse {
+  // True once the initial admin account has been created.
   bool setup_complete = 1;
 }
 
@@ -27,6 +43,7 @@ message CompleteSetupRequest {
 }
 
 message CompleteSetupResponse {
+  // Session token for the newly created admin user.
   string session_token = 1;
 }
 
@@ -50,28 +67,39 @@ message GetCurrentUserResponse {
   string user_id = 1;
   string username = 2;
   string display_name = 3;
+  // User role: "admin" or "viewer".
   string role = 4;
 }
 
 message PreviewBackupRequest {
+  // Chunk of the backup archive.
   bytes chunk = 1;
 }
 
 message PreviewBackupResponse {
+  // Schema version of the backup.
   int32 schema_version = 1;
+  // When the backup was originally exported.
   google.protobuf.Timestamp exported_at = 2;
+  // Table name to row count mapping.
   map<string, int32> table_counts = 3;
+  // Names of data sources included in the backup.
   repeated string source_names = 4;
+  // Ingestion watermarks per source at time of export.
   map<string, string> watermarks = 5;
 }
 
 message RestoreBackupRequest {
+  // Chunk of the backup archive.
   bytes chunk = 1;
 }
 
 message RestoreBackupResponse {
+  // Session token for the restored admin user.
   string session_token = 1;
   google.protobuf.Timestamp expires_at = 2;
+  // Table name to restored row count mapping.
   map<string, int32> tables_restored = 3;
+  // Auto-generated password for the restored admin user.
   string generated_password = 4;
 }

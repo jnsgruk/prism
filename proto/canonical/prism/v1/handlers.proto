@@ -1,53 +1,83 @@
+// Ingestion handler orchestration: source status, run history, triggering
+// ingestion and backfill runs, cancellation, and generic handler management
+// for all Restate-based background workers.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// HandlersService provides visibility and control over Restate-based background
+// handlers — ingestion, team sync, metrics compute, and enrichment pipelines.
 service HandlersService {
+  // GetStatus returns the current state of all configured ingestion sources.
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // ListRuns returns recent handler run history, optionally filtered by source or handler.
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+  // TriggerRun starts an incremental ingestion run for a source.
   rpc TriggerRun(TriggerRunRequest) returns (TriggerRunResponse);
+  // TriggerBackfill starts a backfill ingestion run from a specific date.
   rpc TriggerBackfill(TriggerBackfillRequest) returns (TriggerBackfillResponse);
+  // CancelRun cancels an active ingestion run for a source.
   rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+  // TriggerTeamSync starts a GitHub team sync run for a source.
   rpc TriggerTeamSync(TriggerTeamSyncRequest) returns (TriggerTeamSyncResponse);
 
-  // Generic handler management
+  // ListHandlers returns all registered Restate handlers with their active run status.
   rpc ListHandlers(ListHandlersRequest) returns (ListHandlersResponse);
+  // TriggerHandler starts a run on any registered Restate handler by name and method.
   rpc TriggerHandler(TriggerHandlerRequest) returns (TriggerHandlerResponse);
+  // CancelHandlerRun cancels an active run by its Restate invocation ID.
   rpc CancelHandlerRun(CancelHandlerRunRequest) returns (CancelHandlerRunResponse);
 }
 
+// SourceState represents the current operational state of an ingestion source.
 enum SourceState {
   SOURCE_STATE_UNSPECIFIED = 0;
+  // Source is idle and ready for the next run.
   SOURCE_STATE_IDLE = 1;
+  // Source is actively collecting data.
   SOURCE_STATE_COLLECTING = 2;
+  // Source is waiting for a scheduled run.
   SOURCE_STATE_WAITING = 3;
+  // Source's last run encountered an error.
   SOURCE_STATE_ERROR = 4;
 }
 
+// SourceStatus summarises the current state of an ingestion source including
+// run timing, progress, and rate limit information.
 message SourceStatus {
+  // Source name matching the ConfigService source name.
   string name = 1;
+  // Platform type (e.g. "github", "jira", "discourse").
   string source_type = 2;
   SourceState state = 3;
   optional google.protobuf.Timestamp last_run = 4;
   optional google.protobuf.Timestamp next_run = 5;
+  // Total items collected across all runs.
   int32 items_collected = 6;
+  // Rate limit headers from the most recent API call.
   map<string, string> rate_limit_info = 7;
   // Structured progress JSON for active runs. Empty string when not collecting.
   string progress_json = 8;
 }
 
+// HandlerRun represents a single execution of a Restate handler.
 message HandlerRun {
   string id = 1;
+  // Source name this run is associated with.
   string source_name = 2;
   google.protobuf.Timestamp started_at = 3;
   optional google.protobuf.Timestamp completed_at = 4;
+  // Run status: "running", "completed", "completed_with_warnings", "failed", "cancelled".
   string status = 5;
   int32 items_collected = 6;
   optional string error_message = 7;
+  // Cumulative seconds spent waiting for rate limits during this run.
   int32 rate_limit_waits_seconds = 8;
+  // Restate handler name (e.g. "GithubIngestionHandler").
   string handler_name = 9;
+  // Restate method name (e.g. "run_ingestion").
   string handler_method = 10;
 }
 
@@ -58,7 +88,9 @@ message GetStatusResponse {
 }
 
 message ListRunsRequest {
+  // Filter to runs for this source.
   optional string source_name = 1;
+  // Filter to runs for this handler.
   optional string handler_name = 2;
   // When true, exclude system handler runs (identity resolution, metrics compute).
   bool ingestion_only = 3;
@@ -76,6 +108,7 @@ message TriggerRunResponse {}
 
 message TriggerBackfillRequest {
   string source_name = 1;
+  // Start date for the backfill in YYYY-MM-DD format.
   string since_date = 2;
 }
 
@@ -93,20 +126,28 @@ message TriggerTeamSyncRequest {
 
 message TriggerTeamSyncResponse {}
 
-// Generic handler management
-
+// ActiveRun represents a currently executing handler invocation.
 message ActiveRun {
+  // Restate invocation ID.
   string run_id = 1;
+  // Handler method name.
   string method = 2;
+  // Handler key (source name for object handlers, empty for service handlers).
   optional string key = 3;
   google.protobuf.Timestamp started_at = 4;
 }
 
+// HandlerInfo describes a registered Restate handler and its current state.
 message HandlerInfo {
+  // Handler name (e.g. "GithubIngestionHandler", "MetricsComputeHandler").
   string name = 1;
+  // Available methods on this handler.
   repeated string methods = 2;
+  // Human-readable description of the handler's purpose.
   string description = 3;
+  // Whether this handler requires a key (object vs service handler).
   bool requires_key = 4;
+  // Currently active run, if any.
   optional ActiveRun active_run = 5;
 }
 
@@ -119,15 +160,19 @@ message ListHandlersResponse {
 message TriggerHandlerRequest {
   string handler_name = 1;
   string method = 2;
+  // Handler key (required for object handlers).
   string key = 3;
+  // Optional JSON payload for the handler method.
   optional string payload = 4;
 }
 
 message TriggerHandlerResponse {
+  // Restate invocation ID for tracking and cancellation.
   string invocation_id = 1;
 }
 
 message CancelHandlerRunRequest {
+  // Restate invocation ID to cancel.
   string run_id = 1;
 }
 

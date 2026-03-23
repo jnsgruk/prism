@@ -1,5 +1,6 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &[
+        "../../proto/canonical/prism/v1/common.proto",
         "../../proto/canonical/prism/v1/auth.proto",
         "../../proto/canonical/prism/v1/admin.proto",
         "../../proto/canonical/prism/v1/org.proto",

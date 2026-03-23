@@ -1,29 +1,41 @@
+// Administrative operations: backup export, API token management, and data
+// reset. All RPCs in this service require admin role authentication.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// AdminService provides privileged operations for instance administrators
+// including backup export, API token lifecycle, and data reset.
 service AdminService {
+  // CreateBackup streams a full database backup as chunked bytes.
   rpc CreateBackup(CreateBackupRequest) returns (stream CreateBackupResponse);
+  // CreateApiToken generates a new long-lived API token.
   rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
+  // ListApiTokens returns metadata for all active API tokens.
   rpc ListApiTokens(ListApiTokensRequest) returns (ListApiTokensResponse);
+  // RevokeApiToken permanently invalidates an API token.
   rpc RevokeApiToken(RevokeApiTokenRequest) returns (RevokeApiTokenResponse);
+  // ResetData deletes all people, teams, and contributions. Requires confirm=true.
   rpc ResetData(ResetDataRequest) returns (ResetDataResponse);
 }
 
 message CreateBackupRequest {}
 
 message CreateBackupResponse {
+  // Chunk of the backup archive.
   bytes chunk = 1;
 }
 
 message CreateApiTokenRequest {
+  // Human-readable name for the token.
   string name = 1;
 }
 
 message CreateApiTokenResponse {
   string token_id = 1;
+  // The token value. Only returned once at creation time.
   string token = 2;
   string name = 3;
 }
@@ -34,10 +46,13 @@ message ListApiTokensResponse {
   repeated ApiTokenInfo tokens = 1;
 }
 
+// ApiTokenInfo contains metadata about an API token. The token value itself
+// is never returned after creation.
 message ApiTokenInfo {
   string token_id = 1;
   string name = 2;
   google.protobuf.Timestamp created_at = 3;
+  // When the token was last used for authentication. Null if never used.
   google.protobuf.Timestamp last_used_at = 4;
 }
 
@@ -48,6 +63,7 @@ message RevokeApiTokenRequest {
 message RevokeApiTokenResponse {}
 
 message ResetDataRequest {
+  // Safety guard: must be true for the reset to proceed.
   bool confirm = 1;
 }
 

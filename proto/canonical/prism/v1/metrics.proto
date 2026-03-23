@@ -1,25 +1,45 @@
+// Engineering metrics: team performance snapshots, contribution lists,
+// individual profiles, flow metrics (DORA-adjacent), and Discourse activity
+// drilldowns. All metrics are pre-computed by the MetricsComputeHandler.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// MetricsService provides read access to pre-computed engineering metrics
+// including team snapshots, individual profiles, contribution lists, flow
+// metrics, and Discourse community activity.
 service MetricsService {
+  // GetTeamMetrics returns the metrics snapshot for a team in a given period.
   rpc GetTeamMetrics(GetTeamMetricsRequest) returns (GetTeamMetricsResponse);
+  // CompareTeams returns metrics for multiple teams in the same period for
+  // side-by-side comparison.
   rpc CompareTeams(CompareTeamsRequest) returns (CompareTeamsResponse);
+  // ListPeriods returns all available metric periods (weeks, months, quarters).
   rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
+  // ListTeamContributions returns paginated contributions for a team in a period
+  // with filtering and sorting.
   rpc ListTeamContributions(ListTeamContributionsRequest) returns (ListTeamContributionsResponse);
+  // GetContribution returns full details for a single contribution including content.
   rpc GetContribution(GetContributionRequest) returns (GetContributionResponse);
 
-  // Phase 2: individual profile and flow metrics
+  // GetIndividualProfile returns an individual's profile with per-platform
+  // activity summaries and peer comparison context.
   rpc GetIndividualProfile(GetIndividualProfileRequest) returns (GetIndividualProfileResponse);
+  // ListPersonContributions returns paginated contributions for an individual
+  // with filtering and sorting.
   rpc ListPersonContributions(ListPersonContributionsRequest) returns (ListPersonContributionsResponse);
+  // GetFlowMetrics returns DORA-adjacent flow metrics (cycle time, WIP, throughput,
+  // flow efficiency) for a team in a period.
   rpc GetFlowMetrics(GetFlowMetricsRequest) returns (GetFlowMetricsResponse);
 
-  // Discourse activity drilldown (leaf-team level)
+  // GetDiscourseActivity returns Discourse community activity drilldown for a
+  // leaf team: category distribution, activity trend, and top contributors.
   rpc GetDiscourseActivity(GetDiscourseActivityRequest) returns (GetDiscourseActivityResponse);
 }
 
+// PeriodType classifies the granularity of a metric period.
 enum PeriodType {
   PERIOD_TYPE_UNSPECIFIED = 0;
   PERIOD_TYPE_WEEK = 1;
@@ -27,32 +47,39 @@ enum PeriodType {
   PERIOD_TYPE_QUARTER = 3;
 }
 
+// Period identifies a specific time range for metric aggregation.
 message Period {
   PeriodType type = 1;
+  // Start date in YYYY-MM-DD format (inclusive).
   string start = 2;
+  // End date in YYYY-MM-DD format (exclusive).
   string end = 3;
 }
 
+// TeamMetrics is a pre-computed snapshot of a team's engineering activity
+// for a given period.
 message TeamMetrics {
   string team_id = 1;
   string team_name = 2;
   Period period = 3;
+  // Total merged PRs + closed Jira tickets + Discourse contributions.
   int32 throughput = 4;
   float avg_review_turnaround_hours = 5;
   int32 member_count = 6;
+  // Flexible key-value raw metrics for extensibility.
   map<string, string> raw_metrics = 7;
   float review_turnaround_p75_hours = 8;
   float review_turnaround_p90_hours = 9;
   float review_turnaround_p99_hours = 10;
-  // Phase 2 flow metrics (populated when Jira data is available)
+  // Flow metrics. Populated when Jira data is available.
   float avg_cycle_time_hours = 11;
   float wip_avg = 12;
   float flow_efficiency = 13;
   float lead_time_hours = 14;
-  // Platforms contributing data to this snapshot
+  // Platforms contributing data to this snapshot (e.g. "github", "jira").
   repeated string source_platforms = 15;
 
-  // Discourse activity metrics
+  // Discourse community activity metrics.
   int32 discourse_topics_created = 16;
   int32 discourse_posts = 17;
   int32 discourse_replies = 18;
@@ -60,10 +87,13 @@ message TeamMetrics {
   int32 discourse_likes_received = 20;
   int32 discourse_solved_topics = 21;
   int32 discourse_active_participants = 22;
+  // Per-instance breakdown for multi-instance Discourse deployments.
   repeated DiscourseInstanceMetrics discourse_by_instance = 23;
 }
 
+// DiscourseInstanceMetrics aggregates activity for a single Discourse instance.
 message DiscourseInstanceMetrics {
+  // Instance identifier (e.g. "ubuntu", "snap").
   string instance = 1;
   int32 topics_created = 2;
   int32 posts = 3;
@@ -121,33 +151,49 @@ message GetContributionResponse {
   Contribution contribution = 1;
 }
 
+// Contribution represents a single work item from an external platform
+// (PR, review, Jira ticket, Discourse topic/post).
 message Contribution {
   string id = 1;
   string person_name = 2;
+  // Platform identifier (e.g. "github", "jira", "discourse-ubuntu").
   string platform = 3;
+  // Contribution type (e.g. "pull_request", "pr_review", "jira_ticket").
   string contribution_type = 4;
+  // External platform identifier.
   string platform_id = 5;
   string title = 6;
+  // URL to the contribution on the external platform.
   string url = 7;
+  // State (e.g. "merged", "open", "closed", "in_progress").
   string state = 8;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp closed_at = 10;
+  // PR-specific: lines added.
   int32 additions = 11;
+  // PR-specific: lines removed.
   int32 deletions = 12;
+  // PR-specific: number of files changed.
   int32 changed_files = 13;
+  // Number of reviews on this contribution.
   int32 review_count = 14;
+  // Hours from first review request to approval.
   float review_hours = 15;
+  // Repository or project name.
   string repo = 16;
   // Category name (e.g. Discourse category, Jira project).
   string category = 17;
-  // Detail fields (populated by GetContribution, empty in list RPCs).
+  // Full content body. Populated by GetContribution, empty in list RPCs.
   string content = 18;
   google.protobuf.Timestamp updated_at = 19;
   string person_id = 20;
-  // PR-specific: labels, branch names.
+  // PR-specific: labels applied to the pull request.
   repeated string labels = 21;
+  // PR-specific: source branch name.
   string head_ref = 22;
+  // PR-specific: target branch name.
   string base_ref = 23;
+  // PR-specific: whether this is a draft pull request.
   bool draft = 24;
 }
 
@@ -156,10 +202,8 @@ message ListTeamContributionsResponse {
   int32 total_count = 2;
 }
 
-// ---------------------------------------------------------------------------
-// Phase 2: Individual profile
-// ---------------------------------------------------------------------------
-
+// GetIndividualProfile returns a person's cross-platform activity summary
+// and peer comparison for a given period.
 message GetIndividualProfileRequest {
   string person_id = 1;
   Period period = 2;
@@ -172,14 +216,18 @@ message GetIndividualProfileResponse {
   string level = 4;
   repeated PlatformIdentityInfo identities = 5;
   repeated PlatformActivitySummary activity_by_platform = 6;
+  // Peer comparison within the same engineering level.
   PeerComparison peer_context = 7;
 }
 
+// PlatformIdentityInfo carries the platform and username for display.
 message PlatformIdentityInfo {
   string platform = 1;
   string username = 2;
 }
 
+// PlatformActivitySummary aggregates contribution counts and platform-specific
+// metrics for a single platform.
 message PlatformActivitySummary {
   // Platform identifier: "github", "jira", "discourse-ubuntu", etc.
   string platform = 1;
@@ -188,21 +236,23 @@ message PlatformActivitySummary {
   map<string, double> metrics = 3;
 }
 
+// PeerComparison provides percentile context for a person's metrics relative
+// to peers at the same engineering level.
 message PeerComparison {
+  // Engineering level used for comparison.
   string level = 1;
+  // Number of peers at this level.
   int32 peer_count = 2;
+  // Metric name to percentile mapping.
   map<string, Percentile> metrics = 3;
 }
 
+// Percentile carries a metric value and the person's percentile rank.
 message Percentile {
   double value = 1;
-  // 0.0–1.0
+  // Percentile rank (0.0–1.0).
   double percentile = 2;
 }
-
-// ---------------------------------------------------------------------------
-// Phase 2: Person contributions
-// ---------------------------------------------------------------------------
 
 message ListPersonContributionsRequest {
   string person_id = 1;
@@ -227,10 +277,7 @@ message ListPersonContributionsResponse {
   int32 total_count = 2;
 }
 
-// ---------------------------------------------------------------------------
-// Phase 2: Flow metrics
-// ---------------------------------------------------------------------------
-
+// GetFlowMetrics returns DORA-adjacent flow metrics for a team.
 message GetFlowMetricsRequest {
   string team_id = 1;
   Period period = 2;
@@ -242,12 +289,17 @@ message GetFlowMetricsResponse {
   int32 throughput = 3;
   double flow_efficiency = 4;
   double lead_time_hours = 5;
+  // Daily throughput trend over the period.
   repeated ThroughputDataPoint throughput_trend = 6;
+  // Daily WIP trend over the period.
   repeated WipDataPoint wip_trend = 7;
 }
 
+// ThroughputDataPoint is a single day's throughput count with per-source breakdown.
 message ThroughputDataPoint {
+  // Date in YYYY-MM-DD format.
   string date = 1;
+  // Total throughput across all sources.
   int32 count = 2;
   // Deprecated: use by_source instead.
   string source = 3;
@@ -255,43 +307,48 @@ message ThroughputDataPoint {
   map<string, int32> by_source = 4;
 }
 
+// WipDataPoint is a single day's work-in-progress count.
 message WipDataPoint {
+  // Date in YYYY-MM-DD format.
   string date = 1;
   double wip = 2;
 }
 
-// ---------------------------------------------------------------------------
-// Discourse activity drilldown
-// ---------------------------------------------------------------------------
-
 message GetDiscourseActivityRequest {
   string team_id = 1;
   Period period = 2;
-  // Filter by Discourse instance (e.g. "discourse-ubuntu"). Empty = all instances.
+  // Filter by Discourse instance (e.g. "discourse-ubuntu"). Empty returns all instances.
   optional string instance = 3;
 }
 
 message GetDiscourseActivityResponse {
+  // Topic and post counts by Discourse category.
   repeated CategoryCount category_distribution = 1;
+  // Daily activity trend over the period.
   repeated DiscourseActivityDataPoint activity_trend = 2;
+  // Top contributors by post and topic volume.
   repeated TopContributor top_contributors = 3;
 }
 
+// CategoryCount aggregates Discourse topic and post counts for a single category.
 message CategoryCount {
   string category = 1;
   int32 topics = 2;
   int32 posts = 3;
 }
 
+// DiscourseActivityDataPoint is a single day's Discourse activity.
 message DiscourseActivityDataPoint {
+  // Date in YYYY-MM-DD format.
   string date = 1;
   int32 topics = 2;
   int32 posts = 3;
   int32 likes = 4;
-  // Optional per-instance filter
+  // Discourse instance this data point belongs to. Empty when aggregated.
   string instance = 5;
 }
 
+// TopContributor ranks an individual's Discourse activity within a team.
 message TopContributor {
   string person_id = 1;
   string name = 2;

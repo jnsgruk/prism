@@ -1,51 +1,70 @@
+// AI-enriched insights: team, person, and org-wide summaries derived from
+// enrichment data (review depth, sentiment, PR significance, topic
+// classification). Aggregates raw enrichments into actionable dashboards.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
+// InsightsService provides aggregated views over AI enrichment data at
+// team, person, and organisation levels. Data is derived from enrichments
+// stored by the ReasoningService pipeline.
 service InsightsService {
-  // Team-level enrichment insights (review quality, PR impact, Discourse topics).
+  // GetTeamInsights returns enrichment-based insights for a team including
+  // review quality, PR significance, Discourse topic classification, and
+  // notable contributions.
   rpc GetTeamInsights(GetTeamInsightsRequest) returns (GetTeamInsightsResponse);
 
-  // Individual-level enrichment insights (reviewer profile, reviews received).
+  // GetPersonInsights returns enrichment-based insights for an individual
+  // including their reviewer profile and reviews received quality.
   rpc GetPersonInsights(GetPersonInsightsRequest) returns (GetPersonInsightsResponse);
 
-  // Org-wide insights for the dashboard (cross-team comparison, delivery summary).
+  // GetOrgInsights returns org-wide enrichment insights for the dashboard
+  // including cross-team review quality comparison and delivery summary.
   rpc GetOrgInsights(GetOrgInsightsRequest) returns (GetOrgInsightsResponse);
 }
 
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
+// EnrichmentCoverage reports what fraction of contributions have been enriched.
 message EnrichmentCoverage {
   int32 total_contributions = 1;
   int32 enriched_contributions = 2;
+  // Coverage broken down by enrichment type.
   repeated TypeCoverage by_type = 3;
 }
 
+// TypeCoverage reports enrichment coverage for a single enrichment type.
 message TypeCoverage {
+  // Enrichment type (e.g. "review_depth", "sentiment", "significance").
   string enrichment_type = 1;
+  // Number of contributions eligible for this enrichment type.
   int32 eligible = 2;
+  // Number of contributions that have been enriched.
   int32 enriched = 3;
 }
 
+// ReviewQualitySummary aggregates review depth and sentiment analysis across
+// a set of contributions.
 message ReviewQualitySummary {
-  double avg_depth = 1;                    // 1.0–5.0
-  repeated int32 depth_distribution = 2;   // [count_score1, ..., count_score5]
+  // Average review depth score (1.0–5.0).
+  double avg_depth = 1;
+  // Distribution of depth scores: [count_score1, ..., count_score5].
+  repeated int32 depth_distribution = 2;
   int32 total_reviews = 3;
-  double rubber_stamp_pct = 4;             // % scoring 1
-  double deep_review_pct = 5;              // % scoring 4 or 5
+  // Percentage of reviews scoring 1 (rubber stamps).
+  double rubber_stamp_pct = 4;
+  // Percentage of reviews scoring 4 or 5 (deep reviews).
+  double deep_review_pct = 5;
 
-  // Sentiment breakdown
+  // Sentiment breakdown across all reviews.
   int32 constructive_count = 6;
   int32 neutral_count = 7;
   int32 critical_count = 8;
   int32 hostile_count = 9;
 
-  // Top reviewers by depth (min N reviews threshold)
+  // Top reviewers ranked by average depth (minimum review threshold applied).
   repeated ReviewerDepth top_reviewers = 10;
 }
 
+// ReviewerDepth identifies a reviewer and their average review depth.
 message ReviewerDepth {
   string person_id = 1;
   string person_name = 2;
@@ -53,6 +72,7 @@ message ReviewerDepth {
   double avg_depth = 4;
 }
 
+// SignificanceSummary counts PRs by significance tier.
 message SignificanceSummary {
   int32 significant_count = 1;
   int32 notable_count = 2;
@@ -60,29 +80,39 @@ message SignificanceSummary {
   double avg_confidence = 4;
 }
 
+// TopicCategorySummary aggregates Discourse topic classification results.
 message TopicCategorySummary {
   repeated TopicCategoryCount categories = 1;
   int32 total_classified = 2;
 }
 
+// TopicCategoryCount is a single topic category and its count.
 message TopicCategoryCount {
   string category = 1;
   int32 count = 2;
 }
 
+// NotableContribution highlights a contribution flagged by an enrichment as
+// particularly noteworthy (high review depth, significant PR, etc.).
 message NotableContribution {
   string contribution_id = 1;
   string title = 2;
   string url = 3;
   string person_name = 4;
+  // Platform identifier (e.g. "github", "discourse-ubuntu").
   string platform = 5;
+  // Contribution type (e.g. "pull_request", "pr_review").
   string contribution_type = 6;
-  string enrichment_type = 7;     // which enrichment flagged this
-  string value_summary = 8;       // e.g. "Score 5 — thorough architectural review"
+  // Which enrichment type flagged this contribution.
+  string enrichment_type = 7;
+  // Human-readable summary (e.g. "Score 5 — thorough architectural review").
+  string value_summary = 8;
+  // AI-generated rationale for why this contribution is notable.
   string rationale = 9;
   double confidence = 10;
 }
 
+// DepthBySignificance cross-references review depth with PR significance tier.
 message DepthBySignificance {
   double avg_depth_significant = 1;
   double avg_depth_notable = 2;
@@ -92,32 +122,33 @@ message DepthBySignificance {
   int32 routine_review_count = 6;
 }
 
-// Period-over-period trend deltas from stored snapshots.
-// All delta fields represent "current - previous"; positive = improvement.
-// Only populated when a prior-period snapshot exists.
+// InsightTrend carries period-over-period deltas from stored snapshots.
+// All delta fields represent "current - previous"; positive values indicate
+// improvement (except rubber_stamp_pct_delta where negative is improvement).
 message InsightTrend {
-  bool has_previous = 1;            // false if no prior snapshot exists
-  double avg_depth_delta = 2;       // change in avg review depth
-  double rubber_stamp_pct_delta = 3; // change in rubber-stamp % (negative = improvement)
-  double deep_review_pct_delta = 4;  // change in deep review %
-  int32 review_count_delta = 5;      // change in review count
-  int32 significant_count_delta = 6; // change in significant PR count
+  // False if no prior-period snapshot exists for comparison.
+  bool has_previous = 1;
+  double avg_depth_delta = 2;
+  // Negative values indicate improvement (fewer rubber stamps).
+  double rubber_stamp_pct_delta = 3;
+  double deep_review_pct_delta = 4;
+  int32 review_count_delta = 5;
+  int32 significant_count_delta = 6;
 }
-
-// ---------------------------------------------------------------------------
-// GetTeamInsights
-// ---------------------------------------------------------------------------
 
 message GetTeamInsightsRequest {
   string team_id = 1;
-  string period = 2;              // "last_week", "last_month", etc.
-  bool include_descendants = 3;   // true for parent team roll-ups
+  // Period preset: "last_week", "last_month", "last_quarter".
+  string period = 2;
+  // When true, include contributions from all descendant teams.
+  bool include_descendants = 3;
 }
 
 message GetTeamInsightsResponse {
   TeamInsights insights = 1;
 }
 
+// TeamInsights bundles all enrichment-derived insights for a team.
 message TeamInsights {
   EnrichmentCoverage coverage = 1;
   ReviewQualitySummary review_quality = 2;
@@ -128,12 +159,9 @@ message TeamInsights {
   InsightTrend trend = 7;
 }
 
-// ---------------------------------------------------------------------------
-// GetPersonInsights
-// ---------------------------------------------------------------------------
-
 message GetPersonInsightsRequest {
   string person_id = 1;
+  // Period preset: "last_week", "last_month", "last_quarter".
   string period = 2;
 }
 
@@ -141,58 +169,71 @@ message GetPersonInsightsResponse {
   PersonInsights insights = 1;
 }
 
+// PersonInsights bundles all enrichment-derived insights for an individual.
 message PersonInsights {
   EnrichmentCoverage coverage = 1;
+  // Profile of reviews this person has given.
   ReviewerProfile reviewer_profile = 2;
+  // Summary of reviews this person has received.
   ReviewsReceivedSummary reviews_received = 3;
   SignificanceSummary pr_impact = 4;
   TopicCategorySummary discourse_topics = 5;
+  // Notable contributions by this person.
   repeated NotableContribution highlights = 6;
 }
 
+// ReviewerProfile describes a person's review behaviour.
 message ReviewerProfile {
+  // Average depth score of reviews given (1.0–5.0).
   double avg_depth = 1;
+  // Distribution of depth scores: [count_score1, ..., count_score5].
   repeated int32 depth_distribution = 2;
   int32 total_reviews_given = 3;
+  // Percentage of reviews scoring 1 (rubber stamps).
   double rubber_stamp_pct = 4;
 
-  // Sentiment of their reviews
+  // Sentiment breakdown of reviews given.
   int32 constructive_count = 5;
   int32 neutral_count = 6;
   int32 critical_count = 7;
 }
 
+// ReviewsReceivedSummary describes the quality of reviews a person has received.
 message ReviewsReceivedSummary {
   double avg_depth_received = 1;
   int32 total_reviews_received = 2;
-  double deep_review_pct = 3;      // % of reviews scoring 4+
+  // Percentage of reviews scoring 4+ (deep reviews).
+  double deep_review_pct = 3;
 }
 
-// ---------------------------------------------------------------------------
-// GetOrgInsights
-// ---------------------------------------------------------------------------
-
 message GetOrgInsightsRequest {
+  // Period preset: "last_week", "last_month", "last_quarter".
   string period = 1;
-  string team_id = 2;  // optional: scope to a subtree (empty = org-wide)
+  // Optional: scope to a subtree rooted at this team. Empty for org-wide.
+  string team_id = 2;
 }
 
 message GetOrgInsightsResponse {
   OrgInsights insights = 1;
 }
 
+// OrgInsights bundles org-wide enrichment insights for the dashboard.
 message OrgInsights {
   EnrichmentCoverage coverage = 1;
   ReviewQualitySummary review_quality = 2;
+  // Per-team review quality for cross-team comparison.
   repeated TeamReviewComparison team_comparison = 3;
   SignificanceSummary pr_significance = 4;
   TopicCategorySummary discourse_topics = 5;
+  // Org-wide notable contributions.
   repeated NotableContribution org_highlights = 6;
   OrgDeliverySummary delivery = 7;
   DepthBySignificance depth_by_significance = 8;
   InsightTrend trend = 9;
 }
 
+// TeamReviewComparison provides review quality metrics for a single team,
+// used in the org-wide cross-team comparison view.
 message TeamReviewComparison {
   string team_id = 1;
   string team_name = 2;
@@ -204,6 +245,7 @@ message TeamReviewComparison {
   int32 critical_count = 8;
 }
 
+// OrgDeliverySummary provides high-level delivery counts across the organisation.
 message OrgDeliverySummary {
   int32 total_prs_merged = 1;
   int32 total_reviews = 2;

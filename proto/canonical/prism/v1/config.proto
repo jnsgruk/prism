@@ -1,3 +1,5 @@
+// Data source configuration: CRUD for sources (GitHub, Jira, Discourse, etc.),
+// encrypted secret management, and connection testing.
 syntax = "proto3";
 
 package canonical.prism.v1;
@@ -5,23 +7,40 @@ package canonical.prism.v1;
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
+// ConfigService manages data source configurations — the external platforms
+// from which Prism ingests contributions (GitHub, Jira, Discourse, etc.).
 service ConfigService {
+  // ListSources returns all configured data sources.
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  // GetSource returns a single data source by ID.
   rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  // CreateSource adds a new data source configuration.
   rpc CreateSource(CreateSourceRequest) returns (CreateSourceResponse);
+  // UpdateSource modifies a source's settings, schedule, or enabled state.
   rpc UpdateSource(UpdateSourceRequest) returns (UpdateSourceResponse);
+  // DeleteSource removes a data source and its associated secrets.
   rpc DeleteSource(DeleteSourceRequest) returns (DeleteSourceResponse);
+  // SetSecret stores an encrypted secret (API token, password) for a source.
   rpc SetSecret(SetSecretRequest) returns (SetSecretResponse);
+  // TestConnection verifies connectivity to the source's external platform.
   rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse);
 }
 
+// SourceConfig represents a configured data source. Secret values are never
+// returned — only a boolean map indicating which secrets are set.
 message SourceConfig {
   string id = 1;
+  // Platform type (e.g. "github", "jira", "discourse").
   string source_type = 2;
+  // Human-readable name for this source.
   string name = 3;
+  // Whether ingestion is enabled for this source.
   bool enabled = 4;
+  // Platform-specific settings (e.g. org name, base URL, categories).
   google.protobuf.Struct settings = 5;
+  // Map of secret key to whether a value has been set (e.g. {"api_token": true}).
   map<string, bool> secret_status = 6;
+  // Cron expression for scheduled ingestion (e.g. "0 */4 * * *"). Empty for manual-only.
   optional string schedule_cron = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
@@ -42,6 +61,7 @@ message GetSourceResponse {
 }
 
 message CreateSourceRequest {
+  // Platform type (e.g. "github", "jira", "discourse").
   string source_type = 1;
   string name = 2;
   google.protobuf.Struct settings = 3;
@@ -71,7 +91,9 @@ message DeleteSourceResponse {}
 
 message SetSecretRequest {
   string source_id = 1;
+  // Secret key name (e.g. "api_token", "email").
   string secret_key = 2;
+  // Plaintext secret value. Encrypted at rest using AES-256-GCM.
   string secret_value = 3;
 }
 
@@ -83,6 +105,8 @@ message TestConnectionRequest {
 
 message TestConnectionResponse {
   bool success = 1;
+  // Error message when success is false.
   string error_message = 2;
+  // Platform-specific connection details (e.g. rate limit remaining, org name).
   map<string, string> details = 3;
 }

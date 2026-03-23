@@ -1,35 +1,65 @@
+// Organisation structure management: teams, people, platform identities, and
+// GitHub team mapping. Provides the org hierarchy that drives metric aggregation
+// and access scoping across all other services.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
+import "canonical/prism/v1/common.proto";
+
+// OrgService manages the organisational hierarchy — teams, people, platform
+// identities, and the mapping between GitHub teams and Prism teams.
 service OrgService {
+  // ListTeams returns teams, optionally filtered by parent or type.
   rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
+  // GetTeam returns a single team with its members.
   rpc GetTeam(GetTeamRequest) returns (GetTeamResponse);
+  // GetTeamTree returns the full team hierarchy as a forest of roots with nested children.
   rpc GetTeamTree(GetTeamTreeRequest) returns (GetTeamTreeResponse);
+  // CreateTeam creates a new team in the org hierarchy.
   rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse);
+  // UpdateTeam modifies a team's name, parent, or lead.
   rpc UpdateTeam(UpdateTeamRequest) returns (UpdateTeamResponse);
+  // DeleteTeam removes a team and unassigns its members.
   rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
+  // ListPeople returns people with optional search, filtering, pagination, and sorting.
   rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse);
+  // ImportDirectory imports people, teams, and identities from a CSV directory export.
   rpc ImportDirectory(ImportDirectoryRequest) returns (ImportDirectoryResponse);
+  // UpdatePerson modifies a person's name, email, or level.
   rpc UpdatePerson(UpdatePersonRequest) returns (UpdatePersonResponse);
+  // DeactivatePerson marks a person as inactive, excluding them from future metrics.
   rpc DeactivatePerson(DeactivatePersonRequest) returns (DeactivatePersonResponse);
+  // ReactivatePerson restores an inactive person.
   rpc ReactivatePerson(ReactivatePersonRequest) returns (ReactivatePersonResponse);
+  // AssignPersonToTeam assigns a person to a team.
   rpc AssignPersonToTeam(AssignPersonToTeamRequest) returns (AssignPersonToTeamResponse);
+  // RemovePersonFromTeam removes a person from a team.
   rpc RemovePersonFromTeam(RemovePersonFromTeamRequest) returns (RemovePersonFromTeamResponse);
+  // ListUnassignedPeople returns all people not assigned to any team.
   rpc ListUnassignedPeople(ListUnassignedPeopleRequest) returns (ListUnassignedPeopleResponse);
 
-  // Jira user import
+  // ImportJiraUsers imports Jira user identities from a CSV export and maps them
+  // to existing people by name or email.
   rpc ImportJiraUsers(ImportJiraUsersRequest) returns (ImportJiraUsersResponse);
 
-  // GitHub team management
+  // ListGithubTeams returns GitHub teams synced from configured GitHub sources.
   rpc ListGithubTeams(ListGithubTeamsRequest) returns (ListGithubTeamsResponse);
+  // ListTeamGithubTeams returns GitHub teams currently mapped to a Prism team.
   rpc ListTeamGithubTeams(ListTeamGithubTeamsRequest) returns (ListTeamGithubTeamsResponse);
+  // AssignGithubTeam maps a GitHub team to a Prism team for repo-scoped ingestion.
   rpc AssignGithubTeam(AssignGithubTeamRequest) returns (AssignGithubTeamResponse);
+  // UnassignGithubTeam removes a GitHub team mapping from a Prism team.
   rpc UnassignGithubTeam(UnassignGithubTeamRequest) returns (UnassignGithubTeamResponse);
+  // GetTeamMappingSuggestions returns auto-detected mapping suggestions based on
+  // member overlap between GitHub teams and Prism teams.
   rpc GetTeamMappingSuggestions(GetTeamMappingSuggestionsRequest) returns (GetTeamMappingSuggestionsResponse);
+  // DismissTeamMappingSuggestion hides a mapping suggestion so it is not shown again.
   rpc DismissTeamMappingSuggestion(DismissTeamMappingSuggestionRequest) returns (DismissTeamMappingSuggestionResponse);
 }
 
+// TeamType classifies teams in the organisational hierarchy from broad (org) to
+// narrow (squad).
 enum TeamType {
   TEAM_TYPE_UNSPECIFIED = 0;
   TEAM_TYPE_ORG = 1;
@@ -38,38 +68,55 @@ enum TeamType {
   TEAM_TYPE_SQUAD = 4;
 }
 
+// Team represents a node in the organisational hierarchy.
 message Team {
   string id = 1;
   string name = 2;
+  // Organisation name this team belongs to.
   string org_name = 3;
   optional string parent_team_id = 4;
+  // Person ID of the team lead.
   optional string lead_id = 5;
   reserved 6; // was github_team_slug, replaced by team_github_team_mappings
+  // Direct member count (excludes descendants).
   int32 member_count = 7;
   TeamType team_type = 8;
+  // Total member count including all descendant teams.
   int32 total_member_count = 9;
+  // Child teams in the hierarchy. Populated by GetTeamTree.
   repeated Team children = 10;
+  // Display name of the team lead.
   optional string lead_name = 11;
 }
 
+// Person represents an individual contributor tracked by Prism.
 message Person {
   string id = 1;
   string name = 2;
   optional string email = 3;
+  // Engineering level or role designation (e.g. "Senior", "Staff").
   optional string level = 4;
+  // Platform identities linking this person to external accounts.
   repeated PlatformIdentity identities = 5;
+  // Whether this person is active. Inactive people are excluded from metrics.
   bool active = 6;
+  // Team name for display purposes. Empty if unassigned.
   optional string team_name = 7;
   optional string team_id = 8;
 }
 
+// PlatformIdentity links a person to an external platform account.
 message PlatformIdentity {
+  // Platform identifier (e.g. "github", "jira", "discourse-ubuntu").
   string platform = 1;
+  // Username on the external platform.
   string username = 2;
 }
 
 message ListTeamsRequest {
+  // Filter to teams under this parent. Empty returns top-level teams.
   optional string parent_team_id = 1;
+  // Filter to teams of this type.
   optional TeamType team_type = 2;
 }
 
@@ -83,12 +130,14 @@ message GetTeamRequest {
 
 message GetTeamResponse {
   Team team = 1;
+  // Members directly assigned to this team.
   repeated Person members = 2;
 }
 
 message GetTeamTreeRequest {}
 
 message GetTeamTreeResponse {
+  // Root-level teams with nested children forming the full hierarchy.
   repeated Team roots = 1;
 }
 
@@ -96,8 +145,10 @@ message CreateTeamRequest {
   string name = 1;
   TeamType team_type = 2;
   optional string parent_team_id = 3;
+  // Person ID of the initial team lead.
   optional string lead_id = 4;
   reserved 5; // was github_team_slug
+  // Organisation name this team belongs to.
   string org_name = 6;
 }
 
@@ -123,24 +174,11 @@ message DeleteTeamRequest {
 
 message DeleteTeamResponse {}
 
-message PaginationRequest {
-  int32 page_size = 1;
-  string page_token = 2;
-}
-
-message PaginationResponse {
-  string next_page_token = 1;
-  int32 total_count = 2;
-}
-
-message SortOrder {
-  string field = 1;
-  bool descending = 2;
-}
-
 message ListPeopleRequest {
   optional bool active_only = 1;
+  // Free-text search across name, email, and platform usernames.
   optional string search = 2;
+  // Filter to people assigned to this team.
   optional string team_id = 3;
   // Filter preset: "unassigned" or "inactive".
   optional string filter = 4;
@@ -154,6 +192,7 @@ message ListPeopleResponse {
 }
 
 message ImportDirectoryRequest {
+  // CSV file content for directory import.
   bytes file_content = 1;
 }
 
@@ -163,7 +202,9 @@ message ImportDirectoryResponse {
   int32 identities_mapped = 3;
   repeated string warnings = 4;
   int32 people_updated = 5;
+  // Number of people in the directory that are no longer present.
   int32 stale_people_count = 6;
+  // Number of people not assigned to any team after import.
   int32 unassigned_count = 7;
 }
 
@@ -210,10 +251,10 @@ message ListUnassignedPeopleResponse {
   repeated Person people = 1;
 }
 
-// GitHub team types and RPCs
-
+// GitHubTeam represents a team synced from a GitHub organisation.
 message GitHubTeam {
   string id = 1;
+  // ID of the Prism source config that discovered this team.
   string source_id = 2;
   string github_org = 3;
   int64 github_team_id = 4;
@@ -224,6 +265,8 @@ message GitHubTeam {
   int64 repo_count = 9;
 }
 
+// TeamMappingSuggestion is an auto-detected mapping between a GitHub team and a
+// Prism team based on member overlap.
 message TeamMappingSuggestion {
   string github_team_id = 1;
   string github_team_name = 2;
@@ -231,13 +274,18 @@ message TeamMappingSuggestion {
   string github_team_slug = 4;
   string prism_team_id = 5;
   string prism_team_name = 6;
+  // Number of members present in both the GitHub team and the Prism team.
   int64 overlap_count = 7;
+  // Fraction of GitHub team members that overlap (0.0–1.0).
   double github_coverage = 8;
+  // Fraction of Prism team members that overlap (0.0–1.0).
   double prism_coverage = 9;
 }
 
 message ListGithubTeamsRequest {
+  // Free-text search across team name and slug.
   optional string search = 1;
+  // Filter to teams from this GitHub organisation.
   optional string github_org = 2;
 }
 
@@ -280,16 +328,17 @@ message DismissTeamMappingSuggestionRequest {
 
 message DismissTeamMappingSuggestionResponse {}
 
-// Jira user CSV import
-
 message ImportJiraUsersRequest {
+  // CSV file content for Jira user export.
   bytes file_content = 1;
   // Source name for identity platform (e.g. "jira").
   string source_name = 2;
 }
 
 message ImportJiraUsersResponse {
+  // Number of Jira users matched to existing people.
   int32 identities_mapped = 1;
+  // Number of Jira users that could not be matched.
   int32 unmatched_users = 2;
   repeated string warnings = 3;
 }

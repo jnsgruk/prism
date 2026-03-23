@@ -1,50 +1,76 @@
+// AI reasoning pipeline: provider configuration, model catalogue, cost
+// tracking, enrichment lifecycle, and semantic similarity search via
+// vector embeddings. Supports Google Gemini and OpenRouter providers.
 syntax = "proto3";
 
 package canonical.prism.v1;
 
+// ReasoningService manages the AI reasoning pipeline — provider configuration,
+// model discovery, cost tracking, enrichment execution, and vector-based
+// semantic similarity search.
 service ReasoningService {
-  // AI Settings
+  // GetAiSettings returns the current AI provider and model configuration.
   rpc GetAiSettings(GetAiSettingsRequest) returns (GetAiSettingsResponse);
+  // UpdateAiSettings modifies AI provider, model, or budget configuration.
   rpc UpdateAiSettings(UpdateAiSettingsRequest) returns (UpdateAiSettingsResponse);
+  // SetProviderSecret stores an encrypted API key for an AI provider.
   rpc SetProviderSecret(SetProviderSecretRequest) returns (SetProviderSecretResponse);
+  // TestProvider verifies connectivity to an AI provider using its stored key.
   rpc TestProvider(TestProviderRequest) returns (TestProviderResponse);
+  // GetStorageHealth checks connectivity to the S3/RustFS object store used
+  // for embedding storage.
   rpc GetStorageHealth(GetStorageHealthRequest) returns (GetStorageHealthResponse);
 
-  // Cost Dashboard
+  // GetCostSummary returns AI spend broken down by day, task, and model.
   rpc GetCostSummary(GetCostSummaryRequest) returns (GetCostSummaryResponse);
 
-  // Model Catalogue
+  // ListAiModels returns available models from configured AI providers.
   rpc ListAiModels(ListAiModelsRequest) returns (ListAiModelsResponse);
+  // RefreshModelCatalogue triggers a background refresh of the model catalogue
+  // from all configured providers.
   rpc RefreshModelCatalogue(RefreshModelCatalogueRequest) returns (RefreshModelCatalogueResponse);
 
-  // Enrichments
+  // GetEnrichments returns all enrichments for a single contribution.
   rpc GetEnrichments(GetEnrichmentsRequest) returns (GetEnrichmentsResponse);
+  // GetEnrichmentsByContributions returns enrichments for multiple contributions.
   rpc GetEnrichmentsByContributions(GetEnrichmentsByContributionsRequest) returns (GetEnrichmentsByContributionsResponse);
+  // GetEnrichmentPipelineStatus returns the current state of the enrichment pipeline.
   rpc GetEnrichmentPipelineStatus(GetEnrichmentPipelineStatusRequest) returns (GetEnrichmentPipelineStatusResponse);
+  // DeleteEnrichmentsByType deletes all enrichments of a given type, allowing
+  // re-enrichment with updated models or prompts.
   rpc DeleteEnrichmentsByType(DeleteEnrichmentsByTypeRequest) returns (DeleteEnrichmentsByTypeResponse);
 
-  // Similarity (embeddings)
+  // FindSimilar returns contributions semantically similar to a given contribution
+  // using vector embeddings.
   rpc FindSimilar(FindSimilarRequest) returns (FindSimilarResponse);
+  // SearchByText returns contributions semantically matching a free-text query.
   rpc SearchByText(SearchByTextRequest) returns (SearchByTextResponse);
+  // GetEmbeddingStatus returns the current state of the embedding pipeline.
   rpc GetEmbeddingStatus(GetEmbeddingStatusRequest) returns (GetEmbeddingStatusResponse);
 }
 
-// ---------------------------------------------------------------------------
-// AI Settings
-// ---------------------------------------------------------------------------
-
+// AiTaskConfig specifies the provider and model for a single AI task type.
 message AiTaskConfig {
-  string provider = 1; // "google" or "openrouter"
-  string model = 2;    // e.g. "gemini-3.1-flash-lite"
+  // AI provider: "google" or "openrouter".
+  string provider = 1;
+  // Model identifier (e.g. "gemini-3.1-flash-lite", "anthropic/claude-sonnet-4").
+  string model = 2;
 }
 
+// AiSettings holds the complete AI configuration for the instance.
 message AiSettings {
+  // Model used for contribution enrichment (review depth, sentiment, etc.).
   AiTaskConfig enrichment = 1;
+  // Model used for insight generation.
   AiTaskConfig insights = 2;
+  // Model used for agentic reasoning tasks.
   AiTaskConfig agentic = 3;
+  // Model used for generating vector embeddings.
   AiTaskConfig embeddings = 4;
+  // Monthly budget cap in USD. Null means unlimited.
   optional double budget_cap_usd = 5;
-  map<string, bool> provider_secret_status = 6; // which providers have keys set
+  // Map of provider name to whether an API key is stored (e.g. {"google": true}).
+  map<string, bool> provider_secret_status = 6;
 }
 
 message GetAiSettingsRequest {}
@@ -66,14 +92,17 @@ message UpdateAiSettingsResponse {
 }
 
 message SetProviderSecretRequest {
-  string provider = 1;  // "google" or "openrouter"
+  // AI provider: "google" or "openrouter".
+  string provider = 1;
+  // Plaintext API key. Encrypted at rest using AES-256-GCM.
   string secret_value = 2;
 }
 
 message SetProviderSecretResponse {}
 
 message TestProviderRequest {
-  string provider = 1; // "google" or "openrouter"
+  // AI provider: "google" or "openrouter".
+  string provider = 1;
 }
 
 message TestProviderResponse {
@@ -88,43 +117,47 @@ message GetStorageHealthResponse {
   string error_message = 2;
 }
 
-// ---------------------------------------------------------------------------
-// Model Catalogue
-// ---------------------------------------------------------------------------
-
+// AiModelInfo describes a single AI model from a provider's catalogue.
 message AiModelInfo {
+  // Model identifier used in API calls.
   string id = 1;
+  // Provider name (e.g. "google", "openrouter").
   string provider = 2;
+  // Human-readable model name.
   string display_name = 3;
   string description = 4;
+  // Maximum context window in tokens.
   int32 context_length = 5;
+  // Cost per million input tokens in USD.
   optional double input_price_per_million = 6;
+  // Cost per million output tokens in USD.
   optional double output_price_per_million = 7;
+  // Capabilities: "text", "embeddings", "vision", etc.
   repeated string capabilities = 8;
 }
 
 message ListAiModelsRequest {
-  string provider = 1;     // filter by provider (empty = all)
-  string capability = 2;   // filter by capability (empty = all)
+  // Filter by provider (empty returns all).
+  string provider = 1;
+  // Filter by capability (empty returns all).
+  string capability = 2;
 }
 
 message ListAiModelsResponse {
   repeated AiModelInfo models = 1;
-  map<string, string> last_refreshed = 2; // provider → ISO timestamp
+  // Map of provider name to ISO 8601 timestamp of last catalogue refresh.
+  map<string, string> last_refreshed = 2;
 }
 
 message RefreshModelCatalogueRequest {}
 
 message RefreshModelCatalogueResponse {
+  // True if a refresh was started; false if one was already in progress.
   bool started = 1;
 }
 
-// ---------------------------------------------------------------------------
-// Cost Dashboard
-// ---------------------------------------------------------------------------
-
 message GetCostSummaryRequest {
-  // Number of days to include (default 7)
+  // Number of days to include in the summary. Defaults to 7.
   int32 days = 1;
 }
 
@@ -136,13 +169,17 @@ message GetCostSummaryResponse {
   repeated ModelSpend model_breakdown = 5;
 }
 
+// DailySpend aggregates AI costs for a single day.
 message DailySpend {
-  string date = 1; // ISO 8601 date
+  // Date in YYYY-MM-DD format.
+  string date = 1;
   double cost_usd = 2;
   int64 request_count = 3;
 }
 
+// TaskSpend aggregates AI costs for a single task type.
 message TaskSpend {
+  // Task type: "enrichment", "insights", "embeddings", etc.
   string task_type = 1;
   double cost_usd = 2;
   int64 prompt_tokens = 3;
@@ -150,6 +187,7 @@ message TaskSpend {
   int64 request_count = 5;
 }
 
+// ModelSpend aggregates AI costs for a specific provider + model + task combination.
 message ModelSpend {
   string provider = 1;
   string model = 2;
@@ -160,20 +198,24 @@ message ModelSpend {
   int64 request_count = 7;
 }
 
-// ---------------------------------------------------------------------------
-// Enrichments
-// ---------------------------------------------------------------------------
-
+// Enrichment represents a single AI-generated annotation on a contribution.
 message Enrichment {
   string id = 1;
   string contribution_id = 2;
-  string enrichment_type = 3;     // "review_depth", "sentiment", "significance", "topic"
-  string value_json = 4;          // structured JSON result (score, label, rationale)
+  // Enrichment type: "review_depth", "sentiment", "significance", "topic".
+  string enrichment_type = 3;
+  // Structured JSON result (score, label, rationale).
+  string value_json = 4;
+  // AI model used to generate this enrichment.
   string model_name = 5;
+  // Model confidence score (0.0–1.0).
   optional float confidence = 6;
+  // SHA-256 hash of the input used for deduplication.
   optional string input_hash = 7;
+  // Truncated preview of the input for debugging.
   optional string input_preview = 8;
-  string created_at = 9;          // ISO 8601 timestamp
+  // ISO 8601 timestamp of when this enrichment was created.
+  string created_at = 9;
 }
 
 message GetEnrichmentsRequest {
@@ -195,18 +237,24 @@ message GetEnrichmentsByContributionsResponse {
 message GetEnrichmentPipelineStatusRequest {}
 
 message GetEnrichmentPipelineStatusResponse {
+  // Number of contributions awaiting enrichment.
   int64 pending_count = 1;
+  // Total enrichments generated to date.
   int64 total_enrichments = 2;
-  optional string last_enrichment_at = 3;  // ISO 8601 timestamp
+  // ISO 8601 timestamp of the most recent enrichment.
+  optional string last_enrichment_at = 3;
+  // Enrichment counts broken down by type.
   repeated EnrichmentTypeCount by_type = 4;
 }
 
+// EnrichmentTypeCount is a count of enrichments for a single type.
 message EnrichmentTypeCount {
   string enrichment_type = 1;
   int64 count = 2;
 }
 
 message DeleteEnrichmentsByTypeRequest {
+  // Enrichment type to delete: "review_depth", "sentiment", "significance", "topic".
   string enrichment_type = 1;
 }
 
@@ -214,32 +262,39 @@ message DeleteEnrichmentsByTypeResponse {
   int64 deleted_count = 1;
 }
 
-// ---------------------------------------------------------------------------
-// Similarity (embeddings)
-// ---------------------------------------------------------------------------
-
 message FindSimilarRequest {
+  // Contribution ID to find similar items for.
   string contribution_id = 1;
-  int32 limit = 2;             // default 10, max 50
-  optional string platform = 3; // filter results by platform
+  // Maximum number of results (default 10, max 50).
+  int32 limit = 2;
+  // Filter results by platform.
+  optional string platform = 3;
 }
 
 message SearchByTextRequest {
+  // Free-text semantic search query.
   string query_text = 1;
-  int32 limit = 2;              // default 10, max 50
-  optional string platform = 3;  // filter results by platform
+  // Maximum number of results (default 10, max 50).
+  int32 limit = 2;
+  // Filter results by platform.
+  optional string platform = 3;
 }
 
+// SimilarItem represents a contribution found via semantic similarity search.
 message SimilarItem {
   string contribution_id = 1;
   string title = 2;
+  // Platform identifier (e.g. "github", "discourse-ubuntu").
   string platform = 3;
   string contribution_type = 4;
   string state = 5;
   string author_name = 6;
+  // URL on the external platform.
   string external_url = 7;
-  double distance = 8;          // cosine distance (0 = identical)
-  string created_at = 9;        // ISO 8601 timestamp
+  // Cosine distance from the query (0 = identical).
+  double distance = 8;
+  // ISO 8601 timestamp.
+  string created_at = 9;
 }
 
 message FindSimilarResponse {
@@ -253,9 +308,14 @@ message SearchByTextResponse {
 message GetEmbeddingStatusRequest {}
 
 message GetEmbeddingStatusResponse {
+  // Number of contributions awaiting embedding generation.
   int64 queued_count = 1;
+  // Number of contributions with embeddings.
   int64 embedded_count = 2;
+  // Total contributions eligible for embedding.
   int64 total_eligible = 3;
-  optional string last_embedded_at = 4;  // ISO 8601 timestamp
-  double coverage_percent = 5;           // embedded / total_eligible * 100
+  // ISO 8601 timestamp of the most recent embedding.
+  optional string last_embedded_at = 4;
+  // Percentage of eligible contributions with embeddings (0.0–100.0).
+  double coverage_percent = 5;
 }
