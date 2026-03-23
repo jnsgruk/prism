@@ -147,3 +147,80 @@ fn build_progress_json(
 
     progress
 }
+
+#[cfg(test)]
+mod tests {
+    use ps_core::ingestion::ContributionInput;
+    use ps_core::models::{ContributionState, ContributionType, Platform};
+    use time::OffsetDateTime;
+
+    use super::*;
+
+    fn make_discourse_item() -> ContributionInput {
+        ContributionInput {
+            platform: Platform::Discourse("ubuntu".into()),
+            contribution_type: ContributionType::DiscourseTopic,
+            platform_id: "topic-1".into(),
+            platform_username: "user".into(),
+            title: Some("test topic".into()),
+            url: None,
+            state: Some(ContributionState::Open),
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
+            closed_at: None,
+            metrics: serde_json::json!({}),
+            metadata: serde_json::json!({}),
+            content: None,
+            state_history: None,
+            enrichment_content: None,
+        }
+    }
+
+    #[test]
+    fn discourse_progress_counts_all_items() {
+        let mut tracker = DiscourseProgressTracker::default();
+        let items = vec![
+            make_discourse_item(),
+            make_discourse_item(),
+            make_discourse_item(),
+        ];
+        tracker.count_batch(&items, 3);
+        assert_eq!(tracker.topics_fetched, 3);
+
+        // Add another batch
+        tracker.count_batch(&[make_discourse_item()], 1);
+        assert_eq!(tracker.topics_fetched, 4);
+    }
+
+    #[test]
+    fn discourse_final_progress() {
+        let mut tracker = DiscourseProgressTracker::default();
+        tracker.count_batch(&[make_discourse_item(), make_discourse_item()], 2);
+        let progress = tracker.build_final_progress();
+        assert_eq!(progress["phase"], "complete");
+        assert_eq!(progress["topics_fetched"], 2);
+    }
+
+    #[test]
+    fn discourse_build_progress_shows_count() {
+        let cursor = r#"{"page": 2}"#;
+        let progress = build_progress_json(cursor, 15, None);
+        assert_eq!(progress["phase"], "topic_scan");
+        assert_eq!(progress["topics_fetched"], 15);
+        let msg = progress["status_message"].as_str().unwrap();
+        assert!(msg.contains("15 items so far"));
+    }
+
+    #[test]
+    fn discourse_build_progress_with_rate_limit() {
+        let cursor = r#"{}"#;
+        let rl = RateLimitInfo {
+            remaining: 50,
+            limit: 100,
+            reset_at: OffsetDateTime::now_utc() + time::Duration::minutes(5),
+        };
+        let progress = build_progress_json(cursor, 10, Some(&rl));
+        assert_eq!(progress["rate_limit_remaining"], 50);
+        assert_eq!(progress["rate_limit_limit"], 100);
+    }
+}

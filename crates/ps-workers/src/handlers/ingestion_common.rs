@@ -796,6 +796,90 @@ async fn retry_skipped_diffs(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use ps_core::ingestion::FailedItem;
+
+    use super::*;
+
+    // -- extract_watermark --
+
+    #[test]
+    fn extract_watermark_max_updated_at() {
+        let cursor = r#"{"max_updated_at": "2025-01-15T12:00:00Z", "repo_index": 0}"#;
+        assert_eq!(
+            extract_watermark(cursor, "max_updated_at"),
+            Some("2025-01-15T12:00:00Z".into())
+        );
+    }
+
+    #[test]
+    fn extract_watermark_max_bumped_at() {
+        let cursor = r#"{"max_bumped_at": "2025-02-01T00:00:00Z"}"#;
+        assert_eq!(
+            extract_watermark(cursor, "max_bumped_at"),
+            Some("2025-02-01T00:00:00Z".into())
+        );
+    }
+
+    #[test]
+    fn extract_watermark_missing_field() {
+        let cursor = r#"{"repo_index": 0}"#;
+        assert_eq!(extract_watermark(cursor, "max_updated_at"), None);
+    }
+
+    #[test]
+    fn extract_watermark_null_value() {
+        let cursor = r#"{"max_updated_at": null}"#;
+        assert_eq!(extract_watermark(cursor, "max_updated_at"), None);
+    }
+
+    #[test]
+    fn extract_watermark_invalid_json() {
+        assert_eq!(extract_watermark("not json", "max_updated_at"), None);
+    }
+
+    // -- extract_failed_items --
+
+    #[test]
+    fn extract_failed_items_empty() {
+        let cursor = r#"{"failed_items": []}"#;
+        assert!(extract_failed_items(cursor).is_empty());
+    }
+
+    #[test]
+    fn extract_failed_items_with_entries() {
+        let cursor = r#"{"failed_items": [{"key": "org/repo", "error": "403 forbidden"}]}"#;
+        let items = extract_failed_items(cursor);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].key, "org/repo");
+        assert_eq!(items[0].error, "403 forbidden");
+    }
+
+    #[test]
+    fn extract_failed_items_missing_field() {
+        let cursor = r#"{"repo_index": 0}"#;
+        assert!(extract_failed_items(cursor).is_empty());
+    }
+
+    #[test]
+    fn extract_failed_items_invalid_json() {
+        assert!(extract_failed_items("bad json").is_empty());
+    }
+
+    #[test]
+    fn extract_failed_items_multiple() {
+        let cursor = r#"{"failed_items": [
+            {"key": "a", "error": "e1"},
+            {"key": "b", "error": "e2"},
+            {"key": "c", "error": "e3"}
+        ]}"#;
+        let items = extract_failed_items(cursor);
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[2].key, "c");
+    }
+}
+
 /// Enqueue enrichment content for upserted contributions.
 ///
 /// Maps `(id, platform_id)` pairs from `bulk_upsert_contributions` back to

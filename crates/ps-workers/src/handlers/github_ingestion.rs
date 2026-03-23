@@ -335,3 +335,105 @@ fn build_status_message(
         _ => "Starting ingestion".into(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ps_core::ingestion::ContributionInput;
+    use ps_core::models::{ContributionState, ContributionType, Platform};
+    use time::OffsetDateTime;
+
+    use super::*;
+
+    fn make_item(ct: ContributionType) -> ContributionInput {
+        ContributionInput {
+            platform: Platform::Github,
+            contribution_type: ct,
+            platform_id: "test-1".into(),
+            platform_username: "user".into(),
+            title: Some("test".into()),
+            url: None,
+            state: Some(ContributionState::Merged),
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
+            closed_at: None,
+            metrics: serde_json::json!({}),
+            metadata: serde_json::json!({}),
+            content: None,
+            state_history: None,
+            enrichment_content: None,
+        }
+    }
+
+    #[test]
+    fn github_progress_counts_prs_and_reviews() {
+        let mut tracker = GithubProgressTracker::default();
+        let items = vec![
+            make_item(ContributionType::PullRequest),
+            make_item(ContributionType::PullRequest),
+            make_item(ContributionType::PrReview),
+        ];
+        tracker.count_batch(&items, 3);
+        assert_eq!(tracker.prs_fetched, 2);
+        assert_eq!(tracker.reviews_fetched, 1);
+        assert_eq!(tracker.identities_skipped, 0);
+    }
+
+    #[test]
+    fn github_progress_counts_skipped_identities() {
+        let mut tracker = GithubProgressTracker::default();
+        let items = vec![
+            make_item(ContributionType::PullRequest),
+            make_item(ContributionType::PrReview),
+        ];
+        // Only 1 stored out of 2 items → 1 identity skipped
+        tracker.count_batch(&items, 1);
+        assert_eq!(tracker.identities_skipped, 1);
+    }
+
+    #[test]
+    fn github_final_progress_includes_counts() {
+        let mut tracker = GithubProgressTracker::default();
+        let items = vec![make_item(ContributionType::PullRequest)];
+        tracker.count_batch(&items, 1);
+
+        let progress = tracker.build_final_progress();
+        assert_eq!(progress["phase"], "complete");
+        assert_eq!(progress["prs_fetched"], 1);
+        assert_eq!(progress["reviews_fetched"], 0);
+    }
+
+    #[test]
+    fn github_build_progress_team_repos_phase() {
+        let cursor = serde_json::json!({
+            "phase": "TeamRepos",
+            "repo_index": 1,
+            "repos": [
+                {"owner": "canonical", "repo": "lxd"},
+                {"owner": "canonical", "repo": "juju"}
+            ],
+            "watermark": "2025-01-01T00:00:00Z"
+        });
+        let progress = build_progress_json(&cursor.to_string(), 5, 2, 0, None);
+        assert_eq!(progress["phase"], "team_repos");
+        assert_eq!(progress["repos_total"], 2);
+        assert_eq!(progress["repos_completed"], 1);
+        assert_eq!(progress["current_repo"], "canonical/juju");
+        let msg = progress["status_message"].as_str().unwrap();
+        assert!(msg.contains("canonical/juju"));
+        assert!(msg.contains("2/2"));
+    }
+
+    #[test]
+    fn github_build_progress_member_search_phase() {
+        let cursor = serde_json::json!({
+            "phase": "MemberSearch",
+            "search_users": ["alice", "bob", "carol"],
+            "search_user_index": 0
+        });
+        let progress = build_progress_json(&cursor.to_string(), 10, 3, 0, None);
+        assert_eq!(progress["phase"], "member_search");
+        assert_eq!(progress["search_users_total"], 3);
+        let msg = progress["status_message"].as_str().unwrap();
+        assert!(msg.contains("alice"));
+    }
+}
