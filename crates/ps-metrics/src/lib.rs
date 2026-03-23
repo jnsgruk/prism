@@ -1,5 +1,5 @@
 mod discourse;
-mod flow;
+pub mod flow;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;

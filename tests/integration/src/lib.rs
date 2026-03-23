@@ -8,3 +8,6 @@ mod repo;
 
 #[cfg(test)]
 mod source;
+
+#[cfg(test)]
+mod metrics;

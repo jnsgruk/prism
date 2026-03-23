@@ -20,6 +20,7 @@ ps-core = { path = "../../crates/ps-core" }
 ps-proto = { path = "../../crates/ps-proto" }
 ps-server = { path = "../../crates/ps-server" }
 ps-workers = { path = "../../crates/ps-workers" }
+ps-metrics = { path = "../../crates/ps-metrics" }
 tokio.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true

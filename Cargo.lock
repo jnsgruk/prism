@@ -2945,6 +2945,7 @@ dependencies = [
  "libc",
  "prost-types 0.13.5",
  "ps-core",
+ "ps-metrics",
  "ps-proto",
  "ps-server",
  "ps-workers",
