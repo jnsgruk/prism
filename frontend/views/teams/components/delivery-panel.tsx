@@ -15,7 +15,10 @@ import {
   YAxis,
 } from "recharts";
 
-import type { GetFlowMetricsResponse, TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import type {
+  GetFlowMetricsResponse,
+  TeamMetrics,
+} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 /** Capitalise a source key like "github" → "GitHub", "discourse" → "Discourse", "jira" → "Jira". */
 const sourceLabel = (key: string): string => {

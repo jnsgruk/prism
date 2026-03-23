@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use anyhow::{Result, bail};
-use ps_proto::prism::v1::{PreviewBackupRequest, RestoreBackupRequest};
+use ps_proto::canonical::prism::v1::{PreviewBackupRequest, RestoreBackupRequest};
 use tokio::io::AsyncReadExt;
 
 use crate::client::Clients;

@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";

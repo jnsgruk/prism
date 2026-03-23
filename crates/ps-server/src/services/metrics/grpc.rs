@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use futures::stream::TryStreamExt;
 use ps_core::repo::metrics::{ListContributionsParams, ListPersonContributionsParams};
-use ps_proto::prism::v1::metrics_service_server::MetricsService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::metrics_service_server::MetricsService;
+use ps_proto::canonical::prism::v1::{
     CategoryCount, CompareTeamsRequest, CompareTeamsResponse, Contribution,
     DiscourseActivityDataPoint, GetContributionRequest, GetContributionResponse,
     GetDiscourseActivityRequest, GetDiscourseActivityResponse, GetFlowMetricsRequest,

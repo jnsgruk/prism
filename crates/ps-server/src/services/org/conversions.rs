@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ps_core::models::TeamType;
 use ps_core::repo::org::{IdentityRow, PersonRow, TeamWithCount, github_teams::GitHubTeamRow};
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     GitHubTeam as ProtoGitHubTeam, Person, PlatformIdentity, Team, TeamType as ProtoTeamType,
 };
 use tonic::Status;

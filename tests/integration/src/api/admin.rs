@@ -1,6 +1,6 @@
 use crate::define_api_test;
-use ps_proto::prism::v1::admin_service_client::AdminServiceClient;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::admin_service_client::AdminServiceClient;
+use ps_proto::canonical::prism::v1::{
     CreateApiTokenRequest, CreateBackupRequest, ListApiTokensRequest, ResetDataRequest,
     RevokeApiTokenRequest,
 };

@@ -3,8 +3,8 @@ import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { MetricsRow } from "@/views/teams/components/metrics-row";
 import { SortableHeader } from "@/views/teams/components/sortable-header";

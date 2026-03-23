@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 
 import type { JsonObject } from "@bufbuild/protobuf";
-import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
+import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useUpdateSource } from "@ps/hooks/use-config";
 
 import { SecretForm } from "@/views/admin/components/secret-form";

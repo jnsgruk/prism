@@ -10,8 +10,8 @@ import type {
   Person,
   Team,
   TeamMappingSuggestion,
-} from "@ps/api/gen/prism/v1/org_pb";
-import { OrgService, TeamType } from "@ps/api/gen/prism/v1/org_pb";
+} from "@ps/api/gen/canonical/prism/v1/org_pb";
+import { OrgService, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
 
 const orgClient = createClient(OrgService, transport);

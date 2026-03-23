@@ -1,6 +1,6 @@
 use ps_core::models::TeamType;
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     AssignGithubTeamResponse, CreateTeamResponse, DeleteTeamResponse,
     DismissTeamMappingSuggestionResponse, GetTeamMappingSuggestionsResponse, GetTeamResponse,
     GetTeamTreeResponse, ListGithubTeamsResponse, ListTeamGithubTeamsResponse, ListTeamsResponse,

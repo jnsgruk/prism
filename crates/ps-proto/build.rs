@@ -1,13 +1,13 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &[
-        "../../proto/prism/v1/auth.proto",
-        "../../proto/prism/v1/admin.proto",
-        "../../proto/prism/v1/org.proto",
-        "../../proto/prism/v1/config.proto",
-        "../../proto/prism/v1/handlers.proto",
-        "../../proto/prism/v1/metrics.proto",
-        "../../proto/prism/v1/reasoning.proto",
-        "../../proto/prism/v1/insights.proto",
+        "../../proto/canonical/prism/v1/auth.proto",
+        "../../proto/canonical/prism/v1/admin.proto",
+        "../../proto/canonical/prism/v1/org.proto",
+        "../../proto/canonical/prism/v1/config.proto",
+        "../../proto/canonical/prism/v1/handlers.proto",
+        "../../proto/canonical/prism/v1/metrics.proto",
+        "../../proto/canonical/prism/v1/reasoning.proto",
+        "../../proto/canonical/prism/v1/insights.proto",
     ];
 
     tonic_build::configure()

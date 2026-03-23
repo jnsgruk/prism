@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangle, Loader2, Square } from "lucide-react";
 
-import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { formatDuration, formatFullTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-status";

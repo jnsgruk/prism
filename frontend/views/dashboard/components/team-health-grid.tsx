@@ -12,7 +12,7 @@ import { ArrowUpDown, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import type { TeamReviewComparison } from "@ps/api/gen/prism/v1/insights_pb";
+import type { TeamReviewComparison } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 type SortField = "name" | "reviewCount" | "avgDepth" | "rubberStampPct";
 type SortDir = "asc" | "desc";

@@ -4,7 +4,7 @@ import { instanceLabel } from "@/lib/format-metrics";
 import { useMemo } from "react";
 import { ArrowRight, Info, MessageCircle } from "lucide-react";
 
-import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 const MetricValue = ({
   value,

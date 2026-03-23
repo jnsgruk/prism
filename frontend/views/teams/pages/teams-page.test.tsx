@@ -12,19 +12,19 @@ import {
   GetTeamMetricsResponseSchema,
   ListPeriodsResponseSchema,
   MetricsService,
-} from "@ps/api/gen/prism/v1/metrics_pb";
+} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import {
   GetTeamResponseSchema,
   GetTeamTreeResponseSchema,
   OrgService,
   TeamType,
-} from "@ps/api/gen/prism/v1/org_pb";
+} from "@ps/api/gen/canonical/prism/v1/org_pb";
 import {
   GetOrgInsightsResponseSchema,
   GetPersonInsightsResponseSchema,
   GetTeamInsightsResponseSchema,
   InsightsService,
-} from "@ps/api/gen/prism/v1/insights_pb";
+} from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { createTestQueryClient, setupCleanup } from "@ps/test-utils";
 
 const mockTeamTree = {

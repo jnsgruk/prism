@@ -4,7 +4,7 @@ import { Activity, Database, Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";

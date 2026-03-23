@@ -10,7 +10,7 @@ import {
   GetSetupStatusResponseSchema,
   LoginResponseSchema,
   LogoutResponseSchema,
-} from "@ps/api/gen/prism/v1/auth_pb";
+} from "@ps/api/gen/canonical/prism/v1/auth_pb";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@ps/session";
 import { TestWrapper } from "@ps/test-utils";
 

@@ -10,8 +10,8 @@ import type {
   ListTeamContributionsResponse,
   Period,
   TeamMetrics,
-} from "@ps/api/gen/prism/v1/metrics_pb";
-import { MetricsService, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
+} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import { MetricsService, PeriodType } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { transport } from "@ps/api/transport";
 
 const metricsClient = createClient(MetricsService, transport);

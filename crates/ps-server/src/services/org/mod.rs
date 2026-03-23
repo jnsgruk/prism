@@ -3,8 +3,8 @@ mod people;
 mod teams;
 
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::org_service_server::OrgService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::org_service_server::OrgService;
+use ps_proto::canonical::prism::v1::{
     AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest,
     AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest,
     DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,

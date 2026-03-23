@@ -18,8 +18,8 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
-import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
 import { formatRelativeTime, formatTimestamp } from "@/lib/format";

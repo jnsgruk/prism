@@ -50,11 +50,11 @@ pub fn truncate(s: &str, max: usize) -> String {
 }
 
 pub fn source_state(state: i32) -> &'static str {
-    match ps_proto::prism::v1::SourceState::try_from(state) {
-        Ok(ps_proto::prism::v1::SourceState::Idle) => "idle",
-        Ok(ps_proto::prism::v1::SourceState::Collecting) => "collecting",
-        Ok(ps_proto::prism::v1::SourceState::Waiting) => "waiting",
-        Ok(ps_proto::prism::v1::SourceState::Error) => "error",
+    match ps_proto::canonical::prism::v1::SourceState::try_from(state) {
+        Ok(ps_proto::canonical::prism::v1::SourceState::Idle) => "idle",
+        Ok(ps_proto::canonical::prism::v1::SourceState::Collecting) => "collecting",
+        Ok(ps_proto::canonical::prism::v1::SourceState::Waiting) => "waiting",
+        Ok(ps_proto::canonical::prism::v1::SourceState::Error) => "error",
         _ => "unknown",
     }
 }

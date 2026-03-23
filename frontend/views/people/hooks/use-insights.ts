@@ -2,8 +2,8 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
-import type { PersonInsights } from "@ps/api/gen/prism/v1/insights_pb";
-import { InsightsService } from "@ps/api/gen/prism/v1/insights_pb";
+import type { PersonInsights } from "@ps/api/gen/canonical/prism/v1/insights_pb";
+import { InsightsService } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { transport } from "@ps/api/transport";
 import { periodKeyToInsightsPeriod } from "@/views/teams/hooks/use-insights";
 

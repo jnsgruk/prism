@@ -35,7 +35,7 @@ import type {
   Period,
   TeamMetrics,
   TopContributor,
-} from "@ps/api/gen/prism/v1/metrics_pb";
+} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import type { ContributionFilters } from "@/lib/hooks/use-metrics";
 
 import { useListSources } from "@/lib/hooks/use-config";

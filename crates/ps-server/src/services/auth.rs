@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use ps_core::auth::{generate_token, hash_password, hash_token, verify_password};
 use ps_core::backup::BackupReader;
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::auth_service_server::AuthService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::auth_service_server::AuthService;
+use ps_proto::canonical::prism::v1::{
     CompleteSetupRequest, CompleteSetupResponse, GetCurrentUserRequest, GetCurrentUserResponse,
     GetSetupStatusRequest, GetSetupStatusResponse, LoginRequest, LoginResponse, LogoutRequest,
     LogoutResponse, PreviewBackupRequest, PreviewBackupResponse, RestoreBackupRequest,

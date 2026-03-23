@@ -6,8 +6,8 @@ import type {
   DeleteEnrichmentsByTypeResponse,
   Enrichment,
   GetEnrichmentPipelineStatusResponse,
-} from "@ps/api/gen/prism/v1/reasoning_pb";
-import { ReasoningService } from "@ps/api/gen/prism/v1/reasoning_pb";
+} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
 const client = createClient(ReasoningService, transport);

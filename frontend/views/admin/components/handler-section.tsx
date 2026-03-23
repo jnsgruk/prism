@@ -1,4 +1,4 @@
-import type { HandlerInfo } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerInfo } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { HandlerRow } from "./handler-row";
 

@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
-import { TeamType } from "@ps/api/gen/prism/v1/org_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
+import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { useCreateTeam } from "@/views/admin/hooks/use-admin";
 import { useListPeople } from "@/views/teams/hooks/use-teams";

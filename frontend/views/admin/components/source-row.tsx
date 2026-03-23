@@ -6,7 +6,7 @@ import { Key, Loader2, Plug, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { SourceConfig } from "@ps/api/gen/prism/v1/config_pb";
+import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
 
 import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";

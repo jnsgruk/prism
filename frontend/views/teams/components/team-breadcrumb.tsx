@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronsUpDown, Users } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import {
   flattenTree,

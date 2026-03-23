@@ -9,7 +9,7 @@ import {
   ListApiTokensResponseSchema,
   ResetDataResponseSchema,
   RevokeApiTokenResponseSchema,
-} from "@ps/api/gen/prism/v1/admin_pb";
+} from "@ps/api/gen/canonical/prism/v1/admin_pb";
 import {
   AssignGithubTeamResponseSchema,
   AssignPersonToTeamResponseSchema,
@@ -26,7 +26,7 @@ import {
   UnassignGithubTeamResponseSchema,
   UpdatePersonResponseSchema,
   UpdateTeamResponseSchema,
-} from "@ps/api/gen/prism/v1/org_pb";
+} from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 const mockTokens = [{ tokenId: "tok-1", name: "CI Token" }];
@@ -150,7 +150,7 @@ describe("admin hooks", () => {
     it("creates a team and succeeds", async () => {
       const { useCreateTeam } = await import("./use-admin");
       const { result } = renderHook(() => useCreateTeam(), { wrapper: TestWrapper });
-      const { TeamType } = await import("@ps/api/gen/prism/v1/org_pb");
+      const { TeamType } = await import("@ps/api/gen/canonical/prism/v1/org_pb");
 
       result.current.mutate({
         name: "Backend Team",

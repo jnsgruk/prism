@@ -12,7 +12,7 @@ import {
   SetProviderSecretResponseSchema,
   TestProviderResponseSchema,
   UpdateAiSettingsResponseSchema,
-} from "@ps/api/gen/prism/v1/reasoning_pb";
+} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 vi.mock("@ps/api/transport", () => ({

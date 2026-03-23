@@ -2,8 +2,8 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
-import type { GetCostSummaryResponse } from "@ps/api/gen/prism/v1/reasoning_pb";
-import { ReasoningService } from "@ps/api/gen/prism/v1/reasoning_pb";
+import type { GetCostSummaryResponse } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
 import { aiKeys } from "./use-ai-settings";

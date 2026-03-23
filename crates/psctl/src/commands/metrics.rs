@@ -1,11 +1,11 @@
 use anyhow::{Result, bail};
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     GetTeamMetricsRequest, GetTeamTreeRequest, ListPeriodsRequest, PeriodType,
 };
 
 use crate::client::Clients;
 
-fn find_team(teams: &[ps_proto::prism::v1::Team], name: &str) -> Option<String> {
+fn find_team(teams: &[ps_proto::canonical::prism::v1::Team], name: &str) -> Option<String> {
     for team in teams {
         if team.name.eq_ignore_ascii_case(name) {
             return Some(team.id.clone());

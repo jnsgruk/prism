@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
 
-import type { NotableContribution } from "@ps/api/gen/prism/v1/insights_pb";
+import type { NotableContribution } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 const enrichmentLabel = (type: string): string => {
   switch (type) {

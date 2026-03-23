@@ -1,6 +1,6 @@
 use crate::define_api_test;
-use ps_proto::prism::v1::config_service_client::ConfigServiceClient;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::config_service_client::ConfigServiceClient;
+use ps_proto::canonical::prism::v1::{
     CreateSourceRequest, DeleteSourceRequest, GetSourceRequest, ListSourcesRequest,
     SetSecretRequest, TestConnectionRequest, UpdateSourceRequest,
 };

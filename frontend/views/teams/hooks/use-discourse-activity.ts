@@ -2,8 +2,11 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
-import type { GetDiscourseActivityResponse, Period } from "@ps/api/gen/prism/v1/metrics_pb";
-import { MetricsService } from "@ps/api/gen/prism/v1/metrics_pb";
+import type {
+  GetDiscourseActivityResponse,
+  Period,
+} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import { MetricsService } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { transport } from "@ps/api/transport";
 
 const metricsClient = createClient(MetricsService, transport);

@@ -9,7 +9,7 @@ import { SignificanceBreakdown } from "@/components/significance-breakdown";
 import { CategoryTags } from "@/components/category-tags";
 import { Info, Sparkles } from "lucide-react";
 
-import type { OrgInsights } from "@ps/api/gen/prism/v1/insights_pb";
+import type { OrgInsights } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 const depthColor = (depth: number): string => {
   if (depth >= 2.8) return "text-emerald-600";

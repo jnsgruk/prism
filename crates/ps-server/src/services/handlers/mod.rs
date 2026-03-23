@@ -4,7 +4,7 @@ mod restate;
 use std::sync::LazyLock;
 
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::{HandlerInfo, SourceState};
+use ps_proto::canonical::prism::v1::{HandlerInfo, SourceState};
 use regex::Regex;
 use tonic::Status;
 

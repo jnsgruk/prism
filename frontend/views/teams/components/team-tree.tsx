@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { teamTypeBadgeVariant, teamTypeLabel } from "@/views/teams/hooks/use-teams";
 

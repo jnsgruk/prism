@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Loader2, Play } from "lucide-react";
 
-import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
-import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { formatRelativeTime } from "@/lib/format";
 

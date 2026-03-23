@@ -1,4 +1,4 @@
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     admin_service_client::AdminServiceClient, auth_service_client::AuthServiceClient,
     config_service_client::ConfigServiceClient, handlers_service_client::HandlersServiceClient,
     metrics_service_client::MetricsServiceClient, org_service_client::OrgServiceClient,

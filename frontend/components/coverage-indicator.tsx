@@ -1,4 +1,4 @@
-import type { TypeCoverage } from "@ps/api/gen/prism/v1/insights_pb";
+import type { TypeCoverage } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { cn } from "@ps/cn";
 
 const typeLabel = (type: string): string => {

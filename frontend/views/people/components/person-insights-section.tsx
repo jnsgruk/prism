@@ -9,7 +9,7 @@ import { SentimentBar } from "@/components/sentiment-bar";
 import { SignificanceBreakdown } from "@/components/significance-breakdown";
 import { Info, Loader2, Sparkles } from "lucide-react";
 
-import type { PersonInsights } from "@ps/api/gen/prism/v1/insights_pb";
+import type { PersonInsights } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 const depthColor = (depth: number): string => {
   if (depth >= 2.8) return "text-emerald-600";

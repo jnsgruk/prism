@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package prism.v1;
+package canonical.prism.v1;
 
 service InsightsService {
   // Team-level enrichment insights (review quality, PR impact, Discourse topics).

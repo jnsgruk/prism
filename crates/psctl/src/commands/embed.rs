@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ps_proto::prism::v1::GetEmbeddingStatusRequest;
+use ps_proto::canonical::prism::v1::GetEmbeddingStatusRequest;
 
 use crate::client::Clients;
 

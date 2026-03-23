@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EnrichmentSchema } from "@ps/api/gen/prism/v1/reasoning_pb";
+import { EnrichmentSchema } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 import { EnrichmentBadge, EnrichmentBadgeList } from "./enrichment-badge";
 

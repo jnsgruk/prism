@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import type { HandlerInfo, HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerInfo, HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { RunHistoryCard } from "@/components/run-history-card";
 import { formatDuration, formatTimestamp } from "@/lib/format";

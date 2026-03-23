@@ -7,8 +7,8 @@ import type {
   GetCurrentUserResponse,
   LoginResponse,
   LogoutResponse,
-} from "@ps/api/gen/prism/v1/auth_pb";
-import { AuthService } from "@ps/api/gen/prism/v1/auth_pb";
+} from "@ps/api/gen/canonical/prism/v1/auth_pb";
+import { AuthService } from "@ps/api/gen/canonical/prism/v1/auth_pb";
 import { transport } from "@ps/api/transport";
 import { clearSessionToken, setSessionToken } from "@ps/session";
 

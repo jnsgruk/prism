@@ -1,6 +1,6 @@
 import { NotableContributionCard } from "@/components/notable-contribution-card";
 
-import type { NotableContribution } from "@ps/api/gen/prism/v1/insights_pb";
+import type { NotableContribution } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 export const OrgHighlights = ({
   highlights,

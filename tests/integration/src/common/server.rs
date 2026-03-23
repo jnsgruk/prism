@@ -1,13 +1,13 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use ps_proto::prism::v1::admin_service_server::AdminServiceServer;
-use ps_proto::prism::v1::auth_service_server::AuthServiceServer;
-use ps_proto::prism::v1::config_service_server::ConfigServiceServer;
-use ps_proto::prism::v1::handlers_service_server::HandlersServiceServer;
-use ps_proto::prism::v1::metrics_service_server::MetricsServiceServer;
-use ps_proto::prism::v1::org_service_server::OrgServiceServer;
-use ps_proto::prism::v1::reasoning_service_server::ReasoningServiceServer;
+use ps_proto::canonical::prism::v1::admin_service_server::AdminServiceServer;
+use ps_proto::canonical::prism::v1::auth_service_server::AuthServiceServer;
+use ps_proto::canonical::prism::v1::config_service_server::ConfigServiceServer;
+use ps_proto::canonical::prism::v1::handlers_service_server::HandlersServiceServer;
+use ps_proto::canonical::prism::v1::metrics_service_server::MetricsServiceServer;
+use ps_proto::canonical::prism::v1::org_service_server::OrgServiceServer;
+use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningServiceServer;
 use ps_reasoning::routing::TaskRouter;
 use ps_reasoning::types::AiConfig;
 use ps_server::interceptor::AuthLayer;

@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
-import type { Person, Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";

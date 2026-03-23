@@ -7,8 +7,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ChevronRight, GitPullRequest, MessageSquare, RotateCcw, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
-import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
 import { formatRelativeTime } from "@/lib/format";

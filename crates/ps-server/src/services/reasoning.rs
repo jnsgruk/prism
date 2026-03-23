@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use ps_core::crypto;
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::reasoning_service_server::ReasoningService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningService;
+use ps_proto::canonical::prism::v1::{
     AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
     DeleteEnrichmentsByTypeResponse, Enrichment as ProtoEnrichment, EnrichmentTypeCount,
     FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
@@ -530,18 +530,18 @@ impl ReasoningService for ReasoningServiceImpl {
             async { self.load_ai_config().await },
         )?;
 
-        let daily_spend: Vec<ps_proto::prism::v1::DailySpend> = daily_series
+        let daily_spend: Vec<ps_proto::canonical::prism::v1::DailySpend> = daily_series
             .into_iter()
-            .map(|d| ps_proto::prism::v1::DailySpend {
+            .map(|d| ps_proto::canonical::prism::v1::DailySpend {
                 date: d.date.to_string(),
                 cost_usd: d.total_cost_usd,
                 request_count: d.request_count,
             })
             .collect();
 
-        let task_breakdown: Vec<ps_proto::prism::v1::TaskSpend> = task_breakdown
+        let task_breakdown: Vec<ps_proto::canonical::prism::v1::TaskSpend> = task_breakdown
             .into_iter()
-            .map(|t| ps_proto::prism::v1::TaskSpend {
+            .map(|t| ps_proto::canonical::prism::v1::TaskSpend {
                 task_type: t.task_type,
                 cost_usd: t.total_cost_usd,
                 prompt_tokens: t.total_prompt_tokens,
@@ -550,9 +550,9 @@ impl ReasoningService for ReasoningServiceImpl {
             })
             .collect();
 
-        let model_breakdown: Vec<ps_proto::prism::v1::ModelSpend> = model_breakdown
+        let model_breakdown: Vec<ps_proto::canonical::prism::v1::ModelSpend> = model_breakdown
             .into_iter()
-            .map(|m| ps_proto::prism::v1::ModelSpend {
+            .map(|m| ps_proto::canonical::prism::v1::ModelSpend {
                 provider: m.provider,
                 model: m.model,
                 task_type: m.task_type,

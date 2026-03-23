@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ps_proto::prism::v1::CreateBackupRequest;
+use ps_proto::canonical::prism::v1::CreateBackupRequest;
 use tokio::io::AsyncWriteExt;
 
 use crate::client::Clients;

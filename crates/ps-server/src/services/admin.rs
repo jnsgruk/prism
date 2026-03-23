@@ -4,8 +4,8 @@ use std::pin::Pin;
 use ps_core::auth::{generate_token, hash_token};
 use ps_core::backup::{BackupManifest, BackupWriter};
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::admin_service_server::AdminService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::admin_service_server::AdminService;
+use ps_proto::canonical::prism::v1::{
     ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, CreateBackupRequest,
     CreateBackupResponse, ListApiTokensRequest, ListApiTokensResponse, ResetDataRequest,
     ResetDataResponse, RevokeApiTokenRequest, RevokeApiTokenResponse,

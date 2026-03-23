@@ -12,7 +12,7 @@ import { Loader2, Play } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { HandlerInfo } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerInfo } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { useListSources } from "@ps/hooks/use-config";
 
 import { useTriggerHandler } from "@/views/ingestion/hooks/use-ingestion";

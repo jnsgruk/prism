@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
-import { PeriodSchema, PeriodType } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import { PeriodSchema, PeriodType } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 const fmt = (d: Date): string => d.toISOString().slice(0, 10);
 

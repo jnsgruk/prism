@@ -41,11 +41,11 @@ pub struct AuthContext {
 
 /// RPCs that do not require authentication.
 const PUBLIC_METHODS: &[&str] = &[
-    "/prism.v1.AuthService/GetSetupStatus",
-    "/prism.v1.AuthService/CompleteSetup",
-    "/prism.v1.AuthService/PreviewBackup",
-    "/prism.v1.AuthService/RestoreBackup",
-    "/prism.v1.AuthService/Login",
+    "/canonical.prism.v1.AuthService/GetSetupStatus",
+    "/canonical.prism.v1.AuthService/CompleteSetup",
+    "/canonical.prism.v1.AuthService/PreviewBackup",
+    "/canonical.prism.v1.AuthService/RestoreBackup",
+    "/canonical.prism.v1.AuthService/Login",
 ];
 
 /// Validate a bearer token against the database and return an `AuthContext`.
@@ -144,7 +144,8 @@ where
             let path = req.uri().path().to_owned();
 
             // Skip auth for public methods and non-gRPC paths (health checks, etc.)
-            if PUBLIC_METHODS.contains(&path.as_str()) || !path.starts_with("/prism.v1.") {
+            if PUBLIC_METHODS.contains(&path.as_str()) || !path.starts_with("/canonical.prism.v1.")
+            {
                 return inner.call(req).await;
             }
 

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEmbeddingSimilar } from "@/lib/hooks/use-embeddings";
-import type { SimilarItem } from "@ps/api/gen/prism/v1/reasoning_pb";
+import type { SimilarItem } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { Layers, Link2 } from "lucide-react";
 import { Link } from "react-router";
 

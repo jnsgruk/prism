@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { TeamType } from "@ps/api/gen/prism/v1/org_pb";
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { flattenTeams } from "./team-utils";
 

@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { fmtHours } from "@/lib/format-metrics";
 import { ArrowRight, Gauge, Info } from "lucide-react";
 
-import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 const MetricValue = ({
   value,

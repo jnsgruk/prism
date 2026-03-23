@@ -16,7 +16,7 @@ import {
   TriggerHandlerResponseSchema,
   TriggerRunResponseSchema,
   TriggerTeamSyncResponseSchema,
-} from "@ps/api/gen/prism/v1/handlers_pb";
+} from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 const mockSources = [

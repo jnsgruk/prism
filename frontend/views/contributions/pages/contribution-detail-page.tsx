@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContribution } from "@/lib/hooks/use-metrics";
-import type { Enrichment } from "@ps/api/gen/prism/v1/reasoning_pb";
+import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useEnrichments } from "@/views/admin/hooks/use-enrichment";
 import { RelatedItems } from "@/views/contributions/components/related-items";
 import {

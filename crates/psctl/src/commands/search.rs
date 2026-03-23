@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ps_proto::prism::v1::SearchByTextRequest;
+use ps_proto::canonical::prism::v1::SearchByTextRequest;
 
 use crate::client::Clients;
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import type { ContributionFilters } from "@/lib/hooks/use-metrics";
 import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 

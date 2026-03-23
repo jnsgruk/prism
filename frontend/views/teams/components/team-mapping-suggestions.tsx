@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { z } from "zod";
-import type { TeamMappingSuggestion } from "@ps/api/gen/prism/v1/org_pb";
+import type { TeamMappingSuggestion } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import {
   useAssignGithubTeam,

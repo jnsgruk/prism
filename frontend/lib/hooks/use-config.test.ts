@@ -12,7 +12,7 @@ import {
   SetSecretResponseSchema,
   TestConnectionResponseSchema,
   UpdateSourceResponseSchema,
-} from "@ps/api/gen/prism/v1/config_pb";
+} from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 const mockSource = {

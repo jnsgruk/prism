@@ -1,7 +1,7 @@
 use ps_core::repo::Repos;
 use ps_core::repo::insights;
-use ps_proto::prism::v1::insights_service_server::InsightsService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::insights_service_server::InsightsService;
+use ps_proto::canonical::prism::v1::{
     DepthBySignificance, EnrichmentCoverage, GetOrgInsightsRequest, GetOrgInsightsResponse,
     GetPersonInsightsRequest, GetPersonInsightsResponse, GetTeamInsightsRequest,
     GetTeamInsightsResponse, InsightTrend, NotableContribution, OrgDeliverySummary, OrgInsights,

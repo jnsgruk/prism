@@ -12,8 +12,8 @@ import type {
   TriggerBackfillResponse,
   TriggerHandlerResponse,
   TriggerRunResponse,
-} from "@ps/api/gen/prism/v1/handlers_pb";
-import { HandlersService } from "@ps/api/gen/prism/v1/handlers_pb";
+} from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { HandlersService } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { transport } from "@ps/api/transport";
 
 type RefetchInterval =

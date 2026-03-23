@@ -1,6 +1,6 @@
 use crate::define_api_test;
-use ps_proto::prism::v1::reasoning_service_client::ReasoningServiceClient;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
+use ps_proto::canonical::prism::v1::{
     AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest, GetAiSettingsRequest,
     GetCostSummaryRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
     GetEnrichmentsRequest, GetStorageHealthRequest, ListAiModelsRequest,

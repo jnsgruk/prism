@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import type { AiModelInfo } from "@ps/api/gen/prism/v1/reasoning_pb";
+import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 import { AiCostSection } from "@/views/admin/components/ai-cost-tab";
 import {

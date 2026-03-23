@@ -1,12 +1,10 @@
 version: v2
 modules:
   - path: proto
-    name: buf.build/prism/prism
+    name: buf.build/canonical/prism
 lint:
   use:
     - STANDARD
-  except:
-    - PACKAGE_VERSION_SUFFIX
 breaking:
   use:
     - FILE

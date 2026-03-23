@@ -2,7 +2,7 @@ mod grpc;
 
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionDetailRow, ContributionFullRow};
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     Contribution, DiscourseInstanceMetrics as ProtoDiscourseInstanceMetrics, PeriodType,
     TeamMetrics,
 };
@@ -94,7 +94,7 @@ fn snapshot_to_proto(s: ps_core::repo::metrics::TeamSnapshotRow) -> TeamMetrics 
     TeamMetrics {
         team_id: s.team_id.to_string(),
         team_name: s.team_name,
-        period: Some(ps_proto::prism::v1::Period {
+        period: Some(ps_proto::canonical::prism::v1::Period {
             r#type: period_type_to_proto(s.period_type).into(),
             start: format_date(s.period_start),
             end: format_date(s.period_end),

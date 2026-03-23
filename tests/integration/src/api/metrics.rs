@@ -1,8 +1,8 @@
 use crate::define_api_test;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionState, ContributionType, Platform, TeamType};
-use ps_proto::prism::v1::metrics_service_client::MetricsServiceClient;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::metrics_service_client::MetricsServiceClient;
+use ps_proto::canonical::prism::v1::{
     GetContributionRequest, GetFlowMetricsRequest, GetIndividualProfileRequest,
     GetTeamMetricsRequest, ListPeriodsRequest, ListTeamContributionsRequest, Period, PeriodType,
 };

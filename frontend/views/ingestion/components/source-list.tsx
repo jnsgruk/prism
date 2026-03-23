@@ -1,5 +1,5 @@
-import { SourceState } from "@ps/api/gen/prism/v1/handlers_pb";
-import type { SourceStatus } from "@ps/api/gen/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { useMemo } from "react";
 import { toast } from "sonner";
 

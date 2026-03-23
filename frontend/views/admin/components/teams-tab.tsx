@@ -11,7 +11,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
-import type { Team } from "@ps/api/gen/prism/v1/org_pb";
+import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
 import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";

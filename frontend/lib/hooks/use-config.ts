@@ -10,8 +10,8 @@ import type {
   SourceConfig,
   TestConnectionResponse,
   UpdateSourceResponse,
-} from "@ps/api/gen/prism/v1/config_pb";
-import { ConfigService } from "@ps/api/gen/prism/v1/config_pb";
+} from "@ps/api/gen/canonical/prism/v1/config_pb";
+import { ConfigService } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { transport } from "@ps/api/transport";
 
 const configClient = createClient(ConfigService, transport);

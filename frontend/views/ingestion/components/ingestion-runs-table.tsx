@@ -10,7 +10,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import type { HandlerRun } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { RunHistoryCard } from "@/components/run-history-card";
 import { formatDuration, formatTimestamp } from "@/lib/format";

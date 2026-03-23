@@ -1,6 +1,6 @@
 use ps_core::repo::org::ListPeopleParams;
 use ps_core::repo::{PageRequest, Repos, SortParams};
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::{
     AssignPersonToTeamResponse, DeactivatePersonResponse, ImportDirectoryResponse,
     ImportJiraUsersResponse, ListPeopleResponse, ListUnassignedPeopleResponse, PaginationResponse,
     ReactivatePersonResponse, RemovePersonFromTeamResponse, UpdatePersonResponse,
@@ -18,8 +18,8 @@ pub(super) async fn handle_list_people(
     search: Option<String>,
     team_id: Option<String>,
     filter: Option<String>,
-    pagination: ps_proto::prism::v1::PaginationRequest,
-    sort_msg: ps_proto::prism::v1::SortOrder,
+    pagination: ps_proto::canonical::prism::v1::PaginationRequest,
+    sort_msg: ps_proto::canonical::prism::v1::SortOrder,
 ) -> Result<Response<ListPeopleResponse>, Status> {
     let team_id: Option<Uuid> = team_id
         .map(|id| id.parse::<Uuid>())

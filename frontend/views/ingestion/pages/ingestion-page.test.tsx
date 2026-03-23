@@ -11,11 +11,11 @@ import {
   SourceState,
   TriggerBackfillResponseSchema,
   TriggerRunResponseSchema,
-} from "@ps/api/gen/prism/v1/handlers_pb";
+} from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import {
   GetEnrichmentPipelineStatusResponseSchema,
   ReasoningService,
-} from "@ps/api/gen/prism/v1/reasoning_pb";
+} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 const mockSources = [

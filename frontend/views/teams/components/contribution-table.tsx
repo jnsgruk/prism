@@ -9,8 +9,8 @@ import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 import { create } from "@bufbuild/protobuf";
-import type { Period } from "@ps/api/gen/prism/v1/metrics_pb";
-import { PeriodSchema } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import { PeriodSchema } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import type {
   Contribution,
   ContributionFilters,

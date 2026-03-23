@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use ps_proto::prism::v1::handlers_service_server::HandlersService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::handlers_service_server::HandlersService;
+use ps_proto::canonical::prism::v1::{
     ActiveRun, CancelHandlerRunRequest, CancelHandlerRunResponse, CancelRunRequest,
     CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerRun, ListHandlersRequest,
     ListHandlersResponse, ListRunsRequest, ListRunsResponse, SourceStatus, TriggerBackfillRequest,

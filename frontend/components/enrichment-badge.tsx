@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Brain, MessageCircle, Sparkles, Star, Tag } from "lucide-react";
 
-import type { Enrichment } from "@ps/api/gen/prism/v1/reasoning_pb";
+import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 // ---------------------------------------------------------------------------
 // Types parsed from the enrichment value_json

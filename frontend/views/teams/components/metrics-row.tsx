@@ -3,7 +3,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import type { TeamMetrics } from "@ps/api/gen/prism/v1/metrics_pb";
+import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { fmtHours } from "@/lib/format-metrics";
 
 export const MetricsRow = ({

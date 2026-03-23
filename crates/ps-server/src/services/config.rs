@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use base64::Engine;
 use ps_core::crypto;
 use ps_core::repo::Repos;
-use ps_proto::prism::v1::config_service_server::ConfigService;
-use ps_proto::prism::v1::{
+use ps_proto::canonical::prism::v1::config_service_server::ConfigService;
+use ps_proto::canonical::prism::v1::{
     CreateSourceRequest, CreateSourceResponse, DeleteSourceRequest, DeleteSourceResponse,
     GetSourceRequest, GetSourceResponse, ListSourcesRequest, ListSourcesResponse, SetSecretRequest,
     SetSecretResponse, SourceConfig, TestConnectionRequest, TestConnectionResponse,

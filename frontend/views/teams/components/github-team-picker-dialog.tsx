@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import type { GitHubTeam } from "@ps/api/gen/prism/v1/org_pb";
+import type { GitHubTeam } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,

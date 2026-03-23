@@ -7,7 +7,7 @@ import {
   type ApiTokenInfo,
   type CreateApiTokenResponse,
   type ResetDataResponse,
-} from "@ps/api/gen/prism/v1/admin_pb";
+} from "@ps/api/gen/canonical/prism/v1/admin_pb";
 import type {
   CreateTeamResponse,
   DeleteTeamResponse,
@@ -16,8 +16,8 @@ import type {
   Person,
   UpdatePersonResponse,
   UpdateTeamResponse,
-} from "@ps/api/gen/prism/v1/org_pb";
-import { OrgService, TeamType } from "@ps/api/gen/prism/v1/org_pb";
+} from "@ps/api/gen/canonical/prism/v1/org_pb";
+import { OrgService, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
 import { configKeys } from "@ps/hooks/use-config";
 

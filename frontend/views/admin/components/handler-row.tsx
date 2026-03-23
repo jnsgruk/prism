@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronRight, Cog } from "lucide-react";
 import { useState } from "react";
 
-import type { HandlerInfo } from "@ps/api/gen/prism/v1/handlers_pb";
+import type { HandlerInfo } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
 
 import { formatRelativeTime } from "@/lib/format";

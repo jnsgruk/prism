@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import type { OrgDeliverySummary } from "@ps/api/gen/prism/v1/insights_pb";
+import type { OrgDeliverySummary } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 
 interface CardDef {
   key: string;
