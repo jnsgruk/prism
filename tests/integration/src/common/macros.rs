@@ -1,7 +1,11 @@
 /// Set up an isolated test database and return `(pool, test_db_name, database_url)`.
 ///
-/// Shared by both `define_api_test!` and `define_repo_test!` to avoid
-/// duplicating the setup/teardown boilerplate.
+/// Resolves the PostgreSQL connection in this order:
+/// 1. `DATABASE_URL` env var → use that server directly
+/// 2. Otherwise → start a shared pgvector Docker container via testcontainers
+/// 3. If both fail → skip the test with a warning
+///
+/// Each test gets its own uniquely-named database with migrations applied.
 #[macro_export]
 macro_rules! setup_test_db {
     () => {{
@@ -10,10 +14,10 @@ macro_rules! setup_test_db {
             .with_test_writer()
             .try_init();
 
-        let database_url = match std::env::var("DATABASE_URL") {
-            Ok(url) => url,
-            Err(_) => {
-                eprintln!("DATABASE_URL not set, skipping integration test");
+        let database_url = match $crate::common::container::database_url().await {
+            Some(url) => url,
+            None => {
+                eprintln!("No database available, skipping integration test");
                 return;
             }
         };

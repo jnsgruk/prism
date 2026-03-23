@@ -564,20 +564,24 @@ Discourse also triggers `IdentityResolutionHandler`. Triggers are **not awaited*
 
 ### Rust — Integration Tests Are Primary
 
-Test against real PostgreSQL (sqlx test fixtures), never mock the database. External APIs (GitHub, Jira) mocked with `wiremock`.
+Test against real PostgreSQL, never mock the database. External APIs (GitHub, Jira) mocked with `wiremock`.
+
+**Database provisioning** is automatic via testcontainers-rs: when `DATABASE_URL` is not set, the test harness starts a shared `pgvector/pgvector:pg17` Docker container and runs all tests against it. The container is removed on process exit via `libc::atexit`. Set `DATABASE_URL` to skip the container and connect to an external Postgres instead (useful in CI or when you already have a local Postgres running).
 
 ```
-tests/
-├── integration/
-│   ├── main.rs            # Test binary entry point
-│   ├── common/            # Shared fixtures, helpers, macros
-│   ├── api/               # gRPC API tests
-│   ├── ingestion/         # Source adapter tests
-│   ├── metrics/           # Metrics computation tests
-│   └── domain/            # Cross-cutting domain logic tests
+tests/integration/
+├── src/
+│   ├── lib.rs
+│   ├── common/
+│   │   ├── container.rs   # Shared testcontainers pgvector instance
+│   │   ├── macros.rs      # define_api_test!, define_repo_test!
+│   │   ├── server.rs      # TestServer (real gRPC server on random port)
+│   │   └── fixtures.rs    # create_admin_user() and other data builders
+│   ├── api/               # gRPC API tests (define_api_test!)
+│   └── repo/              # Repository layer tests (define_repo_test!)
 ```
 
-Key macros: `define_api_test!`, `define_source_test!`, `define_metric_test!`
+Key macros: `define_api_test!` (full gRPC server), `define_repo_test!` (just `Repos` + `PgPool`)
 
 ### Frontend — Lightweight, Custom Logic Only
 
@@ -587,7 +591,7 @@ Test custom hooks, data transformations, interactive components. Don't test shad
 
 ## Gotchas
 
-1. **sqlx offline mode** — after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`.
+1. **sqlx offline mode** — after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`. Note: `cargo sqlx prepare` requires a live PostgreSQL with migrations applied — it cannot use the testcontainers instance. Start one with `docker run -d --name ps-sqlx -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg17`, run migrations, then `DATABASE_URL=postgres://postgres:postgres@localhost:5433/postgres cargo sqlx prepare --workspace`.
 2. **Proto regeneration** — after changing `.proto` files, run `buf generate`. Both Rust and TypeScript clients need regeneration. `buf breaking --against .git#branch=main` catches compatibility issues.
 3. **Connect client changes** — frontend transport auto-discovers services. New service hooks go in `lib/hooks/` if shared, or in `views/<feature>/hooks/` if feature-local.
 4. **Auth interceptor** — all RPCs require authentication except: `GetSetupStatus`, `CompleteSetup`, `PreviewBackup`, `RestoreBackup`, `Login`. Adding new public RPCs requires updating the interceptor allow-list.
