@@ -157,3 +157,69 @@ pub(crate) fn extract_instance(source_name: &str) -> String {
         .unwrap_or(source_name)
         .to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cursor_roundtrip() {
+        let cursor = Cursor {
+            watermark: Some("2025-01-01T00:00:00Z".into()),
+            page: 3,
+            category_ids: vec![5, 10, 15],
+            category_index: 1,
+            min_posts: 2,
+            base_url: "https://discourse.ubuntu.com".into(),
+            instance: "ubuntu".into(),
+            max_bumped_at: Some("2025-01-10T12:00:00Z".into()),
+            has_more: true,
+            category_map: std::collections::HashMap::from([
+                (5, "General".into()),
+                (10, "Support".into()),
+            ]),
+            failed_items: vec![],
+        };
+
+        let json = serde_json::to_string(&cursor).unwrap();
+        let restored: Cursor = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.page, 3);
+        assert_eq!(restored.category_index, 1);
+        assert_eq!(restored.instance, "ubuntu");
+        assert!(restored.has_more);
+        assert_eq!(restored.category_map.len(), 2);
+        assert_eq!(restored.category_map[&5], "General");
+    }
+
+    #[test]
+    fn cursor_forward_compat_defaults() {
+        // Old JSON without `category_index`, `category_map`, `failed_items`
+        let json = r#"{
+            "watermark": null,
+            "page": 0,
+            "category_ids": [],
+            "min_posts": 0,
+            "base_url": "https://d.example.com",
+            "instance": "test",
+            "max_bumped_at": null,
+            "has_more": false
+        }"#;
+
+        let cursor: Cursor = serde_json::from_str(json).unwrap();
+        assert_eq!(cursor.category_index, 0);
+        assert!(cursor.category_map.is_empty());
+        assert!(cursor.failed_items.is_empty());
+    }
+
+    #[test]
+    fn extract_instance_strips_prefix() {
+        assert_eq!(extract_instance("discourse-ubuntu"), "ubuntu");
+        assert_eq!(extract_instance("discourse-snapcraft"), "snapcraft");
+    }
+
+    #[test]
+    fn extract_instance_no_prefix() {
+        assert_eq!(extract_instance("custom-name"), "custom-name");
+    }
+}

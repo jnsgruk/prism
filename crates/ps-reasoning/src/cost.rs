@@ -139,3 +139,94 @@ impl CostTracker {
         self.repo.get_daily_spend(today).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn usage(input: u64, output: u64) -> Usage {
+        Usage {
+            input_tokens: input,
+            output_tokens: output,
+            total_tokens: input + output,
+            cached_input_tokens: 0,
+        }
+    }
+
+    #[test]
+    fn google_flash_lite_pricing() {
+        let cost = estimate_cost(
+            AiProvider::Google,
+            "gemini-2.5-flash-lite",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 0.375).abs() < 0.001);
+    }
+
+    #[test]
+    fn google_flash_pricing() {
+        let cost = estimate_cost(
+            AiProvider::Google,
+            "gemini-2.0-flash",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 0.75).abs() < 0.001);
+    }
+
+    #[test]
+    fn google_pro_pricing() {
+        let cost = estimate_cost(
+            AiProvider::Google,
+            "gemini-2-pro",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 11.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn google_embedding_pricing() {
+        let cost = estimate_cost(
+            AiProvider::Google,
+            "text-embedding-004",
+            &usage(1_000_000, 0),
+        );
+        assert!((cost - 0.20).abs() < 0.001);
+    }
+
+    #[test]
+    fn openrouter_claude_pricing() {
+        let cost = estimate_cost(
+            AiProvider::OpenRouter,
+            "anthropic/claude-3-sonnet",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 18.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn openrouter_gpt4_pricing() {
+        let cost = estimate_cost(
+            AiProvider::OpenRouter,
+            "openai/gpt-4-turbo",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 12.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn zero_tokens_zero_cost() {
+        let cost = estimate_cost(AiProvider::Google, "gemini-2.0-flash", &usage(0, 0));
+        assert!((cost).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn unknown_model_fallback() {
+        // Google unknown model uses default (0.50 / 2.0)
+        let cost = estimate_cost(
+            AiProvider::Google,
+            "unknown-xyz",
+            &usage(1_000_000, 1_000_000),
+        );
+        assert!((cost - 2.5).abs() < 0.001);
+    }
+}

@@ -73,3 +73,85 @@ impl From<sqlx::Error> for Error {
         Self::Database(Box::new(err))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn http_5xx_is_transient() {
+        for status in [500, 502, 503, 504] {
+            let e = Error::HttpStatus {
+                status,
+                message: "error".into(),
+            };
+            assert!(e.is_transient(), "HTTP {status} should be transient");
+        }
+    }
+
+    #[test]
+    fn http_4xx_not_transient() {
+        for status in [400, 401, 403, 404, 422] {
+            let e = Error::HttpStatus {
+                status,
+                message: "error".into(),
+            };
+            assert!(!e.is_transient(), "HTTP {status} should not be transient");
+        }
+    }
+
+    #[test]
+    fn rate_limit_not_transient() {
+        let e = Error::RateLimit {
+            retry_after_secs: 60,
+        };
+        assert!(!e.is_transient());
+        assert!(e.is_rate_limit());
+    }
+
+    #[test]
+    fn internal_timeout_transient() {
+        for msg in [
+            "request timed out",
+            "connection timeout reached",
+            "connection reset by peer",
+            "connection closed before message completed",
+            "broken pipe",
+        ] {
+            let e = Error::Internal(msg.into());
+            assert!(e.is_transient(), "'{msg}' should be transient");
+        }
+    }
+
+    #[test]
+    fn internal_timeout_case_insensitive() {
+        let e = Error::Internal("REQUEST TIMED OUT".into());
+        assert!(e.is_transient());
+    }
+
+    #[test]
+    fn internal_non_timeout_not_transient() {
+        let e = Error::Internal("cursor serialisation failed".into());
+        assert!(!e.is_transient());
+    }
+
+    #[test]
+    fn other_variants_not_transient() {
+        assert!(!Error::NotFound("x".into()).is_transient());
+        assert!(!Error::Validation("x".into()).is_transient());
+        assert!(!Error::Authentication("x".into()).is_transient());
+        assert!(!Error::Encryption("x".into()).is_transient());
+    }
+
+    #[test]
+    fn is_rate_limit_false_for_others() {
+        assert!(
+            !Error::HttpStatus {
+                status: 429,
+                message: "too many".into()
+            }
+            .is_rate_limit()
+        );
+        assert!(!Error::Internal("x".into()).is_rate_limit());
+    }
+}

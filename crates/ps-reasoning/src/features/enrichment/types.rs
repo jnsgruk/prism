@@ -169,3 +169,34 @@ pub enum TopicCategory {
     Meta,
     Other,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enrichment_type_roundtrip() {
+        for variant in EnrichmentType::all() {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<EnrichmentType>().unwrap(), *variant);
+        }
+    }
+
+    #[test]
+    fn enrichment_type_as_str() {
+        assert_eq!(EnrichmentType::ReviewDepth.as_str(), "review_depth");
+        assert_eq!(EnrichmentType::Sentiment.as_str(), "sentiment");
+        assert_eq!(EnrichmentType::Significance.as_str(), "significance");
+        assert_eq!(EnrichmentType::Topic.as_str(), "topic");
+    }
+
+    #[test]
+    fn enrichment_type_all_has_four() {
+        assert_eq!(EnrichmentType::all().len(), 4);
+    }
+
+    #[test]
+    fn enrichment_type_invalid_errors() {
+        assert!("unknown".parse::<EnrichmentType>().is_err());
+    }
+}

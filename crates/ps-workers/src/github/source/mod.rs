@@ -180,3 +180,107 @@ pub(super) fn parse_datetime(s: &str) -> Result<time::OffsetDateTime, ps_core::E
     time::OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
         .map_err(|e| ps_core::Error::Internal(format!("invalid datetime '{s}': {e}")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cursor_roundtrip() {
+        let cursor = Cursor {
+            phase: IngestionPhase::TeamRepos,
+            repo_index: 3,
+            graphql_cursor: Some("abc123".into()),
+            watermark: Some("2025-01-01T00:00:00Z".into()),
+            repos: vec![RepoTarget {
+                owner: "canonical".into(),
+                repo: "lxd".into(),
+            }],
+            max_updated_at: Some("2025-01-10T12:00:00Z".into()),
+            orgs: vec!["canonical".into()],
+            search_user_index: 0,
+            search_graphql_cursor: None,
+            search_users: vec!["alice".into()],
+            ingested_repos: HashSet::from(["canonical/lxd".into()]),
+            last_rate_limit_remaining: Some(4500),
+            failed_items: vec![ps_core::ingestion::FailedItem {
+                key: "org/broken".into(),
+                error: "403 forbidden".into(),
+            }],
+        };
+
+        let json = serde_json::to_string(&cursor).unwrap();
+        let restored: Cursor = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.repo_index, 3);
+        assert_eq!(restored.graphql_cursor.as_deref(), Some("abc123"));
+        assert_eq!(restored.repos.len(), 1);
+        assert_eq!(restored.repos[0].owner, "canonical");
+        assert!(restored.ingested_repos.contains("canonical/lxd"));
+        assert_eq!(restored.failed_items.len(), 1);
+        assert_eq!(restored.search_users, vec!["alice"]);
+    }
+
+    #[test]
+    fn cursor_forward_compat_missing_failed_items() {
+        // Old JSON without `failed_items` field — should default to empty Vec
+        let json = r#"{
+            "phase": "TeamRepos",
+            "repo_index": 0,
+            "graphql_cursor": null,
+            "watermark": null,
+            "repos": [],
+            "max_updated_at": null,
+            "orgs": [],
+            "search_user_index": 0,
+            "search_graphql_cursor": null,
+            "search_users": [],
+            "ingested_repos": [],
+            "last_rate_limit_remaining": null
+        }"#;
+
+        let cursor: Cursor = serde_json::from_str(json).unwrap();
+        assert!(cursor.failed_items.is_empty());
+    }
+
+    #[test]
+    fn cursor_phase_member_search_roundtrip() {
+        let cursor = Cursor {
+            phase: IngestionPhase::MemberSearch,
+            repo_index: 0,
+            graphql_cursor: None,
+            watermark: None,
+            repos: vec![],
+            max_updated_at: None,
+            orgs: vec![],
+            search_user_index: 2,
+            search_graphql_cursor: Some("cursor456".into()),
+            search_users: vec!["bob".into(), "carol".into(), "dave".into()],
+            ingested_repos: HashSet::new(),
+            last_rate_limit_remaining: None,
+            failed_items: vec![],
+        };
+
+        let json = serde_json::to_string(&cursor).unwrap();
+        let restored: Cursor = serde_json::from_str(&json).unwrap();
+
+        assert!(matches!(restored.phase, IngestionPhase::MemberSearch));
+        assert_eq!(restored.search_user_index, 2);
+        assert_eq!(restored.search_graphql_cursor.as_deref(), Some("cursor456"));
+    }
+
+    #[test]
+    fn is_valid_github_username_accepts_valid() {
+        assert!(is_valid_github_username("alice"));
+        assert!(is_valid_github_username("user-name"));
+        assert!(is_valid_github_username("User123"));
+    }
+
+    #[test]
+    fn is_valid_github_username_rejects_invalid() {
+        assert!(!is_valid_github_username(""));
+        assert!(!is_valid_github_username("user name"));
+        assert!(!is_valid_github_username("user@name"));
+        assert!(!is_valid_github_username("user/name"));
+    }
+}

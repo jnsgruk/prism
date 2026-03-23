@@ -394,3 +394,167 @@ pub async fn log_enrichment_cost(
             .await;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ps_core::repo::reasoning::QueuedContribution;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn queued(content: serde_json::Value) -> QueuedContribution {
+        QueuedContribution {
+            id: Uuid::nil(),
+            contribution_id: Uuid::nil(),
+            contribution_type: "pr_review".into(),
+            content,
+        }
+    }
+
+    // -- build_input_from_queue --
+
+    #[test]
+    fn review_depth_with_body_and_comments() {
+        let q = queued(serde_json::json!({
+            "pr_title": "Add feature X",
+            "state": "APPROVED",
+            "body": "Looks good overall.",
+            "inline_comments": [
+                {"path": "src/main.rs", "body": "Consider using a match here."}
+            ]
+        }));
+        let text = build_input_from_queue(EnrichmentType::ReviewDepth, &q).unwrap();
+        assert!(text.contains("Review on: Add feature X"));
+        assert!(text.contains("Looks good overall."));
+        assert!(text.contains("[src/main.rs]: Consider using a match here."));
+    }
+
+    #[test]
+    fn review_depth_no_content_has_header_only() {
+        // Without a body or inline comments, the result only contains the
+        // header (title + state). The function still returns Some because the
+        // threshold check compares against pr_title length, but the content
+        // is effectively just metadata.
+        let q = queued(serde_json::json!({
+            "pr_title": "Fix typo",
+            "state": "APPROVED"
+        }));
+        let result = build_input_from_queue(EnrichmentType::ReviewDepth, &q);
+        // Header-only result: "Review on: Fix typo\nState: APPROVED\n\n"
+        // This exceeds title.len() + 20, so it returns Some
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.contains("Review on: Fix typo"));
+        assert!(!text.contains('[')); // no inline comments
+    }
+
+    #[test]
+    fn significance_with_diff() {
+        let q = queued(serde_json::json!({
+            "title": "Refactor auth",
+            "description": "Major rewrite of auth module",
+            "additions": 200,
+            "deletions": 150,
+            "changed_files": 10,
+            "draft": false,
+            "diff": "+fn new_auth() {}\n-fn old_auth() {}"
+        }));
+        let text = build_input_from_queue(EnrichmentType::Significance, &q).unwrap();
+        assert!(text.contains("PR Title: Refactor auth"));
+        assert!(text.contains("Lines added: 200"));
+        assert!(text.contains("--- Diff ---"));
+        assert!(text.contains("+fn new_auth()"));
+    }
+
+    #[test]
+    fn significance_without_diff() {
+        let q = queued(serde_json::json!({
+            "title": "Small fix",
+            "description": "Typo fix",
+            "additions": 1,
+            "deletions": 1,
+            "changed_files": 1,
+            "draft": false
+        }));
+        let text = build_input_from_queue(EnrichmentType::Significance, &q).unwrap();
+        assert!(text.contains("PR Title: Small fix"));
+        assert!(!text.contains("--- Diff ---"));
+    }
+
+    #[test]
+    fn topic_with_category() {
+        let q = queued(serde_json::json!({
+            "title": "How to install?",
+            "category": "Support",
+            "body": "I'm trying to install the package."
+        }));
+        let text = build_input_from_queue(EnrichmentType::Topic, &q).unwrap();
+        assert!(text.contains("Topic: How to install?"));
+        assert!(text.contains("Category: Support"));
+        assert!(text.contains("I'm trying to install the package."));
+    }
+
+    #[test]
+    fn topic_empty_returns_none() {
+        let q = queued(serde_json::json!({
+            "title": "",
+            "body": ""
+        }));
+        assert!(build_input_from_queue(EnrichmentType::Topic, &q).is_none());
+    }
+
+    // -- hash_input --
+
+    #[test]
+    fn hash_input_deterministic() {
+        let h1 = hash_input("hello world");
+        let h2 = hash_input("hello world");
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn hash_input_differs_on_change() {
+        let h1 = hash_input("hello");
+        let h2 = hash_input("world");
+        assert_ne!(h1, h2);
+    }
+
+    // -- input_preview --
+
+    #[test]
+    fn input_preview_short_text_unchanged() {
+        assert_eq!(input_preview("short", 100), "short");
+    }
+
+    #[test]
+    fn input_preview_truncates_long_text() {
+        let text = "a".repeat(200);
+        let preview = input_preview(&text, 50);
+        assert!(preview.len() < 60);
+        assert!(preview.ends_with('…'));
+    }
+
+    #[test]
+    fn input_preview_respects_char_boundaries() {
+        // Multi-byte character: 'é' is 2 bytes
+        let text = "café".repeat(100);
+        let preview = input_preview(&text, 10);
+        assert!(preview.ends_with('…'));
+        // Should not panic from slicing mid-character
+    }
+
+    // -- sanitize_error --
+
+    #[test]
+    fn sanitize_error_short_unchanged() {
+        assert_eq!(sanitize_error("short error"), "short error");
+    }
+
+    #[test]
+    fn sanitize_error_long_truncated() {
+        let long = "x".repeat(300);
+        let sanitized = sanitize_error(&long);
+        assert!(sanitized.len() < 300);
+        assert!(sanitized.contains("(truncated)"));
+    }
+}

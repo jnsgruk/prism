@@ -165,3 +165,84 @@ fn normalize_jira_datetime(s: &str) -> String {
     }
     s.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cursor_roundtrip() {
+        let cursor = Cursor {
+            watermark: Some("2025-01-01T00:00:00Z".into()),
+            projects: vec!["PROJ-A".into(), "PROJ-B".into()],
+            project_index: 1,
+            next_page_token: Some("token123".into()),
+            max_updated_at: Some("2025-01-10T12:00:00Z".into()),
+            base_url: "https://jira.example.com".into(),
+            story_points_field: Some("customfield_10016".into()),
+            api_mode: "cloud".into(),
+            failed_items: vec![ps_core::ingestion::FailedItem {
+                key: "PROJ-C".into(),
+                error: "403".into(),
+            }],
+        };
+
+        let json = serde_json::to_string(&cursor).unwrap();
+        let restored: Cursor = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.project_index, 1);
+        assert_eq!(restored.projects, vec!["PROJ-A", "PROJ-B"]);
+        assert_eq!(restored.api_mode, "cloud");
+        assert_eq!(restored.failed_items.len(), 1);
+        assert_eq!(
+            restored.story_points_field.as_deref(),
+            Some("customfield_10016")
+        );
+    }
+
+    #[test]
+    fn cursor_forward_compat_defaults() {
+        // Old JSON without `project_index` and `failed_items`
+        let json = r#"{
+            "watermark": null,
+            "projects": ["X"],
+            "next_page_token": null,
+            "max_updated_at": null,
+            "base_url": "https://j.example.com",
+            "story_points_field": null,
+            "api_mode": "server"
+        }"#;
+
+        let cursor: Cursor = serde_json::from_str(json).unwrap();
+        assert_eq!(cursor.project_index, 0);
+        assert!(cursor.failed_items.is_empty());
+        assert_eq!(cursor.api_mode, "server");
+    }
+
+    #[test]
+    fn normalize_jira_datetime_adds_colon() {
+        assert_eq!(
+            normalize_jira_datetime("2024-01-15T10:30:00.000+0000"),
+            "2024-01-15T10:30:00.000+00:00"
+        );
+    }
+
+    #[test]
+    fn normalize_jira_datetime_already_has_colon() {
+        let s = "2024-01-15T10:30:00.000+00:00";
+        assert_eq!(normalize_jira_datetime(s), s);
+    }
+
+    #[test]
+    fn parse_jira_datetime_rfc3339() {
+        let dt = parse_jira_datetime("2024-01-15T10:30:00Z").unwrap();
+        assert_eq!(dt.hour(), 10);
+        assert_eq!(dt.minute(), 30);
+    }
+
+    #[test]
+    fn parse_jira_datetime_non_standard_offset() {
+        let dt = parse_jira_datetime("2024-01-15T10:30:00.000+0000").unwrap();
+        assert_eq!(dt.hour(), 10);
+    }
+}

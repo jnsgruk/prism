@@ -43,3 +43,88 @@ where
 
     Err(last_err)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct TestError {
+        transient: bool,
+        msg: String,
+    }
+
+    impl std::fmt::Display for TestError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.msg)
+        }
+    }
+
+    fn is_transient(e: &TestError) -> bool {
+        e.transient
+    }
+
+    #[tokio::test]
+    async fn succeeds_immediately() {
+        let call_count = AtomicU32::new(0);
+        let result: Result<&str, TestError> = retry_transient("test", is_transient, || async {
+            call_count.fetch_add(1, Ordering::SeqCst);
+            Ok("ok")
+        })
+        .await;
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(call_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn non_transient_fails_immediately() {
+        let call_count = AtomicU32::new(0);
+        let result: Result<(), TestError> = retry_transient("test", is_transient, || async {
+            call_count.fetch_add(1, Ordering::SeqCst);
+            Err(TestError {
+                transient: false,
+                msg: "permanent".into(),
+            })
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(call_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn transient_succeeds_on_retry() {
+        let call_count = AtomicU32::new(0);
+        let result: Result<&str, TestError> = retry_transient("test", is_transient, || async {
+            let n = call_count.fetch_add(1, Ordering::SeqCst);
+            if n == 0 {
+                Err(TestError {
+                    transient: true,
+                    msg: "transient".into(),
+                })
+            } else {
+                Ok("recovered")
+            }
+        })
+        .await;
+        assert_eq!(result.unwrap(), "recovered");
+        assert_eq!(call_count.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn exhausts_retries_after_max_attempts() {
+        let call_count = AtomicU32::new(0);
+        let result: Result<(), TestError> = retry_transient("test", is_transient, || async {
+            call_count.fetch_add(1, Ordering::SeqCst);
+            Err(TestError {
+                transient: true,
+                msg: "always transient".into(),
+            })
+        })
+        .await;
+        assert!(result.is_err());
+        // Initial call + MAX_TRANSIENT_RETRIES (3) = 4 total calls
+        assert_eq!(call_count.load(Ordering::SeqCst), 4);
+    }
+}

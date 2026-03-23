@@ -563,3 +563,209 @@ impl FromStr for AiProvider {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- Platform --
+
+    #[test]
+    fn platform_fixed_roundtrip() {
+        for (variant, expected) in [
+            (Platform::Github, "github"),
+            (Platform::Launchpad, "launchpad"),
+            (Platform::Mattermost, "mattermost"),
+            (Platform::Jira, "jira"),
+        ] {
+            assert_eq!(variant.to_string(), expected);
+            assert_eq!(expected.parse::<Platform>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn platform_discourse_roundtrip() {
+        let p = Platform::Discourse("ubuntu".into());
+        assert_eq!(p.to_string(), "discourse-ubuntu");
+        assert_eq!(
+            "discourse-ubuntu".parse::<Platform>().unwrap(),
+            Platform::Discourse("ubuntu".into())
+        );
+    }
+
+    #[test]
+    fn platform_discourse_empty_instance_rejected() {
+        assert!("discourse-".parse::<Platform>().is_err());
+    }
+
+    #[test]
+    fn platform_unknown_errors() {
+        assert!("unknown".parse::<Platform>().is_err());
+    }
+
+    #[test]
+    fn platform_is_discourse() {
+        assert!(Platform::Discourse("x".into()).is_discourse());
+        assert!(!Platform::Github.is_discourse());
+    }
+
+    // -- ContributionType --
+
+    #[test]
+    fn contribution_type_roundtrip() {
+        for variant in [
+            ContributionType::PullRequest,
+            ContributionType::PrReview,
+            ContributionType::JiraTicket,
+            ContributionType::DiscoursePost,
+            ContributionType::DiscourseTopic,
+            ContributionType::DiscourseLike,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<ContributionType>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn contribution_type_unknown_errors() {
+        assert!("bogus".parse::<ContributionType>().is_err());
+    }
+
+    // -- ContributionState --
+
+    #[test]
+    fn contribution_state_roundtrip() {
+        for variant in [
+            ContributionState::Open,
+            ContributionState::Closed,
+            ContributionState::Merged,
+            ContributionState::InProgress,
+            ContributionState::Approved,
+            ContributionState::ChangesRequested,
+            ContributionState::Commented,
+            ContributionState::Pending,
+            ContributionState::Dismissed,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<ContributionState>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn contribution_state_preserves_github_casing() {
+        assert_eq!(ContributionState::Approved.as_str(), "APPROVED");
+        assert_eq!(
+            ContributionState::ChangesRequested.as_str(),
+            "CHANGES_REQUESTED"
+        );
+    }
+
+    #[test]
+    fn contribution_state_unknown_errors() {
+        assert!("unknown".parse::<ContributionState>().is_err());
+    }
+
+    // -- IngestionStatus --
+
+    #[test]
+    fn ingestion_status_roundtrip() {
+        for variant in [
+            IngestionStatus::Running,
+            IngestionStatus::Completed,
+            IngestionStatus::CompletedWithWarnings,
+            IngestionStatus::Failed,
+            IngestionStatus::Cancelled,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<IngestionStatus>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn ingestion_status_unknown_errors() {
+        assert!("bogus".parse::<IngestionStatus>().is_err());
+    }
+
+    // -- PeriodType --
+
+    #[test]
+    fn period_type_roundtrip() {
+        for variant in [PeriodType::Week, PeriodType::Month, PeriodType::Quarter] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<PeriodType>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn period_type_unknown_errors() {
+        assert!("yearly".parse::<PeriodType>().is_err());
+    }
+
+    // -- ResolutionStatus --
+
+    #[test]
+    fn resolution_status_roundtrip() {
+        for variant in [
+            ResolutionStatus::Pending,
+            ResolutionStatus::Resolved,
+            ResolutionStatus::Unresolved,
+            ResolutionStatus::Manual,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<ResolutionStatus>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn resolution_status_unknown_errors() {
+        assert!("auto".parse::<ResolutionStatus>().is_err());
+    }
+
+    // -- Role --
+
+    #[test]
+    fn role_roundtrip() {
+        assert_eq!(Role::Admin.to_string(), "admin");
+        assert_eq!("admin".parse::<Role>().unwrap(), Role::Admin);
+    }
+
+    #[test]
+    fn role_unknown_errors() {
+        assert!("viewer".parse::<Role>().is_err());
+    }
+
+    // -- TaskType --
+
+    #[test]
+    fn task_type_roundtrip() {
+        for variant in [
+            TaskType::Enrichment,
+            TaskType::Insights,
+            TaskType::Agentic,
+            TaskType::Embeddings,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<TaskType>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn task_type_unknown_errors() {
+        assert!("training".parse::<TaskType>().is_err());
+    }
+
+    // -- AiProvider --
+
+    #[test]
+    fn ai_provider_roundtrip() {
+        for variant in [AiProvider::Google, AiProvider::OpenRouter] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<AiProvider>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn ai_provider_unknown_errors() {
+        assert!("anthropic".parse::<AiProvider>().is_err());
+    }
+}
