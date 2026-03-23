@@ -278,8 +278,8 @@ impl ReasoningRepo {
             SELECT
                 task_type,
                 COALESCE(SUM(estimated_cost_usd::double precision), 0.0) as "total_cost_usd!: f64",
-                COALESCE(SUM(prompt_tokens::bigint), 0) as "total_prompt_tokens!: i64",
-                COALESCE(SUM(completion_tokens::bigint), 0) as "total_completion_tokens!: i64",
+                COALESCE(SUM(prompt_tokens::bigint), 0)::bigint as "total_prompt_tokens!: i64",
+                COALESCE(SUM(completion_tokens::bigint), 0)::bigint as "total_completion_tokens!: i64",
                 COUNT(*) as "request_count!: i64"
             FROM reasoning.api_usage
             WHERE created_at::date = $1
@@ -317,8 +317,8 @@ impl ReasoningRepo {
                 model,
                 task_type,
                 COALESCE(SUM(estimated_cost_usd::double precision), 0.0) as "total_cost_usd!: f64",
-                COALESCE(SUM(prompt_tokens::bigint), 0) as "total_prompt_tokens!: i64",
-                COALESCE(SUM(completion_tokens::bigint), 0) as "total_completion_tokens!: i64",
+                COALESCE(SUM(prompt_tokens::bigint), 0)::bigint as "total_prompt_tokens!: i64",
+                COALESCE(SUM(completion_tokens::bigint), 0)::bigint as "total_completion_tokens!: i64",
                 COUNT(*) as "request_count!: i64"
             FROM reasoning.api_usage
             WHERE created_at >= $1 AND created_at < $2

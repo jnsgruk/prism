@@ -268,13 +268,10 @@ define_repo_test!(
             .await
             .unwrap();
         let alice = insert_person(&pool, "Alice").await;
-        repos
-            .org
-            .assign_person_to_team(alice, team.id)
-            .await
-            .unwrap();
 
-        // Insert a contribution within the period
+        // Insert contributions BEFORE assigning to team — assign_person_to_team
+        // sets start_date = MIN(created_at)::date from contributions, so the
+        // contributions must exist first for the membership to cover the period.
         let jan_10 = time::OffsetDateTime::new_utc(
             time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
             time::Time::from_hms(12, 0, 0).unwrap(),
@@ -291,7 +288,6 @@ define_repo_test!(
             .await
             .unwrap();
 
-        // Insert one outside the period
         let feb_10 = time::OffsetDateTime::new_utc(
             time::Date::from_calendar_date(2025, time::Month::February, 10).unwrap(),
             time::Time::from_hms(12, 0, 0).unwrap(),
@@ -305,6 +301,13 @@ define_repo_test!(
         repos
             .activity
             .upsert_contribution(Uuid::now_v7(), Some(alice), &item2)
+            .await
+            .unwrap();
+
+        // Now assign — start_date will be 2025-01-10 (earliest contribution).
+        repos
+            .org
+            .assign_person_to_team(alice, team.id)
             .await
             .unwrap();
 
