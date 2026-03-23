@@ -4,6 +4,30 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// Embedding queue query row.
+type EmbeddingQueueRow = (
+    Uuid,
+    Uuid,
+    String,
+    Option<String>,
+    Option<String>,
+    String,
+    String,
+);
+
+/// Similarity search query row.
+type SimilarRow = (
+    Uuid,
+    Option<String>,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    OffsetDateTime,
+    Option<String>,
+    f64,
+);
+
 /// Repository for the `reasoning` schema: API usage tracking, cost management,
 /// and AI enrichments.
 #[derive(Clone)]
@@ -928,15 +952,7 @@ impl ReasoningRepo {
         limit: i64,
     ) -> Result<Vec<QueuedEmbedding>, Error> {
         // Step 1: Fetch queue entries joined with contribution data.
-        let rows: Vec<(
-            Uuid,
-            Uuid,
-            String,
-            Option<String>,
-            Option<String>,
-            String,
-            String,
-        )> = sqlx::query_as(
+        let rows: Vec<EmbeddingQueueRow> = sqlx::query_as(
             r"
                 SELECT
                     eq.id,
@@ -1092,17 +1108,7 @@ impl ReasoningRepo {
     ) -> Result<Vec<SimilarContribution>, Error> {
         let vector = pgvector::Vector::from(embedding.to_vec());
 
-        let rows: Vec<(
-            Uuid,
-            Option<String>,
-            String,
-            String,
-            Option<String>,
-            Option<String>,
-            OffsetDateTime,
-            Option<String>,
-            f64,
-        )> = sqlx::query_as(
+        let rows: Vec<SimilarRow> = sqlx::query_as(
             r"
             SELECT
                 c.id,

@@ -798,8 +798,6 @@ async fn retry_skipped_diffs(
 
 #[cfg(test)]
 mod tests {
-    use ps_core::ingestion::FailedItem;
-
     use super::*;
 
     // -- extract_watermark --

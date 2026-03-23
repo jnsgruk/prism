@@ -375,52 +375,6 @@ fn compute_cycle_time(state_history: Option<&serde_json::Value>) -> Option<f64> 
     }
 }
 
-/// Extract plain text from Atlassian Document Format (ADF) JSON.
-///
-/// ADF is a nested document structure used by Jira Cloud API v3. This
-/// recursively walks the content tree extracting text nodes, with paragraph
-/// breaks between block-level elements.
-fn adf_to_plain_text(adf: &serde_json::Value) -> String {
-    let mut output = String::new();
-    adf_extract_text(adf, &mut output);
-    output.trim().to_string()
-}
-
-fn adf_extract_text(node: &serde_json::Value, output: &mut String) {
-    // Text node: {"type": "text", "text": "..."}
-    if let Some(text) = node.get("text").and_then(|t| t.as_str()) {
-        output.push_str(text);
-        return;
-    }
-
-    // Container node with children: {"type": "paragraph", "content": [...]}
-    let is_block = matches!(
-        node.get("type").and_then(|t| t.as_str()),
-        Some(
-            "paragraph"
-                | "heading"
-                | "bulletList"
-                | "orderedList"
-                | "listItem"
-                | "blockquote"
-                | "codeBlock"
-                | "table"
-                | "tableRow"
-                | "tableCell"
-                | "tableHeader"
-        )
-    );
-
-    if let Some(content) = node.get("content").and_then(|c| c.as_array()) {
-        for child in content {
-            adf_extract_text(child, output);
-        }
-        if is_block && !output.is_empty() && !output.ends_with('\n') {
-            output.push('\n');
-        }
-    }
-}
-
 /// Format an RFC 3339 watermark into Jira JQL datetime format.
 ///
 /// Jira JQL expects `"yyyy/MM/dd HH:mm"` or `"yyyy-MM-dd HH:mm"` format.

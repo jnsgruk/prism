@@ -12,7 +12,7 @@ pub fn build_embedding_text(item: &QueuedEmbedding) -> Option<String> {
 
     // 1. Raw contribution text
     match item.contribution_type.as_str() {
-        "pull_request" | "discourse_topic" => {
+        "pull_request" | "discourse_topic" | "jira_ticket" => {
             let title = item.title.as_deref().unwrap_or_default();
             let body = item.body.as_deref().unwrap_or_default();
             if !title.is_empty() || !body.is_empty() {
@@ -23,13 +23,6 @@ pub fn build_embedding_text(item: &QueuedEmbedding) -> Option<String> {
             let body = item.body.as_deref().unwrap_or_default();
             if !body.is_empty() {
                 sections.push(body.to_string());
-            }
-        }
-        "jira_ticket" => {
-            let summary = item.title.as_deref().unwrap_or_default();
-            let description = item.body.as_deref().unwrap_or_default();
-            if !summary.is_empty() || !description.is_empty() {
-                sections.push(format!("{summary}\n\n{description}"));
             }
         }
         _ => return None,

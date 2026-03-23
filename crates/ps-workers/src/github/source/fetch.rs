@@ -533,86 +533,102 @@ fn search_pr_to_contributions(
     // Map reviews.
     if let Some(reviews) = &pr.reviews {
         for review in &reviews.nodes {
-            let reviewer = review.author.as_ref().map_or("", |a| a.login.as_str());
-
-            let submitted_at = review
-                .submitted_at
-                .as_deref()
-                .map(parse_datetime)
-                .transpose()?;
-
-            let review_id = review.database_id.unwrap_or(0);
-
-            let review_state = ContributionState::from_str_opt(&review.state);
-
-            // Build enrichment content for review — inline comments are the
-            // real substance of most reviews.
-            let inline_comments: Vec<serde_json::Value> = review
-                .comments
-                .as_ref()
-                .map(|c| {
-                    c.nodes
-                        .iter()
-                        .filter_map(|comment| {
-                            let body = comment.body.as_deref().unwrap_or("");
-                            if body.is_empty() {
-                                return None;
-                            }
-                            Some(serde_json::json!({
-                                "path": comment.path.as_deref().unwrap_or(""),
-                                "body": body,
-                            }))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            let review_body = review.body.as_deref().unwrap_or("");
-            // Skip enrichment content if both body is empty AND no inline comments
-            // (pure approval click — not scorable).
-            let review_enrichment = if !review_body.is_empty() || !inline_comments.is_empty() {
-                Some(serde_json::json!({
-                    "pr_title": pr_title_for_reviews,
-                    "pr_number": number,
-                    "state": review.state,
-                    "body": review_body,
-                    "inline_comments": inline_comments,
-                }))
-            } else {
-                None
-            };
-
-            items.push(ContributionInput {
-                platform: Platform::Github,
-                contribution_type: ContributionType::PrReview,
-                platform_id: format!("{owner}/{repo}/review/{review_id}"),
-                platform_username: reviewer.to_lowercase(),
-                title: Some(format!("Review on #{number}")),
-                url: Some(format!("{url}/reviews/{review_id}")),
-                state: review_state,
-                created_at: submitted_at.unwrap_or(parse_datetime(created_at_str)?),
-                updated_at: submitted_at,
-                closed_at: None,
-                metrics: serde_json::to_value(ContributionMetrics {
-                    review_state: Some(review.state.clone()),
-                    ..Default::default()
-                })
-                .unwrap_or_default(),
-                metadata: serde_json::to_value(ContributionMetadata {
-                    repo: Some(format!("{owner}/{repo}")),
-                    pr_number: Some(number),
-                    pr_platform_id: Some(format!("{owner}/{repo}/pull/{number}")),
-                    ..Default::default()
-                })
-                .unwrap_or_default(),
-                content: review.body.clone(),
-                state_history: None,
-                enrichment_content: review_enrichment,
-            });
+            items.push(search_review_to_contribution(
+                owner,
+                repo,
+                number,
+                &url,
+                &pr_title_for_reviews,
+                created_at_str,
+                review,
+            )?);
         }
     }
 
     Ok(items)
+}
+
+/// Convert a single GraphQL review into a `ContributionInput`.
+fn search_review_to_contribution(
+    owner: &str,
+    repo: &str,
+    pr_number: u32,
+    pr_url: &str,
+    pr_title: &str,
+    pr_created_at: &str,
+    review: &crate::github::types::GraphQLReview,
+) -> Result<ContributionInput, ps_core::Error> {
+    let reviewer = review.author.as_ref().map_or("", |a| a.login.as_str());
+
+    let submitted_at = review
+        .submitted_at
+        .as_deref()
+        .map(parse_datetime)
+        .transpose()?;
+
+    let review_id = review.database_id.unwrap_or(0);
+    let review_state = ContributionState::from_str_opt(&review.state);
+
+    let inline_comments: Vec<serde_json::Value> = review
+        .comments
+        .as_ref()
+        .map(|c| {
+            c.nodes
+                .iter()
+                .filter_map(|comment| {
+                    let body = comment.body.as_deref().unwrap_or("");
+                    if body.is_empty() {
+                        return None;
+                    }
+                    Some(serde_json::json!({
+                        "path": comment.path.as_deref().unwrap_or(""),
+                        "body": body,
+                    }))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let review_body = review.body.as_deref().unwrap_or("");
+    let review_enrichment = if !review_body.is_empty() || !inline_comments.is_empty() {
+        Some(serde_json::json!({
+            "pr_title": pr_title,
+            "pr_number": pr_number,
+            "state": review.state,
+            "body": review_body,
+            "inline_comments": inline_comments,
+        }))
+    } else {
+        None
+    };
+
+    Ok(ContributionInput {
+        platform: Platform::Github,
+        contribution_type: ContributionType::PrReview,
+        platform_id: format!("{owner}/{repo}/review/{review_id}"),
+        platform_username: reviewer.to_lowercase(),
+        title: Some(format!("Review on #{pr_number}")),
+        url: Some(format!("{pr_url}/reviews/{review_id}")),
+        state: review_state,
+        created_at: submitted_at.unwrap_or(parse_datetime(pr_created_at)?),
+        updated_at: submitted_at,
+        closed_at: None,
+        metrics: serde_json::to_value(ContributionMetrics {
+            review_state: Some(review.state.clone()),
+            ..Default::default()
+        })
+        .unwrap_or_default(),
+        metadata: serde_json::to_value(ContributionMetadata {
+            repo: Some(format!("{owner}/{repo}")),
+            pr_number: Some(pr_number),
+            pr_platform_id: Some(format!("{owner}/{repo}/pull/{pr_number}")),
+            ..Default::default()
+        })
+        .unwrap_or_default(),
+        content: review.body.clone(),
+        state_history: None,
+        enrichment_content: review_enrichment,
+    })
 }
 
 /// Outcome of a `fetch_pr_diffs()` call.

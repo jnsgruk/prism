@@ -39,108 +39,9 @@ pub(super) async fn fetch_batch_impl(
         cur.category_map = build_category_map(&client).await.unwrap_or_default();
     }
 
-    // Determine which API to call: per-category or global latest
-    let response = if cur.category_ids.is_empty() {
-        // No category filter — fetch global latest (existing behavior)
-        let page = cur.page;
-        match retry_transient("discourse latest", ps_core::Error::is_transient, || {
-            client.latest(page)
-        })
-        .await
-        {
-            Ok(r) => r,
-            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-                warn!(
-                    source = ctx.source_config.name,
-                    page = cur.page,
-                    retry_after_secs,
-                    "rate limited on Discourse latest page — stopping pagination"
-                );
-                return Ok(FetchResult {
-                    items: vec![],
-                    next_cursor: None,
-                    rate_limit: Some(ps_core::models::RateLimitInfo {
-                        remaining: 0,
-                        limit: 0,
-                        reset_at: time::OffsetDateTime::now_utc()
-                            + time::Duration::seconds(retry_after_secs.cast_signed()),
-                    }),
-                    etag: None,
-                    skipped_diffs: vec![],
-                });
-            }
-            Err(e) => return Err(e),
-        }
-    } else {
-        // Per-category iteration
-        let Some(&cat_id) = cur.category_ids.get(cur.category_index) else {
-            let final_cursor = serialise_cursor(&cur)?;
-            return Ok(FetchResult {
-                items: vec![],
-                next_cursor: None,
-                rate_limit: None,
-                etag: Some(final_cursor),
-                skipped_diffs: vec![],
-            });
-        };
-        let page = cur.page;
-        match retry_transient(
-            &format!("category:{cat_id}"),
-            ps_core::Error::is_transient,
-            || client.latest_for_category(cat_id, page),
-        )
-        .await
-        {
-            Ok(r) => r,
-            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-                warn!(
-                    source = ctx.source_config.name,
-                    category_id = cat_id,
-                    retry_after_secs,
-                    "rate limited on Discourse category page — stopping pagination"
-                );
-                return Ok(FetchResult {
-                    items: vec![],
-                    next_cursor: None,
-                    rate_limit: Some(ps_core::models::RateLimitInfo {
-                        remaining: 0,
-                        limit: 0,
-                        reset_at: time::OffsetDateTime::now_utc()
-                            + time::Duration::seconds(retry_after_secs.cast_signed()),
-                    }),
-                    etag: None,
-                    skipped_diffs: vec![],
-                });
-            }
-            Err(e) => {
-                // Record failure, skip to next category
-                warn!(
-                    source = ctx.source_config.name,
-                    category_id = cat_id,
-                    error = %e,
-                    "skipping category due to fetch error"
-                );
-                cur.failed_items.push(FailedItem {
-                    key: format!("category:{cat_id}"),
-                    error: e.to_string(),
-                });
-                cur.category_index += 1;
-                cur.page = 0;
-                let final_cursor = serialise_cursor(&cur)?;
-                let next_cursor = if cur.category_index < cur.category_ids.len() {
-                    Some(serialise_cursor(&cur)?)
-                } else {
-                    None
-                };
-                return Ok(FetchResult {
-                    items: vec![],
-                    next_cursor,
-                    rate_limit: None,
-                    etag: Some(final_cursor),
-                    skipped_diffs: vec![],
-                });
-            }
-        }
+    let response = fetch_topic_listing(ctx, &client, &mut cur).await?;
+    let Some(response) = response else {
+        return Ok(empty_result());
     };
 
     let topics = &response.topic_list.topics;
@@ -154,97 +55,10 @@ pub(super) async fn fetch_batch_impl(
     );
 
     if topics.is_empty() {
-        return Ok(FetchResult {
-            items: vec![],
-            next_cursor: None,
-            rate_limit: None,
-            etag: None,
-            skipped_diffs: vec![],
-        });
+        return Ok(empty_result());
     }
 
-    let mut items = Vec::new();
-
-    // Phase 1: Filter topics and collect those that need detail fetching.
-    let (filtered_topics, reached_watermark) = filter_topics(topics, &mut cur);
-    let category_map = &cur.category_map;
-
-    // Phase 2: Fetch topic details concurrently with capped parallelism.
-    let topic_ids: Vec<i64> = filtered_topics.iter().map(|t| t.id).collect();
-    let details: Vec<_> = stream::iter(topic_ids)
-        .map(|topic_id| {
-            let client = &client;
-            async move {
-                match retry_transient(
-                    &format!("topic:{topic_id}"),
-                    ps_core::Error::is_transient,
-                    || client.topic(topic_id),
-                )
-                .await
-                {
-                    Ok(detail) => Some((topic_id, detail)),
-                    Err(e) => {
-                        warn!(topic_id, "failed to fetch topic detail: {e}");
-                        None
-                    }
-                }
-            }
-        })
-        .buffer_unordered(4)
-        .collect()
-        .await;
-
-    // Phase 3: Process fetched details into contribution items.
-    let detail_map: HashMap<i64, _> = details.into_iter().flatten().collect();
-
-    for topic in &filtered_topics {
-        let Some(detail) = detail_map.get(&topic.id) else {
-            continue;
-        };
-
-        let category_name = topic
-            .category_id
-            .and_then(|id| category_map.get(&id))
-            .cloned();
-
-        // Create topic contribution — resolve the creator from post_number 1.
-        let mut topic_input = build_topic_input(topic, &cur, category_name.as_deref());
-
-        // Create post contributions from the topic detail
-        if let Some(ref post_stream) = detail.post_stream {
-            // The first post (post_number 1) IS the topic — merge its content
-            // into the topic contribution and skip it as a separate post.
-            if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
-                topic_input.platform_username = first_post.username.to_lowercase();
-                topic_input.content = first_post.raw.clone();
-
-                // Capture enrichment content for topic classification.
-                if let Some(ref raw) = first_post.raw {
-                    topic_input.enrichment_content = Some(serde_json::json!({
-                        "title": topic.title,
-                        "category": category_name.as_deref().unwrap_or(""),
-                        "tags": topic.tags,
-                        "body": raw,
-                    }));
-                }
-            }
-
-            // Skip post_number 1 — its content is already part of the topic.
-            for post in post_stream.posts.iter().filter(|p| p.post_number != 1) {
-                items.push(build_post_input(post, topic, &cur));
-            }
-
-            // Fetch likes for posts that have them (opt-in via source settings)
-            if fetch_likes {
-                let like_items =
-                    fetch_likes_for_posts(&client, &post_stream.posts, topic, &cur).await;
-                items.extend(like_items);
-            }
-        }
-
-        items.push(topic_input);
-    }
-
+    let (items, reached_watermark) = process_topics(&client, topics, &mut cur, fetch_likes).await;
     let stop = reached_watermark || !has_more_pages || cur.page >= MAX_PAGES_PER_RUN;
 
     // Always serialize the current cursor state so the handler can extract
@@ -273,11 +87,179 @@ pub(super) async fn fetch_batch_impl(
         items,
         next_cursor,
         rate_limit: None,
-        // Carry the final cursor state for watermark extraction — next_cursor
-        // is None on the last batch, but we still need max_bumped_at.
         etag: Some(final_cursor),
         skipped_diffs: vec![],
     })
+}
+
+fn empty_result() -> FetchResult {
+    FetchResult {
+        items: vec![],
+        next_cursor: None,
+        rate_limit: None,
+        etag: None,
+        skipped_diffs: vec![],
+    }
+}
+
+/// Fetch the topic listing from either global latest or per-category endpoint.
+/// Returns `None` when all categories are exhausted or a category-level error
+/// was handled (cursor advanced to next category).
+async fn fetch_topic_listing(
+    ctx: &IngestionContext,
+    client: &DiscourseClient,
+    cur: &mut Cursor,
+) -> Result<Option<crate::discourse::client::LatestResponse>, ps_core::Error> {
+    if cur.category_ids.is_empty() {
+        let page = cur.page;
+        match retry_transient("discourse latest", ps_core::Error::is_transient, || {
+            client.latest(page)
+        })
+        .await
+        {
+            Ok(r) => Ok(Some(r)),
+            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+                warn!(
+                    source = ctx.source_config.name,
+                    page = cur.page,
+                    retry_after_secs,
+                    "rate limited on Discourse latest page — stopping pagination"
+                );
+                Ok(Some(crate::discourse::client::LatestResponse {
+                    topic_list: crate::discourse::client::TopicList {
+                        topics: vec![],
+                        more_topics_url: None,
+                    },
+                }))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        let Some(&cat_id) = cur.category_ids.get(cur.category_index) else {
+            return Ok(None);
+        };
+        let page = cur.page;
+        match retry_transient(
+            &format!("category:{cat_id}"),
+            ps_core::Error::is_transient,
+            || client.latest_for_category(cat_id, page),
+        )
+        .await
+        {
+            Ok(r) => Ok(Some(r)),
+            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+                warn!(
+                    source = ctx.source_config.name,
+                    category_id = cat_id,
+                    retry_after_secs,
+                    "rate limited on Discourse category page — stopping pagination"
+                );
+                Ok(Some(crate::discourse::client::LatestResponse {
+                    topic_list: crate::discourse::client::TopicList {
+                        topics: vec![],
+                        more_topics_url: None,
+                    },
+                }))
+            }
+            Err(e) => {
+                warn!(
+                    source = ctx.source_config.name,
+                    category_id = cat_id,
+                    error = %e,
+                    "skipping category due to fetch error"
+                );
+                cur.failed_items.push(FailedItem {
+                    key: format!("category:{cat_id}"),
+                    error: e.to_string(),
+                });
+                cur.category_index += 1;
+                cur.page = 0;
+                Ok(None)
+            }
+        }
+    }
+}
+
+/// Process fetched topics into contribution items by fetching details and building inputs.
+async fn process_topics(
+    client: &DiscourseClient,
+    topics: &[TopicSummary],
+    cur: &mut Cursor,
+    fetch_likes: bool,
+) -> (Vec<ContributionInput>, bool) {
+    let (filtered_topics, reached_watermark) = filter_topics(topics, cur);
+    let category_map = &cur.category_map;
+
+    // Fetch topic details concurrently with capped parallelism.
+    let topic_ids: Vec<i64> = filtered_topics.iter().map(|t| t.id).collect();
+    let details: Vec<_> = stream::iter(topic_ids)
+        .map(|topic_id| {
+            let client = &client;
+            async move {
+                match retry_transient(
+                    &format!("topic:{topic_id}"),
+                    ps_core::Error::is_transient,
+                    || client.topic(topic_id),
+                )
+                .await
+                {
+                    Ok(detail) => Some((topic_id, detail)),
+                    Err(e) => {
+                        warn!(topic_id, "failed to fetch topic detail: {e}");
+                        None
+                    }
+                }
+            }
+        })
+        .buffer_unordered(4)
+        .collect()
+        .await;
+
+    let detail_map: HashMap<i64, _> = details.into_iter().flatten().collect();
+    let mut items = Vec::new();
+
+    for topic in &filtered_topics {
+        let Some(detail) = detail_map.get(&topic.id) else {
+            continue;
+        };
+
+        let category_name = topic
+            .category_id
+            .and_then(|id| category_map.get(&id))
+            .cloned();
+
+        let mut topic_input = build_topic_input(topic, cur, category_name.as_deref());
+
+        if let Some(ref post_stream) = detail.post_stream {
+            if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
+                topic_input.platform_username = first_post.username.to_lowercase();
+                topic_input.content = first_post.raw.clone();
+
+                if let Some(ref raw) = first_post.raw {
+                    topic_input.enrichment_content = Some(serde_json::json!({
+                        "title": topic.title,
+                        "category": category_name.as_deref().unwrap_or(""),
+                        "tags": topic.tags,
+                        "body": raw,
+                    }));
+                }
+            }
+
+            for post in post_stream.posts.iter().filter(|p| p.post_number != 1) {
+                items.push(build_post_input(post, topic, cur));
+            }
+
+            if fetch_likes {
+                let like_items =
+                    fetch_likes_for_posts(client, &post_stream.posts, topic, cur).await;
+                items.extend(like_items);
+            }
+        }
+
+        items.push(topic_input);
+    }
+
+    (items, reached_watermark)
 }
 
 /// Build a `ContributionInput` for a Discourse topic.
