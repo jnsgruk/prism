@@ -95,6 +95,44 @@ macro_rules! define_api_test {
     };
 }
 
+/// Define a source-adapter integration test with wiremock + real PostgreSQL.
+///
+/// Sets up a wiremock `MockServer`, a `PgPool` with migrations, a `Repos` instance,
+/// and provides a helper to build an `IngestionContext` pointing at the mock server.
+///
+/// Usage:
+/// ```ignore
+/// define_source_test!(test_name, |ctx: SourceTestContext| async move {
+///     // ctx.mock_server — wiremock MockServer for mounting mock responses
+///     // ctx.repos — Repos for direct DB access
+///     // ctx.pool — PgPool for raw queries
+///     // ctx.build_ingestion_ctx(platform, settings) — build IngestionContext
+/// });
+/// ```
+#[macro_export]
+macro_rules! define_source_test {
+    ($name:ident, |$ctx:ident| async move $body:block) => {
+        #[tokio::test]
+        async fn $name() {
+            let (pool, test_db, database_url) = $crate::setup_test_db!();
+            let repos = ps_core::repo::Repos::new(pool.clone());
+            let mock_server = wiremock::MockServer::start().await;
+
+            let $ctx = $crate::common::wiremock_helpers::SourceTestContext {
+                mock_server,
+                repos,
+                pool: pool.clone(),
+            };
+
+            // Run the test
+            $body
+
+            // Cleanup
+            $crate::teardown_test_db!(pool, test_db, database_url);
+        }
+    };
+}
+
 /// Define a repository-layer integration test against real PostgreSQL.
 ///
 /// Lighter than `define_api_test!` — no gRPC server, just a `PgPool` + `Repos`.

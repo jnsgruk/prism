@@ -5,3 +5,6 @@ mod api;
 
 #[cfg(test)]
 mod repo;
+
+#[cfg(test)]
+mod source;

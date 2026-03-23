@@ -1,4 +1,5 @@
 use ps_core::auth::{generate_token, hash_password, hash_token};
+use ps_core::models::Platform;
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -40,4 +41,37 @@ pub async fn create_admin_user(pool: &PgPool) -> (Uuid, String) {
     .expect("create session");
 
     (user_id, raw_token)
+}
+
+/// Create a person and a platform identity so that `batch_resolve_person_ids`
+/// can resolve `platform_username` → `person_id`. Returns the person_id.
+pub async fn create_person_with_identity(
+    pool: &PgPool,
+    name: &str,
+    platform: &Platform,
+    platform_username: &str,
+) -> Uuid {
+    let person_id = Uuid::now_v7();
+    sqlx::query("INSERT INTO org.people (id, name) VALUES ($1, $2)")
+        .bind(person_id)
+        .bind(name)
+        .execute(pool)
+        .await
+        .expect("insert person");
+
+    let identity_id = Uuid::now_v7();
+    let platform_str = platform.to_string();
+    let username_lower = platform_username.to_lowercase();
+    sqlx::query(
+        "INSERT INTO org.platform_identities (id, person_id, platform, platform_username) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(identity_id)
+    .bind(person_id)
+    .bind(&platform_str)
+    .bind(&username_lower)
+    .execute(pool)
+    .await
+    .expect("insert platform identity");
+
+    person_id
 }
