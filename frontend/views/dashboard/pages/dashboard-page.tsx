@@ -75,7 +75,7 @@ const DashboardPage = (): React.ReactElement => {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <Button render={<Link to="/admin" />}>
+              <Button nativeButton={false} render={<Link to="/admin" />}>
                 Configure Sources
                 <ArrowRight className="size-4" />
               </Button>
