@@ -1,8 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { createRouterTransport } from "@connectrpc/connect";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   GetStatusResponseSchema,
@@ -16,8 +16,7 @@ import {
   GetEnrichmentPipelineStatusResponseSchema,
   ReasoningService,
 } from "@ps/api/gen/prism/v1/reasoning_pb";
-
-import { TestWrapper } from "./test-wrapper";
+import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 const mockSources = [
   {
@@ -85,7 +84,7 @@ vi.mock("@ps/api/transport", () => ({
 
 const renderPage = async (): Promise<void> => {
   const { default: IngestionPage } = await import("./ingestion-page");
-  render(<IngestionPage />, { wrapper: TestWrapper });
+  renderWithProviders(<IngestionPage />);
 
   await waitFor(() => {
     expect(screen.getAllByText("github-main").length).toBeGreaterThanOrEqual(1);
@@ -93,7 +92,7 @@ const renderPage = async (): Promise<void> => {
 };
 
 describe("IngestionPage", () => {
-  afterEach(cleanup);
+  setupCleanup();
 
   it("renders source names and state labels", async () => {
     await renderPage();
