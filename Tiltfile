@@ -41,14 +41,15 @@ _tomls = [
     "crates/ps-workers/Cargo.toml",
     "crates/ps-metrics/Cargo.toml",
     "crates/ps-migrate/Cargo.toml",
-    "crates/ps-agent-mcp/Cargo.toml",
+    "crates/ps-agent/Cargo.toml",
+    "crates/ps-mcp/Cargo.toml",
     "crates/psctl/Cargo.toml",
     "crates/ps-reasoning/Cargo.toml",
     "tests/integration/Cargo.toml",
 ]
 
 # Shared crates — changes here rebuild any service that depends on them.
-_shared = ["crates/ps-core", "crates/ps-proto", "crates/ps-reasoning", "proto"]
+_shared = ["crates/ps-core", "crates/ps-proto", "crates/ps-reasoning", "crates/ps-agent", "proto"]
 
 docker_build(
     "prism/ps-server",

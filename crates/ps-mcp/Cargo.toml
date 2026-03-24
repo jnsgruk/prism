@@ -1,5 +1,5 @@
 [package]
-name = "ps-agent-mcp"
+name = "ps-mcp"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

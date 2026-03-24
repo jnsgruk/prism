@@ -38,7 +38,7 @@ pub struct ReasoningServiceImpl {
     secret_key: Zeroizing<[u8; 32]>,
     router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
     artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
-    container_manager: Option<Arc<crate::container_manager::ContainerManager>>,
+    container_manager: Option<Arc<ps_agent::ContainerManager>>,
     restate_url: String,
     http_client: reqwest::Client,
 }
@@ -49,7 +49,7 @@ impl ReasoningServiceImpl {
         secret_key: Zeroizing<[u8; 32]>,
         router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
         artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
-        container_manager: Option<Arc<crate::container_manager::ContainerManager>>,
+        container_manager: Option<Arc<ps_agent::ContainerManager>>,
         restate_url: String,
     ) -> Self {
         Self {
@@ -813,7 +813,7 @@ impl ReasoningService for ReasoningServiceImpl {
         &self,
         request: Request<AskQuestionRequest>,
     ) -> Result<Response<Self::AskQuestionStream>, Status> {
-        use crate::container_manager::{PodStatus, event_mapper};
+        use ps_agent::{PodStatus, event_mapper};
         use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
 
         let ctx = require_auth(&request)?;
@@ -930,8 +930,7 @@ impl ReasoningService for ReasoningServiceImpl {
                 .await;
 
             // 3. Connect to OpenCode and stream.
-            let client = match crate::container_manager::ContainerManager::opencode_client(&pod_ip)
-            {
+            let client = match ps_agent::ContainerManager::opencode_client(&pod_ip) {
                 Ok(c) => c,
                 Err(e) => {
                     error!(error = %e, "Failed to create OpenCode client");
@@ -988,7 +987,10 @@ impl ReasoningService for ReasoningServiceImpl {
                 };
 
                 // Check for idle/completion.
-                if matches!(event, opencode_sdk::types::event::Event::SessionIdle { .. }) {
+                if matches!(
+                    event,
+                    ps_agent::opencode_sdk::types::event::Event::SessionIdle { .. }
+                ) {
                     break;
                 }
 
@@ -1240,11 +1242,11 @@ impl ReasoningService for ReasoningServiceImpl {
 
 /// Poll for Pod readiness with backoff, sending status events on the channel.
 async fn wait_for_pod_ready(
-    cm: &crate::container_manager::ContainerManager,
+    cm: &ps_agent::ContainerManager,
     session_id: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Option<String> {
-    use crate::container_manager::{PodStatus, event_mapper};
+    use ps_agent::{PodStatus, event_mapper};
 
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(60);
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));

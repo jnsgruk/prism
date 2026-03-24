@@ -3,13 +3,11 @@
 //! Each conversation gets its own Pod. Pods are created on demand, reused for
 //! follow-up questions, and reaped when idle or after a maximum lifetime.
 
-pub mod event_mapper;
-pub mod pod_spec;
-
 use k8s_openapi::api::core::v1::Pod;
 use kube::Client as KubeClient;
 use kube::api::{Api, DeleteParams, ListParams, PostParams};
-use pod_spec::{ANNOTATION_LAST_ACTIVITY, AgentPodConfig, LABEL_APP_VALUE, LABEL_SESSION};
+
+use crate::pod_spec::{ANNOTATION_LAST_ACTIVITY, AgentPodConfig, LABEL_APP_VALUE, LABEL_SESSION};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info, warn};
@@ -71,7 +69,7 @@ impl ContainerManager {
         }
 
         // Create new pod.
-        let pod = pod_spec::build_agent_pod(session_id, &self.default_config);
+        let pod = crate::pod_spec::build_agent_pod(session_id, &self.default_config);
         let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
         let created = pods.create(&PostParams::default(), &pod).await?;
 

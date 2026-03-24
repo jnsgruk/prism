@@ -4,18 +4,21 @@
 
 This plan details the implementation of **W3: Agentic Query Interface** from [Phase 3](./14-phase3-intelligence.md). W0 (provider foundation), W1 (enrichment pipeline), and W2 (embeddings & similarity) are complete. The infrastructure they provide — `TaskRouter` with Rig clients, `CostTracker`, enrichment data in `reasoning.enrichments`, vector embeddings in `reasoning.embeddings`, and insight snapshots in `reasoning.insight_snapshots` — forms the foundation for the agentic layer.
 
-**Goal:** Users can ask natural-language questions about their engineering data and receive sourced, auditable answers with full reasoning traces. The agent runs in an isolated Ubuntu container with access to both Prism data tools and real system tools (git, rg, grep, tokei, etc.), enabling deep repository analysis alongside metrics queries. Every claim cites its source. The UI streams the agent's thinking process in real time.
+**Goal:** Users can ask natural-language questions about their engineering data and receive sourced, auditable answers with full reasoning traces. The agent runs in an isolated Ubuntu container powered by [OpenCode](https://opencode.ai) with access to both Prism data tools (via MCP) and real system tools (git, rg, grep, tokei, uv/python, etc.), enabling deep repository analysis alongside metrics queries. Every claim cites its source. The UI streams the agent's thinking process in real time. Generated files (reports, analysis outputs) are stored as conversation artifacts in S3/RustFS.
 
 **Dependencies:**
 - [14-phase3-intelligence.md](./14-phase3-intelligence.md) — parent plan (W3 section)
 - [06-ai-reasoning.md](./06-ai-reasoning.md) — tool design, agentic architecture, container analysis
-- [40-adopt-rig-framework.md](./40-adopt-rig-framework.md) — Rig for enrichment/embeddings (W1/W2); agent layer now uses Claude Agent SDK instead
+- [40-adopt-rig-framework.md](./40-adopt-rig-framework.md) — Rig for enrichment/embeddings (W1/W2); agent layer uses OpenCode instead
+- [01-architecture-overview.md](./01-architecture-overview.md) — object storage strategy (RustFS/S3)
 
 **Key technology:**
-- **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`, TypeScript) — agent orchestration with built-in tools (Read, Write, Edit, Bash, Glob, Grep) and custom MCP tool registration
+- **OpenCode** ([anomalyco/opencode](https://github.com/anomalyco/opencode)) — open-source AI coding agent with built-in tools (read, write, edit, bash, grep, glob, webfetch), MCP server support, plugin hooks, multi-provider support (75+ providers), and session management
+- **`opencode-sdk`** (Rust crate, [docs.rs/opencode-sdk](https://docs.rs/opencode-sdk)) — native Rust client for OpenCode's HTTP + SSE API, used by ps-server to control agent containers
+- **`ps-agent-mcp`** (new Rust crate) — MCP stdio server binary providing Prism data tools + S3 artifact tools, spawned by OpenCode inside the container
 - **Ephemeral K8s Pods** — one container per chat session, reaped after idle timeout
 - **gRPC server streaming** — `AskQuestion` RPC returns `stream AgentEvent`
-- **Connect streaming** — frontend consumes server-streaming RPC via `@connectrpc/connect`
+- **S3/RustFS** — artifact storage for generated files, reports, and analysis outputs
 
 ---
 
@@ -29,6 +32,7 @@ This plan details the implementation of **W3: Agentic Query Interface** from [Ph
 │  │ (textarea +   │  │  UserMessage → AgentResponse (streaming)       │  │
 │  │  send btn)    │  │  ThinkingSteps (tool calls, bash, file reads)  │  │
 │  └──────┬────────┘  │  AnswerContent (markdown + citations)          │  │
+│         │           │  Artifacts (downloadable files)                 │  │
 │         │           └─────────────────────────────────────────────────┘  │
 └─────────┼───────────────────────────────────────────────────────────────┘
           │ gRPC server streaming (AskQuestion)
@@ -38,58 +42,67 @@ This plan details the implementation of **W3: Agentic Query Interface** from [Ph
 │  ┌────────────────────────┐  ┌──────────────────────────────────────┐   │
 │  │ AskQuestion handler     │  │ ContainerManager                     │   │
 │  │  1. Find or create Pod  │  │  - create_pod(session_id)           │   │
-│  │  2. Connect WebSocket   │  │  - get_pod(session_id)              │   │
-│  │  3. Send question        │  │  - reap_idle_pods()                │   │
-│  │  4. Relay stream events │  │  - list_active_sessions()           │   │
-│  │  5. Store conversation   │  │  Uses kube-rs (K8s API)            │   │
-│  └────────────────────────┘  └──────────────────────────────────────┘   │
+│  │  2. Connect via SDK     │  │  - get_pod(session_id)              │   │
+│  │  3. Send prompt          │  │  - reap_idle_pods()                │   │
+│  │  4. Stream events back  │  │  Uses kube-rs (K8s API)            │   │
+│  │  5. Store conversation   │  └──────────────────────────────────────┘   │
+│  │  6. Upload artifacts     │                                            │
+│  └────────────────────────┘                                              │
 └─────────┬───────────────────────────────────────────────────────────────┘
-          │ WebSocket (bidirectional streaming)
+          │ opencode-sdk (Rust crate, HTTP + SSE to OpenCode server)
           ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Agent Container (K8s Pod, 1 per chat session)                            │
 │                                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ Agent Service (TypeScript, port 8080)                            │    │
-│  │  - WebSocket server: receives questions, streams events back     │    │
-│  │  - Claude Agent SDK: runs agent with tools + MCP servers         │    │
-│  │  - Session management: resume sessions within container lifetime │    │
+│  │ OpenCode Server (port 4096)                                      │    │
+│  │  - Built-in agent with custom system prompt                      │    │
+│  │  - Session management (multi-turn within container lifetime)     │    │
+│  │  - Event streaming via SDK                                       │    │
 │  └───────────┬────────────────────┬────────────────────────────────┘    │
 │              │                    │                                      │
 │  ┌───────────▼──────────┐  ┌─────▼──────────────────────────────┐      │
-│  │ Built-in Tools        │  │ Prism MCP Server (in-process)      │      │
-│  │  Bash (git, rg, grep, │  │  query_team_metrics()              │      │
-│  │    tokei, etc.)        │  │  query_contributions()             │      │
-│  │  Read, Write, Edit     │  │  compare_teams()                   │      │
-│  │  Glob, Grep            │  │  get_person_profile()              │      │
-│  │  WebSearch, WebFetch   │  │  search_similar()                  │      │
-│  └───────────────────────┘  │  search_by_text()                   │      │
-│                              │  query_enrichments()                │      │
-│  ┌───────────────────────┐  │  list_teams()                       │      │
-│  │ /workspace/            │  │  list_people()                      │      │
+│  │ Built-in Tools        │  │ ps-agent-mcp (Rust binary, stdio)  │      │
+│  │  bash (git, rg, grep, │  │  query_team_metrics()              │      │
+│  │    tokei, uv, python)  │  │  query_contributions()             │      │
+│  │  read, write, edit     │  │  compare_teams()                   │      │
+│  │  glob, grep            │  │  get_person_profile()              │      │
+│  │  webfetch              │  │  search_similar()                  │      │
+│  │  patch                 │  │  search_by_text()                  │      │
+│  └───────────────────────┘  │  query_enrichments()                │      │
+│                              │  list_teams(), list_people()        │      │
+│  ┌───────────────────────┐  │  upload_artifact()                  │      │
+│  │ /workspace/            │  │  list_artifacts()                   │      │
 │  │  (cloned repos,        │  │                                     │      │
-│  │   analysis outputs)    │  │  → calls ps-server gRPC internally │      │
+│  │   analysis outputs,    │  │  Uses ps-proto types, calls        │      │
+│  │   generated reports)   │  │  ps-server gRPC via tonic client   │      │
 │  └───────────────────────┘  └─────────────────────────────────────┘      │
 │                                                                          │
-│  Ubuntu 24.04 (Chisel-slimmed) + git, rg, grep, tokei, Node.js 22      │
+│  Ubuntu 24.04 (Chisel) + git + rg + tokei + uv + OpenCode              │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Why a Separate Container?
+### Why OpenCode in a Container?
 
-1. **System tool access** — the agent can `git clone` repos, run `rg` to search code, use `tokei` for language stats, run `grep` for pattern matching — all in a sandboxed environment with real filesystem access. This enables the "How many repos use tox vs uv?" class of questions from [06-ai-reasoning.md](./06-ai-reasoning.md#repository-analysis-via-containers).
+1. **Built-in tools for free** — OpenCode provides battle-tested file operations (read, write, edit, patch), code search (grep, glob), command execution (bash), and web access (webfetch). We don't build these ourselves.
 
-2. **Isolation** — each session gets its own filesystem, process space, and resource limits. A runaway agent can't affect other sessions or the main server.
+2. **Multi-provider support** — OpenCode supports 75+ LLM providers via the AI SDK. We configure it to use Anthropic by default but any provider works — matching Prism's provider-agnostic philosophy.
 
-3. **Claude Agent SDK** — the SDK bundles Claude Code's full toolset (Read, Write, Edit, Bash, Glob, Grep, WebSearch). We get battle-tested file navigation, code search, and command execution for free. Custom Prism tools are registered as MCP servers.
+3. **MCP integration** — custom Prism tools (query metrics, search contributions, etc.) are provided by `ps-agent-mcp`, a Rust binary implementing the MCP stdio transport. OpenCode spawns it as a local MCP server and exposes its tools to the LLM alongside built-in tools. Because it's Rust, it shares `ps-proto` types with the rest of the backend — no type duplication.
 
-4. **Resource control** — K8s resource limits (CPU, memory, ephemeral storage) prevent abuse. Network policies restrict egress to ps-server + GitHub/Jira APIs only.
+4. **Plugin hooks** — `tool.execute.before` and `tool.execute.after` hooks let us capture reasoning traces, guard against dangerous commands, and log tool usage without modifying OpenCode itself.
+
+5. **Session management** — OpenCode maintains conversation state within the server process. Multi-turn follow-up questions work naturally within a container's lifetime.
+
+6. **System tool access** — the agent can `git clone` repos, run `rg` to search code, use `tokei` for language stats, manage Python environments with `uv`, and execute arbitrary analysis scripts — all sandboxed in the container.
+
+7. **S3 artifact integration** — generated files (CSVs, reports, charts, analysis outputs) are uploaded to RustFS via the `upload_artifact` MCP tool and linked to the conversation.
 
 ---
 
 ## Navigation & Page Placement
 
-The agentic interface appears as a **top-level navigation item** in the sidebar, positioned after "Ingestion". It uses the `Sparkles` icon from Lucide.
+The agentic interface appears as a **top-level navigation item** in the sidebar, positioned after "Ingestion". Uses the `Sparkles` icon from Lucide.
 
 ```
 ┌──────────────────────┐
@@ -107,15 +120,13 @@ The agentic interface appears as a **top-level navigation item** in the sidebar,
 └──────────────────────┘
 ```
 
-**Route:** `/ask` (new session), `/ask/:conversationId` (resume a conversation)
-
-The "Ask" page is a **full-page chat interface**. Agent answers often contain tables, multi-paragraph analysis, code snippets from repo scans, and inline citations — they need room.
+**Route:** `/ask` (new session), `/ask/:conversationId` (resume)
 
 ---
 
 ## UI Mockups
 
-### Empty State (`/ask`, no conversations)
+### Empty State (`/ask`)
 
 ```
 ┌─ PageHeader ──────────────────────────────────────────────────┐
@@ -123,7 +134,6 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 │     Ask questions about your engineering data          [History]│
 └───────────────────────────────────────────────────────────────┘
 ┌───────────────────────────────────────────────────────────────┐
-│                                                               │
 │                                                               │
 │              ✨ (size-10, muted-foreground)                   │
 │                                                               │
@@ -135,15 +145,9 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 │              across all your sources.                         │
 │                                                               │
 │   ┌───────────────────────────────────────┐                  │
-│   │ Suggested questions:                  │                  │
-│   │                                       │                  │
 │   │  ┌─────────────────────────────────┐  │                  │
 │   │  │ How has Team X's review quality │  │                  │
 │   │  │ changed this quarter?           │  │                  │
-│   │  └─────────────────────────────────┘  │                  │
-│   │  ┌─────────────────────────────────┐  │                  │
-│   │  │ Who are the most thorough       │  │                  │
-│   │  │ reviewers across the org?       │  │                  │
 │   │  └─────────────────────────────────┘  │                  │
 │   │  ┌─────────────────────────────────┐  │                  │
 │   │  │ How many repos have migrated    │  │                  │
@@ -152,6 +156,10 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 │   │  ┌─────────────────────────────────┐  │                  │
 │   │  │ Compare throughput between      │  │                  │
 │   │  │ Team A and Team B this month    │  │                  │
+│   │  └─────────────────────────────────┘  │                  │
+│   │  ┌─────────────────────────────────┐  │                  │
+│   │  │ Generate a review quality       │  │                  │
+│   │  │ report for the Kernel team      │  │                  │
 │   │  └─────────────────────────────────┘  │                  │
 │   └───────────────────────────────────────┘                  │
 │                                                               │
@@ -162,7 +170,7 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 └───────────────────────────────────────────────────────────────┘
 ```
 
-### Active Conversation (streaming response)
+### Active Conversation — Streaming with Repo Analysis
 
 ```
 ┌─ PageHeader ──────────────────────────────────────────────────┐
@@ -172,21 +180,22 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 ┌───────────────────────────────────────────────────────────────┐
 │                                                               │
 │  ┌─ You ─────────────────────────────────────────────────┐   │
-│  │ How has Team Kernel's review quality changed this      │   │
-│  │ quarter?                                               │   │
+│  │ How many of our repos have migrated from tox to uv?    │   │
 │  └────────────────────────────────────────────────────────┘   │
 │                                                               │
 │  ┌─ Prism ───────────────────────────────────────────────┐   │
 │  │                                                        │   │
 │  │  ┌─ Thinking ──────────────────────────────────── ▾ ┐ │   │
-│  │  │  ✓ mcp: list_teams("Kernel")                     │ │   │
-│  │  │    → Found "Kernel" (team_abc)                    │ │   │
-│  │  │  ✓ mcp: query_team_metrics(team_abc, Q1 2026)    │ │   │
-│  │  │    → 142 PRs merged, avg depth 3.1               │ │   │
-│  │  │  ✓ mcp: query_team_metrics(team_abc, Q4 2025)    │ │   │
-│  │  │    → 128 PRs merged, avg depth 2.4               │ │   │
-│  │  │  ⟳ mcp: query_contributions(team_abc, reviews)   │ │   │
-│  │  │    Fetching review data...                        │ │   │
+│  │  │  ✓ mcp: list_teams() → 8 teams, 47 repos        │ │   │
+│  │  │  ✓ bash: git clone --depth 1 ubuntu/kernel-snaps │ │   │
+│  │  │    → Cloned to /workspace/kernel-snaps            │ │   │
+│  │  │  ✓ bash: rg -l "tox.ini" /workspace/kernel-snaps │ │   │
+│  │  │    → 3 files found                                │ │   │
+│  │  │  ✓ grep: "uv" in pyproject.toml files            │ │   │
+│  │  │    → uv dependency in 2 files                     │ │   │
+│  │  │  ✓ bash: git clone --depth 1 ubuntu/kernel-sru   │ │   │
+│  │  │  ⟳ bash: rg -l "tox.ini" /workspace/kernel-sru   │ │   │
+│  │  │    Running...                                     │ │   │
 │  │  └──────────────────────────────────────────────────┘ │   │
 │  │                                                        │   │
 │  │  █ (cursor — streaming in progress)                   │   │
@@ -200,56 +209,31 @@ The "Ask" page is a **full-page chat interface**. Agent answers often contain ta
 └───────────────────────────────────────────────────────────────┘
 ```
 
-### Active Conversation — Repo Analysis (agent using system tools)
-
-When the agent needs to analyse actual repository code, it uses built-in Bash/Glob/Grep tools. The thinking panel shows these distinctly:
-
-```
-│  ┌─ Thinking ──────────────────────────────────────── ▾ ┐    │
-│  │  ✓ mcp: list_teams("Kernel")                        │    │
-│  │    → Found "Kernel" (team_abc), 12 repos             │    │
-│  │  ✓ bash: git clone --depth 1 ubuntu/kernel-snaps     │    │
-│  │    → Cloned to /workspace/kernel-snaps               │    │
-│  │  ✓ bash: rg -l "tox.ini" /workspace/kernel-snaps    │    │
-│  │    → 3 files found                                   │    │
-│  │  ✓ bash: rg -l "pyproject.toml" /workspace/kernel-…│    │
-│  │    → 5 files found                                   │    │
-│  │  ✓ grep: "uv" in /workspace/kernel-snaps/pyproject…│    │
-│  │    → Found uv dependency in 2 pyproject.toml files   │    │
-│  │  ✓ bash: git clone --depth 1 ubuntu/kernel-sru      │    │
-│  │    → Cloned to /workspace/kernel-sru                 │    │
-│  │  ⟳ bash: rg -l "tox.ini" /workspace/kernel-sru      │    │
-│  │    Running...                                        │    │
-│  └──────────────────────────────────────────────────────┘    │
-```
-
-### Completed Response (with citations)
+### Completed Response with Citations and Artifacts
 
 ```
 │  ┌─ Prism ───────────────────────────────────────────────┐   │
 │  │                                                        │   │
-│  │  ┌─ Thinking (8 steps) ─────────────────────── ▸ ┐   │   │
+│  │  ┌─ Thinking (12 steps) ────────────────────── ▸ ┐   │   │
 │  │  └──────────────────────────────────────────────────┘ │   │
 │  │                                                        │   │
-│  │  ## Team Kernel — Review Quality, Q1 2026              │   │
+│  │  ## Tox → UV Migration Status                          │   │
 │  │                                                        │   │
-│  │  Review quality has **improved significantly** this     │   │
-│  │  quarter compared to Q4 2025:                          │   │
+│  │  | Team    | Repos | tox | uv  | both | neither |     │   │
+│  │  |---------|-------|-----|-----|------|---------|      │   │
+│  │  | Kernel  | 12    | 4   | 5   | 2    | 1       |     │   │
+│  │  | Desktop | 8     | 6   | 1   | 0    | 1       |     │   │
+│  │  | Server  | 15    | 3   | 10  | 1    | 1       |     │   │
+│  │  | **All** | **47**| **18**|**21**|**4**|**4**   |     │   │
 │  │                                                        │   │
-│  │  | Metric             | Q4 2025 | Q1 2026 | Change   | │   │
-│  │  |--------------------|---------|---------|----------| │   │
-│  │  | Avg review depth   | 2.4     | 3.1     | +0.7 ▲  | │   │
-│  │  | Rubber-stamp %     | 34%     | 18%     | −16% ▲  | │   │
-│  │  | Deep reviews (4+)  | 12%     | 28%     | +16% ▲  | │   │
-│  │  | Reviews given       | 89      | 142     | +60%    | │   │
-│  │                                                        │   │
-│  │  The biggest driver appears to be **@alice** and       │   │
-│  │  **@bob**, whose average depth scores rose from 2.1    │   │
-│  │  to 3.8 [¹] and 1.9 to 3.5 [²] respectively.         │   │
+│  │  **53% migrated** (21 uv-only + 4 both = 25/47)      │   │
 │  │                                                        │   │
 │  │  ─────────────────────────────────────────────────     │   │
-│  │  [¹] Alice's review profile · /people/alice_id         │   │
-│  │  [²] Bob's review profile · /people/bob_id             │   │
+│  │  📎 Artifacts                                          │   │
+│  │  ┌──────────────────────────────────────────────┐     │   │
+│  │  │ 📄 tox-uv-migration-report.csv    [Download] │     │   │
+│  │  │ 📄 per-repo-analysis.json         [Download] │     │   │
+│  │  └──────────────────────────────────────────────┘     │   │
 │  │                                                        │   │
 │  │  ┌───────────────────────────────────────────────┐    │   │
 │  │  │ ⓘ Evidence & Reasoning                    ▸  │    │   │
@@ -265,32 +249,32 @@ When the agent needs to analyse actual repository code, it uses built-in Bash/Gl
 ```
 │  │  ┌─ Evidence & Reasoning ─────────────────────── ▾ ┐  │   │
 │  │  │                                                   │  │   │
-│  │  │  Model: claude-sonnet-4-6                        │  │   │
-│  │  │  Tokens: 4,231 in / 1,847 out                   │  │   │
-│  │  │  Duration: 8.3s (8 tool calls)                   │  │   │
-│  │  │  Container: prism-agent-a7f3c (active)           │  │   │
+│  │  │  Model: anthropic/claude-sonnet-4-6              │  │   │
+│  │  │  Tokens: 6,120 in / 2,340 out                   │  │   │
+│  │  │  Duration: 24.1s (12 tool calls)                 │  │   │
+│  │  │  Container: prism-agent-a7f3 (active)            │  │   │
 │  │  │                                                   │  │   │
-│  │  │  Step 1: mcp__prism__list_teams("Kernel")        │  │   │
-│  │  │    → Resolved "Kernel" to team_abc               │  │   │
+│  │  │  Step 1: mcp__prism__list_teams()                │  │   │
+│  │  │    → 8 teams, 47 repos across 3 GitHub sources   │  │   │
 │  │  │                                                   │  │   │
-│  │  │  Step 2: mcp__prism__query_team_metrics(...)     │  │   │
-│  │  │    → Q1 2026: avg_depth 3.1, reviews 142        │  │   │
+│  │  │  Step 2: bash — git clone --depth 1 ...          │  │   │
+│  │  │    → kernel-snaps cloned (3.2 MB)                │  │   │
 │  │  │                                                   │  │   │
-│  │  │  Step 3: mcp__prism__query_team_metrics(...)     │  │   │
-│  │  │    → Q4 2025: avg_depth 2.4, reviews 89         │  │   │
+│  │  │  Step 3: bash — rg -l "tox.ini" ...              │  │   │
+│  │  │    → 3 files: tox.ini, tests/tox.ini, ci/tox.ini│  │   │
 │  │  │                                                   │  │   │
-│  │  │  Step 4: mcp__prism__query_contributions(...)    │  │   │
-│  │  │    → 142 reviews, top: alice (38), bob (29)     │  │   │
+│  │  │  ...                                              │  │   │
 │  │  │                                                   │  │   │
-│  │  │  Step 5: mcp__prism__get_person_profile(alice)   │  │   │
-│  │  │    → avg_depth 3.8, constructive 32/38          │  │   │
+│  │  │  Step 11: mcp__prism__upload_artifact(csv)       │  │   │
+│  │  │    → tox-uv-migration-report.csv uploaded        │  │   │
+│  │  │                                                   │  │   │
+│  │  │  Step 12: mcp__prism__upload_artifact(json)      │  │   │
+│  │  │    → per-repo-analysis.json uploaded              │  │   │
 │  │  │                                                   │  │   │
 │  │  └──────────────────────────────────────────────────┘ │   │
 ```
 
 ### Conversation History Panel (Sheet)
-
-Clicking **[History]** in the page header opens a right-side sheet:
 
 ```
 ┌─ Conversation History ──────────────────── ✕ ┐
@@ -298,20 +282,18 @@ Clicking **[History]** in the page header opens a right-side sheet:
 │  🔍 Search conversations...                   │
 │                                               │
 │  ┌──────────────────────────────────────────┐ │
-│  │ How has Team Kernel's review quality...  │ │
-│  │ 8 tool calls · Mar 23, 14:30            │ │
+│  │ How many repos use tox vs uv?            │ │
+│  │ 12 tool calls · 2 artifacts · Mar 24     │ │
 │  │ ● container active                       │ │
 │  └──────────────────────────────────────────┘ │
 │  ┌──────────────────────────────────────────┐ │
-│  │ How many repos use tox vs uv?            │ │
-│  │ 14 tool calls · Mar 22, 09:15           │ │
+│  │ Team Kernel review quality this quarter  │ │
+│  │ 5 tool calls · Mar 23                    │ │
 │  │ ○ container reaped                       │ │
 │  └──────────────────────────────────────────┘ │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
-
-Conversations with active containers show a green dot. Reaped containers show a grey dot — clicking resumes with a new container but the agent receives the prior conversation context.
 
 ---
 
@@ -319,87 +301,94 @@ Conversations with active containers show a green dot. Reaped containers show a 
 
 ### Creation
 
-When a user starts a new chat (or resumes a reaped session), `ps-server` creates a K8s Pod:
-
 ```
-User sends first question
+User sends first question (or resumes reaped session)
   │
   ▼
-ps-server: ContainerManager.create_pod(session_id)
+ps-server: ContainerManager.ensure_pod(session_id)
   │
   ├── Generate Pod spec:
   │     image: prism-agent:latest
-  │     env: PRISM_API_URL, ANTHROPIC_API_KEY, SESSION_ID
-  │     resources: { cpu: "500m", memory: "1Gi", ephemeral: "5Gi" }
+  │     env: PRISM_API_URL, OPENCODE_MODEL, SERVICE_TOKEN,
+  │           provider API keys (from K8s Secrets), SESSION_ID
+  │     resources: { cpu: 1, memory: 2Gi, ephemeral: 10Gi }
   │     labels: { app: prism-agent, session: <id> }
   │
   ├── Create Pod via kube-rs
   │
-  ├── Wait for Pod ready (readiness probe on :8080/health)
+  ├── Wait for ready (OpenCode server healthcheck on :4096)
   │
   └── Return Pod IP + port
 ```
 
 ### Communication
 
-`ps-server` connects to the agent container via WebSocket (`ws://<pod-ip>:8080/ws`). Messages are JSON-encoded:
+`ps-server` communicates with the OpenCode server inside the agent container using the [`opencode-sdk`](https://docs.rs/opencode-sdk) Rust crate — a native async client for OpenCode's HTTP + SSE API.
 
-**Server → Agent:**
-```json
-{
-  "type": "question",
-  "question": "How has Team Kernel's review quality changed?",
-  "conversation_history": [
-    { "role": "user", "content": "..." },
-    { "role": "assistant", "content": "..." }
-  ]
-}
+```rust
+use opencode_sdk::{Client, ClientBuilder};
+
+// Connect to the agent container's OpenCode server
+let client = ClientBuilder::new()
+    .base_url(format!("http://{}:4096", pod_ip))
+    .timeout_secs(120)
+    .build()?;
+
+// Create a session
+let session = client.create_session_with_title(&question).await?;
+
+// Send a prompt and stream events in real time
+client.send_text_async(&session.id, &question, None).await?;
+
+let subscription = client.sse_subscriber()
+    .subscribe_session(&session.id).await?;
+
+// subscription yields typed Event variants:
+//   Event::MessagePartUpdated — tool calls, text deltas
+//   Event::SessionIdle — agent finished, collect final answer
+//   Event::SessionError — error during processing
 ```
 
-**Agent → Server (streamed events):**
-```json
-{ "type": "tool_call_started", "tool_name": "mcp__prism__list_teams", "arguments": "{...}" }
-{ "type": "tool_call_completed", "tool_name": "mcp__prism__list_teams", "result_summary": "..." }
-{ "type": "text_delta", "text": "Review quality has **improved**..." }
-{ "type": "thinking", "text": "I should compare Q1 to Q4..." }
-{ "type": "result", "text": "full answer...", "session_id": "sdk-session-xyz" }
-```
+The crate provides:
+- **40 typed event variants** matching OpenCode's server — `MessagePartUpdated`, `SessionIdle`, `SessionError`, etc.
+- **SSE with automatic reconnection and backoff** — handles dropped connections transparently
+- **`SessionEventRouter`** — multiplexes a single SSE stream into per-session subscriptions
+- **`send_text_async` / `wait_for_idle_text`** — async prompt submission with optional blocking wait
 
 ### Idle Timeout & Reaping
 
-Each agent container has an **idle timer** (default: 15 minutes). The timer resets on each question received. When the timer fires:
+The container includes an idle timer. When no prompts are received for **15 minutes**:
 
-1. Agent container sends a `{ "type": "idle_shutdown" }` event (if ps-server is connected)
-2. Container exits gracefully
-3. `ContainerManager` detects Pod termination, marks session as `container_reaped`
-4. Conversation history remains in `reasoning.conversations` — the container is ephemeral, the data is not
+1. Container self-terminates (graceful shutdown)
+2. `ContainerManager` detects Pod termination, marks session `container_reaped`
+3. Conversation history remains in `reasoning.conversations` — ephemeral container, durable data
 
-A **background reaper** in `ps-server` periodically checks for Pods that have been running longer than a max lifetime (e.g. 2 hours) and deletes them, regardless of activity. This prevents forgotten sessions from consuming cluster resources.
+A **background reaper** in `ps-server` periodically deletes Pods running > **2 hours** max lifetime.
 
 ### Session Resume
 
 When a user resumes a conversation whose container was reaped:
 
-1. `ps-server` creates a new Pod (same as initial creation)
-2. Loads full conversation history from `reasoning.conversations`
-3. Sends history to agent container as `conversation_history` in the first question message
-4. Agent SDK receives this as context — the agent "remembers" the prior conversation
-5. Any previously cloned repos must be re-cloned (the workspace is ephemeral)
-
-The agent's system prompt includes instructions to acknowledge when context comes from a prior session and to re-clone repos if needed for follow-up questions about code.
+1. `ps-server` creates a new Pod via `ContainerManager`
+2. Loads conversation history from `reasoning.conversations` + `reasoning.conversation_messages`
+3. Connects to the new container's OpenCode server via `opencode-sdk`
+4. Injects prior conversation as context without triggering a response:
+   ```rust
+   // Inject prior context — OpenCode ingests it but does not reply
+   let context = format_conversation_history(&messages);
+   client.send_text_async(&session.id, &context, None).await?;
+   // wait for idle so context is fully ingested before sending the real question
+   client.wait_for_idle_text(&session.id, Duration::from_secs(30)).await?;
+   ```
+5. Sends the new question as a normal prompt
+6. The agent "remembers" the prior conversation. Any previously cloned repos must be re-cloned (workspace is ephemeral).
 
 ### Resource Limits & Network Policy
 
 ```yaml
-# Pod resource limits
 resources:
-  requests:
-    cpu: "250m"
-    memory: "512Mi"
-  limits:
-    cpu: "1000m"
-    memory: "2Gi"
-    ephemeral-storage: "10Gi"
+  requests: { cpu: "250m", memory: "512Mi" }
+  limits: { cpu: "1000m", memory: "2Gi", ephemeral-storage: "10Gi" }
 
 # Network policy: restrict egress
 egress:
@@ -407,13 +396,13 @@ egress:
     - podSelector:
         matchLabels:
           app: ps-server          # gRPC callbacks for MCP tools
-    ports:
-      - port: 50051
   - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0          # GitHub, Jira, Discourse APIs for repo cloning
-    ports:
-      - port: 443
+    - podSelector:
+        matchLabels:
+          app: rustfs              # S3 artifact uploads
+  - to:
+    - ipBlock: { cidr: 0.0.0.0/0 } # GitHub/Jira/Discourse HTTPS
+    ports: [{ port: 443 }]
 ```
 
 ---
@@ -426,314 +415,301 @@ egress:
 FROM ubuntu:24.04
 
 # System tools for code analysis
-RUN apt-get update && apt-get install -y \
-    git curl ca-certificates \
-    ripgrep \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# ripgrep
+RUN curl -sL https://github.com/BurntSushi/ripgrep/releases/latest/download/ripgrep-*-x86_64-unknown-linux-musl.tar.gz \
+    | tar xz --strip-components=1 -C /usr/local/bin --wildcards '*/rg'
 
 # tokei (code statistics)
 RUN curl -sL https://github.com/XAMPPRocky/tokei/releases/latest/download/tokei-x86_64-unknown-linux-gnu.tar.gz \
     | tar xz -C /usr/local/bin
 
-# Node.js 22 LTS
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# uv (Python version + environment manager)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
-# Agent service
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --production
-COPY dist/ ./dist/
+# OpenCode
+RUN curl -fsSL https://opencode.ai/install | bash
 
-# Workspace for cloned repos
+# ps-agent-mcp binary (Rust, built in CI)
+COPY ps-agent-mcp /usr/local/bin/ps-agent-mcp
+
+# OpenCode configuration + agent prompt
+COPY opencode.json /app/opencode.json
+COPY .opencode/ /app/.opencode/
+
+# Workspace for cloned repos and generated files
 RUN mkdir /workspace
+WORKDIR /workspace
 
-ENV NODE_ENV=production
-EXPOSE 8080
+EXPOSE 4096
 
-CMD ["node", "dist/server.js"]
+# Start OpenCode server (reads config from /app/opencode.json)
+CMD ["opencode", "--server", "--port", "4096", "--config", "/app/opencode.json"]
 ```
 
-The final image will be slimmed with Chisel per [feedback_containers.md].
+The MCP server (`ps-agent-mcp`) is a static Rust binary — no additional runtimes needed beyond OpenCode itself. The final image will be slimmed with Chisel per project convention.
 
-### Agent Service (`agent-service/`)
+### Model Selection — Wired to Prism AI Settings
 
-A lightweight TypeScript service that:
-1. Runs an HTTP + WebSocket server on port 8080
-2. Receives questions from ps-server via WebSocket
-3. Runs the Claude Agent SDK with registered tools
-4. Streams events back to ps-server
+The agent container's model is **not hardcoded**. It is driven by the existing `AiSettings.agentic` task config (provider + model) managed in the Admin UI → AI Settings tab. When `ps-server` creates a Pod, it reads the current agentic config and passes it as environment variables:
 
-```
-agent-service/
-├── package.json
-├── tsconfig.json
-├── src/
-│   ├── server.ts              # HTTP + WebSocket server (health, /ws endpoint)
-│   ├── agent.ts               # Claude Agent SDK wrapper: build agent, run query
-│   ├── tools/                 # Prism MCP tool definitions
-│   │   ├── index.ts           # create_sdk_mcp_server with all tools
-│   │   ├── query-metrics.ts   # query_team_metrics tool
-│   │   ├── query-contribs.ts  # query_contributions tool
-│   │   ├── compare-teams.ts   # compare_teams tool
-│   │   ├── person-profile.ts  # get_person_profile tool
-│   │   ├── search-similar.ts  # search_similar tool
-│   │   ├── search-text.ts     # search_by_text tool
-│   │   ├── query-enrich.ts    # query_enrichments tool
-│   │   ├── list-teams.ts      # list_teams tool
-│   │   └── list-people.ts     # list_people tool
-│   ├── prism-client.ts        # gRPC client to ps-server (for MCP tool data)
-│   ├── event-mapper.ts        # Map Agent SDK messages → WebSocket events
-│   └── types.ts               # Shared types
-└── Dockerfile
-```
+| Env Var | Source | Example |
+|---------|--------|---------|
+| `OPENCODE_MODEL` | `ai.tasks.agentic.provider/model` | `anthropic/claude-sonnet-4-6` |
+| `OPENCODE_SMALL_MODEL` | `ai.tasks.enrichment.provider/model` | `anthropic/claude-haiku-4-5` |
+| `ANTHROPIC_API_KEY` | K8s Secret (sourced from `config.secrets` via admin setup) | (if Anthropic provider configured) |
+| `OPENROUTER_API_KEY` | K8s Secret (sourced from `config.secrets`) | (if OpenRouter provider configured) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | K8s Secret (sourced from `config.secrets`) | (if Google provider configured) |
 
-### Agent SDK Configuration
+The `opencode.json` uses `{env:OPENCODE_MODEL}` variable substitution so the model is resolved at container startup:
 
-```typescript
-// agent.ts
-import { ClaudeSDKClient, ClaudeAgentOptions } from "@anthropic-ai/claude-agent-sdk";
-import { createPrismMcpServer } from "./tools/index.js";
+### OpenCode Configuration (`opencode.json`)
 
-const buildAgentOptions = (prismApiUrl: string): ClaudeAgentOptions => ({
-  systemPrompt: SYSTEM_PROMPT,
-  cwd: "/workspace",
-  maxTurns: 15,
-  permissionMode: "acceptEdits",    // auto-approve all tool use in container
-  allowedTools: [
-    "Read", "Write", "Edit", "Bash", "Glob", "Grep",
-    "WebFetch",
-    // Prism MCP tools (auto-discovered from server name)
-    "mcp__prism__query_team_metrics",
-    "mcp__prism__query_contributions",
-    "mcp__prism__compare_teams",
-    "mcp__prism__get_person_profile",
-    "mcp__prism__search_similar",
-    "mcp__prism__search_by_text",
-    "mcp__prism__query_enrichments",
-    "mcp__prism__list_teams",
-    "mcp__prism__list_people",
-  ],
-  disallowedTools: [
-    "Agent",           // No sub-agents (cost control)
-    "WebSearch",       // Disable web search (not needed, costs money)
-  ],
-  mcpServers: {
-    prism: createPrismMcpServer(prismApiUrl),
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "{env:OPENCODE_MODEL}",
+  "small_model": "{env:OPENCODE_SMALL_MODEL}",
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0"
   },
-  hooks: {
-    PreToolUse: [
-      {
-        matcher: "Bash",
-        hooks: [guardBashCommands],   // Block dangerous commands
-      },
-    ],
+  "mcp": {
+    "prism": {
+      "type": "local",
+      "command": ["/usr/local/bin/ps-agent-mcp"],
+      "environment": {
+        "PRISM_API_URL": "{env:PRISM_API_URL}",
+        "SERVICE_TOKEN": "{env:SERVICE_TOKEN}"
+      }
+    }
   },
-});
+  "permission": {
+    "edit": "allow",
+    "write": "allow",
+    "bash": "allow",
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "webfetch": "allow",
+    "patch": "allow",
+    "mcp_prism_*": "allow"
+  },
+  "agent": {
+    "prism": {
+      "mode": "primary",
+      "description": "Engineering insights assistant with access to Prism data and repository analysis tools",
+      "temperature": 0.3,
+      "max_steps": 20
+    }
+  }
+}
 ```
 
-### System Prompt
+This means changing the agentic model in the Admin UI (e.g. switching from Claude Sonnet to Gemini Flash via OpenRouter) takes effect on the **next container creation** — existing containers keep their configured model until reaped.
 
-```typescript
-const SYSTEM_PROMPT = `You are Prism, an engineering insights assistant deployed at Canonical.
+The `ContainerManager.ensure_pod()` method reads the current AI settings from `TaskRouter` and injects them into the Pod spec's env vars:
+
+```rust
+let ai_config = self.router.read().await.config();
+let agentic = ai_config.tasks.agentic;
+let model_id = format!("{}/{}", agentic.provider.as_str(), agentic.model);
+
+pod_spec.env("OPENCODE_MODEL", &model_id);
+pod_spec.env("OPENCODE_SMALL_MODEL", &small_model_id);
+// Provider API keys from K8s Secrets (mounted, not inline)
+```
+
+### Agent System Prompt (`.opencode/agents/prism.md`)
+
+```markdown
+---
+description: Engineering insights assistant with Prism data tools and repo analysis
+mode: primary
+temperature: 0.3
+max_steps: 20
+---
+
+You are Prism, an engineering insights assistant deployed at Canonical.
 You help users understand their engineering data across GitHub, Jira, Discourse, and other platforms.
 
 ## Available tools
 
-You have two categories of tools:
-
-### Prism data tools (MCP)
+### Prism data tools (MCP — prefixed `mcp_prism_`)
 Use these to query pre-computed metrics, enrichments, and team/people data:
-- mcp__prism__query_team_metrics — DORA, flow, review metrics for a team + period
-- mcp__prism__query_contributions — search/filter contributions with flexible criteria
-- mcp__prism__compare_teams — side-by-side metrics for 2+ teams
-- mcp__prism__get_person_profile — individual activity summary across platforms
-- mcp__prism__search_similar — find semantically similar contributions (embeddings)
-- mcp__prism__search_by_text — semantic search over all contributions
-- mcp__prism__query_enrichments — get AI enrichment scores for a contribution
-- mcp__prism__list_teams — browse team hierarchy (also resolves names to IDs)
-- mcp__prism__list_people — browse people, filtered by team
+- `mcp_prism_query_team_metrics` — DORA, flow, review metrics for a team + period
+- `mcp_prism_query_contributions` — search/filter contributions with flexible criteria
+- `mcp_prism_compare_teams` — side-by-side metrics for 2+ teams
+- `mcp_prism_get_person_profile` — individual activity summary across platforms
+- `mcp_prism_search_similar` — find semantically similar contributions (embeddings)
+- `mcp_prism_search_by_text` — semantic search over all contributions
+- `mcp_prism_query_enrichments` — get AI enrichment scores for a contribution
+- `mcp_prism_list_teams` — browse team hierarchy (resolves names → IDs)
+- `mcp_prism_list_people` — browse people, optionally filtered by team
+- `mcp_prism_upload_artifact` — upload a generated file to S3 as a conversation artifact
+- `mcp_prism_list_artifacts` — list artifacts for the current conversation
 
 ### System tools
 Use these for repository analysis and code inspection:
-- Bash — run commands: git clone, rg, grep, tokei, wc, find, etc.
-- Read — read files from cloned repos
-- Glob — find files by pattern in /workspace
-- Grep — search file contents with regex in /workspace
+- `bash` — run commands: git clone, rg, grep, tokei, uv, python, etc.
+- `read` — read files from cloned repos or generated outputs
+- `write` — create analysis scripts, reports, output files
+- `glob` — find files by pattern in /workspace
+- `grep` — search file contents with regex
+- `webfetch` — fetch web pages for reference
+
+### Python (via uv)
+When you need to run Python scripts (data analysis, chart generation, etc.):
+1. Always use `uv` to manage Python versions and virtual environments
+2. `uv run python script.py` for one-off scripts
+3. `uv init && uv add pandas matplotlib` for projects with dependencies
+4. Never use `pip install` directly — always go through `uv`
 
 ## Guidelines
 
 1. ALWAYS use Prism MCP tools for metrics and data queries. Never guess numbers.
-2. Use system tools when the question requires inspecting actual code (e.g. "which repos use tox?")
-3. For repo analysis: clone repos to /workspace/<repo-name> with --depth 1 (shallow clone)
-4. Cite every claim: use footnote references [¹][²] linking to /people/, /teams/, /contributions/ paths
-5. Format answers in Markdown with tables for comparisons
-6. When context comes from a prior session, acknowledge it and re-clone repos if needed
-7. If you cannot answer with available tools, say so clearly. Do not hallucinate.
+2. Use system tools when the question requires inspecting actual code.
+3. For repo analysis: clone repos to /workspace/<repo-name> with `--depth 1` (shallow clone).
+4. Cite every claim with footnote references [¹][²] linking to internal paths:
+   - People: [Name](/people/{person_id})
+   - Teams: [Team](/teams/{team_id})
+   - Contributions: [Title](/contributions/{contribution_id})
+5. Format answers in Markdown with tables for comparisons.
+6. When generating reports or analysis outputs, use `mcp_prism_upload_artifact` to make them downloadable.
+7. When context is injected from a prior session, acknowledge it and re-clone repos if needed.
+8. If you cannot answer with available tools, say so clearly. Do not hallucinate.
 
-## Current deployment context
-- Current date: ${new Date().toISOString().split("T")[0]}
+## Current context
+- Current date: {current_date}
 - Workspace: /workspace (ephemeral, empty at session start)
-`;
 ```
 
-### Bash Safety Hook
+### Prism MCP Server (`crates/ps-agent-mcp/`)
 
-```typescript
-const guardBashCommands = async (inputData: any) => {
-  const command = inputData?.tool_input?.command ?? "";
+A Rust crate that implements an MCP stdio server. OpenCode spawns the compiled binary as a subprocess and communicates via JSON-RPC 2.0 over stdin/stdout. The crate depends on `ps-proto` for gRPC client types and `object_store` for S3 artifact access.
 
-  // Block destructive or escape-attempt commands
-  const blocked = [
-    /rm\s+-rf\s+\/(?!workspace)/,     // rm -rf outside /workspace
-    /curl.*\|\s*(?:bash|sh)/,          // curl | bash (arbitrary execution)
-    /nc\s+-l/,                         // netcat listen (reverse shell)
-    /chmod\s+\+s/,                     // setuid
-    /docker|kubectl|podman/,           // container escape attempts
-  ];
+For MCP protocol handling, the crate uses **[`rmcp`](https://crates.io/crates/rmcp)** (Rust MCP SDK) — the official Rust implementation of the Model Context Protocol maintained by the MCP project. `rmcp` provides the stdio transport, JSON-RPC framing, tool schema generation via `#[tool]` proc macros, and server lifecycle management. This eliminates hand-rolled transport code and gives us protocol-compliant behaviour for free.
 
-  for (const pattern of blocked) {
-    if (pattern.test(command)) {
-      return {
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "deny",
-          permissionDecisionReason: `Blocked: command matches restricted pattern`,
-        },
-      };
+```rust
+// Cargo.toml
+[dependencies]
+rmcp = { version = "1.2", features = ["server", "transport-io"] }
+```
+
+```rust
+// Example tool registration with rmcp
+use rmcp::{ServerHandler, tool, Tool};
+
+#[derive(Clone)]
+struct PrismTools {
+    client: PrismClient,
+    artifacts: ArtifactStore,
+}
+
+#[tool(tool_box)]
+impl PrismTools {
+    #[tool(description = "Get DORA, flow, and review metrics for a team over a period")]
+    async fn query_team_metrics(
+        &self,
+        #[tool(param, description = "Team name")] team_name: String,
+        #[tool(param, description = "Start date (YYYY-MM-DD)")] period_start: String,
+        #[tool(param, description = "End date (YYYY-MM-DD)")] period_end: String,
+    ) -> Result<String, ToolError> {
+        // Calls ps-server gRPC via self.client
     }
-  }
-  return {};
-};
-```
 
-### Prism MCP Server (Custom Tools)
-
-Each tool is an in-process MCP tool that calls back to ps-server's gRPC API:
-
-```typescript
-// tools/index.ts
-import { tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
-import { createPrismClient } from "../prism-client.js";
-
-export const createPrismMcpServer = (apiUrl: string) => {
-  const client = createPrismClient(apiUrl);
-
-  const queryTeamMetrics = tool(
-    "query_team_metrics",
-    "Get DORA, flow, and review metrics for a team over a time period",
-    {
-      team_name: { type: "string", description: "Team name (resolved via list_teams)" },
-      period_start: { type: "string", description: "Start date (YYYY-MM-DD)" },
-      period_end: { type: "string", description: "End date (YYYY-MM-DD)" },
-    },
-    async (args) => {
-      const result = await client.queryTeamMetrics(args);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    },
-  );
-
-  // ... (same pattern for all 9 tools)
-
-  return createSdkMcpServer({
-    name: "prism",
-    version: "1.0.0",
-    tools: [
-      queryTeamMetrics,
-      queryContributions,
-      compareTeams,
-      getPersonProfile,
-      searchSimilar,
-      searchByText,
-      queryEnrichments,
-      listTeams,
-      listPeople,
-    ],
-  });
-};
-```
-
-### Prism gRPC Client (Data Access)
-
-The MCP tools don't access the database directly. They call ps-server's existing gRPC APIs:
-
-```typescript
-// prism-client.ts
-import { createClient } from "@connectrpc/connect";
-import { createGrpcTransport } from "@connectrpc/connect-node";
-import { MetricsService } from "./gen/canonical/prism/v1/metrics_connect.js";
-import { OrgService } from "./gen/canonical/prism/v1/org_connect.js";
-import { ReasoningService } from "./gen/canonical/prism/v1/reasoning_connect.js";
-import { InsightsService } from "./gen/canonical/prism/v1/insights_connect.js";
-
-export const createPrismClient = (apiUrl: string) => {
-  const transport = createGrpcTransport({ baseUrl: apiUrl });
-
-  return {
-    metrics: createClient(MetricsService, transport),
-    org: createClient(OrgService, transport),
-    reasoning: createClient(ReasoningService, transport),
-    insights: createClient(InsightsService, transport),
-  };
-};
-```
-
-The agent container authenticates to ps-server using a **service account API token** passed as an environment variable. This token has read-only access to all data (no mutations). The token is created during setup and stored as a K8s Secret.
-
-### Event Mapping (Agent SDK → WebSocket)
-
-```typescript
-// event-mapper.ts
-import type { AssistantMessage, ToolUseBlock, TextBlock } from "@anthropic-ai/claude-agent-sdk";
-
-export const mapSdkMessage = (message: any): WsEvent[] => {
-  const events: WsEvent[] = [];
-
-  if (message.type === "assistant" && message.content) {
-    for (const block of message.content) {
-      if (block.type === "tool_use") {
-        events.push({
-          type: "tool_call_started",
-          toolName: block.name,
-          argumentsJson: JSON.stringify(block.input),
-        });
-      } else if (block.type === "text") {
-        events.push({
-          type: "text_delta",
-          text: block.text,
-        });
-      }
+    #[tool(description = "Upload a generated file as a conversation artifact")]
+    async fn upload_artifact(
+        &self,
+        #[tool(param, description = "Path to file in /workspace")] file_path: String,
+        #[tool(param, description = "Display name")] display_name: Option<String>,
+    ) -> Result<String, ToolError> {
+        // Uploads to S3 via self.artifacts
     }
-  }
 
-  if (message.type === "tool_result") {
-    events.push({
-      type: "tool_call_completed",
-      toolName: message.tool_name,
-      resultSummary: truncate(extractText(message.content), 200),
-    });
-  }
-
-  if (message.type === "result") {
-    events.push({
-      type: "result",
-      text: message.result,
-      sessionId: message.session_id,
-    });
-  }
-
-  return events;
-};
+    // ... all 11 tools
+}
 ```
+
+```
+crates/ps-agent-mcp/
+├── Cargo.toml
+└── src/
+    ├── main.rs              # Entry point: env config, rmcp server setup
+    ├── prism_client.rs      # tonic gRPC client wrapping ps-proto types
+    ├── artifact_store.rs    # S3 upload/download via object_store crate
+    └── tools.rs             # All 11 tool implementations via #[tool] macros
+```
+
+Note: with `rmcp`'s proc macros, all 11 tools can live in a single `tools.rs` file as methods on `PrismTools`. No need for separate files per tool — the macro generates the JSON schema, dispatch, and parameter parsing.
+
+#### Artifact Tools (S3 Integration)
+
+**`upload_artifact`** — Reads a file from the container's `/workspace`, uploads to RustFS under `ps-artifacts/conversations/{conversation_id}/{filename}`, and returns a pre-signed download URL. Implemented as a `#[tool]` method on `PrismTools` using the `object_store` crate (same crate used by `ArtifactStore` in ps-core).
+
+**`list_artifacts`** — Lists artifacts for the current conversation by listing objects under the `conversations/{session_id}/` prefix.
+
+#### Prism gRPC Client (`prism_client.rs`)
+
+The MCP tools call ps-server's existing gRPC APIs via tonic, using the proto-generated client types from `ps-proto`. The container authenticates using a **read-only service account token** (stored as K8s Secret, passed as `SERVICE_TOKEN` env var).
+
+```rust
+// prism_client.rs
+use ps_proto::canonical::prism::v1::*;
+use tonic::metadata::MetadataValue;
+use tonic::transport::Channel;
+
+pub struct PrismClient {
+    metrics: MetricsServiceClient<Channel>,
+    org: OrgServiceClient<Channel>,
+    reasoning: ReasoningServiceClient<Channel>,
+    insights: InsightsServiceClient<Channel>,
+}
+
+impl PrismClient {
+    pub async fn connect(url: &str, token: &str) -> Result<Self> {
+        let channel = Channel::from_shared(url.to_string())?.connect().await?;
+        let token: MetadataValue<_> = format!("Bearer {token}").parse()?;
+
+        // Each client clone shares the channel, auth token added per-request
+        // via interceptor
+        Ok(Self {
+            metrics: MetricsServiceClient::with_interceptor(channel.clone(), auth(token.clone())),
+            org: OrgServiceClient::with_interceptor(channel.clone(), auth(token.clone())),
+            reasoning: ReasoningServiceClient::with_interceptor(channel.clone(), auth(token.clone())),
+            insights: InsightsServiceClient::with_interceptor(channel, auth(token)),
+        })
+    }
+}
+```
+
+#### Tool Details
+
+Each MCP tool wraps calls to ps-server's existing gRPC API. Tools do **not** access the database directly.
+
+| Tool | Input | Backing RPCs | Output |
+|------|-------|-------------|--------|
+| `query_team_metrics` | team_name, period_start, period_end | `InsightsService.GetTeamInsights` + `MetricsService.GetTeamMetrics` | DORA + flow + review quality metrics |
+| `query_contributions` | team_name?, person_name?, platform?, type?, state?, date range, limit | `MetricsService.ListContributions` (resolves names first) | Contribution list with titles, authors, states, URLs |
+| `compare_teams` | team_names[], period, metrics[] | `InsightsService.GetTeamInsights` × N | Side-by-side comparison table |
+| `get_person_profile` | person_name, period? | `OrgService.GetPerson` + `InsightsService.GetPersonInsights` | Activity summary, review profile, PR impact |
+| `search_similar` | contribution_id, limit?, platform? | `ReasoningService.FindSimilar` | Ranked similar contributions |
+| `search_by_text` | query, limit?, platform? | `ReasoningService.SearchByText` | Semantically matching contributions |
+| `query_enrichments` | contribution_id | `ReasoningService.GetEnrichments` | Enrichment scores, rationale, confidence |
+| `list_teams` | search? | `OrgService.ListTeams` | Team names, IDs, member counts, hierarchy |
+| `list_people` | team_name?, search? | `OrgService.ListPeople` | Names, IDs, team memberships |
+| `upload_artifact` | file_path, display_name? | Direct S3 upload | Artifact key + presigned download URL |
+| `list_artifacts` | — | S3 list objects | Conversation's uploaded artifacts |
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Database — Conversations Table + Container Sessions
-
-Add `reasoning.conversations` to store query history and container session state.
+### Step 1: Database — Conversations, Messages, Artifacts
 
 **Migration: `XXXX_create_conversations.sql`**
 
@@ -741,68 +717,80 @@ Add `reasoning.conversations` to store query history and container session state
 CREATE TABLE reasoning.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id),
-    question TEXT NOT NULL,
-    answer TEXT,
-    reasoning_trace JSONB,
-    supporting_data JSONB,
-    model_name TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
-    status TEXT NOT NULL DEFAULT 'processing',
-    prompt_tokens INTEGER NOT NULL DEFAULT 0,
-    completion_tokens INTEGER NOT NULL DEFAULT 0,
-    estimated_cost_usd REAL NOT NULL DEFAULT 0.0,
+    title TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    model_name TEXT NOT NULL DEFAULT 'anthropic/claude-sonnet-4-6',
     -- Container lifecycle
     container_pod_name TEXT,
     container_status TEXT NOT NULL DEFAULT 'pending',
-    sdk_session_id TEXT,
+    opencode_session_id TEXT,
+    -- Totals (updated after each turn)
+    total_tool_calls INTEGER NOT NULL DEFAULT 0,
+    total_prompt_tokens INTEGER NOT NULL DEFAULT 0,
+    total_completion_tokens INTEGER NOT NULL DEFAULT 0,
+    total_estimated_cost_usd REAL NOT NULL DEFAULT 0.0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at TIMESTAMPTZ
+    last_activity_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_conversations_user
-    ON reasoning.conversations(user_id, created_at DESC);
-
-CREATE INDEX idx_conversations_container
-    ON reasoning.conversations(container_pod_name)
+CREATE INDEX idx_conversations_user ON reasoning.conversations(user_id, created_at DESC);
+CREATE INDEX idx_conversations_container ON reasoning.conversations(container_pod_name)
     WHERE container_status = 'active';
 
--- Multi-turn: messages within a conversation
+-- Individual turns within a conversation
 CREATE TABLE reasoning.conversation_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES reasoning.conversations(id) ON DELETE CASCADE,
-    role TEXT NOT NULL,          -- 'user' or 'assistant'
+    role TEXT NOT NULL,          -- 'user' | 'assistant'
     content TEXT NOT NULL,
-    tool_calls JSONB,           -- tool call details for assistant messages
+    reasoning_trace JSONB,      -- tool calls for assistant messages
+    supporting_data JSONB,      -- citations for assistant messages
+    prompt_tokens INTEGER NOT NULL DEFAULT 0,
+    completion_tokens INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_conversation_messages_conv
-    ON reasoning.conversation_messages(conversation_id, created_at);
+CREATE INDEX idx_conv_messages ON reasoning.conversation_messages(conversation_id, created_at);
+
+-- Artifacts generated during conversations (stored in S3)
+CREATE TABLE reasoning.conversation_artifacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES reasoning.conversations(id) ON DELETE CASCADE,
+    message_id UUID REFERENCES reasoning.conversation_messages(id),
+    artifact_key TEXT NOT NULL,       -- S3 key: conversations/{conv_id}/{filename}
+    display_name TEXT NOT NULL,       -- Human-readable filename
+    content_type TEXT,                -- MIME type (text/csv, application/json, etc.)
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_conv_artifacts ON reasoning.conversation_artifacts(conversation_id);
 
 -- Link insights back to conversations
 ALTER TABLE reasoning.insights
     ADD COLUMN conversation_id UUID REFERENCES reasoning.conversations(id);
 ```
 
-**Reasoning trace JSONB schema:**
+**Reasoning trace JSONB schema (per-message):**
 
 ```json
 {
   "steps": [
     {
       "index": 0,
-      "tool_name": "mcp__prism__list_teams",
+      "tool_name": "mcp_prism_list_teams",
       "arguments": { "search": "Kernel" },
       "result_summary": "Found 'Kernel' (team_abc), 12 repos",
       "duration_ms": 45,
-      "timestamp": "2026-03-23T14:30:01Z"
+      "timestamp": "2026-03-24T14:30:01Z"
     },
     {
       "index": 3,
-      "tool_name": "Bash",
+      "tool_name": "bash",
       "arguments": { "command": "git clone --depth 1 https://github.com/ubuntu/kernel-snaps /workspace/kernel-snaps" },
       "result_summary": "Cloned successfully (3.2 MB)",
       "duration_ms": 2100,
-      "timestamp": "2026-03-23T14:30:05Z"
+      "timestamp": "2026-03-24T14:30:05Z"
     }
   ],
   "total_duration_ms": 8300,
@@ -815,48 +803,41 @@ ALTER TABLE reasoning.insights
 | File | Action |
 |------|--------|
 | `migrations/XXXX_create_conversations.sql` | **Create** |
-| `crates/ps-core/src/repo/reasoning.rs` | **Modify** — add `create_conversation()`, `update_conversation()`, `get_conversation()`, `list_conversations()`, `add_message()`, `get_messages()`, `update_container_status()` |
+| `crates/ps-core/src/repo/reasoning.rs` | **Modify** — add conversation CRUD, message CRUD, artifact CRUD, container status methods |
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Integration (repo) | `define_repo_test!` — create conversation, add messages, update with answer + trace, list by user, verify JSONB round-trip |
-| Integration (repo) | Multi-turn: create conversation, add 4 messages (user/assistant alternating), retrieve in order |
+| Integration (repo) | `define_repo_test!` — conversation lifecycle: create, add messages, update totals, list by user |
+| Integration (repo) | Multi-turn: 4 alternating user/assistant messages, retrieve in order |
 | Integration (repo) | Container status transitions: pending → active → reaped → active (resume) |
-| Integration (repo) | `insights.conversation_id` FK — create conversation, save insight linked to it, query back |
+| Integration (repo) | Artifacts: create artifact, list by conversation, verify S3 key format |
+| Integration (repo) | `insights.conversation_id` FK round-trip |
 
 ---
 
 ### Step 2: Proto — Streaming RPC + Conversation Management
 
-Add the streaming `AskQuestion` RPC and conversation management RPCs to `reasoning.proto`.
+Add streaming `AskQuestion` RPC and conversation management RPCs to `reasoning.proto`.
 
-**Proto additions:**
+**New RPCs added to `ReasoningService`:**
 
 ```protobuf
-// --- Add to ReasoningService ---
-
-// AskQuestion submits a natural-language question and streams back agent
-// events (thinking steps, tool calls, partial answer, final answer).
-// Spins up an agent container if one isn't already active for this session.
 rpc AskQuestion(AskQuestionRequest) returns (stream AgentEvent);
-
-// ListConversations returns recent conversations for the current user.
 rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
-
-// GetConversation returns a conversation with its full reasoning trace.
 rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
-
-// SaveInsightFromConversation saves an agent's answer as a named insight.
 rpc SaveInsightFromConversation(SaveInsightFromConversationRequest)
     returns (SaveInsightFromConversationResponse);
+rpc GetArtifactDownloadUrl(GetArtifactDownloadUrlRequest)
+    returns (GetArtifactDownloadUrlResponse);
+```
 
-// --- New message types ---
+**Key message types:**
 
+```protobuf
 message AskQuestionRequest {
   string question = 1;
-  // Resume an existing conversation (multi-turn or after container reap).
   optional string conversation_id = 2;
 }
 
@@ -869,29 +850,16 @@ message AgentEvent {
     AgentError error = 5;
     AgentThinking thinking = 6;
     AgentContainerStatus container_status = 7;
+    AgentArtifactUploaded artifact_uploaded = 8;
   }
 }
 
-message AgentToolCallStarted {
-  int32 step_index = 1;
-  // Tool name (e.g. "mcp__prism__list_teams", "Bash", "Grep").
-  string tool_name = 2;
-  string arguments_json = 3;
-}
-
-message AgentToolCallCompleted {
-  int32 step_index = 1;
-  string tool_name = 2;
-  string result_summary = 3;
-  int32 duration_ms = 4;
-}
-
-message AgentThinking {
-  string text = 1;
-}
-
-message AgentPartialAnswer {
-  string text = 1;
+message AgentArtifactUploaded {
+  string artifact_id = 1;
+  string display_name = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  string download_url = 5;
 }
 
 message AgentFinalAnswer {
@@ -903,87 +871,35 @@ message AgentFinalAnswer {
   double estimated_cost_usd = 6;
   int32 tool_call_count = 7;
   int32 duration_ms = 8;
+  repeated ArtifactInfo artifacts = 9;
 }
 
-message AgentError {
-  string message = 1;
-  bool retryable = 2;
-}
-
-// Emitted when the container is being prepared (creation, readiness).
-message AgentContainerStatus {
-  // "creating", "ready", "reconnecting" (after reap)
-  string status = 1;
-  string message = 2;
-}
-
-message ListConversationsRequest {
-  int32 limit = 1;
-  int32 offset = 2;
-}
-
-message ListConversationsResponse {
-  repeated ConversationSummary conversations = 1;
-  int32 total_count = 2;
-}
-
-message ConversationSummary {
+message ArtifactInfo {
   string id = 1;
-  string question = 2;
-  string answer_preview = 3;
-  string status = 4;
-  string model_name = 5;
-  int32 tool_call_count = 6;
-  string container_status = 7;
-  google.protobuf.Timestamp created_at = 8;
+  string display_name = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
 }
 
-message GetConversationRequest {
-  string id = 1;
+message GetArtifactDownloadUrlRequest {
+  string artifact_id = 1;
 }
 
-message GetConversationResponse {
-  string id = 1;
-  string question = 2;
-  string answer = 3;
-  string reasoning_trace_json = 4;
-  string supporting_data_json = 5;
-  string model_name = 6;
-  string status = 7;
-  int32 prompt_tokens = 8;
-  int32 completion_tokens = 9;
-  double estimated_cost_usd = 10;
-  string container_status = 11;
-  repeated ConversationMessage messages = 12;
-  google.protobuf.Timestamp created_at = 13;
-  optional google.protobuf.Timestamp completed_at = 14;
+message GetArtifactDownloadUrlResponse {
+  string download_url = 1;
+  int32 expires_in_seconds = 2;
 }
 
-message ConversationMessage {
-  string role = 1;
-  string content = 2;
-  string tool_calls_json = 3;
-  google.protobuf.Timestamp created_at = 4;
-}
-
-message SaveInsightFromConversationRequest {
-  string conversation_id = 1;
-  string title = 2;
-}
-
-message SaveInsightFromConversationResponse {
-  string insight_id = 1;
-}
+// ConversationSummary, GetConversationResponse, etc. include artifact counts
+// and container_status fields (see full proto in implementation)
 ```
 
 **Files created/changed:**
 
 | File | Action |
 |------|--------|
-| `proto/canonical/prism/v1/reasoning.proto` | **Modify** — add RPCs and message types |
-| `frontend/lib/api/gen/canonical/prism/v1/reasoning_connect.ts` | **Auto-generated** by `buf generate` |
-| `frontend/lib/api/gen/canonical/prism/v1/reasoning_pb.ts` | **Auto-generated** by `buf generate` |
-| `crates/ps-proto/src/gen/canonical.prism.v1.rs` | **Auto-generated** by `buf generate` |
+| `proto/canonical/prism/v1/reasoning.proto` | **Modify** — add RPCs and messages |
+| Auto-generated files (buf generate) | `reasoning_connect.ts`, `reasoning_pb.ts`, `canonical.prism.v1.rs` |
 
 **Testing:**
 
@@ -996,282 +912,212 @@ message SaveInsightFromConversationResponse {
 
 ### Step 3: Container Manager — K8s Pod Lifecycle
 
-A new module in `ps-server` that manages agent container pods using `kube-rs`.
+New module in `ps-server` that manages agent container Pods using `kube-rs`.
 
-**Key operations:**
+**Operations:**
 
-1. **`create_pod(session_id, service_token)`** — Create a K8s Pod running `prism-agent:latest`. Set environment variables: `PRISM_API_URL` (internal service URL), `ANTHROPIC_API_KEY` (from K8s Secret), `SESSION_ID`, `SERVICE_TOKEN`. Apply resource limits and network policy. Wait for readiness.
+1. **`ensure_pod(session_id)`** — Find active Pod or create new one. Returns Pod IP + port when ready.
+2. **`get_pod_status(session_id)`** — Check if Pod is running, pending, or reaped.
+3. **`update_activity(session_id)`** — Update `last-activity` annotation on the Pod.
+4. **`reap_idle_pods()`** — Background task (every 60s). Delete Pods idle > 15 min or running > 2 hours.
+5. **`delete_pod(session_id)`** — Force-delete a Pod.
 
-2. **`get_pod(session_id)`** — Look up active Pod by session label. Return Pod IP + port if running, `None` if reaped.
+**OpenCode client** — Uses the `opencode-sdk` Rust crate ([docs.rs/opencode-sdk](https://docs.rs/opencode-sdk)), which provides a native async client for OpenCode's HTTP + SSE API:
 
-3. **`connect(pod_ip)`** — Establish WebSocket connection to agent container. Return bidirectional stream.
+```rust
+use opencode_sdk::{Client, ClientBuilder};
 
-4. **`reap_idle_pods()`** — Background task running every 60s. List Pods with `app=prism-agent` label. Check last-activity annotation. Delete Pods idle > 15 min or running > 2 hours.
+// Create client pointing at the agent container
+let client = ClientBuilder::new()
+    .base_url(format!("http://{}:4096", pod_ip))
+    .timeout_secs(120)
+    .build()?;
 
-5. **`delete_pod(session_id)`** — Force-delete a Pod (used on conversation delete or user request).
+// Create session
+let session = client.create_session_with_title("User question...").await?;
 
-**Implementation notes:**
-- Uses `kube::Client` (created once, shared via `Arc`)
-- Pods are created in a dedicated namespace (`prism-agents`) or the same namespace with distinct labels
-- Pod names are deterministic: `prism-agent-{session_id_short}`
-- The `last-activity` annotation is updated by ps-server on each question relay
+// Inject prior conversation context (for resumed sessions)
+client.send_text_async(&session.id, context, None).await?;
+
+// Send the actual question and wait for completion
+let answer = client.send_text_async_and_wait_for_idle(
+    &session.id, &question, None, Duration::from_secs(120)
+).await?;
+
+// Or stream events in real time:
+let subscription = client.sse_subscriber()
+    .subscribe_session(&session.id).await?;
+// subscription yields typed Event variants:
+//   Event::MessagePartUpdated { properties: MessagePartEventProps }
+//   Event::SessionIdle { properties: SessionIdleProps }
+//   Event::SessionError { properties: SessionErrorProps }
+```
+
+The SDK provides:
+- **40 typed event variants** — `MessagePartUpdated` (tool calls + text), `SessionIdle`, `SessionError`, etc.
+- **SSE with reconnection/backoff** — handles dropped connections transparently
+- **`SessionEventRouter`** — multiplexes a single SSE stream into per-session subscriptions (useful when multiple conversations share a container in future)
+- **`send_text_async` with `noReply` equivalent** — inject context without triggering a response
 
 **Files created/changed:**
 
 | File | Action |
 |------|--------|
-| `crates/ps-server/src/container_manager.rs` | **Create** — `ContainerManager` struct, K8s Pod CRUD, WebSocket client, idle reaper |
-| `crates/ps-server/src/container_manager/pod_spec.rs` | **Create** — Pod spec builder (resource limits, env vars, labels, network policy) |
-| `crates/ps-server/Cargo.toml` | **Modify** — add `kube` (with `runtime`, `client` features), `k8s-openapi` (with v1_31), `tokio-tungstenite` (WebSocket client) |
+| `crates/ps-server/src/container_manager/mod.rs` | **Create** — `ContainerManager`, Pod CRUD, idle reaper |
+| `crates/ps-server/src/container_manager/pod_spec.rs` | **Create** — Pod spec builder (env vars from AI settings, resource limits, labels) |
+| `crates/ps-server/src/container_manager/event_mapper.rs` | **Create** — Map `opencode_sdk::types::event::Event` variants to `AgentEvent` proto messages |
+| `crates/ps-server/Cargo.toml` | **Modify** — add `kube`, `k8s-openapi`, `tokio-stream`, `opencode-sdk` |
+
+Note: The `opencode-sdk` crate replaces what would have been a hand-rolled HTTP client. It provides typed session management, SSE streaming, and event routing out of the box.
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Unit | Pod spec builder — verify labels, env vars, resource limits, container image |
-| Unit | Pod name generation — deterministic from session ID, valid K8s name |
-| Integration | Create Pod → wait ready → connect WebSocket → send ping → receive pong → delete Pod (requires K8s API access; skip in CI without K8s) |
-| Integration | Idle reaper — create Pod with old last-activity annotation, run reaper, verify Pod deleted |
+| Unit | Pod spec builder — verify labels, env vars (including model from AI settings), resource limits |
+| Unit | Event mapper — verify mapping from `opencode_sdk::Event::MessagePartUpdated` → `AgentEvent::tool_call_started`/`partial_answer`, `Event::SessionIdle` → `AgentEvent::final_answer`, `Event::SessionError` → `AgentEvent::error` |
+| Integration | Pod lifecycle — create → ready → activity update → idle reap (requires K8s; skip in CI without) |
 
 ---
 
-### Step 4: Agent Service — TypeScript Container Application
+### Step 4: `ps-agent-mcp` Crate + Container Image
 
-The TypeScript application that runs inside the agent container.
+A new Rust crate that implements an MCP stdio server. OpenCode spawns it as a subprocess and communicates via JSON-RPC over stdin/stdout. The binary uses `ps-proto` types to call ps-server's gRPC API and `object_store` for S3 artifact management.
 
-**Directory structure:**
+**Design rationale** (see [Appendix: Decision Log](#appendix-decision-log), decision #2):
+- Shares `ps-proto` types — tool inputs/outputs use the same proto-generated types as the rest of the backend
+- Static binary — no runtime needed in the container, smaller image
+- Single toolchain — `cargo build` produces `ps-server`, `ps-agent-mcp`, and all other binaries
+- Tool input schemas derived from Rust structs via `schemars::JsonSchema`, same pattern as Rig extractors in W1
+
+**Crate structure:**
 
 ```
-agent-service/
-├── package.json
-├── tsconfig.json
-├── Dockerfile
-├── src/
-│   ├── server.ts                    # HTTP + WebSocket server
-│   ├── agent.ts                     # Claude Agent SDK wrapper
-│   ├── event-mapper.ts              # SDK messages → WebSocket events
-│   ├── idle-timer.ts                # Idle timeout (self-terminate)
-│   ├── bash-guard.ts                # PreToolUse hook for Bash safety
-│   ├── types.ts                     # Shared types
-│   ├── prism-client.ts              # gRPC client to ps-server
-│   └── tools/
-│       ├── index.ts                 # createPrismMcpServer()
-│       ├── query-metrics.ts         # query_team_metrics
-│       ├── query-contribs.ts        # query_contributions
-│       ├── compare-teams.ts         # compare_teams
-│       ├── person-profile.ts        # get_person_profile
-│       ├── search-similar.ts        # search_similar
-│       ├── search-text.ts           # search_by_text
-│       ├── query-enrich.ts          # query_enrichments
-│       ├── list-teams.ts            # list_teams
-│       └── list-people.ts           # list_people
-├── tests/
-│   ├── event-mapper.test.ts         # Event mapping unit tests
-│   ├── bash-guard.test.ts           # Bash safety hook tests
-│   ├── idle-timer.test.ts           # Idle timeout tests
-│   └── tools/
-│       └── query-metrics.test.ts    # Tool integration tests (mock gRPC)
-└── vitest.config.ts
+crates/ps-agent-mcp/
+├── Cargo.toml
+└── src/
+    ├── main.rs              # Entry point: env config, rmcp server setup
+    ├── prism_client.rs      # tonic gRPC client wrapping ps-proto types
+    ├── artifact_store.rs    # S3 upload/download via object_store crate
+    └── tools.rs             # All 11 tool implementations as #[tool] methods
 ```
 
-#### Tool Details
+With `rmcp`'s proc macros, all 11 tools live as methods on a single `PrismTools` struct. The macro generates JSON schemas, parameter parsing, and dispatch — no per-tool files or manual registry needed.
 
-Each MCP tool wraps a call to ps-server's existing gRPC API. The tools do not access the database directly.
+**Dependency flow:** `ps-agent-mcp → ps-proto` (for gRPC client types). Does **not** depend on `ps-core` (no direct DB access — all data goes through ps-server gRPC).
 
-**Tool 1: `query_team_metrics`**
-- Input: `{ team_name, period_start, period_end }`
-- Calls: `InsightsService.GetTeamInsights` + `MetricsService.GetTeamMetrics`
-- Returns: DORA metrics, flow metrics, review quality summary, enrichment-based insights
+**Cargo.toml:**
 
-**Tool 2: `query_contributions`**
-- Input: `{ team_name?, person_name?, platform?, contribution_type?, state?, date_from?, date_to?, limit?, sort_by? }`
-- Calls: `MetricsService.ListContributions` (resolving names to IDs first via OrgService)
-- Returns: contribution list with titles, authors, states, dates, URLs
+```toml
+[package]
+name = "ps-agent-mcp"
+version.workspace = true
+edition.workspace = true
 
-**Tool 3: `compare_teams`**
-- Input: `{ team_names[], period_start, period_end, metrics[] }`
-- Calls: `InsightsService.GetTeamInsights` for each team, `MetricsService.GetTeamMetrics` for each
-- Returns: side-by-side comparison table as JSON
+[dependencies]
+ps-proto = { path = "../ps-proto" }
+rmcp = { version = "1.2", features = ["server", "transport-io"] }
+tonic.workspace = true
+tokio.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+object_store = { version = "0.11", features = ["aws"] }
+tracing.workspace = true
+thiserror.workspace = true
+```
 
-**Tool 4: `get_person_profile`**
-- Input: `{ person_name, period_start?, period_end? }`
-- Calls: `OrgService.GetPerson`, `InsightsService.GetPersonInsights`, `MetricsService.GetPersonMetrics`
-- Returns: activity summary, review profile, PR impact, platform breakdown
+**Entry point (`main.rs`):**
 
-**Tool 5: `search_similar`**
-- Input: `{ contribution_id, limit?, platform_filter? }`
-- Calls: `ReasoningService.FindSimilar`
-- Returns: ranked similar contributions with distance scores
+```rust
+use rmcp::transport::io::stdio;
 
-**Tool 6: `search_by_text`**
-- Input: `{ query, limit?, platform_filter? }`
-- Calls: `ReasoningService.SearchByText`
-- Returns: semantically matching contributions
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::init();
 
-**Tool 7: `query_enrichments`**
-- Input: `{ contribution_id }`
-- Calls: `ReasoningService.GetEnrichments`
-- Returns: all enrichment types with scores, rationale, confidence
+    let prism_url = std::env::var("PRISM_API_URL")?;
+    let token = std::env::var("SERVICE_TOKEN")?;
+    let session_id = std::env::var("SESSION_ID")?;
+    let s3_endpoint = std::env::var("S3_ENDPOINT")?;
 
-**Tool 8: `list_teams`**
-- Input: `{ search? }`
-- Calls: `OrgService.ListTeams`
-- Returns: team names, IDs, member counts, hierarchy
+    let client = PrismClient::connect(&prism_url, &token).await?;
+    let artifacts = ArtifactStore::new(&s3_endpoint, &session_id);
+    let tools = PrismTools::new(client, artifacts);
 
-**Tool 9: `list_people`**
-- Input: `{ team_name?, search? }`
-- Calls: `OrgService.ListPeople`
-- Returns: names, IDs, team memberships
+    // rmcp handles MCP protocol negotiation, JSON-RPC framing, and dispatch
+    let server = tools.serve(stdio()).await?;
+    server.waiting().await?;
+    Ok(())
+}
+```
 
 **Files created:**
 
 | File | Action |
 |------|--------|
-| All files in `agent-service/` above | **Create** (new top-level directory alongside `frontend/` and `crates/`) |
+| `crates/ps-agent-mcp/Cargo.toml` | **Create** |
+| `crates/ps-agent-mcp/src/main.rs` | **Create** — entry point, rmcp server setup |
+| `crates/ps-agent-mcp/src/prism_client.rs` | **Create** — tonic gRPC client wrapping ps-proto |
+| `crates/ps-agent-mcp/src/artifact_store.rs` | **Create** — S3 upload/download via `object_store` |
+| `crates/ps-agent-mcp/src/tools.rs` | **Create** — `PrismTools` struct with 11 `#[tool]` methods |
+| `agent-container/Dockerfile` | **Create** — Ubuntu 24.04 + git + rg + tokei + uv + OpenCode + `ps-agent-mcp` binary |
+| `agent-container/opencode.json` | **Create** — OpenCode config with `ps-agent-mcp` as local MCP server |
+| `agent-container/.opencode/agents/prism.md` | **Create** — Agent system prompt |
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Unit | `event-mapper.ts` — map each SDK message type to correct WebSocket event |
-| Unit | `bash-guard.ts` — verify blocked patterns (rm -rf /, curl\|bash, docker, kubectl) and allowed patterns (git clone, rg, tokei) |
-| Unit | `idle-timer.ts` — verify timer fires after inactivity, verify reset on activity |
-| Unit | Each tool in `tools/` — mock gRPC client, verify correct RPC called with correct args, verify output format |
-| Integration | Full agent flow with mock SDK — send question, verify event sequence through WebSocket |
+| Unit | Each tool method — mock `PrismClient`, verify correct RPC called with correct args, verify JSON output |
+| Unit | `upload_artifact` — mock `ArtifactStore`, verify S3 key format `conversations/{id}/{filename}` |
+| Unit | `list_artifacts` — mock S3 list, verify response |
+| Integration | Build binary, spawn as subprocess, send MCP `initialize` + `tools/list`, verify 11 tools registered with correct schemas |
+| Integration | Send MCP `tools/call` for `query_team_metrics`, verify JSON-RPC response |
+| Integration | Docker build — verify image builds, OpenCode starts, health endpoint responds |
 
 ---
 
 ### Step 5: gRPC Service — AskQuestion Streaming Handler
 
-Wire the container manager into `ReasoningService` as a server-streaming RPC. The handler orchestrates container lifecycle and relays events.
+Wire container manager + OpenCode client into `ReasoningService`.
 
-```rust
-async fn ask_question(
-    &self,
-    request: Request<AskQuestionRequest>,
-) -> Result<Response<Streaming<AgentEvent>>, Status> {
-    let user = require_auth(&request)?;
-    let req = request.into_inner();
+**Flow:**
 
-    // 1. Validate question (non-empty, <4000 chars)
-    // 2. Rate limit check (10 queries/min/user)
-
-    let (tx, rx) = mpsc::channel(64);
-
-    // Determine conversation context
-    let (conversation_id, history) = if let Some(id) = req.conversation_id {
-        // Resuming existing conversation
-        let conv = self.repos.reasoning().get_conversation(&id).await?;
-        let msgs = self.repos.reasoning().get_messages(&id).await?;
-        (conv.id, msgs)
-    } else {
-        // New conversation
-        let id = self.repos.reasoning()
-            .create_conversation(user.id, &req.question, "claude-sonnet-4-6")
-            .await?;
-        (id, vec![])
-    };
-
-    // Add user message
-    self.repos.reasoning()
-        .add_message(conversation_id, "user", &req.question, None)
-        .await?;
-
-    let container_mgr = self.container_manager.clone();
-    let repos = self.repos.clone();
-    let question = req.question.clone();
-    let conv_id = conversation_id;
-
-    tokio::spawn(async move {
-        // 1. Find or create container
-        tx.send(AgentEvent::container_status("creating", "Starting agent container...")).await.ok();
-
-        let pod = match container_mgr.ensure_pod(conv_id.to_string()).await {
-            Ok(p) => p,
-            Err(e) => {
-                tx.send(AgentEvent::error(&format!("Container error: {e}"), true)).await.ok();
-                return;
-            }
-        };
-
-        tx.send(AgentEvent::container_status("ready", "Agent ready")).await.ok();
-        repos.reasoning().update_container_status(conv_id, "active", &pod.name).await.ok();
-
-        // 2. Connect and send question
-        let ws = match container_mgr.connect(&pod).await {
-            Ok(ws) => ws,
-            Err(e) => {
-                tx.send(AgentEvent::error(&format!("Connection error: {e}"), true)).await.ok();
-                return;
-            }
-        };
-
-        ws.send_question(&question, &history).await;
-
-        // 3. Relay events from agent container → gRPC stream
-        let mut trace = ReasoningTrace::new();
-        let mut full_answer = String::new();
-        let mut step_index = 0;
-
-        while let Some(event) = ws.next_event().await {
-            match event {
-                WsEvent::ToolCallStarted { tool_name, arguments_json } => {
-                    trace.start_step(&tool_name, &arguments_json);
-                    tx.send(AgentEvent::tool_call_started(step_index, &tool_name, &arguments_json)).await.ok();
-                    step_index += 1;
-                }
-                WsEvent::ToolCallCompleted { tool_name, result_summary, duration_ms } => {
-                    trace.complete_step(&tool_name, &result_summary, duration_ms);
-                    tx.send(AgentEvent::tool_call_completed(step_index - 1, &tool_name, &result_summary, duration_ms)).await.ok();
-                }
-                WsEvent::TextDelta { text } => {
-                    full_answer.push_str(&text);
-                    tx.send(AgentEvent::partial_answer(&text)).await.ok();
-                }
-                WsEvent::Thinking { text } => {
-                    tx.send(AgentEvent::thinking(&text)).await.ok();
-                }
-                WsEvent::Result { text, session_id } => {
-                    full_answer = text.clone();
-                    // Store assistant message
-                    repos.reasoning().add_message(conv_id, "assistant", &text, Some(&trace)).await.ok();
-                    // Update conversation
-                    repos.reasoning().update_conversation(conv_id, &text, &trace, 0, 0).await.ok();
-                    // Store SDK session ID for potential in-container resume
-                    if let Some(sid) = session_id {
-                        repos.reasoning().set_sdk_session_id(conv_id, &sid).await.ok();
-                    }
-                    // Send final answer
-                    tx.send(AgentEvent::final_answer(&text, &conv_id.to_string(), /*..*/)).await.ok();
-                }
-                WsEvent::Error { message } => {
-                    tx.send(AgentEvent::error(&message, false)).await.ok();
-                }
-            }
-        }
-    });
-
-    Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
-}
+```
+1. Validate question (non-empty, <4000 chars), rate limit (10/min/user)
+2. Create/resume conversation in DB
+3. ContainerManager.ensure_pod() → Pod IP
+4. Stream AgentContainerStatus events ("creating" / "ready")
+5. opencode_sdk::Client → create_session_with_title() or resume
+6. If resuming: inject prior conversation via send_text_async()
+7. client.send_text_async(question)
+8. client.sse_subscriber().subscribe_session() → SSE event stream
+9. For each opencode_sdk::Event:
+   a. event_mapper → AgentEvent proto
+   b. Capture in reasoning trace (JSONB)
+   c. Send on gRPC stream
+   d. If artifact MCP tool completed: record in DB, send AgentArtifactUploaded
+10. On Event::SessionIdle: store message + trace in DB, update conversation totals
+11. Log cost to reasoning.api_usage via CostTracker
 ```
 
 **Files created/changed:**
 
 | File | Action |
 |------|--------|
-| `crates/ps-server/src/services/reasoning.rs` | **Modify** — add `ask_question()`, `list_conversations()`, `get_conversation()`, `save_insight_from_conversation()` handlers |
-| `crates/ps-server/Cargo.toml` | **Modify** — add `tokio-stream`, `tokio-tungstenite` |
+| `crates/ps-server/src/services/reasoning.rs` | **Modify** — add `ask_question()`, `list_conversations()`, `get_conversation()`, `save_insight_from_conversation()`, `get_artifact_download_url()` |
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Integration (API) | `define_api_test!` — mock container manager, call `AskQuestion`, consume stream, verify event sequence |
-| Integration (API) | `ListConversations` — create 3 conversations, list, verify ordering and pagination |
-| Integration (API) | `GetConversation` — complete conversation, fetch, verify messages + trace |
-| Integration (API) | `SaveInsightFromConversation` — save, verify insight with `conversation_id` FK |
-| Integration (API) | Auth — verify `AskQuestion` rejects unauthenticated requests |
-| Integration (API) | Resume — create conversation with messages, call `AskQuestion` with `conversation_id`, verify history sent to container |
+| Integration (API) | `define_api_test!` — mock container manager + OpenCode client, verify event stream sequence |
+| Integration (API) | `ListConversations` — create 3 conversations, verify ordering, artifact counts |
+| Integration (API) | `GetConversation` — verify messages + trace + artifacts returned |
+| Integration (API) | `SaveInsightFromConversation` — verify insight with `conversation_id` FK |
+| Integration (API) | `GetArtifactDownloadUrl` — verify presigned URL generation |
+| Integration (API) | Auth + validation — unauthenticated rejection, empty question, too-long question |
+| Integration (API) | Resume — create conversation with messages, resume, verify context injection |
 
 ---
 
@@ -1279,129 +1125,108 @@ async fn ask_question(
 
 #### 6a: Route & Navigation
 
-**Files changed:**
+| File | Action |
+|------|--------|
+| `frontend/app.tsx` | **Modify** — add `AskPage` lazy import, routes `/ask` and `/ask/:conversationId` |
+| `frontend/components/app-sidebar.tsx` | **Modify** — add `Sparkles` import, `{ title: "Ask", href: "/ask", icon: Sparkles }` |
+
+#### 6b: Hooks
 
 | File | Action |
 |------|--------|
-| `frontend/app.tsx` | **Modify** — add `const AskPage = lazy(...)`, routes for `/ask` and `/ask/:conversationId` |
-| `frontend/components/app-sidebar.tsx` | **Modify** — add `Sparkles` import, add `{ title: "Ask", href: "/ask", icon: Sparkles }` to `NAV_ITEMS` |
+| `frontend/views/ask/hooks/use-ask-question.ts` | **Create** — streaming hook, consumes server-streaming RPC, manages `AgentState` |
+| `frontend/views/ask/hooks/use-conversations.ts` | **Create** — React Query hooks for list/get/save conversations |
+| `frontend/views/ask/hooks/use-artifacts.ts` | **Create** — hook for `GetArtifactDownloadUrl`, artifact download |
 
-#### 6b: Streaming Hook
+**`AgentState` type:**
 
 ```typescript
-// frontend/views/ask/hooks/use-ask-question.ts
-
-type ToolCallStep = {
-  index: number;
-  toolName: string;
-  argumentsJson: string;
-  resultSummary?: string;
-  durationMs?: number;
-  status: "running" | "completed" | "failed";
-};
-
-type ContainerState = "creating" | "ready" | "reconnecting" | null;
-
 type AgentState =
   | { status: "idle" }
-  | { status: "container_starting"; containerState: ContainerState; message: string }
+  | { status: "container_starting"; message: string }
   | { status: "streaming"; steps: ToolCallStep[]; partialAnswer: string;
-      thinkingText: string; containerState: ContainerState }
+      thinkingText: string; artifacts: ArtifactInfo[] }
   | { status: "completed"; steps: ToolCallStep[]; answer: string;
       conversationId: string; supportingData: Citation[];
-      tokenUsage: TokenUsage; durationMs: number }
+      tokenUsage: TokenUsage; durationMs: number; artifacts: ArtifactInfo[] }
   | { status: "error"; message: string; retryable: boolean };
 ```
 
-The hook consumes the gRPC server-streaming RPC via Connect's async iterator, updating React state on each event. The `container_status` events are shown as a status badge above the thinking panel while the container starts.
-
-#### 6c: Page Components
+#### 6c: Components
 
 ```
 frontend/views/ask/
 ├── pages/
-│   └── ask-page.tsx              # Main page: header + thread + input
+│   └── ask-page.tsx
 ├── components/
 │   ├── query-input.tsx           # Textarea + send/cancel button
 │   ├── conversation-thread.tsx   # Scrollable message list
-│   ├── user-message.tsx          # User question bubble
-│   ├── agent-response.tsx        # Thinking + answer + citations + actions
+│   ├── user-message.tsx          # User question
+│   ├── agent-response.tsx        # Thinking + answer + citations + artifacts + actions
 │   ├── thinking-steps.tsx        # Collapsible tool-call progress feed
-│   ├── thinking-step.tsx         # Single step (MCP tools, Bash, Read, Grep)
-│   ├── answer-content.tsx        # Markdown renderer with citation links
-│   ├── evidence-panel.tsx        # Expandable evidence & reasoning section
+│   ├── thinking-step.tsx         # Single step (MCP/bash/read/grep — distinct icons)
+│   ├── answer-content.tsx        # Markdown renderer + citation links
+│   ├── evidence-panel.tsx        # Expandable reasoning trace
+│   ├── artifact-list.tsx         # Download links for generated files
 │   ├── container-status.tsx      # "Starting agent container..." badge
-│   ├── suggested-questions.tsx   # Empty state suggested question cards
-│   ├── conversation-history.tsx  # Sheet with conversation list + container status dots
-│   └── save-insight-dialog.tsx   # Dialog to save answer as named insight
+│   ├── suggested-questions.tsx   # Empty state suggestions
+│   ├── conversation-history.tsx  # Sheet with conversation list
+│   └── save-insight-dialog.tsx   # Save answer as insight
 └── hooks/
-    ├── use-ask-question.ts       # Streaming hook
-    └── use-conversations.ts      # CRUD hooks for conversations
+    ├── use-ask-question.ts
+    ├── use-conversations.ts
+    └── use-artifacts.ts
 ```
 
-**Component details:**
+**Component highlights:**
 
-**`thinking-step.tsx`** — Shows tool calls with context-appropriate icons:
-- MCP tools (`mcp__prism__*`): Database icon (`Database`, size-3.5)
-- Bash commands: Terminal icon (`Terminal`, size-3.5), shows the command in monospace
-- Read/Glob/Grep: File icons, shows file paths
-- Running: `Loader2 animate-spin`
-- Completed: `Check` (green)
+**`thinking-step.tsx`** — Context-appropriate icons:
+- MCP tools (`mcp_prism_*`): `Database` icon
+- Bash: `Terminal` icon, shows command in monospace
+- Read/Glob/Grep: `FileText`/`FolderSearch`/`Search` icons
+- Upload artifact: `Upload` icon
+- Running: `Loader2 animate-spin`, Completed: `Check` (green)
 
-This distinction helps users understand when the agent is querying Prism data vs. running system commands.
-
-**`container-status.tsx`** — Shows while container is starting:
+**`artifact-list.tsx`** — Shows uploaded artifacts with download buttons:
 ```
-┌─────────────────────────────────────┐
-│ ⟳ Starting agent container...       │
-└─────────────────────────────────────┘
+📎 Artifacts
+┌────────────────────────────────────────┐
+│ 📄 tox-uv-migration-report.csv  [↓]  │
+│ 📄 per-repo-analysis.json       [↓]  │
+└────────────────────────────────────────┘
 ```
-Uses `Badge variant="secondary"` with `Loader2 animate-spin` icon. Disappears when container is ready.
+Download button calls `GetArtifactDownloadUrl` → opens presigned URL.
 
-**`answer-content.tsx`** — Renders Markdown via `react-markdown` + `remark-gfm`. Citation links (`[¹]`) become footnotes. Internal paths (`/people/...`, `/teams/...`) become React Router `<Link>` components. Code blocks from repo analysis are syntax-highlighted.
+**`answer-content.tsx`** — Renders via `react-markdown` + `remark-gfm`. Internal paths become `<Link>`. Code blocks syntax-highlighted.
 
 **Dependencies to add:**
 
 | Package | Purpose |
 |---------|---------|
-| `react-markdown` | Render agent Markdown answers safely |
+| `react-markdown` | Render agent Markdown answers |
 | `remark-gfm` | GitHub-flavoured Markdown (tables) |
 
 **Files created:**
 
 | File | Action |
 |------|--------|
-| `frontend/views/ask/pages/ask-page.tsx` | **Create** |
-| `frontend/views/ask/hooks/use-ask-question.ts` | **Create** |
-| `frontend/views/ask/hooks/use-conversations.ts` | **Create** |
-| `frontend/views/ask/components/query-input.tsx` | **Create** |
-| `frontend/views/ask/components/conversation-thread.tsx` | **Create** |
-| `frontend/views/ask/components/user-message.tsx` | **Create** |
-| `frontend/views/ask/components/agent-response.tsx` | **Create** |
-| `frontend/views/ask/components/thinking-steps.tsx` | **Create** |
-| `frontend/views/ask/components/thinking-step.tsx` | **Create** |
-| `frontend/views/ask/components/answer-content.tsx` | **Create** |
-| `frontend/views/ask/components/evidence-panel.tsx` | **Create** |
-| `frontend/views/ask/components/container-status.tsx` | **Create** |
-| `frontend/views/ask/components/suggested-questions.tsx` | **Create** |
-| `frontend/views/ask/components/conversation-history.tsx` | **Create** |
-| `frontend/views/ask/components/save-insight-dialog.tsx` | **Create** |
+| All files listed in component tree above | **Create** |
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| UI (vitest) | `use-ask-question` — mock streaming transport, verify state transitions: idle → container_starting → streaming → completed |
-| UI (vitest) | `use-ask-question` — mock error event, verify error state |
-| UI (vitest) | `use-ask-question` — cancel mid-stream, verify abort fires and state resets |
-| UI (vitest) | `ThinkingStep` — render MCP tool (database icon), Bash tool (terminal icon), Read tool (file icon) |
-| UI (vitest) | `ContainerStatus` — render creating/ready/reconnecting states |
-| UI (vitest) | `QueryInput` — type text, verify send enabled; streaming, verify stop button appears |
-| UI (vitest) | `SuggestedQuestions` — render with mock teams, verify question includes team names |
-| UI (vitest) | `ConversationHistory` — render with active + reaped conversations, verify status dots |
-| UI (vitest) | `SaveInsightDialog` — fill title, submit, verify mutation called |
-| UI (vitest) | `EvidencePanel` — render trace with MCP + Bash steps, verify display |
-| UI (vitest) | `AnswerContent` — render Markdown with table, code block, and citation links |
+| UI (vitest) | `use-ask-question` — mock stream, verify state transitions: idle → container_starting → streaming → completed |
+| UI (vitest) | `use-ask-question` — verify artifact events accumulate in state |
+| UI (vitest) | `use-ask-question` — cancel mid-stream, verify abort and reset |
+| UI (vitest) | `ThinkingStep` — render MCP (database icon), Bash (terminal icon), artifact upload (upload icon) |
+| UI (vitest) | `ContainerStatus` — render creating/ready states |
+| UI (vitest) | `QueryInput` — send/stop button toggle based on streaming state |
+| UI (vitest) | `ArtifactList` — render 2 artifacts with download buttons |
+| UI (vitest) | `ConversationHistory` — active vs reaped status dots, artifact counts |
+| UI (vitest) | `SaveInsightDialog` — fill title, submit, verify mutation |
+| UI (vitest) | `EvidencePanel` — render trace with MCP + Bash steps |
+| UI (vitest) | `AnswerContent` — Markdown with table, code, citations |
 
 ---
 
@@ -1414,31 +1239,25 @@ $ psctl ask "How many repos have migrated from tox to uv?"
 ✅ Agent ready
 
 🔧 mcp: list_teams() → 8 teams, 47 repos
-🔧 bash: git clone --depth 1 ubuntu/kernel-snaps → Cloned (3.2 MB)
+🔧 bash: git clone --depth 1 ubuntu/kernel-snaps
 🔧 bash: rg -l "tox.ini" /workspace/kernel-snaps → 3 files
-🔧 bash: rg "uv" /workspace/kernel-snaps/pyproject.toml → Found uv in 2 files
-🔧 bash: git clone --depth 1 ubuntu/kernel-sru → Cloned (1.8 MB)
 ...
+📎 tox-uv-migration-report.csv uploaded
 
 ## Tox → UV Migration Status
-
-| Team    | Repos | tox only | uv only | both | neither |
-|---------|-------|----------|---------|------|---------|
-| Kernel  | 12    | 4        | 5       | 2    | 1       |
-| Desktop | 8     | 6        | 1       | 0    | 1       |
-| ...     |       |          |         |      |         |
-
-**Summary:** 14 of 47 repos (30%) have fully migrated to uv...
+...
 
 ---
-Model: claude-sonnet-4-6 | 12 tool calls | 18.4s
+Model: anthropic/claude-sonnet-4-6 | 12 tool calls | 2 artifacts | 24.1s
 ```
+
+`--json` flag outputs structured JSON. Artifact download URLs included in output.
 
 **Files created/changed:**
 
 | File | Action |
 |------|--------|
-| `crates/psctl/src/commands/ask.rs` | **Create** — `AskCommand`, streaming consumer, terminal formatting |
+| `crates/psctl/src/commands/ask.rs` | **Create** |
 | `crates/psctl/src/commands/mod.rs` | **Modify** — add `pub mod ask` |
 | `crates/psctl/src/main.rs` | **Modify** — add `ask` to CLI enum |
 
@@ -1446,81 +1265,63 @@ Model: claude-sonnet-4-6 | 12 tool calls | 18.4s
 
 | Level | Test |
 |-------|------|
-| Unit | Terminal formatting — tool-call events render with icons, `--json` output is valid JSON |
-| Integration | Start test server with mock container, call `psctl ask`, verify output |
+| Unit | Terminal formatting — tool icons, artifact display, `--json` valid JSON |
+| Integration | Call `psctl ask` with mock server, verify streamed output |
 
 ---
 
-### Step 8: K8s Deployment — Tiltfile, Service Account, Secrets
+### Step 8: K8s Deployment — Network Policy, Service Account, Tiltfile
 
-#### Service Account Token
+**Service account:** Create a read-only API token for agent containers during setup. Stored as K8s Secret, injected as `SERVICE_TOKEN` env var.
 
-The agent container needs a read-only API token to call ps-server. Create this during setup:
-
-```sql
--- Bootstrap: create a service account for agent containers
-INSERT INTO auth.users (username, display_name, role)
-VALUES ('prism-agent-service', 'Prism Agent Service Account', 'readonly');
-
-INSERT INTO auth.api_tokens (user_id, name, token_hash, ...)
-VALUES (..., 'agent-container-token', ...);
-```
-
-The token is stored as a K8s Secret and mounted into agent Pods via environment variable.
-
-#### K8s Resources
+**Tiltfile strategy:** Agent containers are created on-demand by `ContainerManager`, not deployed as a standing K8s workload. However, Tilt needs to know about the image so it builds and pushes it to the local registry. We add a **dummy K8s Job** that references the image and runs `echo Done` — this ensures the image is built during `tilt up` but doesn't keep a container running:
 
 ```yaml
-# Agent container network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# k8s/agent-image-builder.yaml
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: prism-agent-policy
+  name: prism-agent-image-builder
+  labels:
+    app: prism-agent-builder
 spec:
-  podSelector:
-    matchLabels:
-      app: prism-agent
-  policyTypes: [Egress]
-  egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              app: ps-server
-      ports:
-        - port: 50051
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - port: 443     # GitHub/Jira/Discourse HTTPS
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+        - name: agent
+          image: prism-agent:latest
+          command: ["echo", "Done"]
+      restartPolicy: Never
 ```
 
-#### Tiltfile
-
-Add agent container build and deploy:
-
 ```python
-# Agent service container
-docker_build('prism-agent', './agent-service')
-
-# K8s resources for agent infrastructure
+# Tiltfile addition
+docker_build('prism-agent', './agent-container',
+    build_args={'PS_AGENT_MCP_BIN': '../target/release/ps-agent-mcp'})
+k8s_yaml('k8s/agent-image-builder.yaml')
 k8s_yaml('k8s/agent-network-policy.yaml')
 k8s_yaml('k8s/agent-service-account-secret.yaml')
+
+# Group the agent resources together
+k8s_resource('prism-agent-image-builder', labels=['agent'])
 ```
 
 **Files created/changed:**
 
 | File | Action |
 |------|--------|
-| `k8s/agent-network-policy.yaml` | **Create** |
+| `k8s/agent-image-builder.yaml` | **Create** — dummy Job to trigger image build in Tilt |
+| `k8s/agent-network-policy.yaml` | **Create** — egress to ps-server (gRPC), RustFS (S3), and HTTPS (443) only |
 | `k8s/agent-service-account-secret.yaml` | **Create** (template) |
-| `Tiltfile` | **Modify** — add agent container build |
+| `Tiltfile` | **Modify** — add `docker_build` for agent-container, add K8s resources |
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Integration | Deploy to dev K8s, verify agent Pod can reach ps-server gRPC, verify egress to GitHub works, verify egress to internal services blocked |
+| Integration | `tilt up` builds agent image and pushes to local registry |
+| Integration | Verify agent Pod can reach ps-server, RustFS, GitHub HTTPS. Verify blocked egress. |
 
 ---
 
@@ -1530,58 +1331,57 @@ k8s_yaml('k8s/agent-service-account-secret.yaml')
 
 | File | Action |
 |------|--------|
-| `crates/ps-core/src/backup.rs` | **Modify** — add conversations + messages to export/import |
+| `crates/ps-core/src/backup.rs` | **Modify** — add conversations, messages, artifacts to export/import |
+
+**Note:** Artifact *files* in S3 are NOT included in the backup bundle (too large). Only the metadata rows are backed up. The `artifact_key` references remain; if the S3 data is lost, the metadata indicates what was generated but downloads will fail.
 
 **Testing:**
 
 | Level | Test |
 |-------|------|
-| Integration | Create conversations with messages, export, restore to fresh DB, verify round-trip |
+| Integration | Create conversations with messages + artifacts, export, restore, verify round-trip of metadata |
 
 ---
 
-## Streaming Protocol — End-to-End Flow
+## Streaming Protocol — End-to-End
 
 ```
-User types question in /ask
+User types question
   │
   ▼ gRPC server streaming (AskQuestion)
-ps-server
+ps-server (Rust)
   │
-  ├── Create/find K8s Pod (ContainerManager)
-  │     │
-  │     ▼ WebSocket connect to pod-ip:8080/ws
-  │   Agent Container
-  │     │
-  │     ├── Claude Agent SDK runs agent
-  │     │     │
-  │     │     ├── MCP tool call → gRPC to ps-server → DB query → result
-  │     │     ├── Bash tool call → git clone / rg / grep → result
-  │     │     ├── Read tool call → read file from /workspace → result
-  │     │     └── Text generation → streamed tokens
-  │     │
-  │     ▼ WebSocket events (JSON)
-  │   ps-server
-  │     │
-  │     ▼ maps to AgentEvent proto messages
-  │   gRPC stream frames (HTTP/2)
-  │     │
-  │     ▼ Envoy proxy
-  │   Frontend (Connect async iterator)
-  │     │
-  │     ▼ React state updates
-  │   UI renders thinking steps + streamed answer
+  ├── ContainerManager.ensure_pod() → K8s Pod running OpenCode
+  │
+  ├── opencode-sdk Client → Pod:4096
+  │     ├── client.create_session_with_title()
+  │     ├── client.send_text_async() (prompt)
+  │     └── client.sse_subscriber().subscribe_session() (SSE stream)
+  │
+  ├── For each OpenCode event:
+  │     ├── tool_use → AgentToolCallStarted
+  │     ├── tool_result → AgentToolCallCompleted
+  │     ├── text → AgentPartialAnswer
+  │     ├── result → AgentFinalAnswer
+  │     └── (artifact MCP tool) → AgentArtifactUploaded
+  │
+  ▼ AgentEvent proto messages (gRPC HTTP/2 frames)
+Envoy / Caddy proxy
+  │
+  ▼ Connect async iterator
+Frontend (React)
+  │
+  ▼ useState updates → re-render
+UI: thinking steps + streamed answer + artifacts
 ```
 
 **Latency budget:**
-- Container startup (cold): 5-15s (image pull cached after first run)
-- Container startup (warm): 1-3s (Pod creation + readiness)
-- MCP tool call (DB query): 5-50ms
-- Bash tool call (git clone): 1-10s (depends on repo size)
+- Container cold start: 5-15s (image pull cached)
+- Container warm start: 1-3s
+- MCP tool call: 5-50ms (gRPC to ps-server → DB → response)
+- Bash tool (git clone): 1-10s
 - LLM first token: ~500ms
 - LLM throughput: ~80 tokens/s
-
-The `AgentContainerStatus` event lets the UI show "Starting agent container..." during the cold-start delay, setting user expectations.
 
 ---
 
@@ -1589,65 +1389,54 @@ The `AgentContainerStatus` event lets the UI show "Starting agent container..." 
 
 | Constraint | Value | Enforcement |
 |-----------|-------|-------------|
-| Max tool calls per question | 15 (via `maxTurns`) | Agent SDK config |
-| Wall-clock timeout | 120 seconds | `tokio::time::timeout` in ps-server |
+| Max tool calls per turn | 20 (`max_steps` in agent config) | OpenCode agent config |
+| Wall-clock timeout per turn | 120 seconds | `tokio::time::timeout` in ps-server |
 | Max question length | 4,000 chars | gRPC handler validation |
-| Container idle timeout | 15 minutes | Agent service idle timer + K8s reaper |
-| Container max lifetime | 2 hours | K8s reaper background task |
-| Rate limit | 10 queries/min per user | In-memory `DashMap<UserId, RateBucket>` |
+| Container idle timeout | 15 minutes | Background reaper in ps-server |
+| Container max lifetime | 2 hours | Background reaper |
+| Rate limit | 10 queries/min per user | `DashMap<UserId, RateBucket>` |
 | Resource limits | 1 CPU, 2Gi RAM, 10Gi ephemeral | K8s Pod spec |
-| Network egress | ps-server + HTTPS only | K8s NetworkPolicy |
-| Bash safety | Block rm -rf /, docker, kubectl, etc. | PreToolUse hook |
+| Network egress | ps-server + RustFS + HTTPS(443) | K8s NetworkPolicy |
+| Bash safety | Block rm -rf /, docker, kubectl | OpenCode permission hooks + plugin |
 | Max concurrent containers | 20 | ContainerManager pool limit |
-| Ephemeral storage per container | 10Gi | K8s ephemeral-storage limit |
+| Max artifact size | 50 MB per file | MCP tool validation |
+| Max artifacts per conversation | 20 | MCP tool validation |
 
 ---
 
 ## Cost Estimation
 
-The agent uses Claude (via Anthropic API key) instead of Gemini for the agentic task, since the Claude Agent SDK requires Claude. Enrichment and embeddings continue to use Gemini via Rig.
-
 | Component | Tokens | Cost (Claude Sonnet 4.6) |
-|-----------|--------|-----------------------|
-| System prompt | ~800 | $0.0024 |
-| Tool schemas (9 MCP + built-in) | ~1,200 | $0.0036 |
+|-----------|--------|--------------------------|
+| System prompt + tool schemas | ~2,000 | $0.006 |
 | Tool results (avg 8 calls × 300 tokens) | ~2,400 | $0.0072 |
 | User question + context | ~500 | $0.0015 |
 | Answer generation | ~1,500 output | $0.0225 |
 | **Per-query total** | ~4,900 in / 1,500 out | **~$0.037** |
 
-At 20 queries/day: **~$0.74/day** ($22/month). Higher than Gemini Flash but the Claude Agent SDK's built-in tooling and code analysis capabilities justify the difference. For cost-sensitive deployments, the model can be swapped to Haiku via the `ANTHROPIC_MODEL` env var on the container.
+At 20 queries/day: **~$0.74/day** ($22/month). For cost-sensitive deployments, switch to a cheaper model (e.g. Haiku) via the Admin UI → AI Settings tab — the change takes effect on the next container creation.
 
-Container infrastructure cost is negligible — Pods run on existing K8s nodes and are reaped after 15 min idle.
+S3 storage cost is negligible — artifacts are small files (CSVs, JSON, markdown reports).
 
 ---
 
-## Files Summary — All Steps
+## Files Summary
 
-### New Files (35+)
+### New Files (~30)
 
 | File | Step |
 |------|------|
 | `migrations/XXXX_create_conversations.sql` | 1 |
-| `crates/ps-server/src/container_manager.rs` | 3 |
+| `crates/ps-server/src/container_manager/mod.rs` | 3 |
 | `crates/ps-server/src/container_manager/pod_spec.rs` | 3 |
-| `agent-service/` (entire directory, ~20 files) | 4 |
-| `frontend/views/ask/pages/ask-page.tsx` | 6 |
-| `frontend/views/ask/hooks/use-ask-question.ts` | 6 |
-| `frontend/views/ask/hooks/use-conversations.ts` | 6 |
-| `frontend/views/ask/components/query-input.tsx` | 6 |
-| `frontend/views/ask/components/conversation-thread.tsx` | 6 |
-| `frontend/views/ask/components/user-message.tsx` | 6 |
-| `frontend/views/ask/components/agent-response.tsx` | 6 |
-| `frontend/views/ask/components/thinking-steps.tsx` | 6 |
-| `frontend/views/ask/components/thinking-step.tsx` | 6 |
-| `frontend/views/ask/components/answer-content.tsx` | 6 |
-| `frontend/views/ask/components/evidence-panel.tsx` | 6 |
-| `frontend/views/ask/components/container-status.tsx` | 6 |
-| `frontend/views/ask/components/suggested-questions.tsx` | 6 |
-| `frontend/views/ask/components/conversation-history.tsx` | 6 |
-| `frontend/views/ask/components/save-insight-dialog.tsx` | 6 |
+| `crates/ps-server/src/container_manager/event_mapper.rs` | 3 |
+| `crates/ps-agent-mcp/` (Rust crate, 5 files) | 4 |
+| `agent-container/Dockerfile` | 4 |
+| `agent-container/opencode.json` | 4 |
+| `agent-container/.opencode/agents/prism.md` | 4 |
+| `frontend/views/ask/` (15 component + hook files) | 6 |
 | `crates/psctl/src/commands/ask.rs` | 7 |
+| `k8s/agent-image-builder.yaml` | 8 |
 | `k8s/agent-network-policy.yaml` | 8 |
 | `k8s/agent-service-account-secret.yaml` | 8 |
 
@@ -1658,7 +1447,7 @@ Container infrastructure cost is negligible — Pods run on existing K8s nodes a
 | `crates/ps-core/src/repo/reasoning.rs` | 1 |
 | `proto/canonical/prism/v1/reasoning.proto` | 2 |
 | `crates/ps-server/src/services/reasoning.rs` | 5 |
-| `crates/ps-server/Cargo.toml` | 3, 5 |
+| `crates/ps-server/Cargo.toml` | 3 |
 | `frontend/app.tsx` | 6 |
 | `frontend/components/app-sidebar.tsx` | 6 |
 | `crates/psctl/src/commands/mod.rs` | 7 |
@@ -1666,74 +1455,51 @@ Container infrastructure cost is negligible — Pods run on existing K8s nodes a
 | `crates/ps-core/src/backup.rs` | 9 |
 | `Tiltfile` | 8 |
 
-### Auto-generated
-
-| File | Step |
-|------|------|
-| `frontend/lib/api/gen/canonical/prism/v1/reasoning_connect.ts` | 2 |
-| `frontend/lib/api/gen/canonical/prism/v1/reasoning_pb.ts` | 2 |
-| `crates/ps-proto/src/gen/canonical.prism.v1.rs` | 2 |
-
 ---
 
-## Test Matrix Summary
+## Test Matrix
 
 | Category | Unit | Integration | UI |
 |----------|------|-------------|-----|
-| Conversations repo (CRUD, messages, container status) | — | 6 tests | — |
-| Proto (lint, generate) | 2 checks | — | — |
-| ContainerManager (Pod CRUD, WebSocket, reaper) | 2 tests | 2 tests | — |
-| Agent service: event mapper | 4 tests | — | — |
-| Agent service: bash guard | 4 tests | — | — |
-| Agent service: idle timer | 2 tests | — | — |
-| Agent service: MCP tools (9 tools) | 9 tests | — | — |
-| Agent service: full flow | — | 1 test | — |
-| gRPC AskQuestion (streaming + resume) | — | 3 tests | — |
-| gRPC ListConversations | — | 1 test | — |
-| gRPC GetConversation | — | 1 test | — |
-| gRPC SaveInsight | — | 1 test | — |
-| gRPC Auth/validation | — | 2 tests | — |
-| Streaming hook (state transitions) | — | — | 3 tests |
-| ThinkingStep (tool type icons) | — | — | 1 test |
-| ContainerStatus component | — | — | 1 test |
-| QueryInput | — | — | 2 tests |
-| ConversationHistory | — | — | 1 test |
-| SaveInsightDialog | — | — | 1 test |
-| EvidencePanel | — | — | 1 test |
-| AnswerContent (Markdown) | — | — | 1 test |
-| psctl ask (formatting, JSON) | 1 test | 1 test | — |
-| Backup/restore conversations | — | 1 test | — |
-| K8s deployment (network policy, egress) | — | 1 test | — |
-| **Total** | **24** | **20** | **11** |
+| Conversations repo (CRUD, messages, artifacts) | — | 6 | — |
+| Proto (lint, generate) | 2 | — | — |
+| ContainerManager (Pod CRUD, OpenCode client) | 3 | 2 | — |
+| ps-agent-mcp tools (11 tools) | 11 | 3 | — |
+| ps-agent-mcp artifacts | 2 | — | — |
+| gRPC handlers (stream, CRUD, resume, auth) | — | 7 | — |
+| Streaming hook (state transitions, artifacts, cancel) | — | — | 3 |
+| UI components (thinking, artifacts, input, history, evidence, markdown) | — | — | 11 |
+| psctl ask | 1 | 1 | — |
+| Backup/restore conversations | — | 1 | — |
+| K8s deployment | — | 1 | — |
+| **Total** | **21** | **21** | **14** |
 
 ---
 
 ## Implementation Order
 
 ```
-Week 1: Foundation + Agent Service
-  ├─ Step 1: Database migration (conversations + messages)
+Week 1: Foundation
+  ├─ Step 1: Database migration (conversations, messages, artifacts)
   ├─ Step 2: Proto definitions + buf generate
-  └─ Step 4: Agent service (TypeScript container app + MCP tools)
+  └─ Step 4: ps-agent-mcp crate + agent container Dockerfile + OpenCode config
 
-Week 2: Container Management + Backend Wiring
-  ├─ Step 3: ContainerManager (kube-rs Pod lifecycle)
-  ├─ Step 5: gRPC service handlers (AskQuestion streaming, CRUD)
+Week 2: Backend
+  ├─ Step 3: ContainerManager (kube-rs, OpenCode HTTP client)
+  ├─ Step 5: gRPC service handlers (AskQuestion streaming, CRUD, artifacts)
   └─ Step 8: K8s resources (network policy, service account, Tiltfile)
 
 Week 3: Frontend
   ├─ Step 6a: Route + navigation
-  ├─ Step 6b: Streaming hook
-  └─ Step 6c: Page components (ask page, thread, thinking, answer)
+  ├─ Step 6b: Hooks (streaming, conversations, artifacts)
+  └─ Step 6c: Components (ask page, thread, thinking, answer, artifacts)
 
 Week 4: Polish & CLI
   ├─ Step 7: psctl ask command
   ├─ Step 9: Backup/restore extension
-  ├─ End-to-end testing (question → container → tools → answer)
+  ├─ End-to-end testing (question → container → tools → S3 → answer)
   └─ Traceability audit (every output links to source data)
 ```
-
-Steps 1, 2, and 4 are independent and can proceed in parallel. Step 3 depends on having the agent container image (Step 4). Step 5 depends on Steps 1-3. Step 6 depends on Step 2 (proto types) but can scaffold immediately. Step 7 depends on Step 5.
 
 ---
 
@@ -1741,48 +1507,50 @@ Steps 1, 2, and 4 are independent and can proceed in parallel. Step 3 depends on
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Cold container startup too slow (>10s) | Medium | Poor first-query UX | Pre-pull image on nodes. Show "Starting agent..." status. Consider warm pool of 1-2 idle containers. |
-| Claude Agent SDK TypeScript not yet released or unstable | Medium | Blocked on SDK | Fall back to Python SDK. Or use the Claude API directly with manual tool loop (more code, same architecture). |
-| Agent clones large repos, exhausts ephemeral storage | Low | Container OOM-killed | 10Gi ephemeral limit. Shallow clones only (`--depth 1`). System prompt instructs size-aware behaviour. |
-| WebSocket connection drops mid-stream | Medium | Lost events | Reconnect logic in ContainerManager. Conversation history in DB means no data loss — just UX interruption. |
-| Agent runs dangerous Bash commands | Low | Security incident | PreToolUse hook blocks patterns. NetworkPolicy restricts egress. Container runs as non-root. Resource limits cap CPU/memory. |
-| High concurrent users exhaust container quota | Low | Users queued | Max 20 concurrent containers. Queue with timeout for excess. Show "Agent busy, please wait..." |
-| Anthropic API key costs higher than expected | Medium | Budget overrun | Track via CostTracker (existing). Daily budget cap applies to agentic task type. Switch to Haiku for lower cost. |
-| Session resume loses context nuance | Medium | Agent seems forgetful | Store full message history (not just summaries). Include all tool call results in resume context. System prompt acknowledges resumed sessions. |
-
----
-
-## Decision Record
-
-| Attribute | Value |
-|-----------|-------|
-| Decision | Use Claude Agent SDK in ephemeral K8s containers for the agentic query interface |
-| Date | 2026-03-23 |
-| Status | Proposed |
-| Drivers | System tool access (git, rg, grep), sandboxed execution, Claude Agent SDK's built-in tooling and code analysis, container-per-session isolation |
-| Alternatives considered | In-process Rig agent (simpler but no system tools), long-lived agent pool (more complex lifecycle), Docker-in-Docker for repo analysis (security concerns) |
-| Risks | Container cold-start latency (mitigated by pre-pulling + status UX), SDK stability (mitigated by pinned version + Python fallback) |
+| Container cold start too slow (>10s) | Medium | Poor first-query UX | Pre-pull image on nodes. Show "Starting agent..." status. Warm pool of 1-2 idle containers. |
+| OpenCode server API changes | Low | Client breaks | Pin OpenCode version in Dockerfile. `opencode-sdk` crate absorbs API changes; pin crate version too. |
+| Agent exhausts ephemeral storage (large repos) | Low | Container evicted | 10Gi limit. Shallow clones only. System prompt instructs size-aware behaviour. |
+| OpenCode event stream format undocumented | Medium | Event mapping breaks | Test against running OpenCode server. Fall back to polling session result. |
+| Bash safety bypass | Low | Security incident | OpenCode permission config + plugin hooks. NetworkPolicy. Non-root user. Resource limits. |
+| S3 artifact storage fills up | Low | Upload failures | Max 50MB per file, 20 per conversation. Background cleanup of old artifacts. |
+| Session resume loses nuance | Medium | Agent seems forgetful | Store full message history. Inject complete context on resume. System prompt acknowledges. |
 
 ---
 
 ## Exit Criteria
 
-- [ ] `reasoning.conversations` + `conversation_messages` tables created
-- [ ] Agent container image builds and runs (Ubuntu + git + rg + tokei + Node.js + Agent SDK)
-- [ ] 9 MCP tools implemented, each calling ps-server gRPC APIs
+- [ ] `reasoning.conversations`, `conversation_messages`, `conversation_artifacts` tables created
+- [ ] Agent container image builds: Ubuntu + git + rg + tokei + uv + OpenCode + `ps-agent-mcp`
+- [ ] 11 MCP tools implemented (9 data tools + 2 artifact tools), each calling ps-server gRPC
 - [ ] ContainerManager creates, connects, and reaps K8s Pods
-- [ ] `AskQuestion` streaming RPC works end-to-end (question → container → tools → answer)
-- [ ] Frontend `/ask` page shows container status, real-time tool-call progress, and streamed answer
-- [ ] Both MCP tool calls and system tool calls (Bash, Read, Grep) visible in thinking panel
+- [ ] `AskQuestion` streaming RPC works end-to-end
+- [ ] Frontend `/ask` page shows container status, real-time tool-call progress, streamed answer
+- [ ] Both MCP tools and system tools (bash, read, grep) visible in thinking panel
+- [ ] Artifacts uploaded to S3, downloadable from UI and psctl
 - [ ] Reasoning trace stored and viewable in "Evidence & Reasoning" panel
-- [ ] Citations in answers link to real source data (people, teams, contributions)
-- [ ] Multi-turn conversations work (follow-up questions within same container)
-- [ ] Session resume after container reap works (new container + history context)
-- [ ] Conversation history persisted and browsable
-- [ ] "Save as Insight" saves answer to `reasoning.insights` with `conversation_id` FK
-- [ ] `psctl ask` streams output to terminal with `--json` support
-- [ ] Idle containers reaped after 15 min, max lifetime 2 hours
-- [ ] Bash safety hook blocks dangerous commands
+- [ ] Citations in answers link to source data (people, teams, contributions)
+- [ ] Multi-turn conversations within a container session
+- [ ] Session resume after container reap (new container + context injection)
+- [ ] Conversation history browsable with artifact counts
+- [ ] "Save as Insight" saves to `reasoning.insights` with `conversation_id` FK
+- [ ] `psctl ask` streams output with `--json` support
+- [ ] Idle containers reaped (15 min), max lifetime (2 hours)
 - [ ] Network policy restricts container egress
-- [ ] Backup/restore includes conversations
+- [ ] uv available in container, system prompt enforces its use for Python
+- [ ] Backup/restore includes conversation metadata
 - [ ] `prek run -av` passes with zero warnings
+
+---
+
+## Appendix: Decision Log
+
+Decisions made during the design of this plan, recorded for future context.
+
+| # | Decision | Options considered | Chosen | Rationale |
+|---|----------|--------------------|--------|-----------|
+| 1 | **Agent runtime** | (a) In-process Rig agent in ps-server, (b) Claude Agent SDK in container, (c) OpenCode in container | OpenCode in container | OpenCode is open-source, multi-provider (75+ via AI SDK), has built-in tools (bash, read, write, grep, glob, webfetch), MCP support, plugin hooks, and session management. Not tied to a single LLM provider. Container isolation gives system tool access (git, rg, tokei, uv/python) without affecting the main server. |
+| 2 | **MCP server language** | (a) TypeScript/Bun MCP server using `@modelcontextprotocol/sdk`, (b) Rust crate using `rmcp` | Rust crate (`ps-agent-mcp`) | Shares `ps-proto` types with the backend — no type duplication or separate codegen. Produces a static binary — no Bun/Node.js runtime needed in the container (smaller image, fewer moving parts). Consistent build via `cargo build`. |
+| 3 | **ps-server ↔ OpenCode communication** | (a) TypeScript relay wrapping `@opencode-ai/sdk`, (b) Hand-rolled `reqwest` HTTP client, (c) `opencode-sdk` Rust crate | `opencode-sdk` Rust crate | Native async Rust client with typed event handling (40 variants), SSE streaming with reconnection/backoff, session management, and `SessionEventRouter`. Eliminates both a relay process and hand-rolled HTTP code. |
+| 4 | **Agent model selection** | (a) Hardcoded in `opencode.json`, (b) Driven by AI Settings config | Driven by AI Settings | Model passed as `OPENCODE_MODEL` env var when Pod is created. `opencode.json` uses `{env:OPENCODE_MODEL}` substitution. Changing the model in Admin UI takes effect on next container creation. |
+| 5 | **Container image build in Tilt** | (a) Standing Deployment (always running), (b) Dummy K8s Job referencing the image | Dummy K8s Job | Agent containers are created on-demand, not always running. A Job running `echo Done` ensures Tilt builds and pushes the image without keeping a container alive. |
+| 6 | **MCP protocol framework** | (a) Hand-rolled JSON-RPC stdin/stdout, (b) `rmcp` crate (official Rust MCP SDK) | `rmcp` v1.2 | Official MCP SDK with `#[tool]` proc macros for declarative tool definitions, automatic JSON schema generation, and built-in stdio transport. Eliminates ~400 lines of protocol boilerplate. |

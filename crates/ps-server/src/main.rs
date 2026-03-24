@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let agent_image =
                 std::env::var("AGENT_IMAGE").unwrap_or_else(|_| "prism-agent:latest".into());
             let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
-            let config = ps_server::container_manager::pod_spec::AgentPodConfig {
+            let config = ps_agent::AgentPodConfig {
                 image: agent_image,
                 namespace: namespace.clone(),
                 model: String::new(), // Set dynamically from AI settings per request.
@@ -115,8 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 s3_bucket: std::env::var("S3_BUCKET").unwrap_or_else(|_| "ps-artifacts".into()),
                 provider_keys: vec![],
             };
-            let cm =
-                ps_server::container_manager::ContainerManager::new(kube_client, namespace, config);
+            let cm = ps_agent::ContainerManager::new(kube_client, namespace, config);
 
             // Start background reaper task.
             let reaper = cm.clone();

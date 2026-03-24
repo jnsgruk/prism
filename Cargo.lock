@@ -3291,22 +3291,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "ps-agent-mcp"
+name = "ps-agent"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "futures",
- "object_store",
+ "k8s-openapi",
+ "kube",
+ "opencode-sdk",
  "ps-proto",
- "rmcp",
- "serde",
  "serde_json",
- "thiserror 2.0.18",
+ "time",
  "tokio",
- "tonic 0.13.1",
  "tracing",
- "tracing-subscriber",
- "url",
 ]
 
 [[package]]
@@ -3375,6 +3370,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ps-mcp"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures",
+ "object_store",
+ "ps-proto",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tonic 0.13.1",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "ps-metrics"
 version = "0.1.0"
 dependencies = [
@@ -3436,11 +3450,10 @@ dependencies = [
  "futures",
  "http",
  "http-body",
- "k8s-openapi",
  "kube",
  "object_store",
- "opencode-sdk",
  "prost-types 0.13.5",
+ "ps-agent",
  "ps-core",
  "ps-metrics",
  "ps-proto",
