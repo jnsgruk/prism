@@ -129,97 +129,46 @@ fn prost_value_to_serde_json(v: &prost_types::Value) -> serde_json::Value {
 
 // ---------------------------------------------------------------------------
 // Domain enum ↔ proto enum conversions
+//
+// Delegates to canonical implementations in ps_proto::convert.
 // ---------------------------------------------------------------------------
 
 /// Convert a platform string (e.g. "github", "discourse-ubuntu") to proto enum
 /// + optional instance.
 pub fn platform_to_proto(platform_str: &str) -> (i32, Option<String>) {
-    if let Some(instance) = platform_str.strip_prefix("discourse-") {
-        (ProtoPlatform::Discourse.into(), Some(instance.to_string()))
-    } else {
-        let proto = match platform_str {
-            "github" => ProtoPlatform::Github,
-            "jira" => ProtoPlatform::Jira,
-            "launchpad" => ProtoPlatform::Launchpad,
-            "mattermost" => ProtoPlatform::Mattermost,
-            _ => ProtoPlatform::Unspecified,
-        };
-        (proto.into(), None)
-    }
+    let (p, inst) = ProtoPlatform::from_db_str(platform_str);
+    (p.into(), inst)
 }
 
 /// Convert proto platform enum + optional instance back to a platform string.
 pub fn proto_to_platform_str(platform: i32, instance: Option<&str>) -> Option<String> {
-    match ProtoPlatform::try_from(platform) {
-        Ok(ProtoPlatform::Github) => Some("github".to_string()),
-        Ok(ProtoPlatform::Jira) => Some("jira".to_string()),
-        Ok(ProtoPlatform::Launchpad) => Some("launchpad".to_string()),
-        Ok(ProtoPlatform::Mattermost) => Some("mattermost".to_string()),
-        Ok(ProtoPlatform::Discourse) => match instance {
-            Some(inst) => Some(format!("discourse-{inst}")),
-            None => Some("discourse".to_string()),
-        },
-        _ => None,
-    }
+    ProtoPlatform::try_from(platform).ok()?.to_db_str(instance)
 }
 
 /// Convert a contribution type string to proto enum i32.
 pub fn contribution_type_to_proto(s: &str) -> i32 {
-    match s {
-        "pull_request" => ProtoContributionType::PullRequest.into(),
-        "pr_review" => ProtoContributionType::PrReview.into(),
-        "jira_ticket" => ProtoContributionType::JiraTicket.into(),
-        "discourse_topic" => ProtoContributionType::DiscourseTopic.into(),
-        "discourse_post" => ProtoContributionType::DiscoursePost.into(),
-        "discourse_like" => ProtoContributionType::DiscourseLike.into(),
-        _ => ProtoContributionType::Unspecified.into(),
-    }
+    ProtoContributionType::from_db_str(s).into()
 }
 
 /// Convert proto contribution type i32 back to a string.
 pub fn proto_to_contribution_type_str(v: i32) -> Option<String> {
-    match ProtoContributionType::try_from(v) {
-        Ok(ProtoContributionType::PullRequest) => Some("pull_request".to_string()),
-        Ok(ProtoContributionType::PrReview) => Some("pr_review".to_string()),
-        Ok(ProtoContributionType::JiraTicket) => Some("jira_ticket".to_string()),
-        Ok(ProtoContributionType::DiscourseTopic) => Some("discourse_topic".to_string()),
-        Ok(ProtoContributionType::DiscoursePost) => Some("discourse_post".to_string()),
-        Ok(ProtoContributionType::DiscourseLike) => Some("discourse_like".to_string()),
-        _ => None,
-    }
+    ProtoContributionType::try_from(v)
+        .ok()?
+        .to_db_str()
+        .map(String::from)
 }
 
 /// Convert a contribution state string to proto enum i32.
 pub fn contribution_state_to_proto(s: &str) -> i32 {
-    match s {
-        "open" => ProtoContributionState::Open.into(),
-        "closed" => ProtoContributionState::Closed.into(),
-        "merged" => ProtoContributionState::Merged.into(),
-        "in_progress" => ProtoContributionState::InProgress.into(),
-        "APPROVED" => ProtoContributionState::Approved.into(),
-        "CHANGES_REQUESTED" => ProtoContributionState::ChangesRequested.into(),
-        "COMMENTED" => ProtoContributionState::Commented.into(),
-        "PENDING" => ProtoContributionState::Pending.into(),
-        "DISMISSED" => ProtoContributionState::Dismissed.into(),
-        _ => ProtoContributionState::Unspecified.into(),
-    }
+    ProtoContributionState::from_db_str(s).into()
 }
 
 /// Convert proto contribution state i32 back to a string.
 pub fn proto_to_contribution_state_str(v: i32) -> Option<String> {
-    match ProtoContributionState::try_from(v) {
-        Ok(ProtoContributionState::Open) => Some("open".to_string()),
-        Ok(ProtoContributionState::Closed) => Some("closed".to_string()),
-        Ok(ProtoContributionState::Merged) => Some("merged".to_string()),
-        Ok(ProtoContributionState::InProgress) => Some("in_progress".to_string()),
-        Ok(ProtoContributionState::Approved) => Some("APPROVED".to_string()),
-        Ok(ProtoContributionState::ChangesRequested) => Some("CHANGES_REQUESTED".to_string()),
-        Ok(ProtoContributionState::Commented) => Some("COMMENTED".to_string()),
-        Ok(ProtoContributionState::Pending) => Some("PENDING".to_string()),
-        Ok(ProtoContributionState::Dismissed) => Some("DISMISSED".to_string()),
-        Ok(ProtoContributionState::Done) => Some("done".to_string()),
-        _ => None,
-    }
+    ProtoContributionState::try_from(v)
+        .ok()?
+        .to_db_str()
+        .map(String::from)
 }
 
 /// Convert an `IngestionStatus` to proto `RunStatus` i32.

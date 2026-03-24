@@ -41,6 +41,7 @@ _tomls = [
     "crates/ps-workers/Cargo.toml",
     "crates/ps-metrics/Cargo.toml",
     "crates/ps-migrate/Cargo.toml",
+    "crates/ps-agent-mcp/Cargo.toml",
     "crates/psctl/Cargo.toml",
     "crates/ps-reasoning/Cargo.toml",
     "tests/integration/Cargo.toml",

@@ -7,53 +7,19 @@ use crate::client::Clients;
 use crate::format;
 
 pub fn platform_str_to_proto(s: &str) -> i32 {
-    match s {
-        "github" => Platform::Github.into(),
-        "jira" => Platform::Jira.into(),
-        "launchpad" => Platform::Launchpad.into(),
-        "mattermost" => Platform::Mattermost.into(),
-        s if s.starts_with("discourse") => Platform::Discourse.into(),
-        _ => Platform::Unspecified.into(),
-    }
+    Platform::from_user_str(s).into()
 }
 
 pub fn proto_platform_display(v: i32) -> &'static str {
-    match Platform::try_from(v) {
-        Ok(Platform::Github) => "github",
-        Ok(Platform::Jira) => "jira",
-        Ok(Platform::Discourse) => "discourse",
-        Ok(Platform::Launchpad) => "launchpad",
-        Ok(Platform::Mattermost) => "mattermost",
-        _ => "unknown",
-    }
+    Platform::try_from(v).map_or("unknown", Platform::display_str)
 }
 
 pub fn proto_contribution_type_display(v: i32) -> &'static str {
-    match ContributionType::try_from(v) {
-        Ok(ContributionType::PullRequest) => "pull_request",
-        Ok(ContributionType::PrReview) => "pr_review",
-        Ok(ContributionType::JiraTicket) => "jira_ticket",
-        Ok(ContributionType::DiscourseTopic) => "discourse_topic",
-        Ok(ContributionType::DiscoursePost) => "discourse_post",
-        Ok(ContributionType::DiscourseLike) => "discourse_like",
-        _ => "unknown",
-    }
+    ContributionType::try_from(v).map_or("unknown", ContributionType::display_str)
 }
 
 fn proto_contribution_state_display(v: i32) -> &'static str {
-    match ContributionState::try_from(v) {
-        Ok(ContributionState::Open) => "open",
-        Ok(ContributionState::Closed) => "closed",
-        Ok(ContributionState::Merged) => "merged",
-        Ok(ContributionState::InProgress) => "in_progress",
-        Ok(ContributionState::Approved) => "APPROVED",
-        Ok(ContributionState::ChangesRequested) => "CHANGES_REQUESTED",
-        Ok(ContributionState::Commented) => "COMMENTED",
-        Ok(ContributionState::Pending) => "PENDING",
-        Ok(ContributionState::Dismissed) => "DISMISSED",
-        Ok(ContributionState::Done) => "done",
-        _ => "\u{2014}",
-    }
+    ContributionState::try_from(v).map_or("\u{2014}", ContributionState::display_str)
 }
 
 pub async fn contributions(

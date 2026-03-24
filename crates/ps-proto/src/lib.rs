@@ -1,3 +1,5 @@
+pub mod convert;
+
 pub mod canonical {
     pub mod prism {
         pub mod v1 {

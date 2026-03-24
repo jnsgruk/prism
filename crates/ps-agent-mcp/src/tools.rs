@@ -684,6 +684,8 @@ fn format_person_insights(resp: &proto::GetPersonInsightsResponse) -> serde_json
 
 // ---------------------------------------------------------------------------
 // Proto enum conversions (string → i32)
+//
+// Delegates to canonical implementations in ps_proto::convert.
 // ---------------------------------------------------------------------------
 
 fn parse_insight_period(s: &str) -> i32 {
@@ -697,34 +699,21 @@ fn parse_insight_period(s: &str) -> i32 {
 }
 
 fn platform_str_to_proto(s: Option<&str>) -> i32 {
-    match s.map(str::to_lowercase).as_deref() {
-        Some("github") => proto::Platform::Github.into(),
-        Some("jira") => proto::Platform::Jira.into(),
-        Some("discourse") => proto::Platform::Discourse.into(),
-        Some("launchpad") => proto::Platform::Launchpad.into(),
-        Some("mattermost") => proto::Platform::Mattermost.into(),
-        _ => proto::Platform::Unspecified.into(),
-    }
+    s.map_or(proto::Platform::Unspecified.into(), |v| {
+        proto::Platform::from_user_str(v).into()
+    })
 }
 
 fn contribution_type_str_to_proto(s: Option<&str>) -> i32 {
-    match s.map(str::to_lowercase).as_deref() {
-        Some("pull_request") => proto::ContributionType::PullRequest.into(),
-        Some("pr_review" | "review") => proto::ContributionType::PrReview.into(),
-        Some("jira_ticket") => proto::ContributionType::JiraTicket.into(),
-        Some("discourse_topic") => proto::ContributionType::DiscourseTopic.into(),
-        Some("discourse_post") => proto::ContributionType::DiscoursePost.into(),
-        _ => proto::ContributionType::Unspecified.into(),
-    }
+    s.map_or(proto::ContributionType::Unspecified.into(), |v| {
+        proto::ContributionType::from_user_str(v).into()
+    })
 }
 
 fn state_str_to_proto(s: Option<&str>) -> i32 {
-    match s.map(str::to_lowercase).as_deref() {
-        Some("open") => proto::ContributionState::Open.into(),
-        Some("merged") => proto::ContributionState::Merged.into(),
-        Some("closed") => proto::ContributionState::Closed.into(),
-        _ => proto::ContributionState::Unspecified.into(),
-    }
+    s.map_or(proto::ContributionState::Unspecified.into(), |v| {
+        proto::ContributionState::from_user_str(v).into()
+    })
 }
 
 fn guess_content_type(filename: &str) -> &'static str {
@@ -797,7 +786,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Enum conversions
+    // Enum conversions (delegating to ps_proto::convert)
     // -----------------------------------------------------------------------
 
     #[test]
@@ -849,7 +838,7 @@ mod tests {
     }
 
     #[test]
-    fn contribution_type_str_to_proto_values() {
+    fn contribution_type_str_to_proto_all_variants() {
         assert_eq!(
             contribution_type_str_to_proto(Some("pull_request")),
             i32::from(proto::ContributionType::PullRequest)
@@ -863,8 +852,8 @@ mod tests {
             i32::from(proto::ContributionType::PrReview)
         );
         assert_eq!(
-            contribution_type_str_to_proto(Some("discourse_topic")),
-            i32::from(proto::ContributionType::DiscourseTopic)
+            contribution_type_str_to_proto(Some("discourse_like")),
+            i32::from(proto::ContributionType::DiscourseLike)
         );
         assert_eq!(
             contribution_type_str_to_proto(None),
@@ -873,7 +862,7 @@ mod tests {
     }
 
     #[test]
-    fn state_str_to_proto_values() {
+    fn state_str_to_proto_all_variants() {
         assert_eq!(
             state_str_to_proto(Some("open")),
             i32::from(proto::ContributionState::Open)
@@ -881,6 +870,18 @@ mod tests {
         assert_eq!(
             state_str_to_proto(Some("MERGED")),
             i32::from(proto::ContributionState::Merged)
+        );
+        assert_eq!(
+            state_str_to_proto(Some("in_progress")),
+            i32::from(proto::ContributionState::InProgress)
+        );
+        assert_eq!(
+            state_str_to_proto(Some("approved")),
+            i32::from(proto::ContributionState::Approved)
+        );
+        assert_eq!(
+            state_str_to_proto(Some("done")),
+            i32::from(proto::ContributionState::Done)
         );
         assert_eq!(
             state_str_to_proto(None),
