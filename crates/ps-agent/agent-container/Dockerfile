@@ -65,22 +65,23 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # OpenCode — pinned version for stability
 ARG OPENCODE_VERSION=0.1.0
-RUN curl -fsSL https://opencode.ai/install | bash || true
+RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
+ENV PATH="/root/.opencode/bin:$PATH"
 
 # ps-mcp binary from the builder stage
 COPY --from=builder /out/ps-mcp /usr/local/bin/ps-mcp
-
-# OpenCode configuration + agent prompt
-COPY crates/ps-agent/agent-container/opencode.json /app/opencode.json
-COPY crates/ps-agent/agent-container/.opencode/ /app/.opencode/
 
 # Workspace for cloned repos and generated files
 RUN mkdir /workspace
 WORKDIR /workspace
 
+# OpenCode configuration + agent prompt (in WORKDIR so opencode discovers it)
+COPY crates/ps-agent/agent-container/opencode.json /workspace/opencode.json
+COPY crates/ps-agent/agent-container/.opencode/ /workspace/.opencode/
+
 EXPOSE 4096
 
-CMD ["/bin/sh", "-c", "opencode --server --port 4096 --config /app/opencode.json || echo 'OpenCode not installed, container ready for testing'"]
+CMD ["opencode", "serve", "--port", "4096", "--hostname", "0.0.0.0"]
 
 # ---------------------------------------------------------------------------
 # Dev target for Tilt

@@ -880,6 +880,40 @@ impl ReasoningService for ReasoningServiceImpl {
         let repos = self.repos.clone();
         let conv_id = conversation_id;
 
+        // Build per-pod overrides: service token + model config + provider keys.
+        let service_token = ps_core::auth::generate_token();
+        let token_hash = ps_core::auth::hash_token(&service_token);
+        let token_session_id = Uuid::now_v7();
+        self.repos
+            .auth
+            .create_session(
+                token_session_id,
+                ctx.user_id,
+                &token_hash,
+                "agent_service",
+                Some(time::OffsetDateTime::now_utc() + time::Duration::hours(3)),
+                Some("agent-container"),
+            )
+            .await
+            .map_err(db_err)?;
+
+        let pod_overrides = {
+            let router = self.router.read().await;
+            let config = router.config();
+            let model = format!(
+                "{}/{}",
+                config.tasks.agentic.provider.as_str(),
+                config.tasks.agentic.model
+            );
+            ps_agent::PodOverrides {
+                service_token,
+                token_session_id: token_session_id.to_string(),
+                model: model.clone(),
+                small_model: model,
+                provider_keys: router.provider_env_vars(),
+            }
+        };
+
         let (tx, rx) = tokio::sync::mpsc::channel(64);
 
         // Spawn the streaming orchestration task.
@@ -892,7 +926,7 @@ impl ReasoningService for ReasoningServiceImpl {
                 )))
                 .await;
 
-            let pod_status = match cm.ensure_pod(&conv_id.to_string()).await {
+            let pod_status = match cm.ensure_pod(&conv_id.to_string(), &pod_overrides).await {
                 Ok(s) => s,
                 Err(e) => {
                     error!(error = %e, "Failed to create agent pod");
@@ -1069,8 +1103,8 @@ impl ReasoningService for ReasoningServiceImpl {
         let ctx = require_auth(&request)?;
         let req = request.into_inner();
 
-        let page_size = i64::from(req.page_size.max(1).min(100));
-        let offset = i64::from(req.page.max(0)) * page_size;
+        let page_size = i64::from(req.page_size.clamp(1, 100));
+        let offset = i64::from((req.page - 1).max(0)) * page_size;
 
         let (convs, total) = self
             .repos
@@ -1264,8 +1298,8 @@ async fn wait_for_pod_ready(
         }
 
         match cm.get_pod_status(session_id).await {
-            Ok(PodStatus::Running { pod_ip, .. }) => return Some(pod_ip),
-            Ok(PodStatus::Pending) => continue,
+            Ok(PodStatus::Running { pod_ip, pod_name }) => return Some((pod_ip, pod_name)),
+            Ok(PodStatus::Pending) => {}
             Ok(PodStatus::Gone) => {
                 let _ = tx
                     .send(Ok(event_mapper::container_status_event(

@@ -81,16 +81,17 @@ docker_build(
 # ---------------------------------------------------------------------------
 # Agent container — ps-mcp binary + OpenCode + system tools
 # ---------------------------------------------------------------------------
-# Built from repo root (same context as other Rust services). The Dockerfile
-# has its own builder stage that compiles ps-mcp, then layers it onto Ubuntu
-# with system tools (git, rg, tokei, uv) and OpenCode.
-docker_build(
+# Agent pods are created dynamically by ContainerManager, not from YAML that
+# Tilt can rewrite. We use custom_build so the image is tagged with $EXPECTED_REF
+# (which Tilt controls), then also tag it as prism/prism-agent:latest so that
+# dynamically-created pods can reference a stable tag.
+custom_build(
     "prism/prism-agent",
-    ".",
-    dockerfile="crates/ps-agent/agent-container/Dockerfile",
-    target="prism-agent-dev",
-    build_args={"PROFILE": "debug"},
-    only=_meta + _tomls + _shared + ["crates/ps-mcp", "crates/ps-agent/agent-container"],
+    "docker build -t $EXPECTED_REF -t prism/prism-agent:latest" +
+    " --target prism-agent-dev --build-arg PROFILE=debug" +
+    " -f crates/ps-agent/agent-container/Dockerfile . ",
+    deps=_meta + _tomls + _shared + ["crates/ps-mcp", "crates/ps-agent/agent-container"],
+    skips_local_docker=False,
 )
 
 # ---------------------------------------------------------------------------

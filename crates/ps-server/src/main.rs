@@ -101,9 +101,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Container manager — optional, requires K8s access
     let container_manager = match kube::Client::try_default().await {
         Ok(kube_client) => {
-            let agent_image =
-                std::env::var("AGENT_IMAGE").unwrap_or_else(|_| "prism-agent:latest".into());
             let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
+            let agent_image =
+                std::env::var("AGENT_IMAGE").unwrap_or_else(|_| "prism/prism-agent:latest".into());
+            info!(agent_image = %agent_image, "Using agent container image");
             let config = ps_agent::AgentPodConfig {
                 image: agent_image,
                 namespace: namespace.clone(),
@@ -117,13 +118,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             let cm = ps_agent::ContainerManager::new(kube_client, namespace, config);
 
-            // Start background reaper task.
+            // Start background reaper task — cleans up idle pods and their service tokens.
             let reaper = cm.clone();
+            let reaper_repos = repos.clone();
             tokio::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
                 loop {
                     interval.tick().await;
-                    reaper.reap_idle_pods().await;
+                    let reaped_sessions = reaper.reap_idle_pods().await;
+                    for sid in reaped_sessions {
+                        if let Ok(uuid) = sid.parse::<uuid::Uuid>()
+                            && let Err(e) = reaper_repos.auth.delete_session(uuid).await
+                        {
+                            tracing::warn!(session_id = %sid, error = %e, "Failed to delete reaped agent token");
+                        }
+                    }
                 }
             });
 

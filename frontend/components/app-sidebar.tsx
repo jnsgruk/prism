@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Sparkles,
   UserRound,
   Users,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { title: "Teams", href: "/teams", icon: Users },
   { title: "People", href: "/people", icon: UserRound },
   { title: "Ingestion", href: "/ingestion", icon: Activity },
+  { title: "Ask", href: "/ask", icon: Sparkles },
 ];
 
 const UserInitials = ({ name }: { name: string }): React.ReactElement => {

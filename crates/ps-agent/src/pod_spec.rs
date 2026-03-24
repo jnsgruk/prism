@@ -5,6 +5,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use std::collections::BTreeMap;
 
 /// Configuration for building an agent Pod spec.
+#[derive(Clone)]
 pub struct AgentPodConfig {
     /// Container image for the agent (e.g. `prism-agent:latest`).
     pub image: String,
@@ -31,6 +32,7 @@ pub const LABEL_APP: &str = "app";
 pub const LABEL_APP_VALUE: &str = "prism-agent";
 pub const LABEL_SESSION: &str = "prism.canonical.com/session";
 pub const ANNOTATION_LAST_ACTIVITY: &str = "prism.canonical.com/last-activity";
+pub const ANNOTATION_TOKEN_SESSION_ID: &str = "prism.canonical.com/token-session-id";
 
 /// Build a K8s Pod spec for an agent container.
 pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
@@ -79,6 +81,7 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
     let container = Container {
         name: "agent".to_string(),
         image: Some(config.image.clone()),
+        image_pull_policy: Some("IfNotPresent".to_string()),
         env: Some(env),
         resources: Some(resources),
         ports: Some(vec![k8s_openapi::api::core::v1::ContainerPort {

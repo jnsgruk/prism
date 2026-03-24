@@ -7,7 +7,10 @@ use k8s_openapi::api::core::v1::Pod;
 use kube::Client as KubeClient;
 use kube::api::{Api, DeleteParams, ListParams, PostParams};
 
-use crate::pod_spec::{ANNOTATION_LAST_ACTIVITY, AgentPodConfig, LABEL_APP_VALUE, LABEL_SESSION};
+use crate::pod_spec::{
+    ANNOTATION_LAST_ACTIVITY, ANNOTATION_TOKEN_SESSION_ID, AgentPodConfig, LABEL_APP_VALUE,
+    LABEL_SESSION,
+};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info, warn};
@@ -23,6 +26,16 @@ const MAX_LIFETIME: Duration = Duration::from_secs(2 * 60 * 60); // 2 hours
 
 /// Maximum concurrent agent containers.
 const MAX_CONTAINERS: usize = 20;
+
+/// Per-pod overrides applied on top of the default `AgentPodConfig`.
+#[derive(Clone)]
+pub struct PodOverrides {
+    pub service_token: String,
+    pub token_session_id: String,
+    pub model: String,
+    pub small_model: String,
+    pub provider_keys: Vec<(String, String)>,
+}
 
 /// Status of an agent Pod.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,8 +67,15 @@ impl ContainerManager {
     }
 
     /// Find an active Pod for the session, or create a new one.
-    /// Returns the Pod IP and name when ready.
-    pub async fn ensure_pod(&self, session_id: &str) -> Result<PodStatus, kube::Error> {
+    ///
+    /// Per-pod overrides (model, token, provider keys) are applied on top of
+    /// the default config.  `token_session_id` is stored as an annotation so
+    /// the background reaper can delete the auth session when the pod is reaped.
+    pub async fn ensure_pod(
+        &self,
+        session_id: &str,
+        overrides: &PodOverrides,
+    ) -> Result<PodStatus, kube::Error> {
         // Check for existing pod first.
         let status = self.get_pod_status(session_id).await?;
         if let PodStatus::Running { .. } = &status {
@@ -68,8 +88,24 @@ impl ContainerManager {
             return Ok(PodStatus::Gone); // Caller should report capacity error.
         }
 
-        // Create new pod.
-        let pod = crate::pod_spec::build_agent_pod(session_id, &self.default_config);
+        // Build pod with per-session overrides.
+        let mut config = (*self.default_config).clone();
+        config.service_token = overrides.service_token.clone();
+        config.model = overrides.model.clone();
+        config.small_model = overrides.small_model.clone();
+        if !overrides.provider_keys.is_empty() {
+            config.provider_keys = overrides.provider_keys.clone();
+        }
+        let mut pod = crate::pod_spec::build_agent_pod(session_id, &config);
+
+        // Store the token's session ID so reap_idle_pods can clean it up.
+        if let Some(annotations) = pod.metadata.annotations.as_mut() {
+            annotations.insert(
+                ANNOTATION_TOKEN_SESSION_ID.to_string(),
+                overrides.token_session_id.clone(),
+            );
+        }
+
         let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
         let created = pods.create(&PostParams::default(), &pod).await?;
 
@@ -160,7 +196,10 @@ impl ContainerManager {
     }
 
     /// Reap idle and expired agent Pods. Intended to run on a timer (every 60s).
-    pub async fn reap_idle_pods(&self) {
+    ///
+    /// Returns the token session IDs from reaped pods so the caller can delete
+    /// the corresponding auth sessions.
+    pub async fn reap_idle_pods(&self) -> Vec<String> {
         let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
         let lp = ListParams::default().labels(&format!("app={LABEL_APP_VALUE}"));
 
@@ -168,17 +207,20 @@ impl ContainerManager {
             Ok(l) => l,
             Err(e) => {
                 error!(error = %e, "Failed to list agent pods for reaping");
-                return;
+                return vec![];
             }
         };
 
         let now = time::OffsetDateTime::now_utc();
+        let mut reaped_token_sessions = Vec::new();
 
         for pod in &list.items {
             let name = match &pod.metadata.name {
                 Some(n) => n.clone(),
                 None => continue,
             };
+
+            let mut should_reap = false;
 
             // Check max lifetime from creation timestamp.
             if let Some(creation) = &pod.metadata.creation_timestamp {
@@ -191,31 +233,50 @@ impl ContainerManager {
                     let age = now - created;
                     if age.unsigned_abs() > MAX_LIFETIME {
                         info!(pod_name = %name, age_secs = age.whole_seconds(), "Reaping expired agent pod");
-                        let _ = pods.delete(&name, &DeleteParams::default()).await;
-                        continue;
+                        should_reap = true;
                     }
                 }
             }
 
             // Check idle timeout from last-activity annotation.
-            let last_activity = pod
-                .metadata
-                .annotations
-                .as_ref()
-                .and_then(|a| a.get(ANNOTATION_LAST_ACTIVITY))
-                .and_then(|ts| {
-                    time::OffsetDateTime::parse(ts, &time::format_description::well_known::Rfc3339)
+            if !should_reap {
+                let last_activity = pod
+                    .metadata
+                    .annotations
+                    .as_ref()
+                    .and_then(|a| a.get(ANNOTATION_LAST_ACTIVITY))
+                    .and_then(|ts| {
+                        time::OffsetDateTime::parse(
+                            ts,
+                            &time::format_description::well_known::Rfc3339,
+                        )
                         .ok()
-                });
+                    });
 
-            if let Some(last) = last_activity {
-                let idle = now - last;
-                if idle.unsigned_abs() > IDLE_TIMEOUT {
-                    info!(pod_name = %name, idle_secs = idle.whole_seconds(), "Reaping idle agent pod");
-                    let _ = pods.delete(&name, &DeleteParams::default()).await;
+                if let Some(last) = last_activity {
+                    let idle = now - last;
+                    if idle.unsigned_abs() > IDLE_TIMEOUT {
+                        info!(pod_name = %name, idle_secs = idle.whole_seconds(), "Reaping idle agent pod");
+                        should_reap = true;
+                    }
                 }
             }
+
+            if should_reap {
+                // Collect token session ID before deleting the pod.
+                if let Some(token_sid) = pod
+                    .metadata
+                    .annotations
+                    .as_ref()
+                    .and_then(|a| a.get(ANNOTATION_TOKEN_SESSION_ID))
+                {
+                    reaped_token_sessions.push(token_sid.clone());
+                }
+                let _ = pods.delete(&name, &DeleteParams::default()).await;
+            }
         }
+
+        reaped_token_sessions
     }
 
     /// Count currently active (Pending + Running) agent Pods.

@@ -38,6 +38,10 @@ pub struct TaskRouter {
     google: Option<gemini::Client>,
     openrouter: Option<openrouter::Client>,
     config: AiConfig,
+    /// Raw API keys — kept alongside clients so we can inject them into agent
+    /// container env vars without needing to re-decrypt from the database.
+    google_key: Option<String>,
+    openrouter_key: Option<String>,
 }
 
 impl TaskRouter {
@@ -48,13 +52,18 @@ impl TaskRouter {
             google: None,
             openrouter: None,
             config,
+            google_key: None,
+            openrouter_key: None,
         }
     }
 
     /// Set the Google Gemini provider client.
     pub fn set_google(&mut self, api_key: &str) {
         match gemini::Client::new(api_key) {
-            Ok(client) => self.google = Some(client),
+            Ok(client) => {
+                self.google = Some(client);
+                self.google_key = Some(api_key.to_string());
+            }
             Err(e) => tracing::warn!(error = %e, "failed to create Gemini client"),
         }
     }
@@ -62,7 +71,10 @@ impl TaskRouter {
     /// Set the `OpenRouter` provider client.
     pub fn set_openrouter(&mut self, api_key: &str) {
         match openrouter::Client::new(api_key) {
-            Ok(client) => self.openrouter = Some(client),
+            Ok(client) => {
+                self.openrouter = Some(client);
+                self.openrouter_key = Some(api_key.to_string());
+            }
             Err(e) => tracing::warn!(error = %e, "failed to create OpenRouter client"),
         }
     }
@@ -81,6 +93,21 @@ impl TaskRouter {
     /// Get the task routing config.
     pub fn routing(&self) -> &AiTaskRouting {
         &self.config.tasks
+    }
+
+    /// Return provider API keys as `(ENV_VAR_NAME, value)` pairs suitable for
+    /// injecting into agent container Pods.
+    pub fn provider_env_vars(&self) -> Vec<(String, String)> {
+        let mut vars = Vec::new();
+        if let Some(key) = &self.google_key {
+            vars.push(("GOOGLE_API_KEY".to_string(), key.clone()));
+            vars.push(("GEMINI_API_KEY".to_string(), key.clone()));
+            vars.push(("GOOGLE_GENERATIVE_AI_API_KEY".to_string(), key.clone()));
+        }
+        if let Some(key) = &self.openrouter_key {
+            vars.push(("OPENROUTER_API_KEY".to_string(), key.clone()));
+        }
+        vars
     }
 
     /// Get the configured budget cap in USD (daily).
