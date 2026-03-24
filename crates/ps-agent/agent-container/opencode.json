@@ -20,22 +20,14 @@
     }
   },
   "permission": {
-    "edit": "allow",
-    "write": "allow",
-    "bash": "allow",
-    "read": "allow",
-    "glob": "allow",
-    "grep": "allow",
-    "webfetch": "allow",
-    "patch": "allow",
-    "mcp_prism_*": "allow"
+    "*": "allow"
   },
   "agent": {
     "prism": {
       "mode": "primary",
       "description": "Engineering insights assistant with access to Prism data and repository analysis tools",
       "temperature": 0.3,
-      "max_steps": 20
+      "max_steps": 30
     }
   }
 }

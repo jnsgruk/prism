@@ -19,7 +19,7 @@ use tracing::{error, info, warn};
 pub const OPENCODE_PORT: u16 = 4096;
 
 /// How long a container can be idle before being reaped.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(15 * 60); // 15 minutes
+const IDLE_TIMEOUT: Duration = Duration::from_secs(30 * 60); // 30 minutes
 
 /// Maximum container lifetime regardless of activity.
 const MAX_LIFETIME: Duration = Duration::from_secs(2 * 60 * 60); // 2 hours
@@ -293,6 +293,7 @@ impl ContainerManager {
     ) -> Result<opencode_sdk::Client, opencode_sdk::OpencodeError> {
         opencode_sdk::ClientBuilder::new()
             .base_url(format!("http://{pod_ip}:{OPENCODE_PORT}"))
+            .directory("/workspace")
             .timeout_secs(120)
             .build()
     }

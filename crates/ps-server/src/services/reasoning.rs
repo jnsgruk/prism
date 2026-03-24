@@ -23,7 +23,7 @@ use ps_proto::canonical::prism::v1::{
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -813,7 +813,7 @@ impl ReasoningService for ReasoningServiceImpl {
         &self,
         request: Request<AskQuestionRequest>,
     ) -> Result<Response<Self::AskQuestionStream>, Status> {
-        use ps_agent::{PodStatus, event_mapper};
+        use ps_agent::event_mapper;
         use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
 
         let ctx = require_auth(&request)?;
@@ -835,10 +835,22 @@ impl ReasoningService for ReasoningServiceImpl {
             .ok_or_else(|| Status::unavailable("agent containers not configured"))?
             .clone();
 
-        // Create or resume conversation.
-        let conversation_id = if let Some(ref id) = req.conversation_id {
-            id.parse::<Uuid>()
-                .map_err(|_| Status::invalid_argument("invalid conversation_id"))?
+        // Create or resume conversation — fetch existing if conversation_id provided.
+        let existing_conv = if let Some(ref id) = req.conversation_id {
+            let conv_id = id
+                .parse::<Uuid>()
+                .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+            self.repos
+                .reasoning
+                .get_conversation(conv_id)
+                .await
+                .map_err(db_err)?
+        } else {
+            None
+        };
+
+        let conversation_id = if let Some(ref conv) = existing_conv {
+            conv.id
         } else {
             let model_name = {
                 let router = self.router.read().await;
@@ -879,6 +891,14 @@ impl ReasoningService for ReasoningServiceImpl {
 
         let repos = self.repos.clone();
         let conv_id = conversation_id;
+
+        // Extract existing pod/session info for session reuse.
+        let existing_pod_name = existing_conv
+            .as_ref()
+            .and_then(|c| c.container_pod_name.clone());
+        let existing_opencode_session = existing_conv
+            .as_ref()
+            .and_then(|c| c.opencode_session_id.clone());
 
         // Build per-pod overrides: service token + model config + provider keys.
         let service_token = ps_core::auth::generate_token();
@@ -926,24 +946,21 @@ impl ReasoningService for ReasoningServiceImpl {
                 )))
                 .await;
 
-            let pod_status = match cm.ensure_pod(&conv_id.to_string(), &pod_overrides).await {
-                Ok(s) => s,
-                Err(e) => {
-                    error!(error = %e, "Failed to create agent pod");
-                    let _ = tx
-                        .send(Ok(event_mapper::container_status_event(
-                            "error",
-                            &format!("Failed to create container: {e}"),
-                        )))
-                        .await;
-                    return;
-                }
-            };
+            if let Err(e) = cm.ensure_pod(&conv_id.to_string(), &pod_overrides).await {
+                error!(error = %e, "Failed to create agent pod");
+                let _ = tx
+                    .send(Ok(event_mapper::container_status_event(
+                        "error",
+                        &format!("Failed to create container: {e}"),
+                    )))
+                    .await;
+                return;
+            }
 
             // 2. Wait for pod to become ready (poll for up to 60s).
-            let pod_ip = match wait_for_pod_ready(&cm, &conv_id.to_string(), &tx).await {
-                Some(ip) => ip,
-                None => return, // Error already sent on channel.
+            let Some((pod_ip, pod_name)) = wait_for_pod_ready(&cm, &conv_id.to_string(), &tx).await
+            else {
+                return; // Error already sent on channel.
             };
 
             let _ = tx
@@ -953,17 +970,27 @@ impl ReasoningService for ReasoningServiceImpl {
                 )))
                 .await;
 
-            // Update container status in DB.
-            let pod_name = match pod_status {
-                PodStatus::Running { ref pod_name, .. } => pod_name.clone(),
-                _ => format!("prism-agent-{}", &conv_id.to_string()[..8]),
-            };
-            let _ = repos
-                .reasoning
-                .update_container_status(conv_id, Some(&pod_name), "active", None)
-                .await;
+            // Detect stale session: if the pod was recreated (name changed),
+            // the old OpenCode session is invalid — force a new one.
+            let mut reusable_session = existing_opencode_session.clone();
+            if let Some(ref old_name) = existing_pod_name
+                && *old_name != pod_name
+            {
+                info!(
+                    old_pod = %old_name,
+                    new_pod = %pod_name,
+                    "Pod recreated, clearing stale OpenCode session"
+                );
+                reusable_session = None;
+                // Clear the stale session ID in the DB.
+                let _ = repos
+                    .reasoning
+                    .update_container_status(conv_id, Some(&pod_name), "active", None)
+                    .await;
+            }
 
             // 3. Connect to OpenCode and stream.
+            info!(pod_ip = %pod_ip, "Connecting to OpenCode");
             let client = match ps_agent::ContainerManager::opencode_client(&pod_ip) {
                 Ok(c) => c,
                 Err(e) => {
@@ -978,34 +1005,84 @@ impl ReasoningService for ReasoningServiceImpl {
                 }
             };
 
-            let session = match client.create_session_with_title(&req.question).await {
-                Ok(s) => s,
-                Err(e) => {
-                    error!(error = %e, "Failed to create OpenCode session");
-                    return;
+            // Reuse existing OpenCode session for follow-up questions, or create new.
+            let opencode_session_id = if let Some(ref oc_sid) = reusable_session {
+                info!(session_id = %oc_sid, "Reusing existing OpenCode session");
+                oc_sid.clone()
+            } else {
+                info!("Creating new OpenCode session");
+                match client.create_session_with_title(&req.question).await {
+                    Ok(s) => {
+                        info!(session_id = %s.id, "OpenCode session created");
+                        // Store the session ID so follow-up questions reuse it.
+                        let _ = repos
+                            .reasoning
+                            .update_container_status(
+                                conv_id,
+                                Some(&pod_name),
+                                "active",
+                                Some(&s.id),
+                            )
+                            .await;
+                        s.id
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Failed to create OpenCode session");
+                        let _ = tx
+                            .send(Ok(event_mapper::container_status_event(
+                                "error",
+                                &format!("Failed to create agent session: {e}"),
+                            )))
+                            .await;
+                        return;
+                    }
                 }
             };
 
-            // 4. Subscribe to events before sending prompt.
-            let mut subscription = match client.subscribe_session(&session.id).await {
-                Ok(s) => s,
+            // 4. Subscribe to global events (not session-filtered) before sending prompt.
+            // Session-filtered subscription via subscribe_session can miss events
+            // that arrive before the router fully initialises.
+            info!("Subscribing to OpenCode events");
+            let mut subscription = match client.subscribe().await {
+                Ok(s) => {
+                    info!("SSE subscription established");
+                    s
+                }
                 Err(e) => {
                     error!(error = %e, "Failed to subscribe to OpenCode events");
+                    let _ = tx
+                        .send(Ok(event_mapper::container_status_event(
+                            "error",
+                            &format!("Failed to subscribe to agent events: {e}"),
+                        )))
+                        .await;
                     return;
                 }
             };
 
-            // 5. Send the question.
+            // 5. Send the question, specifying the "prism" agent so OpenCode
+            //    uses our custom system prompt and MCP tool configuration.
+            info!("Sending question to OpenCode");
+            let prompt = ps_agent::opencode_sdk::types::message::PromptRequest::text(&req.question)
+                .with_agent("prism");
             if let Err(e) = client
-                .send_text_async(&session.id, &req.question, None)
+                .messages()
+                .prompt_async(&opencode_session_id, &prompt)
                 .await
             {
                 error!(error = %e, "Failed to send prompt to OpenCode");
+                let _ = tx
+                    .send(Ok(event_mapper::container_status_event(
+                        "error",
+                        &format!("Failed to send question: {e}"),
+                    )))
+                    .await;
                 return;
             }
+            info!("Question sent, streaming events");
 
-            // 6. Stream events until idle or timeout.
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
+            // 6. Stream events until idle or timeout (5 minutes — long scripts may need it).
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
             let mut answer_text = String::new();
             let mut tool_calls = 0i32;
 
@@ -1017,7 +1094,26 @@ impl ReasoningService for ReasoningServiceImpl {
 
                 let event = match tokio::time::timeout(remaining, subscription.recv()).await {
                     Ok(Some(event)) => event,
-                    Ok(None) | Err(_) => break,
+                    Ok(None) => {
+                        let stats = subscription.stats();
+                        info!(
+                            events_in = stats.events_in,
+                            events_out = stats.events_out,
+                            reconnects = stats.reconnects,
+                            "SSE subscription closed (None)"
+                        );
+                        break;
+                    }
+                    Err(_) => {
+                        let stats = subscription.stats();
+                        warn!(
+                            events_in = stats.events_in,
+                            events_out = stats.events_out,
+                            reconnects = stats.reconnects,
+                            "SSE stream timed out"
+                        );
+                        break;
+                    }
                 };
 
                 // Check for idle/completion.
@@ -1025,6 +1121,7 @@ impl ReasoningService for ReasoningServiceImpl {
                     event,
                     ps_agent::opencode_sdk::types::event::Event::SessionIdle { .. }
                 ) {
+                    info!("Session idle, finishing");
                     break;
                 }
 
@@ -1046,6 +1143,11 @@ impl ReasoningService for ReasoningServiceImpl {
                         break; // Client disconnected.
                     }
                 }
+            }
+
+            // Update pod activity to prevent premature reaping.
+            if let Err(e) = cm.update_activity(&conv_id.to_string()).await {
+                warn!(error = %e, "Failed to update pod activity");
             }
 
             // 7. Store assistant message and update totals.
@@ -1275,11 +1377,13 @@ impl ReasoningService for ReasoningServiceImpl {
 }
 
 /// Poll for Pod readiness with backoff, sending status events on the channel.
+///
+/// Returns `(pod_ip, pod_name)` on success, or `None` if the pod failed to start.
 async fn wait_for_pod_ready(
     cm: &ps_agent::ContainerManager,
     session_id: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
-) -> Option<String> {
+) -> Option<(String, String)> {
     use ps_agent::{PodStatus, event_mapper};
 
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(60);
