@@ -81,21 +81,16 @@ docker_build(
 # ---------------------------------------------------------------------------
 # Agent container — ps-mcp binary + OpenCode + system tools
 # ---------------------------------------------------------------------------
-# The agent container needs the ps-mcp binary built first. We use custom_build
-# to: (1) build ps-mcp via cargo, (2) copy binary into the Docker context,
-# (3) docker build the agent image.
-# Build uses a temp staging dir to avoid writing into the watched path
-# (which would trigger an infinite rebuild loop).
-custom_build(
+# Built from repo root (same context as other Rust services). The Dockerfile
+# has its own builder stage that compiles ps-mcp, then layers it onto Ubuntu
+# with system tools (git, rg, tokei, uv) and OpenCode.
+docker_build(
     "prism/prism-agent",
-    "set -e && " +
-    "cargo build --bin ps-mcp && " +
-    "STAGE=$(mktemp -d) && " +
-    "cp -r crates/ps-agent/agent-container/. $STAGE/ && " +
-    "cp target/debug/ps-mcp $STAGE/ps-mcp && " +
-    "docker build -t $EXPECTED_REF $STAGE && " +
-    "rm -rf $STAGE",
-    ["crates/ps-mcp/src", "crates/ps-agent/agent-container"],
+    ".",
+    dockerfile="crates/ps-agent/agent-container/Dockerfile",
+    target="prism-agent-dev",
+    build_args={"PROFILE": "debug"},
+    only=_meta + _tomls + _shared + ["crates/ps-mcp", "crates/ps-agent/agent-container"],
 )
 
 # ---------------------------------------------------------------------------

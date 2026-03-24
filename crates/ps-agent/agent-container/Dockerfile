@@ -1,6 +1,51 @@
-FROM ubuntu:24.04
+# syntax=docker/dockerfile:1
 
-# System tools for code analysis
+# Multi-stage Dockerfile for the Prism agent container.
+# Stage 1: Build the ps-mcp binary using the same Rust builder as other crates.
+# Stage 2: Ubuntu runtime with system tools + OpenCode + ps-mcp binary.
+#
+# Build context must be the repo root (same as crates/Dockerfile):
+#   docker build -f crates/ps-agent/agent-container/Dockerfile --target prism-agent-dev --build-arg PROFILE=debug .
+
+ARG PROFILE=release
+
+# ---------------------------------------------------------------------------
+# Builder — reuses the same pattern as crates/Dockerfile
+# ---------------------------------------------------------------------------
+FROM rust:1.94-bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler \
+    libprotobuf-dev \
+    pkg-config \
+    libssl-dev \
+    clang \
+    mold \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY . .
+
+# Stub out workspace members whose source is not in the build context.
+RUN find crates tests -name Cargo.toml -exec sh -c '\
+      dir=$(dirname "$1"); \
+      if [ ! -f "$dir/src/main.rs" ] && [ ! -f "$dir/src/lib.rs" ]; then \
+        mkdir -p "$dir/src" && touch "$dir/src/lib.rs"; \
+      fi' _ {} \;
+
+ENV SQLX_OFFLINE=true
+ARG PROFILE
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build \
+        $([ "$PROFILE" = "release" ] && echo "--release") \
+        --bin ps-mcp \
+    && mkdir -p /out \
+    && cp target/$([ "$PROFILE" = "release" ] && echo "release" || echo "debug")/ps-mcp /out/ps-mcp
+
+# ---------------------------------------------------------------------------
+# Agent runtime — Ubuntu with system tools for code analysis
+# ---------------------------------------------------------------------------
+FROM ubuntu:24.04 AS agent-runtime
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates xz-utils \
     && rm -rf /var/lib/apt/lists/*
@@ -20,22 +65,24 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # OpenCode — pinned version for stability
 ARG OPENCODE_VERSION=0.1.0
-RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl -fsSL https://opencode.ai/install | bash || true
 
-# ps-mcp binary (built externally, copied in)
-COPY ps-mcp /usr/local/bin/ps-mcp
-RUN chmod +x /usr/local/bin/ps-mcp
+# ps-mcp binary from the builder stage
+COPY --from=builder /out/ps-mcp /usr/local/bin/ps-mcp
 
 # OpenCode configuration + agent prompt
-COPY opencode.json /app/opencode.json
-COPY .opencode/ /app/.opencode/
+COPY crates/ps-agent/agent-container/opencode.json /app/opencode.json
+COPY crates/ps-agent/agent-container/.opencode/ /app/.opencode/
 
 # Workspace for cloned repos and generated files
 RUN mkdir /workspace
 WORKDIR /workspace
 
-# OpenCode server port
 EXPOSE 4096
 
-# Default: start OpenCode server (overridden by K8s command when used as dummy Job).
 CMD ["/bin/sh", "-c", "opencode --server --port 4096 --config /app/opencode.json || echo 'OpenCode not installed, container ready for testing'"]
+
+# ---------------------------------------------------------------------------
+# Dev target for Tilt
+# ---------------------------------------------------------------------------
+FROM agent-runtime AS prism-agent-dev

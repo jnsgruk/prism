@@ -33,7 +33,4 @@ Thumbs.db
 # K8s
 k8s/gateway/charts/
 
-# Build artifacts copied into Docker contexts
-crates/ps-agent/agent-container/ps-mcp
-
 reports/
