@@ -24,6 +24,11 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Install the rustls crypto provider before any TLS usage. Both `ring`
+    // (from object_store) and `aws-lc-rs` (from kube) are in the dep tree,
+    // so rustls can't auto-detect — we explicitly pick aws-lc-rs.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -93,11 +98,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         };
 
+    // Container manager — optional, requires K8s access
+    let container_manager = match kube::Client::try_default().await {
+        Ok(kube_client) => {
+            let agent_image =
+                std::env::var("AGENT_IMAGE").unwrap_or_else(|_| "prism-agent:latest".into());
+            let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
+            let config = ps_server::container_manager::pod_spec::AgentPodConfig {
+                image: agent_image,
+                namespace: namespace.clone(),
+                model: String::new(), // Set dynamically from AI settings per request.
+                small_model: String::new(),
+                prism_api_url: "http://ps-server:8080".to_string(),
+                service_token: String::new(), // TODO: generate/read service token
+                s3_endpoint: std::env::var("S3_ENDPOINT").unwrap_or_default(),
+                s3_bucket: std::env::var("S3_BUCKET").unwrap_or_else(|_| "ps-artifacts".into()),
+                provider_keys: vec![],
+            };
+            let cm =
+                ps_server::container_manager::ContainerManager::new(kube_client, namespace, config);
+
+            // Start background reaper task.
+            let reaper = cm.clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+                loop {
+                    interval.tick().await;
+                    reaper.reap_idle_pods().await;
+                }
+            });
+
+            info!("Container manager configured");
+            Some(Arc::new(cm))
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "K8s not available — agent containers disabled");
+            None
+        }
+    };
+
     let reasoning_service = ReasoningServiceImpl::new(
         repos.clone(),
         secret_key,
         router,
         artifact_store,
+        container_manager,
         restate_url,
     );
 

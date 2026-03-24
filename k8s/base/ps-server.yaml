@@ -23,6 +23,7 @@ spec:
       labels:
         app: ps-server
     spec:
+      serviceAccountName: ps-server
       containers:
         - name: ps-server
           image: prism/ps-server

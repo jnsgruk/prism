@@ -243,3 +243,100 @@ pub fn person_filter_to_str(v: i32) -> Option<String> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn platform_roundtrip_github() {
+        let (proto, inst) = platform_to_proto("github");
+        assert_eq!(proto, i32::from(ProtoPlatform::Github));
+        assert!(inst.is_none());
+        assert_eq!(
+            proto_to_platform_str(proto, None),
+            Some("github".to_string())
+        );
+    }
+
+    #[test]
+    fn platform_roundtrip_discourse_instance() {
+        let (proto, inst) = platform_to_proto("discourse-ubuntu");
+        assert_eq!(proto, i32::from(ProtoPlatform::Discourse));
+        assert_eq!(inst.as_deref(), Some("ubuntu"));
+        assert_eq!(
+            proto_to_platform_str(proto, inst.as_deref()),
+            Some("discourse-ubuntu".to_string())
+        );
+    }
+
+    #[test]
+    fn platform_roundtrip_bare_discourse() {
+        let (proto, inst) = platform_to_proto("discourse");
+        assert_eq!(proto, i32::from(ProtoPlatform::Discourse));
+        assert!(inst.is_none());
+        assert_eq!(
+            proto_to_platform_str(proto, None),
+            Some("discourse".to_string())
+        );
+    }
+
+    #[test]
+    fn contribution_type_roundtrip() {
+        for (s, expected) in [
+            ("pull_request", ProtoContributionType::PullRequest),
+            ("pr_review", ProtoContributionType::PrReview),
+            ("jira_ticket", ProtoContributionType::JiraTicket),
+            ("discourse_topic", ProtoContributionType::DiscourseTopic),
+            ("discourse_post", ProtoContributionType::DiscoursePost),
+            ("discourse_like", ProtoContributionType::DiscourseLike),
+        ] {
+            let proto = contribution_type_to_proto(s);
+            assert_eq!(proto, i32::from(expected), "failed for {s}");
+            assert_eq!(
+                proto_to_contribution_type_str(proto),
+                Some(s.to_string()),
+                "reverse failed for {s}"
+            );
+        }
+    }
+
+    #[test]
+    fn contribution_state_roundtrip() {
+        for (s, expected) in [
+            ("open", ProtoContributionState::Open),
+            ("closed", ProtoContributionState::Closed),
+            ("merged", ProtoContributionState::Merged),
+            ("in_progress", ProtoContributionState::InProgress),
+            ("done", ProtoContributionState::Done),
+            ("APPROVED", ProtoContributionState::Approved),
+            (
+                "CHANGES_REQUESTED",
+                ProtoContributionState::ChangesRequested,
+            ),
+        ] {
+            let proto = contribution_state_to_proto(s);
+            assert_eq!(proto, i32::from(expected), "failed for {s}");
+            assert_eq!(
+                proto_to_contribution_state_str(proto),
+                Some(s.to_string()),
+                "reverse failed for {s}"
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_types_return_unspecified() {
+        assert_eq!(
+            contribution_type_to_proto("bogus"),
+            i32::from(ProtoContributionType::Unspecified)
+        );
+        assert_eq!(
+            contribution_state_to_proto("bogus"),
+            i32::from(ProtoContributionState::Unspecified)
+        );
+        assert!(proto_to_contribution_type_str(999).is_none());
+        assert!(proto_to_contribution_state_str(999).is_none());
+        assert!(proto_to_platform_str(999, None).is_none());
+    }
+}

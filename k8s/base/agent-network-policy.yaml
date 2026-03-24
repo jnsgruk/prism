@@ -1,0 +1,44 @@
+# NetworkPolicy restricting agent container egress.
+# Agent pods can reach: ps-server (gRPC), RustFS (S3), and external HTTPS (443).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prism-agent-egress
+  namespace: prism
+spec:
+  podSelector:
+    matchLabels:
+      app: prism-agent
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution.
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # ps-server gRPC (for MCP tool callbacks).
+    - to:
+        - podSelector:
+            matchLabels:
+              app: ps-server
+      ports:
+        - port: 8080
+          protocol: TCP
+    # RustFS / S3 (for artifact uploads).
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rustfs
+      ports:
+        - port: 9000
+          protocol: TCP
+    # External HTTPS (GitHub, Jira, Discourse, LLM API providers).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP

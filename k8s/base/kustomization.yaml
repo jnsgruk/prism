@@ -11,3 +11,5 @@ resources:
   - ps-frontend.yaml
   - rustfs.yaml
   - gateway.yaml
+  - agent-rbac.yaml
+  - agent-network-policy.yaml

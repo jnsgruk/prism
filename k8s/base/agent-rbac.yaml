@@ -1,0 +1,33 @@
+# RBAC for ps-server to manage agent container Pods.
+# ps-server creates/lists/deletes Pods in the prism namespace when handling
+# AskQuestion requests.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ps-server
+  namespace: prism
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-pod-manager
+  namespace: prism
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "create", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ps-server-agent-pods
+  namespace: prism
+subjects:
+  - kind: ServiceAccount
+    name: ps-server
+    namespace: prism
+roleRef:
+  kind: Role
+  name: agent-pod-manager
+  apiGroup: rbac.authorization.k8s.io

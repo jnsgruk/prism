@@ -2,10 +2,10 @@ use crate::define_api_test;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest,
-    GetAiSettingsRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
+    GetAiSettingsRequest, GetConversationRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
     GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
-    ListAiModelsRequest, RefreshModelCatalogueRequest, SetProviderSecretRequest,
-    UpdateAiSettingsRequest,
+    ListAiModelsRequest, ListConversationsRequest, RefreshModelCatalogueRequest,
+    SetProviderSecretRequest, UpdateAiSettingsRequest,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -408,5 +408,132 @@ define_api_test!(reasoning_requires_auth, |server| async move {
         .await
         .expect_err("should require auth");
 
+    assert_eq!(err.code(), tonic::Code::Unauthenticated);
+});
+
+// ---------------------------------------------------------------------------
+// Conversation CRUD
+// ---------------------------------------------------------------------------
+
+define_api_test!(list_conversations_empty, |server| async move {
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let mut req = Request::new(ListConversationsRequest {
+        page_size: 10,
+        page: 0,
+    });
+    auth(&mut req, &token);
+
+    let resp = client
+        .list_conversations(req)
+        .await
+        .expect("list_conversations")
+        .into_inner();
+
+    assert_eq!(resp.total_count, 0);
+    assert!(resp.conversations.is_empty());
+});
+
+define_api_test!(list_and_get_conversations, |server| async move {
+    let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let repos = ps_core::repo::Repos::new(server.pool.clone());
+
+    // Create conversations directly in the DB (AskQuestion needs a K8s cluster).
+    let c1 = repos
+        .reasoning
+        .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            user_id,
+            title: Some("First question"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    let c2 = repos
+        .reasoning
+        .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            user_id,
+            title: Some("Second question"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    // Add a message to c1.
+    repos
+        .reasoning
+        .create_message(&ps_core::repo::reasoning::CreateMessageParams {
+            conversation_id: c1.id,
+            role: "user",
+            content: "Hello",
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 10,
+            completion_tokens: 0,
+        })
+        .await
+        .unwrap();
+
+    // List conversations.
+    let mut req = Request::new(ListConversationsRequest {
+        page_size: 10,
+        page: 0,
+    });
+    auth(&mut req, &token);
+
+    let resp = client
+        .list_conversations(req)
+        .await
+        .expect("list")
+        .into_inner();
+    assert_eq!(resp.total_count, 2);
+    // Newest first.
+    assert_eq!(resp.conversations[0].title, Some("Second question".into()));
+    assert_eq!(resp.conversations[1].message_count, 1);
+
+    // Get conversation with messages.
+    let mut req = Request::new(GetConversationRequest {
+        conversation_id: c1.id.to_string(),
+    });
+    auth(&mut req, &token);
+
+    let resp = client
+        .get_conversation(req)
+        .await
+        .expect("get")
+        .into_inner();
+    assert!(resp.conversation.is_some());
+    assert_eq!(resp.messages.len(), 1);
+    assert_eq!(resp.messages[0].role, "user");
+    assert_eq!(resp.messages[0].content, "Hello");
+
+    drop(c2);
+});
+
+define_api_test!(get_conversation_not_found, |server| async move {
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let mut req = Request::new(GetConversationRequest {
+        conversation_id: uuid::Uuid::now_v7().to_string(),
+    });
+    auth(&mut req, &token);
+
+    let err = client.get_conversation(req).await.expect_err("not found");
+    assert_eq!(err.code(), tonic::Code::NotFound);
+});
+
+define_api_test!(conversation_requires_auth, |server| async move {
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let err = client
+        .list_conversations(ListConversationsRequest {
+            page_size: 10,
+            page: 0,
+        })
+        .await
+        .expect_err("should require auth");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
 });

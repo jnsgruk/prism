@@ -38,6 +38,7 @@ pub struct ReasoningServiceImpl {
     secret_key: Zeroizing<[u8; 32]>,
     router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
     artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
+    container_manager: Option<Arc<crate::container_manager::ContainerManager>>,
     restate_url: String,
     http_client: reqwest::Client,
 }
@@ -48,6 +49,7 @@ impl ReasoningServiceImpl {
         secret_key: Zeroizing<[u8; 32]>,
         router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
         artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
+        container_manager: Option<Arc<crate::container_manager::ContainerManager>>,
         restate_url: String,
     ) -> Self {
         Self {
@@ -55,6 +57,7 @@ impl ReasoningServiceImpl {
             secret_key,
             router,
             artifact_store,
+            container_manager,
             restate_url,
             http_client: reqwest::Client::new(),
         }
@@ -802,52 +805,485 @@ impl ReasoningService for ReasoningServiceImpl {
     }
 
     // -----------------------------------------------------------------------
-    // Agentic query interface — stubs for Phase 2 implementation
+    // Agentic query interface
     // -----------------------------------------------------------------------
 
+    #[allow(clippy::too_many_lines)]
     async fn ask_question(
         &self,
-        _request: Request<AskQuestionRequest>,
+        request: Request<AskQuestionRequest>,
     ) -> Result<Response<Self::AskQuestionStream>, Status> {
-        Err(Status::unimplemented(
-            "AskQuestion will be implemented in plan 56 phase 2",
-        ))
+        use crate::container_manager::{PodStatus, event_mapper};
+        use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
+
+        let ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        // Validate question.
+        if req.question.trim().is_empty() {
+            return Err(Status::invalid_argument("question must not be empty"));
+        }
+        if req.question.len() > 4000 {
+            return Err(Status::invalid_argument(
+                "question must be at most 4000 characters",
+            ));
+        }
+
+        let cm = self
+            .container_manager
+            .as_ref()
+            .ok_or_else(|| Status::unavailable("agent containers not configured"))?
+            .clone();
+
+        // Create or resume conversation.
+        let conversation_id = if let Some(ref id) = req.conversation_id {
+            id.parse::<Uuid>()
+                .map_err(|_| Status::invalid_argument("invalid conversation_id"))?
+        } else {
+            let model_name = {
+                let router = self.router.read().await;
+                let config = router.config();
+                format!(
+                    "{}/{}",
+                    config.tasks.agentic.provider.as_str(),
+                    config.tasks.agentic.model
+                )
+            };
+            let conv = self
+                .repos
+                .reasoning
+                .create_conversation(&CreateConversationParams {
+                    user_id: ctx.user_id,
+                    title: Some(&req.question.chars().take(100).collect::<String>()),
+                    model_name: &model_name,
+                })
+                .await
+                .map_err(db_err)?;
+            conv.id
+        };
+
+        // Store the user message.
+        self.repos
+            .reasoning
+            .create_message(&CreateMessageParams {
+                conversation_id,
+                role: "user",
+                content: &req.question,
+                reasoning_trace: None,
+                supporting_data: None,
+                prompt_tokens: 0,
+                completion_tokens: 0,
+            })
+            .await
+            .map_err(db_err)?;
+
+        let repos = self.repos.clone();
+        let conv_id = conversation_id;
+
+        let (tx, rx) = tokio::sync::mpsc::channel(64);
+
+        // Spawn the streaming orchestration task.
+        tokio::spawn(async move {
+            // 1. Ensure container is running.
+            let _ = tx
+                .send(Ok(event_mapper::container_status_event(
+                    "creating",
+                    "Starting agent container...",
+                )))
+                .await;
+
+            let pod_status = match cm.ensure_pod(&conv_id.to_string()).await {
+                Ok(s) => s,
+                Err(e) => {
+                    error!(error = %e, "Failed to create agent pod");
+                    let _ = tx
+                        .send(Ok(event_mapper::container_status_event(
+                            "error",
+                            &format!("Failed to create container: {e}"),
+                        )))
+                        .await;
+                    return;
+                }
+            };
+
+            // 2. Wait for pod to become ready (poll for up to 60s).
+            let pod_ip = match wait_for_pod_ready(&cm, &conv_id.to_string(), &tx).await {
+                Some(ip) => ip,
+                None => return, // Error already sent on channel.
+            };
+
+            let _ = tx
+                .send(Ok(event_mapper::container_status_event(
+                    "ready",
+                    "Agent ready",
+                )))
+                .await;
+
+            // Update container status in DB.
+            let pod_name = match pod_status {
+                PodStatus::Running { ref pod_name, .. } => pod_name.clone(),
+                _ => format!("prism-agent-{}", &conv_id.to_string()[..8]),
+            };
+            let _ = repos
+                .reasoning
+                .update_container_status(conv_id, Some(&pod_name), "active", None)
+                .await;
+
+            // 3. Connect to OpenCode and stream.
+            let client = match crate::container_manager::ContainerManager::opencode_client(&pod_ip)
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    error!(error = %e, "Failed to create OpenCode client");
+                    let _ = tx
+                        .send(Ok(event_mapper::container_status_event(
+                            "error",
+                            &format!("Failed to connect to agent: {e}"),
+                        )))
+                        .await;
+                    return;
+                }
+            };
+
+            let session = match client.create_session_with_title(&req.question).await {
+                Ok(s) => s,
+                Err(e) => {
+                    error!(error = %e, "Failed to create OpenCode session");
+                    return;
+                }
+            };
+
+            // 4. Subscribe to events before sending prompt.
+            let mut subscription = match client.subscribe_session(&session.id).await {
+                Ok(s) => s,
+                Err(e) => {
+                    error!(error = %e, "Failed to subscribe to OpenCode events");
+                    return;
+                }
+            };
+
+            // 5. Send the question.
+            if let Err(e) = client
+                .send_text_async(&session.id, &req.question, None)
+                .await
+            {
+                error!(error = %e, "Failed to send prompt to OpenCode");
+                return;
+            }
+
+            // 6. Stream events until idle or timeout.
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
+            let mut answer_text = String::new();
+            let mut tool_calls = 0i32;
+
+            loop {
+                let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+                if remaining.is_zero() {
+                    break;
+                }
+
+                let event = match tokio::time::timeout(remaining, subscription.recv()).await {
+                    Ok(Some(event)) => event,
+                    Ok(None) | Err(_) => break,
+                };
+
+                // Check for idle/completion.
+                if matches!(event, opencode_sdk::types::event::Event::SessionIdle { .. }) {
+                    break;
+                }
+
+                // Map to proto and send.
+                if let Some(proto_event) = event_mapper::map_event(&event) {
+                    // Track answer text and tool calls.
+                    if let Some(ref evt) = proto_event.event {
+                        match evt {
+                            ps_proto::canonical::prism::v1::ask_question_response::Event::PartialAnswer(a) => {
+                                answer_text.clone_from(&a.text);
+                            }
+                            ps_proto::canonical::prism::v1::ask_question_response::Event::ToolCallCompleted(_) => {
+                                tool_calls += 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if tx.send(Ok(proto_event)).await.is_err() {
+                        break; // Client disconnected.
+                    }
+                }
+            }
+
+            // 7. Store assistant message and update totals.
+            let trace = serde_json::json!({
+                "tool_call_count": tool_calls,
+            });
+            let _ = repos
+                .reasoning
+                .create_message(&CreateMessageParams {
+                    conversation_id: conv_id,
+                    role: "assistant",
+                    content: &answer_text,
+                    reasoning_trace: Some(&trace),
+                    supporting_data: None,
+                    prompt_tokens: 0,
+                    completion_tokens: 0,
+                })
+                .await;
+            let _ = repos
+                .reasoning
+                .update_conversation_totals(conv_id, tool_calls, 0, 0, 0.0)
+                .await;
+
+            // 8. Send final answer.
+            let _ = tx
+                .send(Ok(AskQuestionResponse {
+                    event: Some(
+                        ps_proto::canonical::prism::v1::ask_question_response::Event::FinalAnswer(
+                            ps_proto::canonical::prism::v1::AgentFinalAnswer {
+                                answer: answer_text,
+                                conversation_id: conv_id.to_string(),
+                                supporting_data_json: String::new(),
+                                prompt_tokens: 0,
+                                completion_tokens: 0,
+                                estimated_cost_usd: 0.0,
+                                tool_call_count: tool_calls,
+                                duration_ms: 0,
+                                artifacts: vec![],
+                            },
+                        ),
+                    ),
+                }))
+                .await;
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
     }
 
     async fn list_conversations(
         &self,
-        _request: Request<ListConversationsRequest>,
+        request: Request<ListConversationsRequest>,
     ) -> Result<Response<ListConversationsResponse>, Status> {
-        Err(Status::unimplemented(
-            "ListConversations will be implemented in plan 56 phase 2",
-        ))
+        let ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let page_size = i64::from(req.page_size.max(1).min(100));
+        let offset = i64::from(req.page.max(0)) * page_size;
+
+        let (convs, total) = self
+            .repos
+            .reasoning
+            .list_conversations(ctx.user_id, page_size, offset)
+            .await
+            .map_err(db_err)?;
+
+        let conversations = convs
+            .into_iter()
+            .map(|c| ps_proto::canonical::prism::v1::ConversationSummary {
+                id: c.id.to_string(),
+                title: c.title,
+                status: c.status,
+                model_name: c.model_name,
+                container_status: c.container_status,
+                total_tool_calls: c.total_tool_calls,
+                total_estimated_cost_usd: c.total_estimated_cost_usd,
+                message_count: c.message_count.try_into().unwrap_or(0),
+                artifact_count: c.artifact_count.try_into().unwrap_or(0),
+                created_at: Some(to_timestamp(c.created_at)),
+                last_activity_at: Some(to_timestamp(c.last_activity_at)),
+            })
+            .collect();
+
+        Ok(Response::new(ListConversationsResponse {
+            conversations,
+            total_count: total.try_into().unwrap_or(0),
+        }))
     }
 
     async fn get_conversation(
         &self,
-        _request: Request<GetConversationRequest>,
+        request: Request<GetConversationRequest>,
     ) -> Result<Response<GetConversationResponse>, Status> {
-        Err(Status::unimplemented(
-            "GetConversation will be implemented in plan 56 phase 2",
-        ))
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let conv_id: Uuid = req
+            .conversation_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+        let conv = self
+            .repos
+            .reasoning
+            .get_conversation(conv_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("conversation not found"))?;
+
+        let (messages_list, artifacts_list) = tokio::try_join!(
+            async {
+                self.repos
+                    .reasoning
+                    .list_messages(conv_id)
+                    .await
+                    .map_err(db_err)
+            },
+            async {
+                self.repos
+                    .reasoning
+                    .list_artifacts(conv_id)
+                    .await
+                    .map_err(db_err)
+            },
+        )?;
+
+        let summary = ps_proto::canonical::prism::v1::ConversationSummary {
+            id: conv.id.to_string(),
+            title: conv.title,
+            status: conv.status,
+            model_name: conv.model_name,
+            container_status: conv.container_status,
+            total_tool_calls: conv.total_tool_calls,
+            total_estimated_cost_usd: conv.total_estimated_cost_usd,
+            message_count: messages_list.len().try_into().unwrap_or(0),
+            artifact_count: artifacts_list.len().try_into().unwrap_or(0),
+            created_at: Some(to_timestamp(conv.created_at)),
+            last_activity_at: Some(to_timestamp(conv.last_activity_at)),
+        };
+
+        let messages = messages_list
+            .into_iter()
+            .map(|m| ps_proto::canonical::prism::v1::ConversationMessage {
+                id: m.id.to_string(),
+                role: m.role,
+                content: m.content,
+                reasoning_trace_json: m.reasoning_trace.map(|v| v.to_string()),
+                supporting_data_json: m.supporting_data.map(|v| v.to_string()),
+                prompt_tokens: m.prompt_tokens,
+                completion_tokens: m.completion_tokens,
+                created_at: Some(to_timestamp(m.created_at)),
+            })
+            .collect();
+
+        let artifacts = artifacts_list
+            .into_iter()
+            .map(|a| ps_proto::canonical::prism::v1::ConversationArtifact {
+                id: a.id.to_string(),
+                message_id: a.message_id.map(|id| id.to_string()),
+                artifact_key: a.artifact_key,
+                display_name: a.display_name,
+                content_type: a.content_type,
+                size_bytes: a.size_bytes,
+                created_at: Some(to_timestamp(a.created_at)),
+            })
+            .collect();
+
+        Ok(Response::new(GetConversationResponse {
+            conversation: Some(summary),
+            messages,
+            artifacts,
+        }))
     }
 
     async fn save_insight_from_conversation(
         &self,
         _request: Request<SaveInsightFromConversationRequest>,
     ) -> Result<Response<SaveInsightFromConversationResponse>, Status> {
+        // This requires the insights repo integration which is a deeper
+        // integration — stub for now until the insight creation flow is defined.
         Err(Status::unimplemented(
-            "SaveInsightFromConversation will be implemented in plan 56 phase 2",
+            "SaveInsightFromConversation will be available in a future update",
         ))
     }
 
     async fn get_artifact_download_url(
         &self,
-        _request: Request<GetArtifactDownloadUrlRequest>,
+        request: Request<GetArtifactDownloadUrlRequest>,
     ) -> Result<Response<GetArtifactDownloadUrlResponse>, Status> {
-        Err(Status::unimplemented(
-            "GetArtifactDownloadUrl will be implemented in plan 56 phase 2",
-        ))
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        let artifact_id: Uuid = req
+            .artifact_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid artifact_id"))?;
+
+        let artifact = self
+            .repos
+            .reasoning
+            .get_artifact(artifact_id)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| Status::not_found("artifact not found"))?;
+
+        let store = self
+            .artifact_store
+            .as_ref()
+            .ok_or_else(|| Status::unavailable("artifact storage not configured"))?;
+
+        let key = ps_core::artifact_store::ArtifactKey::new(
+            ps_core::artifact_store::ArtifactCategory::Conversations,
+            &artifact.artifact_key,
+        );
+        let expiry = std::time::Duration::from_secs(3600);
+        let url = store.presign_get(&key, expiry).await.map_err(|e| {
+            error!(error = %e, "Failed to generate presigned URL");
+            Status::internal("failed to generate download URL")
+        })?;
+
+        Ok(Response::new(GetArtifactDownloadUrlResponse {
+            download_url: url.to_string(),
+            expires_in_seconds: 3600,
+        }))
+    }
+}
+
+/// Poll for Pod readiness with backoff, sending status events on the channel.
+async fn wait_for_pod_ready(
+    cm: &crate::container_manager::ContainerManager,
+    session_id: &str,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
+) -> Option<String> {
+    use crate::container_manager::{PodStatus, event_mapper};
+
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(60);
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+
+    loop {
+        interval.tick().await;
+        if tokio::time::Instant::now() >= deadline {
+            let _ = tx
+                .send(Ok(event_mapper::container_status_event(
+                    "error",
+                    "Timed out waiting for agent container",
+                )))
+                .await;
+            return None;
+        }
+
+        match cm.get_pod_status(session_id).await {
+            Ok(PodStatus::Running { pod_ip, .. }) => return Some(pod_ip),
+            Ok(PodStatus::Pending) => continue,
+            Ok(PodStatus::Gone) => {
+                let _ = tx
+                    .send(Ok(event_mapper::container_status_event(
+                        "error",
+                        "Agent container failed to start",
+                    )))
+                    .await;
+                return None;
+            }
+            Err(e) => {
+                error!(error = %e, "Error checking pod status");
+                let _ = tx
+                    .send(Ok(event_mapper::container_status_event(
+                        "error",
+                        &format!("Error checking container status: {e}"),
+                    )))
+                    .await;
+                return None;
+            }
+        }
     }
 }
 

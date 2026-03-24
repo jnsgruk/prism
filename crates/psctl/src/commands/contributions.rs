@@ -78,3 +78,92 @@ pub async fn contributions(
 }
 
 use crate::format::truncate;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn platform_str_to_proto_all_platforms() {
+        // Verify delegation to ps_proto::convert covers all platforms.
+        assert_eq!(platform_str_to_proto("github"), i32::from(Platform::Github));
+        assert_eq!(platform_str_to_proto("jira"), i32::from(Platform::Jira));
+        assert_eq!(
+            platform_str_to_proto("discourse"),
+            i32::from(Platform::Discourse)
+        );
+        assert_eq!(
+            platform_str_to_proto("launchpad"),
+            i32::from(Platform::Launchpad)
+        );
+        assert_eq!(
+            platform_str_to_proto("mattermost"),
+            i32::from(Platform::Mattermost)
+        );
+        assert_eq!(
+            platform_str_to_proto("google_drive"),
+            i32::from(Platform::GoogleDrive)
+        );
+        assert_eq!(
+            platform_str_to_proto("unknown"),
+            i32::from(Platform::Unspecified)
+        );
+    }
+
+    #[test]
+    fn platform_str_to_proto_case_insensitive() {
+        assert_eq!(platform_str_to_proto("GitHub"), i32::from(Platform::Github));
+        assert_eq!(platform_str_to_proto("JIRA"), i32::from(Platform::Jira));
+    }
+
+    #[test]
+    fn proto_platform_display_all() {
+        assert_eq!(
+            proto_platform_display(i32::from(Platform::Github)),
+            "github"
+        );
+        assert_eq!(
+            proto_platform_display(i32::from(Platform::Discourse)),
+            "discourse"
+        );
+        assert_eq!(
+            proto_platform_display(i32::from(Platform::GoogleDrive)),
+            "google_drive"
+        );
+        assert_eq!(proto_platform_display(999), "unknown");
+    }
+
+    #[test]
+    fn proto_contribution_type_display_all() {
+        assert_eq!(
+            proto_contribution_type_display(i32::from(ContributionType::PullRequest)),
+            "pull_request"
+        );
+        assert_eq!(
+            proto_contribution_type_display(i32::from(ContributionType::DiscourseLike)),
+            "discourse_like"
+        );
+        assert_eq!(proto_contribution_type_display(999), "unknown");
+    }
+
+    #[test]
+    fn proto_contribution_state_display_all() {
+        assert_eq!(
+            proto_contribution_state_display(i32::from(ContributionState::Open)),
+            "open"
+        );
+        assert_eq!(
+            proto_contribution_state_display(i32::from(ContributionState::Merged)),
+            "merged"
+        );
+        assert_eq!(
+            proto_contribution_state_display(i32::from(ContributionState::Done)),
+            "done"
+        );
+        assert_eq!(
+            proto_contribution_state_display(i32::from(ContributionState::Approved)),
+            "APPROVED"
+        );
+        assert_eq!(proto_contribution_state_display(999), "\u{2014}");
+    }
+}
