@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "{env:OPENCODE_MODEL}",
+  "small_model": "{env:OPENCODE_SMALL_MODEL}",
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0"
+  },
+  "mcp": {
+    "prism": {
+      "type": "local",
+      "command": ["/usr/local/bin/ps-agent-mcp"],
+      "environment": {
+        "PRISM_API_URL": "{env:PRISM_API_URL}",
+        "SERVICE_TOKEN": "{env:SERVICE_TOKEN}",
+        "SESSION_ID": "{env:SESSION_ID}",
+        "S3_ENDPOINT": "{env:S3_ENDPOINT}",
+        "S3_BUCKET": "{env:S3_BUCKET}"
+      }
+    }
+  },
+  "permission": {
+    "edit": "allow",
+    "write": "allow",
+    "bash": "allow",
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "webfetch": "allow",
+    "patch": "allow",
+    "mcp_prism_*": "allow"
+  },
+  "agent": {
+    "prism": {
+      "mode": "primary",
+      "description": "Engineering insights assistant with access to Prism data and repository analysis tools",
+      "temperature": 0.3,
+      "max_steps": 20
+    }
+  }
+}

@@ -50,6 +50,20 @@ service ReasoningService {
   rpc SearchByText(SearchByTextRequest) returns (SearchByTextResponse);
   // GetEmbeddingStatus returns the current state of the embedding pipeline.
   rpc GetEmbeddingStatus(GetEmbeddingStatusRequest) returns (GetEmbeddingStatusResponse);
+
+  // AskQuestion sends a natural-language question to the agentic query interface.
+  // Returns a server stream of events: container status, tool calls, partial answer,
+  // artifact uploads, and final answer with reasoning trace.
+  rpc AskQuestion(AskQuestionRequest) returns (stream AskQuestionResponse);
+  // ListConversations returns the user's conversation history, newest first.
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  // GetConversation returns a single conversation with its messages and artifacts.
+  rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
+  // SaveInsightFromConversation saves an agent answer as a persistent insight
+  // snapshot, linking it back to the originating conversation.
+  rpc SaveInsightFromConversation(SaveInsightFromConversationRequest) returns (SaveInsightFromConversationResponse);
+  // GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
+  rpc GetArtifactDownloadUrl(GetArtifactDownloadUrlRequest) returns (GetArtifactDownloadUrlResponse);
 }
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
@@ -328,4 +342,198 @@ message GetEmbeddingStatusResponse {
   optional google.protobuf.Timestamp last_embedded_at = 4;
   // Percentage of eligible contributions with embeddings (0.0–100.0).
   double coverage_percent = 5;
+}
+
+// ---------------------------------------------------------------------------
+// Agentic query interface
+// ---------------------------------------------------------------------------
+
+message AskQuestionRequest {
+  // The natural-language question.
+  string question = 1;
+  // Optional conversation ID to resume. If omitted, a new conversation starts.
+  optional string conversation_id = 2;
+}
+
+// AskQuestionResponse is a server-streamed event emitted during an agentic query.
+message AskQuestionResponse {
+  oneof event {
+    AgentToolCallStarted tool_call_started = 1;
+    AgentToolCallCompleted tool_call_completed = 2;
+    AgentPartialAnswer partial_answer = 3;
+    AgentFinalAnswer final_answer = 4;
+    AgentError error = 5;
+    AgentThinking thinking = 6;
+    AgentContainerStatus container_status = 7;
+    AgentArtifactUploaded artifact_uploaded = 8;
+  }
+}
+
+// AgentToolCallStarted indicates the agent is invoking a tool.
+message AgentToolCallStarted {
+  // Tool name (e.g. "mcp_prism_list_teams", "bash", "read").
+  string tool_name = 1;
+  // Serialised arguments as JSON.
+  string arguments_json = 2;
+}
+
+// AgentToolCallCompleted indicates a tool call has finished.
+message AgentToolCallCompleted {
+  string tool_name = 1;
+  // Truncated result summary for display.
+  string result_summary = 2;
+  // Duration in milliseconds.
+  int32 duration_ms = 3;
+  // Whether the tool call succeeded.
+  bool success = 4;
+}
+
+// AgentPartialAnswer streams incremental text of the agent's response.
+message AgentPartialAnswer {
+  // Accumulated text so far (not a delta — full text up to this point).
+  string text = 1;
+}
+
+// AgentThinking indicates the agent is reasoning (e.g. extended thinking).
+message AgentThinking {
+  string text = 1;
+}
+
+// AgentFinalAnswer is the completed response with metadata.
+message AgentFinalAnswer {
+  // Complete Markdown answer.
+  string answer = 1;
+  // Conversation ID (for follow-up questions).
+  string conversation_id = 2;
+  // Serialised citations/supporting data as JSON.
+  string supporting_data_json = 3;
+  int32 prompt_tokens = 4;
+  int32 completion_tokens = 5;
+  double estimated_cost_usd = 6;
+  int32 tool_call_count = 7;
+  int32 duration_ms = 8;
+  // Artifacts generated during this turn.
+  repeated ArtifactInfo artifacts = 9;
+}
+
+// AgentError indicates an error during processing.
+message AgentError {
+  string message = 1;
+  // Whether the client can retry the question.
+  bool retryable = 2;
+}
+
+// AgentContainerStatus reports container lifecycle progress.
+message AgentContainerStatus {
+  // Container status: "creating", "pulling_image", "starting", "ready", "error".
+  string status = 1;
+  string message = 2;
+}
+
+// AgentArtifactUploaded indicates an artifact was uploaded to S3 during the turn.
+message AgentArtifactUploaded {
+  string artifact_id = 1;
+  string display_name = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  string download_url = 5;
+}
+
+// ArtifactInfo describes an artifact attached to a conversation response.
+message ArtifactInfo {
+  string id = 1;
+  string display_name = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation management
+// ---------------------------------------------------------------------------
+
+message ListConversationsRequest {
+  int32 page_size = 1;
+  int32 page = 2;
+}
+
+message ListConversationsResponse {
+  repeated ConversationSummary conversations = 1;
+  int32 total_count = 2;
+}
+
+// ConversationSummary is a lightweight view for the conversation list.
+message ConversationSummary {
+  string id = 1;
+  optional string title = 2;
+  string status = 3;
+  string model_name = 4;
+  string container_status = 5;
+  int32 total_tool_calls = 6;
+  float total_estimated_cost_usd = 7;
+  int32 message_count = 8;
+  int32 artifact_count = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp last_activity_at = 11;
+}
+
+message GetConversationRequest {
+  string conversation_id = 1;
+}
+
+message GetConversationResponse {
+  ConversationSummary conversation = 1;
+  repeated ConversationMessage messages = 2;
+  repeated ConversationArtifact artifacts = 3;
+}
+
+// ConversationMessage is a single turn in a conversation.
+message ConversationMessage {
+  string id = 1;
+  // "user" or "assistant".
+  string role = 2;
+  // Message content (Markdown for assistant messages).
+  string content = 3;
+  // Tool call trace as JSON (assistant messages only).
+  optional string reasoning_trace_json = 4;
+  // Citation data as JSON (assistant messages only).
+  optional string supporting_data_json = 5;
+  int32 prompt_tokens = 6;
+  int32 completion_tokens = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// ConversationArtifact is a file generated during a conversation.
+message ConversationArtifact {
+  string id = 1;
+  optional string message_id = 2;
+  string artifact_key = 3;
+  string display_name = 4;
+  optional string content_type = 5;
+  int64 size_bytes = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message SaveInsightFromConversationRequest {
+  // The conversation the insight was derived from.
+  string conversation_id = 1;
+  // The specific message to save as an insight.
+  string message_id = 2;
+  // Human-provided title for the insight.
+  string title = 3;
+}
+
+message SaveInsightFromConversationResponse {
+  // ID of the created insight snapshot.
+  string insight_id = 1;
+}
+
+message GetArtifactDownloadUrlRequest {
+  string artifact_id = 1;
+}
+
+message GetArtifactDownloadUrlResponse {
+  // Pre-signed S3 download URL.
+  string download_url = 1;
+  // Seconds until the URL expires.
+  int32 expires_in_seconds = 2;
 }

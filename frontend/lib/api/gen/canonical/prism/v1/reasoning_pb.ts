@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file canonical/prism/v1/reasoning.proto.
  */
 export const file_canonical_prism_v1_reasoning: GenFile /*@__PURE__*/ = fileDesc(
-  "CiJjYW5vbmljYWwvcHJpc20vdjEvcmVhc29uaW5nLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiTwoMQWlUYXNrQ29uZmlnEjAKCHByb3ZpZGVyGAEgASgOMh4uY2Fub25pY2FsLnByaXNtLnYxLkFpUHJvdmlkZXISDQoFbW9kZWwYAiABKAkipgMKCkFpU2V0dGluZ3MSNAoKZW5yaWNobWVudBgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWcSMgoIaW5zaWdodHMYAiABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEjEKB2FnZW50aWMYAyABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEjQKCmVtYmVkZGluZ3MYBCABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEhsKDmJ1ZGdldF9jYXBfdXNkGAUgASgBSACIAQESWAoWcHJvdmlkZXJfc2VjcmV0X3N0YXR1cxgGIAMoCzI4LmNhbm9uaWNhbC5wcmlzbS52MS5BaVNldHRpbmdzLlByb3ZpZGVyU2VjcmV0U3RhdHVzRW50cnkaOwoZUHJvdmlkZXJTZWNyZXRTdGF0dXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBQhEKD19idWRnZXRfY2FwX3VzZCIWChRHZXRBaVNldHRpbmdzUmVxdWVzdCJJChVHZXRBaVNldHRpbmdzUmVzcG9uc2USMAoIc2V0dGluZ3MYASABKAsyHi5jYW5vbmljYWwucHJpc20udjEuQWlTZXR0aW5ncyLnAgoXVXBkYXRlQWlTZXR0aW5nc1JlcXVlc3QSOQoKZW5yaWNobWVudBgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWdIAIgBARI3CghpbnNpZ2h0cxgCIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWdIAYgBARI2CgdhZ2VudGljGAMgASgLMiAuY2Fub25pY2FsLnByaXNtLnYxLkFpVGFza0NvbmZpZ0gCiAEBEjkKCmVtYmVkZGluZ3MYBCABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnSAOIAQESGwoOYnVkZ2V0X2NhcF91c2QYBSABKAFIBIgBAUINCgtfZW5yaWNobWVudEILCglfaW5zaWdodHNCCgoIX2FnZW50aWNCDQoLX2VtYmVkZGluZ3NCEQoPX2J1ZGdldF9jYXBfdXNkIkwKGFVwZGF0ZUFpU2V0dGluZ3NSZXNwb25zZRIwCghzZXR0aW5ncxgBIAEoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVNldHRpbmdzImIKGFNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBIwCghwcm92aWRlchgBIAEoDjIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVByb3ZpZGVyEhQKDHNlY3JldF92YWx1ZRgCIAEoCSIbChlTZXRQcm92aWRlclNlY3JldFJlc3BvbnNlIkcKE1Rlc3RQcm92aWRlclJlcXVlc3QSMAoIcHJvdmlkZXIYASABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlciI+ChRUZXN0UHJvdmlkZXJSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkiGQoXR2V0U3RvcmFnZUhlYWx0aFJlcXVlc3QiQgoYR2V0U3RvcmFnZUhlYWx0aFJlc3BvbnNlEg8KB2hlYWx0aHkYASABKAgSFQoNZXJyb3JfbWVzc2FnZRgCIAEoCSKqAgoLQWlNb2RlbEluZm8SCgoCaWQYASABKAkSMAoIcHJvdmlkZXIYAiABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlchIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFgoOY29udGV4dF9sZW5ndGgYBSABKAUSJAoXaW5wdXRfcHJpY2VfcGVyX21pbGxpb24YBiABKAFIAIgBARIlChhvdXRwdXRfcHJpY2VfcGVyX21pbGxpb24YByABKAFIAYgBARIUCgxjYXBhYmlsaXRpZXMYCCADKAlCGgoYX2lucHV0X3ByaWNlX3Blcl9taWxsaW9uQhsKGV9vdXRwdXRfcHJpY2VfcGVyX21pbGxpb24iWwoTTGlzdEFpTW9kZWxzUmVxdWVzdBIwCghwcm92aWRlchgBIAEoDjIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVByb3ZpZGVyEhIKCmNhcGFiaWxpdHkYAiABKAki7gEKFExpc3RBaU1vZGVsc1Jlc3BvbnNlEi8KBm1vZGVscxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5BaU1vZGVsSW5mbxJTCg5sYXN0X3JlZnJlc2hlZBgCIAMoCzI7LmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0QWlNb2RlbHNSZXNwb25zZS5MYXN0UmVmcmVzaGVkRW50cnkaUAoSTGFzdFJlZnJlc2hlZEVudHJ5EgsKA2tleRgBIAEoCRIpCgV2YWx1ZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXA6AjgBIh4KHFJlZnJlc2hNb2RlbENhdGFsb2d1ZVJlcXVlc3QiMAodUmVmcmVzaE1vZGVsQ2F0YWxvZ3VlUmVzcG9uc2USDwoHc3RhcnRlZBgBIAEoCCIlChVHZXRDb3N0U3VtbWFyeVJlcXVlc3QSDAoEZGF5cxgBIAEoBSKGAgoWR2V0Q29zdFN1bW1hcnlSZXNwb25zZRIXCg90b2RheV9zcGVuZF91c2QYASABKAESGwoOYnVkZ2V0X2NhcF91c2QYAiABKAFIAIgBARIzCgtkYWlseV9zcGVuZBgDIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5EYWlseVNwZW5kEjUKDnRhc2tfYnJlYWtkb3duGAQgAygLMh0uY2Fub25pY2FsLnByaXNtLnYxLlRhc2tTcGVuZBI3Cg9tb2RlbF9icmVha2Rvd24YBSADKAsyHi5jYW5vbmljYWwucHJpc20udjEuTW9kZWxTcGVuZEIRCg9fYnVkZ2V0X2NhcF91c2QiQwoKRGFpbHlTcGVuZBIMCgRkYXRlGAEgASgJEhAKCGNvc3RfdXNkGAIgASgBEhUKDXJlcXVlc3RfY291bnQYAyABKAMieQoJVGFza1NwZW5kEhEKCXRhc2tfdHlwZRgBIAEoCRIQCghjb3N0X3VzZBgCIAEoARIVCg1wcm9tcHRfdG9rZW5zGAMgASgDEhkKEWNvbXBsZXRpb25fdG9rZW5zGAQgASgDEhUKDXJlcXVlc3RfY291bnQYBSABKAMiuwEKCk1vZGVsU3BlbmQSMAoIcHJvdmlkZXIYASABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlchINCgVtb2RlbBgCIAEoCRIRCgl0YXNrX3R5cGUYAyABKAkSEAoIY29zdF91c2QYBCABKAESFQoNcHJvbXB0X3Rva2VucxgFIAEoAxIZChFjb21wbGV0aW9uX3Rva2VucxgGIAEoAxIVCg1yZXF1ZXN0X2NvdW50GAcgASgDIsQCCgpFbnJpY2htZW50EgoKAmlkGAEgASgJEhcKD2NvbnRyaWJ1dGlvbl9pZBgCIAEoCRI7Cg9lbnJpY2htZW50X3R5cGUYAyABKA4yIi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudFR5cGUSEgoKdmFsdWVfanNvbhgEIAEoCRISCgptb2RlbF9uYW1lGAUgASgJEhcKCmNvbmZpZGVuY2UYBiABKAJIAIgBARIXCgppbnB1dF9oYXNoGAcgASgJSAGIAQESGgoNaW5wdXRfcHJldmlldxgIIAEoCUgCiAEBEi4KCmNyZWF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQg0KC19jb25maWRlbmNlQg0KC19pbnB1dF9oYXNoQhAKDl9pbnB1dF9wcmV2aWV3IjAKFUdldEVucmljaG1lbnRzUmVxdWVzdBIXCg9jb250cmlidXRpb25faWQYASABKAkiTQoWR2V0RW5yaWNobWVudHNSZXNwb25zZRIzCgtlbnJpY2htZW50cxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50IkAKJEdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVxdWVzdBIYChBjb250cmlidXRpb25faWRzGAEgAygJIlwKJUdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVzcG9uc2USMwoLZW5yaWNobWVudHMYASADKAsyHi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudCIkCiJHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXF1ZXN0IuUBCiNHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXNwb25zZRIVCg1wZW5kaW5nX2NvdW50GAEgASgDEhkKEXRvdGFsX2VucmljaG1lbnRzGAIgASgDEjsKEmxhc3RfZW5yaWNobWVudF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARI4CgdieV90eXBlGAQgAygLMicuY2Fub25pY2FsLnByaXNtLnYxLkVucmljaG1lbnRUeXBlQ291bnRCFQoTX2xhc3RfZW5yaWNobWVudF9hdCJhChNFbnJpY2htZW50VHlwZUNvdW50EjsKD2VucmljaG1lbnRfdHlwZRgBIAEoDjIiLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50VHlwZRINCgVjb3VudBgCIAEoAyJdCh5EZWxldGVFbnJpY2htZW50c0J5VHlwZVJlcXVlc3QSOwoPZW5yaWNobWVudF90eXBlGAEgASgOMiIuY2Fub25pY2FsLnByaXNtLnYxLkVucmljaG1lbnRUeXBlIjgKH0RlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVzcG9uc2USFQoNZGVsZXRlZF9jb3VudBgBIAEoAyKiAQoSRmluZFNpbWlsYXJSZXF1ZXN0EhcKD2NvbnRyaWJ1dGlvbl9pZBgBIAEoCRINCgVsaW1pdBgCIAEoBRIuCghwbGF0Zm9ybRgDIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIeChFwbGF0Zm9ybV9pbnN0YW5jZRgEIAEoCUgAiAEBQhQKEl9wbGF0Zm9ybV9pbnN0YW5jZSKeAQoTU2VhcmNoQnlUZXh0UmVxdWVzdBISCgpxdWVyeV90ZXh0GAEgASgJEg0KBWxpbWl0GAIgASgFEi4KCHBsYXRmb3JtGAMgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlBsYXRmb3JtEh4KEXBsYXRmb3JtX2luc3RhbmNlGAQgASgJSACIAQFCFAoSX3BsYXRmb3JtX2luc3RhbmNlIv8CCgtTaW1pbGFySXRlbRIXCg9jb250cmlidXRpb25faWQYASABKAkSDQoFdGl0bGUYAiABKAkSLgoIcGxhdGZvcm0YAyABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SPwoRY29udHJpYnV0aW9uX3R5cGUYBCABKA4yJC5jYW5vbmljYWwucHJpc20udjEuQ29udHJpYnV0aW9uVHlwZRI0CgVzdGF0ZRgFIAEoDjIlLmNhbm9uaWNhbC5wcmlzbS52MS5Db250cmlidXRpb25TdGF0ZRIeChFwbGF0Zm9ybV9pbnN0YW5jZRgKIAEoCUgAiAEBEhMKC2F1dGhvcl9uYW1lGAYgASgJEhQKDGV4dGVybmFsX3VybBgHIAEoCRIQCghkaXN0YW5jZRgIIAEoARIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIUChJfcGxhdGZvcm1faW5zdGFuY2UiRQoTRmluZFNpbWlsYXJSZXNwb25zZRIuCgVpdGVtcxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5TaW1pbGFySXRlbSJGChRTZWFyY2hCeVRleHRSZXNwb25zZRIuCgVpdGVtcxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5TaW1pbGFySXRlbSIbChlHZXRFbWJlZGRpbmdTdGF0dXNSZXF1ZXN0IswBChpHZXRFbWJlZGRpbmdTdGF0dXNSZXNwb25zZRIUCgxxdWV1ZWRfY291bnQYASABKAMSFgoOZW1iZWRkZWRfY291bnQYAiABKAMSFgoOdG90YWxfZWxpZ2libGUYAyABKAMSOQoQbGFzdF9lbWJlZGRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARIYChBjb3ZlcmFnZV9wZXJjZW50GAUgASgBQhMKEV9sYXN0X2VtYmVkZGVkX2F0MsMNChBSZWFzb25pbmdTZXJ2aWNlEmQKDUdldEFpU2V0dGluZ3MSKC5jYW5vbmljYWwucHJpc20udjEuR2V0QWlTZXR0aW5nc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuR2V0QWlTZXR0aW5nc1Jlc3BvbnNlEm0KEFVwZGF0ZUFpU2V0dGluZ3MSKy5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlQWlTZXR0aW5nc1JlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlQWlTZXR0aW5nc1Jlc3BvbnNlEnAKEVNldFByb3ZpZGVyU2VjcmV0EiwuY2Fub25pY2FsLnByaXNtLnYxLlNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBotLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRQcm92aWRlclNlY3JldFJlc3BvbnNlEmEKDFRlc3RQcm92aWRlchInLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0UHJvdmlkZXJSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlRlc3RQcm92aWRlclJlc3BvbnNlEm0KEEdldFN0b3JhZ2VIZWFsdGgSKy5jYW5vbmljYWwucHJpc20udjEuR2V0U3RvcmFnZUhlYWx0aFJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuR2V0U3RvcmFnZUhlYWx0aFJlc3BvbnNlEmcKDkdldENvc3RTdW1tYXJ5EikuY2Fub25pY2FsLnByaXNtLnYxLkdldENvc3RTdW1tYXJ5UmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRDb3N0U3VtbWFyeVJlc3BvbnNlEmEKDExpc3RBaU1vZGVscxInLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0QWlNb2RlbHNSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkxpc3RBaU1vZGVsc1Jlc3BvbnNlEnwKFVJlZnJlc2hNb2RlbENhdGFsb2d1ZRIwLmNhbm9uaWNhbC5wcmlzbS52MS5SZWZyZXNoTW9kZWxDYXRhbG9ndWVSZXF1ZXN0GjEuY2Fub25pY2FsLnByaXNtLnYxLlJlZnJlc2hNb2RlbENhdGFsb2d1ZVJlc3BvbnNlEmcKDkdldEVucmljaG1lbnRzEikuY2Fub25pY2FsLnByaXNtLnYxLkdldEVucmljaG1lbnRzUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbnJpY2htZW50c1Jlc3BvbnNlEpQBCh1HZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9ucxI4LmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9uc1JlcXVlc3QaOS5jYW5vbmljYWwucHJpc20udjEuR2V0RW5yaWNobWVudHNCeUNvbnRyaWJ1dGlvbnNSZXNwb25zZRKOAQobR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzEjYuY2Fub25pY2FsLnByaXNtLnYxLkdldEVucmljaG1lbnRQaXBlbGluZVN0YXR1c1JlcXVlc3QaNy5jYW5vbmljYWwucHJpc20udjEuR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzUmVzcG9uc2USggEKF0RlbGV0ZUVucmljaG1lbnRzQnlUeXBlEjIuY2Fub25pY2FsLnByaXNtLnYxLkRlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVxdWVzdBozLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVFbnJpY2htZW50c0J5VHlwZVJlc3BvbnNlEl4KC0ZpbmRTaW1pbGFyEiYuY2Fub25pY2FsLnByaXNtLnYxLkZpbmRTaW1pbGFyUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5GaW5kU2ltaWxhclJlc3BvbnNlEmEKDFNlYXJjaEJ5VGV4dBInLmNhbm9uaWNhbC5wcmlzbS52MS5TZWFyY2hCeVRleHRSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlNlYXJjaEJ5VGV4dFJlc3BvbnNlEnMKEkdldEVtYmVkZGluZ1N0YXR1cxItLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbWJlZGRpbmdTdGF0dXNSZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLkdldEVtYmVkZGluZ1N0YXR1c1Jlc3BvbnNlYgZwcm90bzM",
+  "CiJjYW5vbmljYWwvcHJpc20vdjEvcmVhc29uaW5nLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiTwoMQWlUYXNrQ29uZmlnEjAKCHByb3ZpZGVyGAEgASgOMh4uY2Fub25pY2FsLnByaXNtLnYxLkFpUHJvdmlkZXISDQoFbW9kZWwYAiABKAkipgMKCkFpU2V0dGluZ3MSNAoKZW5yaWNobWVudBgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWcSMgoIaW5zaWdodHMYAiABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEjEKB2FnZW50aWMYAyABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEjQKCmVtYmVkZGluZ3MYBCABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnEhsKDmJ1ZGdldF9jYXBfdXNkGAUgASgBSACIAQESWAoWcHJvdmlkZXJfc2VjcmV0X3N0YXR1cxgGIAMoCzI4LmNhbm9uaWNhbC5wcmlzbS52MS5BaVNldHRpbmdzLlByb3ZpZGVyU2VjcmV0U3RhdHVzRW50cnkaOwoZUHJvdmlkZXJTZWNyZXRTdGF0dXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBQhEKD19idWRnZXRfY2FwX3VzZCIWChRHZXRBaVNldHRpbmdzUmVxdWVzdCJJChVHZXRBaVNldHRpbmdzUmVzcG9uc2USMAoIc2V0dGluZ3MYASABKAsyHi5jYW5vbmljYWwucHJpc20udjEuQWlTZXR0aW5ncyLnAgoXVXBkYXRlQWlTZXR0aW5nc1JlcXVlc3QSOQoKZW5yaWNobWVudBgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWdIAIgBARI3CghpbnNpZ2h0cxgCIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BaVRhc2tDb25maWdIAYgBARI2CgdhZ2VudGljGAMgASgLMiAuY2Fub25pY2FsLnByaXNtLnYxLkFpVGFza0NvbmZpZ0gCiAEBEjkKCmVtYmVkZGluZ3MYBCABKAsyIC5jYW5vbmljYWwucHJpc20udjEuQWlUYXNrQ29uZmlnSAOIAQESGwoOYnVkZ2V0X2NhcF91c2QYBSABKAFIBIgBAUINCgtfZW5yaWNobWVudEILCglfaW5zaWdodHNCCgoIX2FnZW50aWNCDQoLX2VtYmVkZGluZ3NCEQoPX2J1ZGdldF9jYXBfdXNkIkwKGFVwZGF0ZUFpU2V0dGluZ3NSZXNwb25zZRIwCghzZXR0aW5ncxgBIAEoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVNldHRpbmdzImIKGFNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBIwCghwcm92aWRlchgBIAEoDjIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVByb3ZpZGVyEhQKDHNlY3JldF92YWx1ZRgCIAEoCSIbChlTZXRQcm92aWRlclNlY3JldFJlc3BvbnNlIkcKE1Rlc3RQcm92aWRlclJlcXVlc3QSMAoIcHJvdmlkZXIYASABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlciI+ChRUZXN0UHJvdmlkZXJSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkiGQoXR2V0U3RvcmFnZUhlYWx0aFJlcXVlc3QiQgoYR2V0U3RvcmFnZUhlYWx0aFJlc3BvbnNlEg8KB2hlYWx0aHkYASABKAgSFQoNZXJyb3JfbWVzc2FnZRgCIAEoCSKqAgoLQWlNb2RlbEluZm8SCgoCaWQYASABKAkSMAoIcHJvdmlkZXIYAiABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlchIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFgoOY29udGV4dF9sZW5ndGgYBSABKAUSJAoXaW5wdXRfcHJpY2VfcGVyX21pbGxpb24YBiABKAFIAIgBARIlChhvdXRwdXRfcHJpY2VfcGVyX21pbGxpb24YByABKAFIAYgBARIUCgxjYXBhYmlsaXRpZXMYCCADKAlCGgoYX2lucHV0X3ByaWNlX3Blcl9taWxsaW9uQhsKGV9vdXRwdXRfcHJpY2VfcGVyX21pbGxpb24iWwoTTGlzdEFpTW9kZWxzUmVxdWVzdBIwCghwcm92aWRlchgBIAEoDjIeLmNhbm9uaWNhbC5wcmlzbS52MS5BaVByb3ZpZGVyEhIKCmNhcGFiaWxpdHkYAiABKAki7gEKFExpc3RBaU1vZGVsc1Jlc3BvbnNlEi8KBm1vZGVscxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5BaU1vZGVsSW5mbxJTCg5sYXN0X3JlZnJlc2hlZBgCIAMoCzI7LmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0QWlNb2RlbHNSZXNwb25zZS5MYXN0UmVmcmVzaGVkRW50cnkaUAoSTGFzdFJlZnJlc2hlZEVudHJ5EgsKA2tleRgBIAEoCRIpCgV2YWx1ZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXA6AjgBIh4KHFJlZnJlc2hNb2RlbENhdGFsb2d1ZVJlcXVlc3QiMAodUmVmcmVzaE1vZGVsQ2F0YWxvZ3VlUmVzcG9uc2USDwoHc3RhcnRlZBgBIAEoCCIlChVHZXRDb3N0U3VtbWFyeVJlcXVlc3QSDAoEZGF5cxgBIAEoBSKGAgoWR2V0Q29zdFN1bW1hcnlSZXNwb25zZRIXCg90b2RheV9zcGVuZF91c2QYASABKAESGwoOYnVkZ2V0X2NhcF91c2QYAiABKAFIAIgBARIzCgtkYWlseV9zcGVuZBgDIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5EYWlseVNwZW5kEjUKDnRhc2tfYnJlYWtkb3duGAQgAygLMh0uY2Fub25pY2FsLnByaXNtLnYxLlRhc2tTcGVuZBI3Cg9tb2RlbF9icmVha2Rvd24YBSADKAsyHi5jYW5vbmljYWwucHJpc20udjEuTW9kZWxTcGVuZEIRCg9fYnVkZ2V0X2NhcF91c2QiQwoKRGFpbHlTcGVuZBIMCgRkYXRlGAEgASgJEhAKCGNvc3RfdXNkGAIgASgBEhUKDXJlcXVlc3RfY291bnQYAyABKAMieQoJVGFza1NwZW5kEhEKCXRhc2tfdHlwZRgBIAEoCRIQCghjb3N0X3VzZBgCIAEoARIVCg1wcm9tcHRfdG9rZW5zGAMgASgDEhkKEWNvbXBsZXRpb25fdG9rZW5zGAQgASgDEhUKDXJlcXVlc3RfY291bnQYBSABKAMiuwEKCk1vZGVsU3BlbmQSMAoIcHJvdmlkZXIYASABKA4yHi5jYW5vbmljYWwucHJpc20udjEuQWlQcm92aWRlchINCgVtb2RlbBgCIAEoCRIRCgl0YXNrX3R5cGUYAyABKAkSEAoIY29zdF91c2QYBCABKAESFQoNcHJvbXB0X3Rva2VucxgFIAEoAxIZChFjb21wbGV0aW9uX3Rva2VucxgGIAEoAxIVCg1yZXF1ZXN0X2NvdW50GAcgASgDIsQCCgpFbnJpY2htZW50EgoKAmlkGAEgASgJEhcKD2NvbnRyaWJ1dGlvbl9pZBgCIAEoCRI7Cg9lbnJpY2htZW50X3R5cGUYAyABKA4yIi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudFR5cGUSEgoKdmFsdWVfanNvbhgEIAEoCRISCgptb2RlbF9uYW1lGAUgASgJEhcKCmNvbmZpZGVuY2UYBiABKAJIAIgBARIXCgppbnB1dF9oYXNoGAcgASgJSAGIAQESGgoNaW5wdXRfcHJldmlldxgIIAEoCUgCiAEBEi4KCmNyZWF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQg0KC19jb25maWRlbmNlQg0KC19pbnB1dF9oYXNoQhAKDl9pbnB1dF9wcmV2aWV3IjAKFUdldEVucmljaG1lbnRzUmVxdWVzdBIXCg9jb250cmlidXRpb25faWQYASABKAkiTQoWR2V0RW5yaWNobWVudHNSZXNwb25zZRIzCgtlbnJpY2htZW50cxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50IkAKJEdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVxdWVzdBIYChBjb250cmlidXRpb25faWRzGAEgAygJIlwKJUdldEVucmljaG1lbnRzQnlDb250cmlidXRpb25zUmVzcG9uc2USMwoLZW5yaWNobWVudHMYASADKAsyHi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudCIkCiJHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXF1ZXN0IuUBCiNHZXRFbnJpY2htZW50UGlwZWxpbmVTdGF0dXNSZXNwb25zZRIVCg1wZW5kaW5nX2NvdW50GAEgASgDEhkKEXRvdGFsX2VucmljaG1lbnRzGAIgASgDEjsKEmxhc3RfZW5yaWNobWVudF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARI4CgdieV90eXBlGAQgAygLMicuY2Fub25pY2FsLnByaXNtLnYxLkVucmljaG1lbnRUeXBlQ291bnRCFQoTX2xhc3RfZW5yaWNobWVudF9hdCJhChNFbnJpY2htZW50VHlwZUNvdW50EjsKD2VucmljaG1lbnRfdHlwZRgBIAEoDjIiLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50VHlwZRINCgVjb3VudBgCIAEoAyJdCh5EZWxldGVFbnJpY2htZW50c0J5VHlwZVJlcXVlc3QSOwoPZW5yaWNobWVudF90eXBlGAEgASgOMiIuY2Fub25pY2FsLnByaXNtLnYxLkVucmljaG1lbnRUeXBlIjgKH0RlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVzcG9uc2USFQoNZGVsZXRlZF9jb3VudBgBIAEoAyKiAQoSRmluZFNpbWlsYXJSZXF1ZXN0EhcKD2NvbnRyaWJ1dGlvbl9pZBgBIAEoCRINCgVsaW1pdBgCIAEoBRIuCghwbGF0Zm9ybRgDIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIeChFwbGF0Zm9ybV9pbnN0YW5jZRgEIAEoCUgAiAEBQhQKEl9wbGF0Zm9ybV9pbnN0YW5jZSKeAQoTU2VhcmNoQnlUZXh0UmVxdWVzdBISCgpxdWVyeV90ZXh0GAEgASgJEg0KBWxpbWl0GAIgASgFEi4KCHBsYXRmb3JtGAMgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlBsYXRmb3JtEh4KEXBsYXRmb3JtX2luc3RhbmNlGAQgASgJSACIAQFCFAoSX3BsYXRmb3JtX2luc3RhbmNlIv8CCgtTaW1pbGFySXRlbRIXCg9jb250cmlidXRpb25faWQYASABKAkSDQoFdGl0bGUYAiABKAkSLgoIcGxhdGZvcm0YAyABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SPwoRY29udHJpYnV0aW9uX3R5cGUYBCABKA4yJC5jYW5vbmljYWwucHJpc20udjEuQ29udHJpYnV0aW9uVHlwZRI0CgVzdGF0ZRgFIAEoDjIlLmNhbm9uaWNhbC5wcmlzbS52MS5Db250cmlidXRpb25TdGF0ZRIeChFwbGF0Zm9ybV9pbnN0YW5jZRgKIAEoCUgAiAEBEhMKC2F1dGhvcl9uYW1lGAYgASgJEhQKDGV4dGVybmFsX3VybBgHIAEoCRIQCghkaXN0YW5jZRgIIAEoARIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIUChJfcGxhdGZvcm1faW5zdGFuY2UiRQoTRmluZFNpbWlsYXJSZXNwb25zZRIuCgVpdGVtcxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5TaW1pbGFySXRlbSJGChRTZWFyY2hCeVRleHRSZXNwb25zZRIuCgVpdGVtcxgBIAMoCzIfLmNhbm9uaWNhbC5wcmlzbS52MS5TaW1pbGFySXRlbSIbChlHZXRFbWJlZGRpbmdTdGF0dXNSZXF1ZXN0IswBChpHZXRFbWJlZGRpbmdTdGF0dXNSZXNwb25zZRIUCgxxdWV1ZWRfY291bnQYASABKAMSFgoOZW1iZWRkZWRfY291bnQYAiABKAMSFgoOdG90YWxfZWxpZ2libGUYAyABKAMSOQoQbGFzdF9lbWJlZGRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARIYChBjb3ZlcmFnZV9wZXJjZW50GAUgASgBQhMKEV9sYXN0X2VtYmVkZGVkX2F0IlgKEkFza1F1ZXN0aW9uUmVxdWVzdBIQCghxdWVzdGlvbhgBIAEoCRIcCg9jb252ZXJzYXRpb25faWQYAiABKAlIAIgBAUISChBfY29udmVyc2F0aW9uX2lkIqYEChNBc2tRdWVzdGlvblJlc3BvbnNlEkUKEXRvb2xfY2FsbF9zdGFydGVkGAEgASgLMiguY2Fub25pY2FsLnByaXNtLnYxLkFnZW50VG9vbENhbGxTdGFydGVkSAASSQoTdG9vbF9jYWxsX2NvbXBsZXRlZBgCIAEoCzIqLmNhbm9uaWNhbC5wcmlzbS52MS5BZ2VudFRvb2xDYWxsQ29tcGxldGVkSAASQAoOcGFydGlhbF9hbnN3ZXIYAyABKAsyJi5jYW5vbmljYWwucHJpc20udjEuQWdlbnRQYXJ0aWFsQW5zd2VySAASPAoMZmluYWxfYW5zd2VyGAQgASgLMiQuY2Fub25pY2FsLnByaXNtLnYxLkFnZW50RmluYWxBbnN3ZXJIABIvCgVlcnJvchgFIAEoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5BZ2VudEVycm9ySAASNQoIdGhpbmtpbmcYBiABKAsyIS5jYW5vbmljYWwucHJpc20udjEuQWdlbnRUaGlua2luZ0gAEkQKEGNvbnRhaW5lcl9zdGF0dXMYByABKAsyKC5jYW5vbmljYWwucHJpc20udjEuQWdlbnRDb250YWluZXJTdGF0dXNIABJGChFhcnRpZmFjdF91cGxvYWRlZBgIIAEoCzIpLmNhbm9uaWNhbC5wcmlzbS52MS5BZ2VudEFydGlmYWN0VXBsb2FkZWRIAEIHCgVldmVudCJBChRBZ2VudFRvb2xDYWxsU3RhcnRlZBIRCgl0b29sX25hbWUYASABKAkSFgoOYXJndW1lbnRzX2pzb24YAiABKAkiaQoWQWdlbnRUb29sQ2FsbENvbXBsZXRlZBIRCgl0b29sX25hbWUYASABKAkSFgoOcmVzdWx0X3N1bW1hcnkYAiABKAkSEwoLZHVyYXRpb25fbXMYAyABKAUSDwoHc3VjY2VzcxgEIAEoCCIiChJBZ2VudFBhcnRpYWxBbnN3ZXISDAoEdGV4dBgBIAEoCSIdCg1BZ2VudFRoaW5raW5nEgwKBHRleHQYASABKAkiigIKEEFnZW50RmluYWxBbnN3ZXISDgoGYW5zd2VyGAEgASgJEhcKD2NvbnZlcnNhdGlvbl9pZBgCIAEoCRIcChRzdXBwb3J0aW5nX2RhdGFfanNvbhgDIAEoCRIVCg1wcm9tcHRfdG9rZW5zGAQgASgFEhkKEWNvbXBsZXRpb25fdG9rZW5zGAUgASgFEhoKEmVzdGltYXRlZF9jb3N0X3VzZBgGIAEoARIXCg90b29sX2NhbGxfY291bnQYByABKAUSEwoLZHVyYXRpb25fbXMYCCABKAUSMwoJYXJ0aWZhY3RzGAkgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLkFydGlmYWN0SW5mbyIwCgpBZ2VudEVycm9yEg8KB21lc3NhZ2UYASABKAkSEQoJcmV0cnlhYmxlGAIgASgIIjcKFEFnZW50Q29udGFpbmVyU3RhdHVzEg4KBnN0YXR1cxgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIoIBChVBZ2VudEFydGlmYWN0VXBsb2FkZWQSEwoLYXJ0aWZhY3RfaWQYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRISCgpzaXplX2J5dGVzGAQgASgDEhQKDGRvd25sb2FkX3VybBgFIAEoCSJaCgxBcnRpZmFjdEluZm8SCgoCaWQYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRISCgpzaXplX2J5dGVzGAQgASgDIjsKGExpc3RDb252ZXJzYXRpb25zUmVxdWVzdBIRCglwYWdlX3NpemUYASABKAUSDAoEcGFnZRgCIAEoBSJwChlMaXN0Q29udmVyc2F0aW9uc1Jlc3BvbnNlEj4KDWNvbnZlcnNhdGlvbnMYASADKAsyJy5jYW5vbmljYWwucHJpc20udjEuQ29udmVyc2F0aW9uU3VtbWFyeRITCgt0b3RhbF9jb3VudBgCIAEoBSLOAgoTQ29udmVyc2F0aW9uU3VtbWFyeRIKCgJpZBgBIAEoCRISCgV0aXRsZRgCIAEoCUgAiAEBEg4KBnN0YXR1cxgDIAEoCRISCgptb2RlbF9uYW1lGAQgASgJEhgKEGNvbnRhaW5lcl9zdGF0dXMYBSABKAkSGAoQdG90YWxfdG9vbF9jYWxscxgGIAEoBRIgChh0b3RhbF9lc3RpbWF0ZWRfY29zdF91c2QYByABKAISFQoNbWVzc2FnZV9jb3VudBgIIAEoBRIWCg5hcnRpZmFjdF9jb3VudBgJIAEoBRIuCgpjcmVhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI0ChBsYXN0X2FjdGl2aXR5X2F0GAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIICgZfdGl0bGUiMQoWR2V0Q29udmVyc2F0aW9uUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAki0AEKF0dldENvbnZlcnNhdGlvblJlc3BvbnNlEj0KDGNvbnZlcnNhdGlvbhgBIAEoCzInLmNhbm9uaWNhbC5wcmlzbS52MS5Db252ZXJzYXRpb25TdW1tYXJ5EjkKCG1lc3NhZ2VzGAIgAygLMicuY2Fub25pY2FsLnByaXNtLnYxLkNvbnZlcnNhdGlvbk1lc3NhZ2USOwoJYXJ0aWZhY3RzGAMgAygLMiguY2Fub25pY2FsLnByaXNtLnYxLkNvbnZlcnNhdGlvbkFydGlmYWN0IpoCChNDb252ZXJzYXRpb25NZXNzYWdlEgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkSDwoHY29udGVudBgDIAEoCRIhChRyZWFzb25pbmdfdHJhY2VfanNvbhgEIAEoCUgAiAEBEiEKFHN1cHBvcnRpbmdfZGF0YV9qc29uGAUgASgJSAGIAQESFQoNcHJvbXB0X3Rva2VucxgGIAEoBRIZChFjb21wbGV0aW9uX3Rva2VucxgHIAEoBRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIXChVfcmVhc29uaW5nX3RyYWNlX2pzb25CFwoVX3N1cHBvcnRpbmdfZGF0YV9qc29uIuYBChRDb252ZXJzYXRpb25BcnRpZmFjdBIKCgJpZBgBIAEoCRIXCgptZXNzYWdlX2lkGAIgASgJSACIAQESFAoMYXJ0aWZhY3Rfa2V5GAMgASgJEhQKDGRpc3BsYXlfbmFtZRgEIAEoCRIZCgxjb250ZW50X3R5cGUYBSABKAlIAYgBARISCgpzaXplX2J5dGVzGAYgASgDEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQg0KC19tZXNzYWdlX2lkQg8KDV9jb250ZW50X3R5cGUiYAoiU2F2ZUluc2lnaHRGcm9tQ29udmVyc2F0aW9uUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAkSEgoKbWVzc2FnZV9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCSI5CiNTYXZlSW5zaWdodEZyb21Db252ZXJzYXRpb25SZXNwb25zZRISCgppbnNpZ2h0X2lkGAEgASgJIjQKHUdldEFydGlmYWN0RG93bmxvYWRVcmxSZXF1ZXN0EhMKC2FydGlmYWN0X2lkGAEgASgJIlIKHkdldEFydGlmYWN0RG93bmxvYWRVcmxSZXNwb25zZRIUCgxkb3dubG9hZF91cmwYASABKAkSGgoSZXhwaXJlc19pbl9zZWNvbmRzGAIgASgFMpUSChBSZWFzb25pbmdTZXJ2aWNlEmQKDUdldEFpU2V0dGluZ3MSKC5jYW5vbmljYWwucHJpc20udjEuR2V0QWlTZXR0aW5nc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuR2V0QWlTZXR0aW5nc1Jlc3BvbnNlEm0KEFVwZGF0ZUFpU2V0dGluZ3MSKy5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlQWlTZXR0aW5nc1JlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlQWlTZXR0aW5nc1Jlc3BvbnNlEnAKEVNldFByb3ZpZGVyU2VjcmV0EiwuY2Fub25pY2FsLnByaXNtLnYxLlNldFByb3ZpZGVyU2VjcmV0UmVxdWVzdBotLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRQcm92aWRlclNlY3JldFJlc3BvbnNlEmEKDFRlc3RQcm92aWRlchInLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0UHJvdmlkZXJSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlRlc3RQcm92aWRlclJlc3BvbnNlEm0KEEdldFN0b3JhZ2VIZWFsdGgSKy5jYW5vbmljYWwucHJpc20udjEuR2V0U3RvcmFnZUhlYWx0aFJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuR2V0U3RvcmFnZUhlYWx0aFJlc3BvbnNlEmcKDkdldENvc3RTdW1tYXJ5EikuY2Fub25pY2FsLnByaXNtLnYxLkdldENvc3RTdW1tYXJ5UmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRDb3N0U3VtbWFyeVJlc3BvbnNlEmEKDExpc3RBaU1vZGVscxInLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0QWlNb2RlbHNSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkxpc3RBaU1vZGVsc1Jlc3BvbnNlEnwKFVJlZnJlc2hNb2RlbENhdGFsb2d1ZRIwLmNhbm9uaWNhbC5wcmlzbS52MS5SZWZyZXNoTW9kZWxDYXRhbG9ndWVSZXF1ZXN0GjEuY2Fub25pY2FsLnByaXNtLnYxLlJlZnJlc2hNb2RlbENhdGFsb2d1ZVJlc3BvbnNlEmcKDkdldEVucmljaG1lbnRzEikuY2Fub25pY2FsLnByaXNtLnYxLkdldEVucmljaG1lbnRzUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbnJpY2htZW50c1Jlc3BvbnNlEpQBCh1HZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9ucxI4LmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbnJpY2htZW50c0J5Q29udHJpYnV0aW9uc1JlcXVlc3QaOS5jYW5vbmljYWwucHJpc20udjEuR2V0RW5yaWNobWVudHNCeUNvbnRyaWJ1dGlvbnNSZXNwb25zZRKOAQobR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzEjYuY2Fub25pY2FsLnByaXNtLnYxLkdldEVucmljaG1lbnRQaXBlbGluZVN0YXR1c1JlcXVlc3QaNy5jYW5vbmljYWwucHJpc20udjEuR2V0RW5yaWNobWVudFBpcGVsaW5lU3RhdHVzUmVzcG9uc2USggEKF0RlbGV0ZUVucmljaG1lbnRzQnlUeXBlEjIuY2Fub25pY2FsLnByaXNtLnYxLkRlbGV0ZUVucmljaG1lbnRzQnlUeXBlUmVxdWVzdBozLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVFbnJpY2htZW50c0J5VHlwZVJlc3BvbnNlEl4KC0ZpbmRTaW1pbGFyEiYuY2Fub25pY2FsLnByaXNtLnYxLkZpbmRTaW1pbGFyUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5GaW5kU2ltaWxhclJlc3BvbnNlEmEKDFNlYXJjaEJ5VGV4dBInLmNhbm9uaWNhbC5wcmlzbS52MS5TZWFyY2hCeVRleHRSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlNlYXJjaEJ5VGV4dFJlc3BvbnNlEnMKEkdldEVtYmVkZGluZ1N0YXR1cxItLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRFbWJlZGRpbmdTdGF0dXNSZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLkdldEVtYmVkZGluZ1N0YXR1c1Jlc3BvbnNlEmAKC0Fza1F1ZXN0aW9uEiYuY2Fub25pY2FsLnByaXNtLnYxLkFza1F1ZXN0aW9uUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5Bc2tRdWVzdGlvblJlc3BvbnNlMAEScAoRTGlzdENvbnZlcnNhdGlvbnMSLC5jYW5vbmljYWwucHJpc20udjEuTGlzdENvbnZlcnNhdGlvbnNSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLkxpc3RDb252ZXJzYXRpb25zUmVzcG9uc2USagoPR2V0Q29udmVyc2F0aW9uEiouY2Fub25pY2FsLnByaXNtLnYxLkdldENvbnZlcnNhdGlvblJlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuR2V0Q29udmVyc2F0aW9uUmVzcG9uc2USjgEKG1NhdmVJbnNpZ2h0RnJvbUNvbnZlcnNhdGlvbhI2LmNhbm9uaWNhbC5wcmlzbS52MS5TYXZlSW5zaWdodEZyb21Db252ZXJzYXRpb25SZXF1ZXN0GjcuY2Fub25pY2FsLnByaXNtLnYxLlNhdmVJbnNpZ2h0RnJvbUNvbnZlcnNhdGlvblJlc3BvbnNlEn8KFkdldEFydGlmYWN0RG93bmxvYWRVcmwSMS5jYW5vbmljYWwucHJpc20udjEuR2V0QXJ0aWZhY3REb3dubG9hZFVybFJlcXVlc3QaMi5jYW5vbmljYWwucHJpc20udjEuR2V0QXJ0aWZhY3REb3dubG9hZFVybFJlc3BvbnNlYgZwcm90bzM",
   [file_canonical_prism_v1_common, file_google_protobuf_timestamp],
 );
 
@@ -1174,6 +1174,793 @@ export const GetEmbeddingStatusResponseSchema: GenMessage<GetEmbeddingStatusResp
   messageDesc(file_canonical_prism_v1_reasoning, 38);
 
 /**
+ * @generated from message canonical.prism.v1.AskQuestionRequest
+ */
+export type AskQuestionRequest = Message<"canonical.prism.v1.AskQuestionRequest"> & {
+  /**
+   * The natural-language question.
+   *
+   * @generated from field: string question = 1;
+   */
+  question: string;
+
+  /**
+   * Optional conversation ID to resume. If omitted, a new conversation starts.
+   *
+   * @generated from field: optional string conversation_id = 2;
+   */
+  conversationId?: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AskQuestionRequest.
+ * Use `create(AskQuestionRequestSchema)` to create a new message.
+ */
+export const AskQuestionRequestSchema: GenMessage<AskQuestionRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  39,
+);
+
+/**
+ * AskQuestionResponse is a server-streamed event emitted during an agentic query.
+ *
+ * @generated from message canonical.prism.v1.AskQuestionResponse
+ */
+export type AskQuestionResponse = Message<"canonical.prism.v1.AskQuestionResponse"> & {
+  /**
+   * @generated from oneof canonical.prism.v1.AskQuestionResponse.event
+   */
+  event:
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentToolCallStarted tool_call_started = 1;
+         */
+        value: AgentToolCallStarted;
+        case: "toolCallStarted";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentToolCallCompleted tool_call_completed = 2;
+         */
+        value: AgentToolCallCompleted;
+        case: "toolCallCompleted";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentPartialAnswer partial_answer = 3;
+         */
+        value: AgentPartialAnswer;
+        case: "partialAnswer";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentFinalAnswer final_answer = 4;
+         */
+        value: AgentFinalAnswer;
+        case: "finalAnswer";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentError error = 5;
+         */
+        value: AgentError;
+        case: "error";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentThinking thinking = 6;
+         */
+        value: AgentThinking;
+        case: "thinking";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentContainerStatus container_status = 7;
+         */
+        value: AgentContainerStatus;
+        case: "containerStatus";
+      }
+    | {
+        /**
+         * @generated from field: canonical.prism.v1.AgentArtifactUploaded artifact_uploaded = 8;
+         */
+        value: AgentArtifactUploaded;
+        case: "artifactUploaded";
+      }
+    | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message canonical.prism.v1.AskQuestionResponse.
+ * Use `create(AskQuestionResponseSchema)` to create a new message.
+ */
+export const AskQuestionResponseSchema: GenMessage<AskQuestionResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  40,
+);
+
+/**
+ * AgentToolCallStarted indicates the agent is invoking a tool.
+ *
+ * @generated from message canonical.prism.v1.AgentToolCallStarted
+ */
+export type AgentToolCallStarted = Message<"canonical.prism.v1.AgentToolCallStarted"> & {
+  /**
+   * Tool name (e.g. "mcp_prism_list_teams", "bash", "read").
+   *
+   * @generated from field: string tool_name = 1;
+   */
+  toolName: string;
+
+  /**
+   * Serialised arguments as JSON.
+   *
+   * @generated from field: string arguments_json = 2;
+   */
+  argumentsJson: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentToolCallStarted.
+ * Use `create(AgentToolCallStartedSchema)` to create a new message.
+ */
+export const AgentToolCallStartedSchema: GenMessage<AgentToolCallStarted> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 41);
+
+/**
+ * AgentToolCallCompleted indicates a tool call has finished.
+ *
+ * @generated from message canonical.prism.v1.AgentToolCallCompleted
+ */
+export type AgentToolCallCompleted = Message<"canonical.prism.v1.AgentToolCallCompleted"> & {
+  /**
+   * @generated from field: string tool_name = 1;
+   */
+  toolName: string;
+
+  /**
+   * Truncated result summary for display.
+   *
+   * @generated from field: string result_summary = 2;
+   */
+  resultSummary: string;
+
+  /**
+   * Duration in milliseconds.
+   *
+   * @generated from field: int32 duration_ms = 3;
+   */
+  durationMs: number;
+
+  /**
+   * Whether the tool call succeeded.
+   *
+   * @generated from field: bool success = 4;
+   */
+  success: boolean;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentToolCallCompleted.
+ * Use `create(AgentToolCallCompletedSchema)` to create a new message.
+ */
+export const AgentToolCallCompletedSchema: GenMessage<AgentToolCallCompleted> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 42);
+
+/**
+ * AgentPartialAnswer streams incremental text of the agent's response.
+ *
+ * @generated from message canonical.prism.v1.AgentPartialAnswer
+ */
+export type AgentPartialAnswer = Message<"canonical.prism.v1.AgentPartialAnswer"> & {
+  /**
+   * Accumulated text so far (not a delta — full text up to this point).
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentPartialAnswer.
+ * Use `create(AgentPartialAnswerSchema)` to create a new message.
+ */
+export const AgentPartialAnswerSchema: GenMessage<AgentPartialAnswer> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  43,
+);
+
+/**
+ * AgentThinking indicates the agent is reasoning (e.g. extended thinking).
+ *
+ * @generated from message canonical.prism.v1.AgentThinking
+ */
+export type AgentThinking = Message<"canonical.prism.v1.AgentThinking"> & {
+  /**
+   * @generated from field: string text = 1;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentThinking.
+ * Use `create(AgentThinkingSchema)` to create a new message.
+ */
+export const AgentThinkingSchema: GenMessage<AgentThinking> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  44,
+);
+
+/**
+ * AgentFinalAnswer is the completed response with metadata.
+ *
+ * @generated from message canonical.prism.v1.AgentFinalAnswer
+ */
+export type AgentFinalAnswer = Message<"canonical.prism.v1.AgentFinalAnswer"> & {
+  /**
+   * Complete Markdown answer.
+   *
+   * @generated from field: string answer = 1;
+   */
+  answer: string;
+
+  /**
+   * Conversation ID (for follow-up questions).
+   *
+   * @generated from field: string conversation_id = 2;
+   */
+  conversationId: string;
+
+  /**
+   * Serialised citations/supporting data as JSON.
+   *
+   * @generated from field: string supporting_data_json = 3;
+   */
+  supportingDataJson: string;
+
+  /**
+   * @generated from field: int32 prompt_tokens = 4;
+   */
+  promptTokens: number;
+
+  /**
+   * @generated from field: int32 completion_tokens = 5;
+   */
+  completionTokens: number;
+
+  /**
+   * @generated from field: double estimated_cost_usd = 6;
+   */
+  estimatedCostUsd: number;
+
+  /**
+   * @generated from field: int32 tool_call_count = 7;
+   */
+  toolCallCount: number;
+
+  /**
+   * @generated from field: int32 duration_ms = 8;
+   */
+  durationMs: number;
+
+  /**
+   * Artifacts generated during this turn.
+   *
+   * @generated from field: repeated canonical.prism.v1.ArtifactInfo artifacts = 9;
+   */
+  artifacts: ArtifactInfo[];
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentFinalAnswer.
+ * Use `create(AgentFinalAnswerSchema)` to create a new message.
+ */
+export const AgentFinalAnswerSchema: GenMessage<AgentFinalAnswer> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  45,
+);
+
+/**
+ * AgentError indicates an error during processing.
+ *
+ * @generated from message canonical.prism.v1.AgentError
+ */
+export type AgentError = Message<"canonical.prism.v1.AgentError"> & {
+  /**
+   * @generated from field: string message = 1;
+   */
+  message: string;
+
+  /**
+   * Whether the client can retry the question.
+   *
+   * @generated from field: bool retryable = 2;
+   */
+  retryable: boolean;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentError.
+ * Use `create(AgentErrorSchema)` to create a new message.
+ */
+export const AgentErrorSchema: GenMessage<AgentError> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  46,
+);
+
+/**
+ * AgentContainerStatus reports container lifecycle progress.
+ *
+ * @generated from message canonical.prism.v1.AgentContainerStatus
+ */
+export type AgentContainerStatus = Message<"canonical.prism.v1.AgentContainerStatus"> & {
+  /**
+   * Container status: "creating", "pulling_image", "starting", "ready", "error".
+   *
+   * @generated from field: string status = 1;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentContainerStatus.
+ * Use `create(AgentContainerStatusSchema)` to create a new message.
+ */
+export const AgentContainerStatusSchema: GenMessage<AgentContainerStatus> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 47);
+
+/**
+ * AgentArtifactUploaded indicates an artifact was uploaded to S3 during the turn.
+ *
+ * @generated from message canonical.prism.v1.AgentArtifactUploaded
+ */
+export type AgentArtifactUploaded = Message<"canonical.prism.v1.AgentArtifactUploaded"> & {
+  /**
+   * @generated from field: string artifact_id = 1;
+   */
+  artifactId: string;
+
+  /**
+   * @generated from field: string display_name = 2;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: string content_type = 3;
+   */
+  contentType: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 4;
+   */
+  sizeBytes: bigint;
+
+  /**
+   * @generated from field: string download_url = 5;
+   */
+  downloadUrl: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.AgentArtifactUploaded.
+ * Use `create(AgentArtifactUploadedSchema)` to create a new message.
+ */
+export const AgentArtifactUploadedSchema: GenMessage<AgentArtifactUploaded> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 48);
+
+/**
+ * ArtifactInfo describes an artifact attached to a conversation response.
+ *
+ * @generated from message canonical.prism.v1.ArtifactInfo
+ */
+export type ArtifactInfo = Message<"canonical.prism.v1.ArtifactInfo"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string display_name = 2;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: string content_type = 3;
+   */
+  contentType: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 4;
+   */
+  sizeBytes: bigint;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ArtifactInfo.
+ * Use `create(ArtifactInfoSchema)` to create a new message.
+ */
+export const ArtifactInfoSchema: GenMessage<ArtifactInfo> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  49,
+);
+
+/**
+ * @generated from message canonical.prism.v1.ListConversationsRequest
+ */
+export type ListConversationsRequest = Message<"canonical.prism.v1.ListConversationsRequest"> & {
+  /**
+   * @generated from field: int32 page_size = 1;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: int32 page = 2;
+   */
+  page: number;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ListConversationsRequest.
+ * Use `create(ListConversationsRequestSchema)` to create a new message.
+ */
+export const ListConversationsRequestSchema: GenMessage<ListConversationsRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 50);
+
+/**
+ * @generated from message canonical.prism.v1.ListConversationsResponse
+ */
+export type ListConversationsResponse = Message<"canonical.prism.v1.ListConversationsResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.ConversationSummary conversations = 1;
+   */
+  conversations: ConversationSummary[];
+
+  /**
+   * @generated from field: int32 total_count = 2;
+   */
+  totalCount: number;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ListConversationsResponse.
+ * Use `create(ListConversationsResponseSchema)` to create a new message.
+ */
+export const ListConversationsResponseSchema: GenMessage<ListConversationsResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 51);
+
+/**
+ * ConversationSummary is a lightweight view for the conversation list.
+ *
+ * @generated from message canonical.prism.v1.ConversationSummary
+ */
+export type ConversationSummary = Message<"canonical.prism.v1.ConversationSummary"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: optional string title = 2;
+   */
+  title?: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string model_name = 4;
+   */
+  modelName: string;
+
+  /**
+   * @generated from field: string container_status = 5;
+   */
+  containerStatus: string;
+
+  /**
+   * @generated from field: int32 total_tool_calls = 6;
+   */
+  totalToolCalls: number;
+
+  /**
+   * @generated from field: float total_estimated_cost_usd = 7;
+   */
+  totalEstimatedCostUsd: number;
+
+  /**
+   * @generated from field: int32 message_count = 8;
+   */
+  messageCount: number;
+
+  /**
+   * @generated from field: int32 artifact_count = 9;
+   */
+  artifactCount: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 10;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_activity_at = 11;
+   */
+  lastActivityAt?: Timestamp;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ConversationSummary.
+ * Use `create(ConversationSummarySchema)` to create a new message.
+ */
+export const ConversationSummarySchema: GenMessage<ConversationSummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  52,
+);
+
+/**
+ * @generated from message canonical.prism.v1.GetConversationRequest
+ */
+export type GetConversationRequest = Message<"canonical.prism.v1.GetConversationRequest"> & {
+  /**
+   * @generated from field: string conversation_id = 1;
+   */
+  conversationId: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.GetConversationRequest.
+ * Use `create(GetConversationRequestSchema)` to create a new message.
+ */
+export const GetConversationRequestSchema: GenMessage<GetConversationRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 53);
+
+/**
+ * @generated from message canonical.prism.v1.GetConversationResponse
+ */
+export type GetConversationResponse = Message<"canonical.prism.v1.GetConversationResponse"> & {
+  /**
+   * @generated from field: canonical.prism.v1.ConversationSummary conversation = 1;
+   */
+  conversation?: ConversationSummary;
+
+  /**
+   * @generated from field: repeated canonical.prism.v1.ConversationMessage messages = 2;
+   */
+  messages: ConversationMessage[];
+
+  /**
+   * @generated from field: repeated canonical.prism.v1.ConversationArtifact artifacts = 3;
+   */
+  artifacts: ConversationArtifact[];
+};
+
+/**
+ * Describes the message canonical.prism.v1.GetConversationResponse.
+ * Use `create(GetConversationResponseSchema)` to create a new message.
+ */
+export const GetConversationResponseSchema: GenMessage<GetConversationResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 54);
+
+/**
+ * ConversationMessage is a single turn in a conversation.
+ *
+ * @generated from message canonical.prism.v1.ConversationMessage
+ */
+export type ConversationMessage = Message<"canonical.prism.v1.ConversationMessage"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * "user" or "assistant".
+   *
+   * @generated from field: string role = 2;
+   */
+  role: string;
+
+  /**
+   * Message content (Markdown for assistant messages).
+   *
+   * @generated from field: string content = 3;
+   */
+  content: string;
+
+  /**
+   * Tool call trace as JSON (assistant messages only).
+   *
+   * @generated from field: optional string reasoning_trace_json = 4;
+   */
+  reasoningTraceJson?: string;
+
+  /**
+   * Citation data as JSON (assistant messages only).
+   *
+   * @generated from field: optional string supporting_data_json = 5;
+   */
+  supportingDataJson?: string;
+
+  /**
+   * @generated from field: int32 prompt_tokens = 6;
+   */
+  promptTokens: number;
+
+  /**
+   * @generated from field: int32 completion_tokens = 7;
+   */
+  completionTokens: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 8;
+   */
+  createdAt?: Timestamp;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ConversationMessage.
+ * Use `create(ConversationMessageSchema)` to create a new message.
+ */
+export const ConversationMessageSchema: GenMessage<ConversationMessage> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  55,
+);
+
+/**
+ * ConversationArtifact is a file generated during a conversation.
+ *
+ * @generated from message canonical.prism.v1.ConversationArtifact
+ */
+export type ConversationArtifact = Message<"canonical.prism.v1.ConversationArtifact"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: optional string message_id = 2;
+   */
+  messageId?: string;
+
+  /**
+   * @generated from field: string artifact_key = 3;
+   */
+  artifactKey: string;
+
+  /**
+   * @generated from field: string display_name = 4;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: optional string content_type = 5;
+   */
+  contentType?: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 6;
+   */
+  sizeBytes: bigint;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ConversationArtifact.
+ * Use `create(ConversationArtifactSchema)` to create a new message.
+ */
+export const ConversationArtifactSchema: GenMessage<ConversationArtifact> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 56);
+
+/**
+ * @generated from message canonical.prism.v1.SaveInsightFromConversationRequest
+ */
+export type SaveInsightFromConversationRequest =
+  Message<"canonical.prism.v1.SaveInsightFromConversationRequest"> & {
+    /**
+     * The conversation the insight was derived from.
+     *
+     * @generated from field: string conversation_id = 1;
+     */
+    conversationId: string;
+
+    /**
+     * The specific message to save as an insight.
+     *
+     * @generated from field: string message_id = 2;
+     */
+    messageId: string;
+
+    /**
+     * Human-provided title for the insight.
+     *
+     * @generated from field: string title = 3;
+     */
+    title: string;
+  };
+
+/**
+ * Describes the message canonical.prism.v1.SaveInsightFromConversationRequest.
+ * Use `create(SaveInsightFromConversationRequestSchema)` to create a new message.
+ */
+export const SaveInsightFromConversationRequestSchema: GenMessage<SaveInsightFromConversationRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 57);
+
+/**
+ * @generated from message canonical.prism.v1.SaveInsightFromConversationResponse
+ */
+export type SaveInsightFromConversationResponse =
+  Message<"canonical.prism.v1.SaveInsightFromConversationResponse"> & {
+    /**
+     * ID of the created insight snapshot.
+     *
+     * @generated from field: string insight_id = 1;
+     */
+    insightId: string;
+  };
+
+/**
+ * Describes the message canonical.prism.v1.SaveInsightFromConversationResponse.
+ * Use `create(SaveInsightFromConversationResponseSchema)` to create a new message.
+ */
+export const SaveInsightFromConversationResponseSchema: GenMessage<SaveInsightFromConversationResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 58);
+
+/**
+ * @generated from message canonical.prism.v1.GetArtifactDownloadUrlRequest
+ */
+export type GetArtifactDownloadUrlRequest =
+  Message<"canonical.prism.v1.GetArtifactDownloadUrlRequest"> & {
+    /**
+     * @generated from field: string artifact_id = 1;
+     */
+    artifactId: string;
+  };
+
+/**
+ * Describes the message canonical.prism.v1.GetArtifactDownloadUrlRequest.
+ * Use `create(GetArtifactDownloadUrlRequestSchema)` to create a new message.
+ */
+export const GetArtifactDownloadUrlRequestSchema: GenMessage<GetArtifactDownloadUrlRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 59);
+
+/**
+ * @generated from message canonical.prism.v1.GetArtifactDownloadUrlResponse
+ */
+export type GetArtifactDownloadUrlResponse =
+  Message<"canonical.prism.v1.GetArtifactDownloadUrlResponse"> & {
+    /**
+     * Pre-signed S3 download URL.
+     *
+     * @generated from field: string download_url = 1;
+     */
+    downloadUrl: string;
+
+    /**
+     * Seconds until the URL expires.
+     *
+     * @generated from field: int32 expires_in_seconds = 2;
+     */
+    expiresInSeconds: number;
+  };
+
+/**
+ * Describes the message canonical.prism.v1.GetArtifactDownloadUrlResponse.
+ * Use `create(GetArtifactDownloadUrlResponseSchema)` to create a new message.
+ */
+export const GetArtifactDownloadUrlResponseSchema: GenMessage<GetArtifactDownloadUrlResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_reasoning, 60);
+
+/**
  * ReasoningService manages the AI reasoning pipeline — provider configuration,
  * model discovery, cost tracking, enrichment execution, and vector-based
  * semantic similarity search.
@@ -1334,5 +2121,58 @@ export const ReasoningService: GenService<{
     methodKind: "unary";
     input: typeof GetEmbeddingStatusRequestSchema;
     output: typeof GetEmbeddingStatusResponseSchema;
+  };
+  /**
+   * AskQuestion sends a natural-language question to the agentic query interface.
+   * Returns a server stream of events: container status, tool calls, partial answer,
+   * artifact uploads, and final answer with reasoning trace.
+   *
+   * @generated from rpc canonical.prism.v1.ReasoningService.AskQuestion
+   */
+  askQuestion: {
+    methodKind: "server_streaming";
+    input: typeof AskQuestionRequestSchema;
+    output: typeof AskQuestionResponseSchema;
+  };
+  /**
+   * ListConversations returns the user's conversation history, newest first.
+   *
+   * @generated from rpc canonical.prism.v1.ReasoningService.ListConversations
+   */
+  listConversations: {
+    methodKind: "unary";
+    input: typeof ListConversationsRequestSchema;
+    output: typeof ListConversationsResponseSchema;
+  };
+  /**
+   * GetConversation returns a single conversation with its messages and artifacts.
+   *
+   * @generated from rpc canonical.prism.v1.ReasoningService.GetConversation
+   */
+  getConversation: {
+    methodKind: "unary";
+    input: typeof GetConversationRequestSchema;
+    output: typeof GetConversationResponseSchema;
+  };
+  /**
+   * SaveInsightFromConversation saves an agent answer as a persistent insight
+   * snapshot, linking it back to the originating conversation.
+   *
+   * @generated from rpc canonical.prism.v1.ReasoningService.SaveInsightFromConversation
+   */
+  saveInsightFromConversation: {
+    methodKind: "unary";
+    input: typeof SaveInsightFromConversationRequestSchema;
+    output: typeof SaveInsightFromConversationResponseSchema;
+  };
+  /**
+   * GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
+   *
+   * @generated from rpc canonical.prism.v1.ReasoningService.GetArtifactDownloadUrl
+   */
+  getArtifactDownloadUrl: {
+    methodKind: "unary";
+    input: typeof GetArtifactDownloadUrlRequestSchema;
+    output: typeof GetArtifactDownloadUrlResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_reasoning, 0);

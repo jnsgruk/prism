@@ -8,12 +8,18 @@
 // @ts-nocheck
 
 import {
+  AskQuestionRequest,
+  AskQuestionResponse,
   DeleteEnrichmentsByTypeRequest,
   DeleteEnrichmentsByTypeResponse,
   FindSimilarRequest,
   FindSimilarResponse,
   GetAiSettingsRequest,
   GetAiSettingsResponse,
+  GetArtifactDownloadUrlRequest,
+  GetArtifactDownloadUrlResponse,
+  GetConversationRequest,
+  GetConversationResponse,
   GetCostSummaryRequest,
   GetCostSummaryResponse,
   GetEmbeddingStatusRequest,
@@ -28,8 +34,12 @@ import {
   GetStorageHealthResponse,
   ListAiModelsRequest,
   ListAiModelsResponse,
+  ListConversationsRequest,
+  ListConversationsResponse,
   RefreshModelCatalogueRequest,
   RefreshModelCatalogueResponse,
+  SaveInsightFromConversationRequest,
+  SaveInsightFromConversationResponse,
   SearchByTextRequest,
   SearchByTextResponse,
   SetProviderSecretRequest,
@@ -218,6 +228,64 @@ export const ReasoningService = {
       name: "GetEmbeddingStatus",
       I: GetEmbeddingStatusRequest,
       O: GetEmbeddingStatusResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AskQuestion sends a natural-language question to the agentic query interface.
+     * Returns a server stream of events: container status, tool calls, partial answer,
+     * artifact uploads, and final answer with reasoning trace.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.AskQuestion
+     */
+    askQuestion: {
+      name: "AskQuestion",
+      I: AskQuestionRequest,
+      O: AskQuestionResponse,
+      kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * ListConversations returns the user's conversation history, newest first.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.ListConversations
+     */
+    listConversations: {
+      name: "ListConversations",
+      I: ListConversationsRequest,
+      O: ListConversationsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetConversation returns a single conversation with its messages and artifacts.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.GetConversation
+     */
+    getConversation: {
+      name: "GetConversation",
+      I: GetConversationRequest,
+      O: GetConversationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SaveInsightFromConversation saves an agent answer as a persistent insight
+     * snapshot, linking it back to the originating conversation.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.SaveInsightFromConversation
+     */
+    saveInsightFromConversation: {
+      name: "SaveInsightFromConversation",
+      I: SaveInsightFromConversationRequest,
+      O: SaveInsightFromConversationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.GetArtifactDownloadUrl
+     */
+    getArtifactDownloadUrl: {
+      name: "GetArtifactDownloadUrl",
+      I: GetArtifactDownloadUrlRequest,
+      O: GetArtifactDownloadUrlResponse,
       kind: MethodKind.Unary,
     },
   },

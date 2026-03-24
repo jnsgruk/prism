@@ -7,6 +7,7 @@ members = [
     "crates/ps-workers",
     "crates/ps-metrics",
     "crates/ps-migrate",
+    "crates/ps-agent-mcp",
     "crates/psctl",
     "tests/integration",
 ]

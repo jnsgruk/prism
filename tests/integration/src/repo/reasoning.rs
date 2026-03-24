@@ -1,5 +1,8 @@
 use crate::define_repo_test;
-use ps_core::repo::reasoning::{EnrichmentResult, UpsertEnrichmentParams};
+use ps_core::repo::reasoning::{
+    CreateArtifactParams, CreateConversationParams, CreateMessageParams, EnrichmentResult,
+    UpsertEnrichmentParams,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -363,4 +366,405 @@ define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
         .unwrap();
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].enrichment_type, "sentiment");
+});
+
+// ---------------------------------------------------------------------------
+// Conversations
+// ---------------------------------------------------------------------------
+
+/// Insert a user for FK satisfaction. Returns the user_id.
+async fn insert_user(pool: &sqlx::PgPool) -> Uuid {
+    let (user_id, _) = crate::common::fixtures::create_admin_user(pool).await;
+    user_id
+}
+
+define_repo_test!(conversation_create_and_get, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("Test conversation"),
+            model_name: "anthropic/claude-sonnet-4-6",
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(conv.user_id, user_id);
+    assert_eq!(conv.title.as_deref(), Some("Test conversation"));
+    assert_eq!(conv.status, "active");
+    assert_eq!(conv.container_status, "pending");
+    assert_eq!(conv.total_tool_calls, 0);
+
+    // Get by ID.
+    let fetched = repos.reasoning.get_conversation(conv.id).await.unwrap();
+    assert!(fetched.is_some());
+    let fetched = fetched.unwrap();
+    assert_eq!(fetched.id, conv.id);
+    assert_eq!(fetched.model_name, "anthropic/claude-sonnet-4-6");
+
+    // Get non-existent returns None.
+    let missing = repos
+        .reasoning
+        .get_conversation(Uuid::now_v7())
+        .await
+        .unwrap();
+    assert!(missing.is_none());
+});
+
+define_repo_test!(conversation_list_with_counts, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    // Create 3 conversations.
+    for i in 0..3 {
+        let conv = repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some(&format!("Conv {i}")),
+                model_name: "test-model",
+            })
+            .await
+            .unwrap();
+
+        // Add a message to the first two.
+        if i < 2 {
+            repos
+                .reasoning
+                .create_message(&CreateMessageParams {
+                    conversation_id: conv.id,
+                    role: "user",
+                    content: "Hello",
+                    reasoning_trace: None,
+                    supporting_data: None,
+                    prompt_tokens: 10,
+                    completion_tokens: 0,
+                })
+                .await
+                .unwrap();
+        }
+    }
+
+    let (list, total) = repos
+        .reasoning
+        .list_conversations(user_id, 10, 0)
+        .await
+        .unwrap();
+
+    assert_eq!(total, 3);
+    assert_eq!(list.len(), 3);
+    // Newest first.
+    assert_eq!(list[0].title.as_deref(), Some("Conv 2"));
+    // First two have 1 message, third has 0.
+    assert_eq!(list[2].message_count, 1); // Conv 0 (oldest, at end)
+    assert_eq!(list[0].message_count, 0); // Conv 2 (newest)
+
+    // Pagination.
+    let (page, _) = repos
+        .reasoning
+        .list_conversations(user_id, 2, 0)
+        .await
+        .unwrap();
+    assert_eq!(page.len(), 2);
+});
+
+define_repo_test!(conversation_multi_turn_messages, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: None,
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    // Simulate 4 alternating turns.
+    let trace = serde_json::json!({"steps": [{"tool_name": "list_teams"}]});
+    let citations = serde_json::json!({"sources": ["team_abc"]});
+
+    repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "user",
+            content: "How is Team A doing?",
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 20,
+            completion_tokens: 0,
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "assistant",
+            content: "Team A is doing great.",
+            reasoning_trace: Some(&trace),
+            supporting_data: Some(&citations),
+            prompt_tokens: 0,
+            completion_tokens: 50,
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "user",
+            content: "Compare with Team B?",
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 15,
+            completion_tokens: 0,
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "assistant",
+            content: "Team B trails behind.",
+            reasoning_trace: Some(&trace),
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 40,
+        })
+        .await
+        .unwrap();
+
+    // List messages — oldest first.
+    let messages = repos.reasoning.list_messages(conv.id).await.unwrap();
+    assert_eq!(messages.len(), 4);
+    assert_eq!(messages[0].role, "user");
+    assert_eq!(messages[1].role, "assistant");
+    assert_eq!(messages[2].role, "user");
+    assert_eq!(messages[3].role, "assistant");
+    assert!(messages[1].reasoning_trace.is_some());
+    assert!(messages[3].supporting_data.is_none());
+});
+
+define_repo_test!(
+    conversation_container_status_transitions,
+    |repos, pool| async move {
+        let user_id = insert_user(&pool).await;
+
+        let conv = repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some("Container test"),
+                model_name: "test-model",
+            })
+            .await
+            .unwrap();
+        assert_eq!(conv.container_status, "pending");
+
+        // Transition: pending → active.
+        repos
+            .reasoning
+            .update_container_status(
+                conv.id,
+                Some("prism-agent-abc123"),
+                "active",
+                Some("oc-session-xyz"),
+            )
+            .await
+            .unwrap();
+
+        let fetched = repos
+            .reasoning
+            .get_conversation(conv.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(fetched.container_status, "active");
+        assert_eq!(
+            fetched.container_pod_name.as_deref(),
+            Some("prism-agent-abc123")
+        );
+        assert_eq!(
+            fetched.opencode_session_id.as_deref(),
+            Some("oc-session-xyz")
+        );
+
+        // Transition: active → reaped.
+        repos
+            .reasoning
+            .update_container_status(conv.id, None, "reaped", None)
+            .await
+            .unwrap();
+
+        let fetched = repos
+            .reasoning
+            .get_conversation(conv.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(fetched.container_status, "reaped");
+        // Pod name is preserved (COALESCE keeps existing value).
+        assert_eq!(
+            fetched.container_pod_name.as_deref(),
+            Some("prism-agent-abc123")
+        );
+
+        // Transition: reaped → active (resume with new pod).
+        repos
+            .reasoning
+            .update_container_status(
+                conv.id,
+                Some("prism-agent-def456"),
+                "active",
+                Some("oc-session-new"),
+            )
+            .await
+            .unwrap();
+
+        let fetched = repos
+            .reasoning
+            .get_conversation(conv.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(fetched.container_status, "active");
+        assert_eq!(
+            fetched.container_pod_name.as_deref(),
+            Some("prism-agent-def456")
+        );
+    }
+);
+
+define_repo_test!(conversation_update_totals, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: None,
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    // First turn.
+    repos
+        .reasoning
+        .update_conversation_totals(conv.id, 5, 1000, 500, 0.03)
+        .await
+        .unwrap();
+
+    // Second turn.
+    repos
+        .reasoning
+        .update_conversation_totals(conv.id, 3, 800, 400, 0.02)
+        .await
+        .unwrap();
+
+    let fetched = repos
+        .reasoning
+        .get_conversation(conv.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.total_tool_calls, 8);
+    assert_eq!(fetched.total_prompt_tokens, 1800);
+    assert_eq!(fetched.total_completion_tokens, 900);
+    assert!((fetched.total_estimated_cost_usd - 0.05).abs() < 0.001);
+});
+
+define_repo_test!(conversation_artifacts_crud, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: None,
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    let msg = repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "assistant",
+            content: "Here is a report.",
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 100,
+        })
+        .await
+        .unwrap();
+
+    // Create two artifacts.
+    let a1 = repos
+        .reasoning
+        .create_artifact(&CreateArtifactParams {
+            conversation_id: conv.id,
+            message_id: Some(msg.id),
+            artifact_key: &format!("conversations/{}/report.csv", conv.id),
+            display_name: "report.csv",
+            content_type: Some("text/csv"),
+            size_bytes: 1024,
+        })
+        .await
+        .unwrap();
+
+    let a2 = repos
+        .reasoning
+        .create_artifact(&CreateArtifactParams {
+            conversation_id: conv.id,
+            message_id: None,
+            artifact_key: &format!("conversations/{}/analysis.json", conv.id),
+            display_name: "analysis.json",
+            content_type: Some("application/json"),
+            size_bytes: 2048,
+        })
+        .await
+        .unwrap();
+
+    // List artifacts.
+    let artifacts = repos.reasoning.list_artifacts(conv.id).await.unwrap();
+    assert_eq!(artifacts.len(), 2);
+    assert_eq!(artifacts[0].display_name, "report.csv");
+    assert_eq!(artifacts[1].display_name, "analysis.json");
+
+    // Get single artifact.
+    let fetched = repos.reasoning.get_artifact(a1.id).await.unwrap().unwrap();
+    assert_eq!(fetched.content_type.as_deref(), Some("text/csv"));
+    assert_eq!(fetched.size_bytes, 1024);
+    assert_eq!(fetched.message_id, Some(msg.id));
+
+    // Artifact count shows up in conversation list.
+    let (list, _) = repos
+        .reasoning
+        .list_conversations(user_id, 10, 0)
+        .await
+        .unwrap();
+    assert_eq!(list[0].artifact_count, 2);
+
+    // Non-existent artifact returns None.
+    assert!(
+        repos
+            .reasoning
+            .get_artifact(Uuid::now_v7())
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    drop(a2);
 });

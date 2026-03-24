@@ -4,18 +4,21 @@ use ps_core::crypto;
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::canonical::prism::v1::{
-    AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, DeleteEnrichmentsByTypeRequest,
-    DeleteEnrichmentsByTypeResponse, Enrichment as ProtoEnrichment, EnrichmentTypeCount,
-    FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
+    AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, AskQuestionRequest,
+    AskQuestionResponse, DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse,
+    Enrichment as ProtoEnrichment, EnrichmentTypeCount, FindSimilarRequest, FindSimilarResponse,
+    GetAiSettingsRequest, GetAiSettingsResponse, GetArtifactDownloadUrlRequest,
+    GetArtifactDownloadUrlResponse, GetConversationRequest, GetConversationResponse,
     GetCostSummaryRequest, GetCostSummaryResponse, GetEmbeddingStatusRequest,
     GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
     GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
     GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
     GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
-    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, SearchByTextRequest,
-    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    SimilarItem as ProtoSimilarItem, TestProviderRequest, TestProviderResponse,
-    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    ListConversationsRequest, ListConversationsResponse, RefreshModelCatalogueRequest,
+    RefreshModelCatalogueResponse, SaveInsightFromConversationRequest,
+    SaveInsightFromConversationResponse, SearchByTextRequest, SearchByTextResponse,
+    SetProviderSecretRequest, SetProviderSecretResponse, SimilarItem as ProtoSimilarItem,
+    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tokio::sync::RwLock;
@@ -234,6 +237,8 @@ fn provider_secret_key(provider: i32) -> Result<(&'static str, &'static str), St
 
 #[tonic::async_trait]
 impl ReasoningService for ReasoningServiceImpl {
+    type AskQuestionStream =
+        tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
     async fn get_ai_settings(
         &self,
         request: Request<GetAiSettingsRequest>,
@@ -794,6 +799,55 @@ impl ReasoningService for ReasoningServiceImpl {
             last_embedded_at: status.last_embedded_at.map(to_timestamp),
             coverage_percent: coverage,
         }))
+    }
+
+    // -----------------------------------------------------------------------
+    // Agentic query interface — stubs for Phase 2 implementation
+    // -----------------------------------------------------------------------
+
+    async fn ask_question(
+        &self,
+        _request: Request<AskQuestionRequest>,
+    ) -> Result<Response<Self::AskQuestionStream>, Status> {
+        Err(Status::unimplemented(
+            "AskQuestion will be implemented in plan 56 phase 2",
+        ))
+    }
+
+    async fn list_conversations(
+        &self,
+        _request: Request<ListConversationsRequest>,
+    ) -> Result<Response<ListConversationsResponse>, Status> {
+        Err(Status::unimplemented(
+            "ListConversations will be implemented in plan 56 phase 2",
+        ))
+    }
+
+    async fn get_conversation(
+        &self,
+        _request: Request<GetConversationRequest>,
+    ) -> Result<Response<GetConversationResponse>, Status> {
+        Err(Status::unimplemented(
+            "GetConversation will be implemented in plan 56 phase 2",
+        ))
+    }
+
+    async fn save_insight_from_conversation(
+        &self,
+        _request: Request<SaveInsightFromConversationRequest>,
+    ) -> Result<Response<SaveInsightFromConversationResponse>, Status> {
+        Err(Status::unimplemented(
+            "SaveInsightFromConversation will be implemented in plan 56 phase 2",
+        ))
+    }
+
+    async fn get_artifact_download_url(
+        &self,
+        _request: Request<GetArtifactDownloadUrlRequest>,
+    ) -> Result<Response<GetArtifactDownloadUrlResponse>, Status> {
+        Err(Status::unimplemented(
+            "GetArtifactDownloadUrl will be implemented in plan 56 phase 2",
+        ))
     }
 }
 

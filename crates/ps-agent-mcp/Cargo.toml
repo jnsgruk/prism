@@ -1,0 +1,24 @@
+[package]
+name = "ps-agent-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ps-proto = { path = "../ps-proto" }
+
+rmcp = { version = "1.2", features = ["server", "transport-io"] }
+tonic.workspace = true
+tokio.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+object_store.workspace = true
+bytes.workspace = true
+url.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+futures.workspace = true
+
+[lints]
+workspace = true
