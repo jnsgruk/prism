@@ -24,6 +24,11 @@ const AskPage = (): React.ReactElement => {
     [conversationData],
   );
 
+  const conversationArtifacts = useMemo(
+    () => conversationData?.artifacts ?? [],
+    [conversationData],
+  );
+
   useEffect(() => {
     reset();
   }, [conversationId, reset]);
@@ -79,7 +84,11 @@ const AskPage = (): React.ReactElement => {
                 <SuggestedQuestions onSelect={handleAsk} />
               ) : (
                 <div className="mx-auto max-w-3xl">
-                  <ConversationThread messages={messages} state={state} />
+                  <ConversationThread
+                    messages={messages}
+                    state={state}
+                    conversationArtifacts={conversationArtifacts}
+                  />
                 </div>
               )}
             </div>

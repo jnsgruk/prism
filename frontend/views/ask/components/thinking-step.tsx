@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 
-import type { ToolCallStep } from "@/views/ask/hooks/use-ask-question";
+import type { AgentStep, ToolCallStep } from "@/views/ask/hooks/use-ask-question";
 
 const toolIcon = (toolName: string): LucideIcon => {
   if (toolName.startsWith("mcp_prism") || toolName.startsWith("prism_")) return Database;
@@ -34,7 +34,7 @@ const toolLabel = (step: ToolCallStep): string => {
       return "bash";
     }
   }
-  return step.toolName.replace(/^mcp_prism_/, "").replace(/_/g, " ");
+  return step.toolName.replace(/^prism_/, "").replace(/_/g, " ");
 };
 
 const statusIcon = (status: ToolCallStep["status"]): React.ReactElement => {
@@ -47,7 +47,7 @@ const statusIcon = (status: ToolCallStep["status"]): React.ReactElement => {
   return <X className="size-3.5 text-destructive" />;
 };
 
-export const ThinkingStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
+const ToolStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
   const Icon = toolIcon(step.toolName);
 
   return (
@@ -73,4 +73,11 @@ export const ThinkingStep = ({ step }: { step: ToolCallStep }): React.ReactEleme
       </div>
     </div>
   );
+};
+
+export const ThinkingStep = ({ step }: { step: AgentStep }): React.ReactElement => {
+  if (step.kind === "reasoning") {
+    return <p className="py-1 text-sm italic text-muted-foreground">{step.text}</p>;
+  }
+  return <ToolStep step={step} />;
 };

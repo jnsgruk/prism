@@ -114,6 +114,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 service_token: String::new(), // TODO: generate/read service token
                 s3_endpoint: std::env::var("S3_ENDPOINT").unwrap_or_default(),
                 s3_bucket: std::env::var("S3_BUCKET").unwrap_or_else(|_| "ps-artifacts".into()),
+                s3_access_key_id: std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default(),
+                s3_secret_access_key: std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default(),
                 provider_keys: vec![],
             };
             let cm = ps_agent::ContainerManager::new(kube_client, namespace, config);

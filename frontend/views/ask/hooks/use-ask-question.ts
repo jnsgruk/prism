@@ -14,6 +14,7 @@ import { conversationKeys } from "./use-conversations";
 const client = createClient(ReasoningService, transport);
 
 export type ToolCallStep = {
+  kind: "tool";
   toolName: string;
   argumentsJson: string;
   resultSummary?: string;
@@ -21,6 +22,13 @@ export type ToolCallStep = {
   success?: boolean;
   status: "running" | "completed" | "error";
 };
+
+export type ReasoningStep = {
+  kind: "reasoning";
+  text: string;
+};
+
+export type AgentStep = ToolCallStep | ReasoningStep;
 
 export type TokenUsage = {
   promptTokens: number;
@@ -33,14 +41,13 @@ export type AgentState =
   | { status: "container_starting"; message: string }
   | {
       status: "streaming";
-      steps: ToolCallStep[];
+      steps: AgentStep[];
       partialAnswer: string;
-      thinkingText: string;
       artifacts: ArtifactInfo[];
     }
   | {
       status: "completed";
-      steps: ToolCallStep[];
+      steps: AgentStep[];
       answer: string;
       conversationId: string;
       supportingData: string;
@@ -73,9 +80,8 @@ export const useAskQuestion = (): {
       const abort = new AbortController();
       abortRef.current = abort;
 
-      const steps: ToolCallStep[] = [];
+      const steps: AgentStep[] = [];
       let partialAnswer = "";
-      let thinkingText = "";
       const artifacts: ArtifactInfo[] = [];
 
       setState({ status: "container_starting", message: "Initialising agent..." });
@@ -97,6 +103,7 @@ export const useAskQuestion = (): {
 
             case "toolCallStarted": {
               steps.push({
+                kind: "tool",
                 toolName: event.value.toolName,
                 argumentsJson: event.value.argumentsJson,
                 status: "running",
@@ -105,7 +112,6 @@ export const useAskQuestion = (): {
                 status: "streaming",
                 steps: [...steps],
                 partialAnswer,
-                thinkingText,
                 artifacts: [...artifacts],
               });
               break;
@@ -113,7 +119,10 @@ export const useAskQuestion = (): {
 
             case "toolCallCompleted": {
               const last = steps.findLast(
-                (s) => s.toolName === event.value.toolName && s.status === "running",
+                (s): s is ToolCallStep =>
+                  s.kind === "tool" &&
+                  s.toolName === event.value.toolName &&
+                  s.status === "running",
               );
               if (last) {
                 last.resultSummary = event.value.resultSummary;
@@ -125,7 +134,6 @@ export const useAskQuestion = (): {
                 status: "streaming",
                 steps: [...steps],
                 partialAnswer,
-                thinkingText,
                 artifacts: [...artifacts],
               });
               break;
@@ -137,19 +145,26 @@ export const useAskQuestion = (): {
                 status: "streaming",
                 steps: [...steps],
                 partialAnswer,
-                thinkingText,
                 artifacts: [...artifacts],
               });
               break;
             }
 
             case "thinking": {
-              thinkingText = event.value.text;
+              // Update existing reasoning step or add a new one.
+              // OpenCode sends cumulative text for each reasoning part,
+              // so we update the last reasoning step if it's the most
+              // recent entry (i.e. no tool calls happened since).
+              const lastStep = steps[steps.length - 1];
+              if (lastStep?.kind === "reasoning") {
+                lastStep.text = event.value.text;
+              } else {
+                steps.push({ kind: "reasoning", text: event.value.text });
+              }
               setState({
                 status: "streaming",
                 steps: [...steps],
                 partialAnswer,
-                thinkingText,
                 artifacts: [...artifacts],
               });
               break;
@@ -161,7 +176,6 @@ export const useAskQuestion = (): {
                 status: "streaming",
                 steps: [...steps],
                 partialAnswer,
-                thinkingText,
                 artifacts: [...artifacts],
               });
               break;

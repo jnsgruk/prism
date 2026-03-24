@@ -23,6 +23,10 @@ pub struct AgentPodConfig {
     pub s3_endpoint: String,
     /// S3 bucket name.
     pub s3_bucket: String,
+    /// S3 access key ID for artifact uploads.
+    pub s3_access_key_id: String,
+    /// S3 secret access key for artifact uploads.
+    pub s3_secret_access_key: String,
     /// Provider API keys: `(env_var_name, value)`.
     pub provider_keys: Vec<(String, String)>,
 }
@@ -56,6 +60,8 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
         env_var("SERVICE_TOKEN", &config.service_token),
         env_var("S3_ENDPOINT", &config.s3_endpoint),
         env_var("S3_BUCKET", &config.s3_bucket),
+        env_var("AWS_ACCESS_KEY_ID", &config.s3_access_key_id),
+        env_var("AWS_SECRET_ACCESS_KEY", &config.s3_secret_access_key),
     ];
 
     for (name, value) in &config.provider_keys {
@@ -134,6 +140,8 @@ mod tests {
             service_token: "test-token-123".to_string(),
             s3_endpoint: "http://rustfs:9000".to_string(),
             s3_bucket: "ps-artifacts".to_string(),
+            s3_access_key_id: "test-key".to_string(),
+            s3_secret_access_key: "test-secret".to_string(),
             provider_keys: vec![("ANTHROPIC_API_KEY".to_string(), "sk-ant-test".to_string())],
         }
     }

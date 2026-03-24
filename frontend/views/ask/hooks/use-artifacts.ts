@@ -13,7 +13,23 @@ export const useDownloadArtifact = (): {
     (artifactId: string, displayName: string): void => {
       getUrl.mutate(artifactId, {
         onSuccess: (data) => {
-          window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+          // The server returns a data URL (base64-encoded bytes proxied from S3).
+          // Convert to a blob and trigger a file download.
+          fetch(data.downloadUrl)
+            .then((res) => res.blob())
+            .then((blob) => {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = displayName;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            })
+            .catch(() => {
+              toast.error(`Failed to download ${displayName}`);
+            });
         },
         onError: (err) => {
           toast.error(`Failed to download ${displayName}: ${err.message}`);

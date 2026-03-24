@@ -1125,6 +1125,76 @@ impl ReasoningService for ReasoningServiceImpl {
                     break;
                 }
 
+                // Intercept artifact uploads: when the upload_artifact MCP tool
+                // completes, register the artifact in the DB and emit an event.
+                if let ps_agent::opencode_sdk::types::event::Event::MessagePartUpdated {
+                    properties,
+                } = &event
+                    && let Some(ps_agent::opencode_sdk::types::message::Part::Tool {
+                        tool,
+                        state:
+                            Some(ps_agent::opencode_sdk::types::message::ToolState::Completed(
+                                completed,
+                            )),
+                        ..
+                    }) = properties.part.as_ref()
+                    && tool == "prism_upload_artifact"
+                    && let Ok(result) = serde_json::from_str::<serde_json::Value>(&completed.output)
+                {
+                    // The MCP tool returns keys like "conversations/{session}/{file}"
+                    // but ArtifactKey::new(Conversations, path) already prepends
+                    // "conversations/", so strip the prefix to avoid doubling it.
+                    let raw_key = result
+                        .get("artifact_key")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+                    let artifact_key = raw_key.strip_prefix("conversations/").unwrap_or(raw_key);
+                    let display_name = result
+                        .get("display_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("artifact");
+                    let content_type = result.get("content_type").and_then(|v| v.as_str());
+                    let size_bytes = result
+                        .get("size_bytes")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(0);
+
+                    match repos
+                        .reasoning
+                        .create_artifact(&ps_core::repo::reasoning::CreateArtifactParams {
+                            conversation_id: conv_id,
+                            message_id: None,
+                            artifact_key,
+                            display_name,
+                            content_type,
+                            size_bytes,
+                        })
+                        .await
+                    {
+                        Ok(artifact) => {
+                            let uploaded = ps_proto::canonical::prism::v1::AgentArtifactUploaded {
+                                artifact_id: artifact.id.to_string(),
+                                display_name: display_name.to_string(),
+                                content_type: content_type
+                                    .unwrap_or("application/octet-stream")
+                                    .to_string(),
+                                size_bytes,
+                                download_url: String::new(),
+                            };
+                            let _ = tx
+                                .send(Ok(AskQuestionResponse {
+                                    event: Some(
+                                        ps_proto::canonical::prism::v1::ask_question_response::Event::ArtifactUploaded(uploaded),
+                                    ),
+                                }))
+                                .await;
+                        }
+                        Err(e) => {
+                            warn!(error = %e, "Failed to register artifact in DB");
+                        }
+                    }
+                }
+
                 // Map to proto and send.
                 if let Some(proto_event) = event_mapper::map_event(&event) {
                     // Track answer text and tool calls.
@@ -1338,6 +1408,7 @@ impl ReasoningService for ReasoningServiceImpl {
         &self,
         request: Request<GetArtifactDownloadUrlRequest>,
     ) -> Result<Response<GetArtifactDownloadUrlResponse>, Status> {
+        use base64::Engine;
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
 
@@ -1363,15 +1434,26 @@ impl ReasoningService for ReasoningServiceImpl {
             ps_core::artifact_store::ArtifactCategory::Conversations,
             &artifact.artifact_key,
         );
-        let expiry = std::time::Duration::from_secs(3600);
-        let url = store.presign_get(&key, expiry).await.map_err(|e| {
-            error!(error = %e, "Failed to generate presigned URL");
-            Status::internal("failed to generate download URL")
+
+        // Proxy the download: read bytes from S3 and return as a data URL.
+        // Presigned URLs don't work because the internal S3 hostname isn't
+        // reachable from the browser.
+        let data = store.get(&key).await.map_err(|e| {
+            error!(error = %e, "Failed to read artifact from S3");
+            Status::internal("failed to read artifact")
         })?;
 
+        let content_type = artifact
+            .content_type
+            .as_deref()
+            .unwrap_or("application/octet-stream");
+
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+        let download_url = format!("data:{content_type};base64,{b64}");
+
         Ok(Response::new(GetArtifactDownloadUrlResponse {
-            download_url: url.to_string(),
-            expires_in_seconds: 3600,
+            download_url,
+            expires_in_seconds: 0,
         }))
     }
 }

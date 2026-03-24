@@ -1,9 +1,16 @@
 import { Download, FileText, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { ArtifactInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 import { useDownloadArtifact } from "@/views/ask/hooks/use-artifacts";
+
+/** Minimal artifact shape needed for display — compatible with both
+ *  `ArtifactInfo` (streaming) and `ConversationArtifact` (DB). */
+type ArtifactDisplay = {
+  id: string;
+  displayName: string;
+  sizeBytes: bigint | number;
+};
 
 const formatSize = (bytes: bigint | number): string => {
   const n = typeof bytes === "bigint" ? Number(bytes) : bytes;
@@ -15,7 +22,7 @@ const formatSize = (bytes: bigint | number): string => {
 export const ArtifactList = ({
   artifacts,
 }: {
-  artifacts: ArtifactInfo[];
+  artifacts: ArtifactDisplay[];
 }): React.ReactElement | null => {
   const { download, isPending } = useDownloadArtifact();
 

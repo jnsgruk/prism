@@ -467,25 +467,25 @@ impl PrismTools {
             .await
             .map_err(|e| format!("Failed to read file: {e}"))?;
 
-        let default_name = path
+        let filename = path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("artifact")
             .to_string();
-        let filename = input.display_name.as_deref().unwrap_or(&default_name);
-        let content_type = guess_content_type(filename);
+        let display_name = input.display_name.as_deref().unwrap_or(&filename);
+        let content_type = guess_content_type(&filename);
         let size = data.len();
 
         let key = self
             .artifacts
-            .upload(filename, Some(content_type), data.into())
+            .upload(&filename, Some(content_type), data.into())
             .await
             .map_err(|e| format!("S3 upload failed: {e}"))?;
 
         serde_json::to_string_pretty(&serde_json::json!({
             "status": "uploaded",
             "artifact_key": key,
-            "display_name": filename,
+            "display_name": display_name,
             "content_type": content_type,
             "size_bytes": size,
         }))

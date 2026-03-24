@@ -16,7 +16,7 @@ impl ArtifactStore {
     ///
     /// When `endpoint` is `None`, uses the default AWS S3 endpoint.
     pub fn new(endpoint: Option<&str>, bucket: &str, session_id: &str) -> Self {
-        let mut builder = AmazonS3Builder::new()
+        let mut builder = AmazonS3Builder::from_env()
             .with_bucket_name(bucket)
             .with_allow_http(true);
 

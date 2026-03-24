@@ -3,14 +3,14 @@ import { useState } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import type { ToolCallStep } from "@/views/ask/hooks/use-ask-question";
+import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { ThinkingSteps } from "./thinking-steps";
 
 export const EvidencePanel = ({
   steps,
   supportingData,
 }: {
-  steps: ToolCallStep[];
+  steps: AgentStep[];
   supportingData?: string;
 }): React.ReactElement => {
   const [open, setOpen] = useState(false);

@@ -3,23 +3,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 import type { AgentState } from "@/views/ask/hooks/use-ask-question";
-import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import type {
+  ConversationArtifact,
+  ConversationMessage,
+} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { AgentResponse } from "./agent-response";
+import { ArtifactList } from "./artifact-list";
 import { ContainerStatus } from "./container-status";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
 import { ThinkingSteps } from "./thinking-steps";
 
-type ToolCallStep = {
-  toolName: string;
-  argumentsJson: string;
-  resultSummary?: string;
-  durationMs?: number;
-  success?: boolean;
-  status: "running" | "completed" | "error";
-};
+import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 
-const parseReasoningTrace = (json?: string): ToolCallStep[] => {
+const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
   try {
     const trace = JSON.parse(json);
@@ -30,6 +27,7 @@ const parseReasoningTrace = (json?: string): ToolCallStep[] => {
         result_summary?: string;
         duration_ms?: number;
       }) => ({
+        kind: "tool" as const,
         toolName: s.tool_name,
         argumentsJson: s.arguments ?? "{}",
         resultSummary: s.result_summary,
@@ -46,9 +44,11 @@ const parseReasoningTrace = (json?: string): ToolCallStep[] => {
 export const ConversationThread = ({
   messages,
   state,
+  conversationArtifacts = [],
 }: {
   messages: ConversationMessage[];
   state: AgentState;
+  conversationArtifacts?: ConversationArtifact[];
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +80,10 @@ export const ConversationThread = ({
           )}
         </div>
       ))}
+
+      {conversationArtifacts.length > 0 && state.status === "idle" && (
+        <ArtifactList artifacts={conversationArtifacts} />
+      )}
 
       {state.status === "container_starting" && <ContainerStatus message={state.message} />}
 
