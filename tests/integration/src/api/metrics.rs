@@ -388,6 +388,127 @@ define_api_test!(list_periods_empty, |server| async move {
 });
 
 // ---------------------------------------------------------------------------
+// ListTeamContributions — Discourse platform filter (all instances)
+// ---------------------------------------------------------------------------
+
+define_api_test!(
+    list_team_contributions_discourse_all_instances,
+    |server| async move {
+        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+        let repos = ps_core::repo::Repos::new(server.pool.clone());
+        let mut client = MetricsServiceClient::new(server.channel.clone());
+
+        let jan_10 = OffsetDateTime::new_utc(
+            time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
+            time::Time::from_hms(12, 0, 0).unwrap(),
+        );
+
+        let team = repos
+            .org
+            .create_team("DiscourseTeam", "Org", TeamType::Team, None, None)
+            .await
+            .unwrap();
+
+        let person_id = Uuid::now_v7();
+        sqlx::query("INSERT INTO org.people (id, name) VALUES ($1, $2)")
+            .bind(person_id)
+            .bind("Bob")
+            .execute(&server.pool)
+            .await
+            .unwrap();
+
+        // Discourse identity
+        sqlx::query(
+        "INSERT INTO org.platform_identities (id, person_id, platform, platform_username) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(person_id)
+    .bind("discourse-ubuntu")
+    .bind("bob_discourse")
+    .execute(&server.pool)
+    .await
+    .unwrap();
+
+        // Seed Discourse contributions with instance-qualified platform
+        let topics = vec![
+            ContributionInput {
+                platform: Platform::Discourse("ubuntu".into()),
+                contribution_type: ContributionType::DiscourseTopic,
+                platform_id: "topic-1".into(),
+                platform_username: "bob_discourse".into(),
+                title: Some("Help with install".into()),
+                url: Some("https://discourse.ubuntu.com/t/1".into()),
+                state: Some(ContributionState::Open),
+                created_at: jan_10,
+                updated_at: None,
+                closed_at: None,
+                metrics: serde_json::json!({}),
+                metadata: serde_json::json!({}),
+                content: None,
+                state_history: None,
+                enrichment_content: None,
+            },
+            ContributionInput {
+                platform: Platform::Discourse("ubuntu".into()),
+                contribution_type: ContributionType::DiscourseTopic,
+                platform_id: "topic-2".into(),
+                platform_username: "bob_discourse".into(),
+                title: Some("Snap packaging question".into()),
+                url: Some("https://discourse.ubuntu.com/t/2".into()),
+                state: Some(ContributionState::Open),
+                created_at: jan_10,
+                updated_at: None,
+                closed_at: None,
+                metrics: serde_json::json!({}),
+                metadata: serde_json::json!({}),
+                content: None,
+                state_history: None,
+                enrichment_content: None,
+            },
+        ];
+
+        for item in &topics {
+            repos
+                .activity
+                .upsert_contribution(Uuid::now_v7(), Some(person_id), item)
+                .await
+                .unwrap();
+        }
+
+        repos
+            .org
+            .assign_person_to_team(person_id, team.id)
+            .await
+            .unwrap();
+
+        // Query with DISCOURSE platform, no instance — should match all Discourse instances
+        let mut req = Request::new(ListTeamContributionsRequest {
+            team_id: team.id.to_string(),
+            period: Some(past_period()),
+            contribution_type: 0,
+            state: 0,
+            page_size: 10,
+            page_index: 0,
+            sort_field: None,
+            sort_desc: None,
+            search: None,
+            platform: ProtoPlatform::Discourse.into(),
+            platform_instance: None,
+        });
+        auth(&mut req, &token);
+
+        let resp = client
+            .list_team_contributions(req)
+            .await
+            .expect("list_team_contributions")
+            .into_inner();
+
+        assert_eq!(resp.total_count, 2, "should find both Discourse topics");
+        assert_eq!(resp.contributions.len(), 2);
+    }
+);
+
+// ---------------------------------------------------------------------------
 // GetTeamMetrics — requires auth
 // ---------------------------------------------------------------------------
 

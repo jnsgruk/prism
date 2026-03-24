@@ -155,10 +155,10 @@ pub fn proto_to_platform_str(platform: i32, instance: Option<&str>) -> Option<St
         Ok(ProtoPlatform::Jira) => Some("jira".to_string()),
         Ok(ProtoPlatform::Launchpad) => Some("launchpad".to_string()),
         Ok(ProtoPlatform::Mattermost) => Some("mattermost".to_string()),
-        Ok(ProtoPlatform::Discourse) => {
-            let inst = instance.unwrap_or("default");
-            Some(format!("discourse-{inst}"))
-        }
+        Ok(ProtoPlatform::Discourse) => match instance {
+            Some(inst) => Some(format!("discourse-{inst}")),
+            None => Some("discourse".to_string()),
+        },
         _ => None,
     }
 }
