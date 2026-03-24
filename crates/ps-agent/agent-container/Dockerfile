@@ -11,7 +11,7 @@ RUN ARCH="$(uname -m)" && \
     | tar xz --strip-components=1 -C /usr/local/bin --wildcards '*/rg'
 
 # tokei (code statistics)
-RUN curl -sL https://github.com/XAMPPRocky/tokei/releases/download/v13.0.0-alpha.5/tokei-x86_64-unknown-linux-gnu.tar.gz \
+RUN curl -sL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-x86_64-unknown-linux-gnu.tar.gz \
     | tar xz -C /usr/local/bin
 
 # uv (Python version + environment manager)
@@ -22,9 +22,9 @@ ENV PATH="/root/.local/bin:$PATH"
 ARG OPENCODE_VERSION=0.1.0
 RUN curl -fsSL https://opencode.ai/install | bash
 
-# ps-agent-mcp binary (built externally, copied in)
-COPY ps-agent-mcp /usr/local/bin/ps-agent-mcp
-RUN chmod +x /usr/local/bin/ps-agent-mcp
+# ps-mcp binary (built externally, copied in)
+COPY ps-mcp /usr/local/bin/ps-mcp
+RUN chmod +x /usr/local/bin/ps-mcp
 
 # OpenCode configuration + agent prompt
 COPY opencode.json /app/opencode.json
@@ -37,5 +37,5 @@ WORKDIR /workspace
 # OpenCode server port
 EXPOSE 4096
 
-# Start OpenCode server
-CMD ["opencode", "--server", "--port", "4096", "--config", "/app/opencode.json"]
+# Default: start OpenCode server (overridden by K8s command when used as dummy Job).
+CMD ["/bin/sh", "-c", "opencode --server --port 4096 --config /app/opencode.json || echo 'OpenCode not installed, container ready for testing'"]

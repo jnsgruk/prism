@@ -13,3 +13,4 @@ resources:
   - gateway.yaml
   - agent-rbac.yaml
   - agent-network-policy.yaml
+  - agent-image-builder.yaml

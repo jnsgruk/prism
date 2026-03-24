@@ -9,7 +9,7 @@
   "mcp": {
     "prism": {
       "type": "local",
-      "command": ["/usr/local/bin/ps-agent-mcp"],
+      "command": ["/usr/local/bin/ps-mcp"],
       "environment": {
         "PRISM_API_URL": "{env:PRISM_API_URL}",
         "SERVICE_TOKEN": "{env:SERVICE_TOKEN}",

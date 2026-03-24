@@ -79,6 +79,20 @@ docker_build(
 )
 
 # ---------------------------------------------------------------------------
+# Agent container — ps-mcp binary + OpenCode + system tools
+# ---------------------------------------------------------------------------
+# The agent container needs the ps-mcp binary built first. We use custom_build
+# to: (1) build ps-mcp via cargo, (2) copy binary into the Docker context,
+# (3) docker build the agent image.
+custom_build(
+    "prism/prism-agent",
+    "cargo build --bin ps-mcp && " +
+    "cp target/debug/ps-mcp crates/ps-agent/agent-container/ps-mcp && " +
+    "docker build -t $EXPECTED_REF crates/ps-agent/agent-container",
+    ["crates/ps-mcp", "crates/ps-agent/agent-container", "crates/ps-proto"],
+)
+
+# ---------------------------------------------------------------------------
 # Frontend — Next.js standalone build
 # ---------------------------------------------------------------------------
 docker_build(
@@ -103,3 +117,5 @@ k8s_resource("postgres", port_forwards=["5432:5432"], labels=["infra"],)
 k8s_resource("restate",  port_forwards=["9070:9070"], labels=["infra"])
 k8s_resource("rustfs",      port_forwards=["9000:9000", "9001:9001"], labels=["infra"])
 k8s_resource("rustfs-init", resource_deps=["rustfs"], labels=["infra"])
+
+k8s_resource("prism-agent-image-builder", labels=["agent"])

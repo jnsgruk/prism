@@ -1,0 +1,19 @@
+# Dummy Job that references the prism-agent image so Tilt builds and pushes it.
+# Agent containers are created on-demand by ContainerManager, not as a standing
+# deployment. This Job runs "echo Done" and exits — its only purpose is to
+# trigger the image build.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prism-agent-image-builder
+  labels:
+    app: prism-agent-builder
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+        - name: agent
+          image: prism/prism-agent
+          command: ["echo", "Done"]
+      restartPolicy: Never
