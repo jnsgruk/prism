@@ -84,12 +84,18 @@ docker_build(
 # The agent container needs the ps-mcp binary built first. We use custom_build
 # to: (1) build ps-mcp via cargo, (2) copy binary into the Docker context,
 # (3) docker build the agent image.
+# Build uses a temp staging dir to avoid writing into the watched path
+# (which would trigger an infinite rebuild loop).
 custom_build(
     "prism/prism-agent",
+    "set -e && " +
     "cargo build --bin ps-mcp && " +
-    "cp target/debug/ps-mcp crates/ps-agent/agent-container/ps-mcp && " +
-    "docker build -t $EXPECTED_REF crates/ps-agent/agent-container",
-    ["crates/ps-mcp", "crates/ps-agent/agent-container", "crates/ps-proto"],
+    "STAGE=$(mktemp -d) && " +
+    "cp -r crates/ps-agent/agent-container/. $STAGE/ && " +
+    "cp target/debug/ps-mcp $STAGE/ps-mcp && " +
+    "docker build -t $EXPECTED_REF $STAGE && " +
+    "rm -rf $STAGE",
+    ["crates/ps-mcp/src", "crates/ps-agent/agent-container"],
 )
 
 # ---------------------------------------------------------------------------
