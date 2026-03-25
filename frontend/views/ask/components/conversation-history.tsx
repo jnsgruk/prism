@@ -176,7 +176,9 @@ export const ConversationHistory = (): React.ReactElement => {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" size="sm" className="w-72 justify-between gap-1.5" />}
+          render={
+            <Button variant="outline" className="h-9 w-80 justify-between gap-2 px-3 text-sm" />
+          }
         >
           <span className="truncate text-sm">
             {conversationId ? currentTitle : "Select conversation"}
