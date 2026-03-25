@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reasoning.conversations (user_id, title, model_name)\n            VALUES ($1, $2, $3)\n            RETURNING id, user_id, title, status, model_name,\n                      container_pod_name, container_status, opencode_session_id,\n                      total_tool_calls, total_prompt_tokens, total_completion_tokens,\n                      total_estimated_cost_usd, created_at, last_activity_at\n            ",
+  "query": "\n            SELECT id, user_id, title, status, model_name,\n                   container_pod_name, container_status, opencode_session_id,\n                   total_tool_calls, total_prompt_tokens, total_completion_tokens,\n                   total_estimated_cost_usd, query_status, created_at, last_activity_at\n            FROM reasoning.conversations\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -65,20 +65,23 @@
       },
       {
         "ordinal": 12,
+        "name": "query_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "last_activity_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -95,8 +98,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "96ed9aee19faa2d6b30183862090ee48f9e10b331bd47fde4b31e99330bf310e"
+  "hash": "632e8311229e1be0c655a5ea774df700bd335846bbad93f7dd83a124f0132b5f"
 }
