@@ -10,6 +10,8 @@
 import {
   AskQuestionRequest,
   AskQuestionResponse,
+  DeleteConversationRequest,
+  DeleteConversationResponse,
   DeleteEnrichmentsByTypeRequest,
   DeleteEnrichmentsByTypeResponse,
   FindSimilarRequest,
@@ -38,6 +40,8 @@ import {
   ListConversationsResponse,
   RefreshModelCatalogueRequest,
   RefreshModelCatalogueResponse,
+  RenameConversationRequest,
+  RenameConversationResponse,
   SaveInsightFromConversationRequest,
   SaveInsightFromConversationResponse,
   SearchByTextRequest,
@@ -275,6 +279,29 @@ export const ReasoningService = {
       name: "SaveInsightFromConversation",
       I: SaveInsightFromConversationRequest,
       O: SaveInsightFromConversationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * DeleteConversation deletes a conversation and its messages, artifacts, and
+     * events. If the conversation has an active container, it is also reaped.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.DeleteConversation
+     */
+    deleteConversation: {
+      name: "DeleteConversation",
+      I: DeleteConversationRequest,
+      O: DeleteConversationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RenameConversation sets a user-provided title on a conversation.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.RenameConversation
+     */
+    renameConversation: {
+      name: "RenameConversation",
+      I: RenameConversationRequest,
+      O: RenameConversationResponse,
       kind: MethodKind.Unary,
     },
     /**

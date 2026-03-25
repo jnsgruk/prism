@@ -37,8 +37,12 @@ fn map_message_part(
 
     match part {
         Part::Tool {
-            tool, state, input, ..
-        } => map_tool_part(tool, state.as_ref(), input),
+            tool,
+            state,
+            input,
+            call_id,
+            ..
+        } => map_tool_part(tool, state.as_ref(), input, call_id),
 
         Part::Text { text, .. } => Some(agent_event(ask_question_response::Event::PartialAnswer(
             AgentPartialAnswer { text: text.clone() },
@@ -57,12 +61,14 @@ fn map_tool_part(
     tool_name: &str,
     state: Option<&ToolState>,
     input: &serde_json::Value,
+    call_id: &str,
 ) -> Option<AskQuestionResponse> {
     match state {
         Some(ToolState::Pending(_) | ToolState::Running(_)) => Some(agent_event(
             ask_question_response::Event::ToolCallStarted(AgentToolCallStarted {
                 tool_name: tool_name.to_string(),
                 arguments_json: input.to_string(),
+                call_id: call_id.to_string(),
             }),
         )),
         Some(ToolState::Completed(completed)) => {
@@ -79,6 +85,7 @@ fn map_tool_part(
                     result_summary: truncate_output(&completed.output, 200),
                     duration_ms,
                     success: true,
+                    call_id: call_id.to_string(),
                 }),
             ))
         }
@@ -88,6 +95,7 @@ fn map_tool_part(
                 result_summary: truncate_output(&error.error, 200),
                 duration_ms: 0,
                 success: false,
+                call_id: call_id.to_string(),
             }),
         )),
         _ => None,
@@ -146,6 +154,10 @@ mod tests {
     }
 
     fn tool_pending_event(tool_name: &str) -> Event {
+        tool_pending_event_with_id(tool_name, "call-1")
+    }
+
+    fn tool_pending_event_with_id(tool_name: &str, call_id: &str) -> Event {
         Event::MessagePartUpdated {
             properties: Box::new(MessagePartEventProps {
                 session_id: Some("s1".to_string()),
@@ -153,7 +165,7 @@ mod tests {
                 index: Some(0),
                 part: Some(Part::Tool {
                     id: None,
-                    call_id: "call-1".to_string(),
+                    call_id: call_id.to_string(),
                     tool: tool_name.to_string(),
                     input: serde_json::json!({"team_name": "Kernel"}),
                     state: Some(ToolState::Pending(ToolStatePending {
@@ -171,6 +183,10 @@ mod tests {
     }
 
     fn tool_completed_event(tool_name: &str, output: &str) -> Event {
+        tool_completed_event_with_id(tool_name, output, "call-1")
+    }
+
+    fn tool_completed_event_with_id(tool_name: &str, output: &str, call_id: &str) -> Event {
         Event::MessagePartUpdated {
             properties: Box::new(MessagePartEventProps {
                 session_id: Some("s1".to_string()),
@@ -178,7 +194,7 @@ mod tests {
                 index: Some(0),
                 part: Some(Part::Tool {
                     id: None,
-                    call_id: "call-1".to_string(),
+                    call_id: call_id.to_string(),
                     tool: tool_name.to_string(),
                     input: serde_json::json!({}),
                     state: Some(ToolState::Completed(ToolStateCompleted {
@@ -254,6 +270,7 @@ mod tests {
             ask_question_response::Event::ToolCallStarted(s) => {
                 assert_eq!(s.tool_name, "mcp_prism_list_teams");
                 assert!(s.arguments_json.contains("Kernel"));
+                assert_eq!(s.call_id, "call-1");
             }
             other => panic!("Expected ToolCallStarted, got {other:?}"),
         }
@@ -269,6 +286,7 @@ mod tests {
                 assert_eq!(c.result_summary, "3 files found");
                 assert_eq!(c.duration_ms, 45);
                 assert!(c.success);
+                assert_eq!(c.call_id, "call-1");
             }
             other => panic!("Expected ToolCallCompleted, got {other:?}"),
         }
@@ -282,6 +300,7 @@ mod tests {
             ask_question_response::Event::ToolCallCompleted(c) => {
                 assert!(!c.success);
                 assert!(c.result_summary.contains("command not found"));
+                assert_eq!(c.call_id, "call-1");
             }
             other => panic!("Expected ToolCallCompleted, got {other:?}"),
         }

@@ -11,19 +11,20 @@ use std::sync::Arc;
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::canonical::prism::v1::{
-    AskQuestionRequest, AskQuestionResponse, DeleteEnrichmentsByTypeRequest,
-    DeleteEnrichmentsByTypeResponse, FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest,
-    GetAiSettingsResponse, GetArtifactDownloadUrlRequest, GetArtifactDownloadUrlResponse,
-    GetConversationRequest, GetConversationResponse, GetCostSummaryRequest, GetCostSummaryResponse,
+    AskQuestionRequest, AskQuestionResponse, DeleteConversationRequest, DeleteConversationResponse,
+    DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, FindSimilarRequest,
+    FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
+    GetArtifactDownloadUrlRequest, GetArtifactDownloadUrlResponse, GetConversationRequest,
+    GetConversationResponse, GetCostSummaryRequest, GetCostSummaryResponse,
     GetEmbeddingStatusRequest, GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
     GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
     GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
     GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
     ListConversationsRequest, ListConversationsResponse, RefreshModelCatalogueRequest,
-    RefreshModelCatalogueResponse, SaveInsightFromConversationRequest,
-    SaveInsightFromConversationResponse, SearchByTextRequest, SearchByTextResponse,
-    SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest, TestProviderResponse,
-    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    RefreshModelCatalogueResponse, RenameConversationRequest, RenameConversationResponse,
+    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
+    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
+    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -193,6 +194,20 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<GetConversationRequest>,
     ) -> Result<Response<GetConversationResponse>, Status> {
         conversations::get_conversation(self, request).await
+    }
+
+    async fn delete_conversation(
+        &self,
+        request: Request<DeleteConversationRequest>,
+    ) -> Result<Response<DeleteConversationResponse>, Status> {
+        conversations::delete_conversation(self, request).await
+    }
+
+    async fn rename_conversation(
+        &self,
+        request: Request<RenameConversationRequest>,
+    ) -> Result<Response<RenameConversationResponse>, Status> {
+        conversations::rename_conversation(self, request).await
     }
 
     async fn save_insight_from_conversation(

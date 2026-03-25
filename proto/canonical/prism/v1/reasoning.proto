@@ -62,6 +62,11 @@ service ReasoningService {
   // SaveInsightFromConversation saves an agent answer as a persistent insight
   // snapshot, linking it back to the originating conversation.
   rpc SaveInsightFromConversation(SaveInsightFromConversationRequest) returns (SaveInsightFromConversationResponse);
+  // DeleteConversation deletes a conversation and its messages, artifacts, and
+  // events. If the conversation has an active container, it is also reaped.
+  rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
+  // RenameConversation sets a user-provided title on a conversation.
+  rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
   // GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
   rpc GetArtifactDownloadUrl(GetArtifactDownloadUrlRequest) returns (GetArtifactDownloadUrlResponse);
 }
@@ -375,6 +380,8 @@ message AgentToolCallStarted {
   string tool_name = 1;
   // Serialised arguments as JSON.
   string arguments_json = 2;
+  // Unique identifier for this tool call (used to correlate start/complete and deduplicate updates).
+  string call_id = 3;
 }
 
 // AgentToolCallCompleted indicates a tool call has finished.
@@ -386,6 +393,8 @@ message AgentToolCallCompleted {
   int32 duration_ms = 3;
   // Whether the tool call succeeded.
   bool success = 4;
+  // Unique identifier for this tool call (correlates with AgentToolCallStarted.call_id).
+  string call_id = 5;
 }
 
 // AgentPartialAnswer streams incremental text of the agent's response.
@@ -528,6 +537,20 @@ message SaveInsightFromConversationResponse {
   // ID of the created insight snapshot.
   string insight_id = 1;
 }
+
+message DeleteConversationRequest {
+  string conversation_id = 1;
+}
+
+message DeleteConversationResponse {}
+
+message RenameConversationRequest {
+  string conversation_id = 1;
+  // New title for the conversation.
+  string title = 2;
+}
+
+message RenameConversationResponse {}
 
 message GetArtifactDownloadUrlRequest {
   string artifact_id = 1;

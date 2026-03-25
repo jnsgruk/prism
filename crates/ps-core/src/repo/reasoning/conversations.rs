@@ -316,6 +316,82 @@ impl ReasoningRepo {
         Ok(result.rows_affected())
     }
 
+    /// Delete a conversation and all related data (messages, artifacts, events).
+    /// Returns the container pod name if one was associated (for reaping).
+    pub async fn delete_conversation(
+        &self,
+        conversation_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<String>, Error> {
+        // Fetch pod name before deletion so caller can reap the container.
+        let pod_name: Option<String> = sqlx::query_scalar!(
+            r#"
+            SELECT container_pod_name
+            FROM reasoning.conversations
+            WHERE id = $1 AND user_id = $2
+            "#,
+            conversation_id,
+            user_id,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten();
+
+        // Cascade: events → artifacts → messages → conversation.
+        sqlx::query!(
+            "DELETE FROM reasoning.conversation_events WHERE conversation_id = $1",
+            conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query!(
+            "DELETE FROM reasoning.conversation_artifacts WHERE conversation_id = $1",
+            conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query!(
+            "DELETE FROM reasoning.conversation_messages WHERE conversation_id = $1",
+            conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query!(
+            "DELETE FROM reasoning.conversations WHERE id = $1 AND user_id = $2",
+            conversation_id,
+            user_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(pod_name)
+    }
+
+    /// Rename a conversation (set its title).
+    pub async fn rename_conversation(
+        &self,
+        conversation_id: Uuid,
+        user_id: Uuid,
+        title: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE reasoning.conversations
+            SET title = $3
+            WHERE id = $1 AND user_id = $2
+            "#,
+            conversation_id,
+            user_id,
+            title,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
     /// Update the query lifecycle status on a conversation.
     pub async fn update_query_status(
         &self,

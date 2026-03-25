@@ -15,6 +15,7 @@ const client = createClient(ReasoningService, transport);
 
 export type ToolCallStep = {
   kind: "tool";
+  callId: string;
   toolName: string;
   argumentsJson: string;
   resultSummary?: string;
@@ -38,15 +39,17 @@ export type TokenUsage = {
 
 export type AgentState =
   | { status: "idle" }
-  | { status: "container_starting"; message: string }
+  | { status: "container_starting"; message: string; question: string }
   | {
       status: "streaming";
+      question: string;
       steps: AgentStep[];
       partialAnswer: string;
       artifacts: ArtifactInfo[];
     }
   | {
       status: "completed";
+      question: string;
       steps: AgentStep[];
       answer: string;
       conversationId: string;
@@ -84,7 +87,7 @@ export const useAskQuestion = (): {
       let partialAnswer = "";
       const artifacts: ArtifactInfo[] = [];
 
-      setState({ status: "container_starting", message: "Initialising agent..." });
+      setState({ status: "container_starting", message: "Initialising agent...", question });
 
       try {
         const stream = client.askQuestion({ question, conversationId }, { signal: abort.signal });
@@ -97,19 +100,27 @@ export const useAskQuestion = (): {
 
           switch (event.case) {
             case "containerStatus": {
-              setState({ status: "container_starting", message: event.value.message });
+              setState({ status: "container_starting", message: event.value.message, question });
               break;
             }
 
             case "toolCallStarted": {
-              steps.push({
-                kind: "tool",
-                toolName: event.value.toolName,
-                argumentsJson: event.value.argumentsJson,
-                status: "running",
-              });
+              const callId = event.value.callId;
+              const existing = callId
+                ? steps.find((s): s is ToolCallStep => s.kind === "tool" && s.callId === callId)
+                : undefined;
+              if (!existing) {
+                steps.push({
+                  kind: "tool",
+                  callId: callId || crypto.randomUUID(),
+                  toolName: event.value.toolName,
+                  argumentsJson: event.value.argumentsJson,
+                  status: "running",
+                });
+              }
               setState({
                 status: "streaming",
+                question,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -118,20 +129,26 @@ export const useAskQuestion = (): {
             }
 
             case "toolCallCompleted": {
-              const last = steps.findLast(
-                (s): s is ToolCallStep =>
-                  s.kind === "tool" &&
-                  s.toolName === event.value.toolName &&
-                  s.status === "running",
-              );
-              if (last) {
-                last.resultSummary = event.value.resultSummary;
-                last.durationMs = event.value.durationMs;
-                last.success = event.value.success;
-                last.status = event.value.success ? "completed" : "error";
+              const completedCallId = event.value.callId;
+              const target = completedCallId
+                ? steps.find(
+                    (s): s is ToolCallStep => s.kind === "tool" && s.callId === completedCallId,
+                  )
+                : steps.findLast(
+                    (s): s is ToolCallStep =>
+                      s.kind === "tool" &&
+                      s.toolName === event.value.toolName &&
+                      s.status === "running",
+                  );
+              if (target) {
+                target.resultSummary = event.value.resultSummary;
+                target.durationMs = event.value.durationMs;
+                target.success = event.value.success;
+                target.status = event.value.success ? "completed" : "error";
               }
               setState({
                 status: "streaming",
+                question,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -143,6 +160,7 @@ export const useAskQuestion = (): {
               partialAnswer = event.value.text;
               setState({
                 status: "streaming",
+                question,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -163,6 +181,7 @@ export const useAskQuestion = (): {
               }
               setState({
                 status: "streaming",
+                question,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -174,6 +193,7 @@ export const useAskQuestion = (): {
               artifacts.push(toArtifactInfo(event.value));
               setState({
                 status: "streaming",
+                question,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -185,6 +205,7 @@ export const useAskQuestion = (): {
               const final = event.value;
               setState({
                 status: "completed",
+                question,
                 steps: [...steps],
                 answer: final.answer,
                 conversationId: final.conversationId,

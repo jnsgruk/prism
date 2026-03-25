@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Sparkles } from "lucide-react";
 
-import type { AgentState } from "@/views/ask/hooks/use-ask-question";
+import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import type {
   ConversationArtifact,
   ConversationMessage,
@@ -10,24 +10,27 @@ import type {
 import { AgentResponse } from "./agent-response";
 import { ArtifactList } from "./artifact-list";
 import { ContainerStatus } from "./container-status";
+import { EvidencePanel } from "./evidence-panel";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
-import { ThinkingSteps } from "./thinking-steps";
-
-import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 
 const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
   try {
     const trace = JSON.parse(json);
     return (trace.steps ?? []).map(
-      (s: {
-        tool_name: string;
-        arguments?: string;
-        result_summary?: string;
-        duration_ms?: number;
-      }) => ({
+      (
+        s: {
+          tool_name: string;
+          call_id?: string;
+          arguments?: string;
+          result_summary?: string;
+          duration_ms?: number;
+        },
+        i: number,
+      ) => ({
         kind: "tool" as const,
+        callId: s.call_id ?? `trace-${i}`,
         toolName: s.tool_name,
         argumentsJson: s.arguments ?? "{}",
         resultSummary: s.result_summary,
@@ -39,6 +42,32 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
   } catch {
     return [];
   }
+};
+
+const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): React.ReactElement => {
+  const steps = parseReasoningTrace(msg.reasoningTraceJson);
+  const toolCallCount = steps.filter((s) => s.kind === "tool").length;
+  const totalTokens = msg.promptTokens + msg.completionTokens;
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+        <Sparkles className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-3 pt-0.5">
+        <AnswerContent content={msg.content} />
+        {(steps.length > 0 || msg.supportingDataJson) && (
+          <EvidencePanel steps={steps} supportingData={msg.supportingDataJson} />
+        )}
+        {totalTokens > 0 && (
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {toolCallCount > 0 && <span>{toolCallCount} tool calls</span>}
+            <span>{totalTokens} tokens</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export const ConversationThread = ({
@@ -63,26 +92,22 @@ export const ConversationThread = ({
           {msg.role === "user" ? (
             <UserMessage content={msg.content} />
           ) : (
-            <div className="flex gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-                <span className="text-xs font-medium">AI</span>
-              </div>
-              <div className="min-w-0 flex-1 space-y-2 pt-0.5">
-                {msg.reasoningTraceJson && (
-                  <ThinkingSteps
-                    steps={parseReasoningTrace(msg.reasoningTraceJson)}
-                    defaultOpen={false}
-                  />
-                )}
-                <AnswerContent content={msg.content} />
-              </div>
-            </div>
+            <HistoricalAssistantMessage msg={msg} />
           )}
         </div>
       ))}
 
       {conversationArtifacts.length > 0 && state.status === "idle" && (
         <ArtifactList artifacts={conversationArtifacts} />
+      )}
+
+      {state.status !== "idle" && state.status !== "error" && (
+        <>
+          {/* Show the user's question optimistically — it may not be in messages yet. */}
+          {!messages.some((m) => m.role === "user" && m.content === state.question) && (
+            <UserMessage content={state.question} />
+          )}
+        </>
       )}
 
       {state.status === "container_starting" && <ContainerStatus message={state.message} />}

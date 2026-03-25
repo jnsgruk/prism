@@ -10,6 +10,7 @@ const sampleSteps: AgentStep[] = [
   { kind: "reasoning", text: "Thinking about team data..." },
   {
     kind: "tool",
+    callId: "call-1",
     toolName: "mcp_prism_list_teams",
     argumentsJson: "{}",
     status: "completed",

@@ -253,6 +253,11 @@ fn map_db_event_to_proto(
                     .and_then(|v| v.as_str())
                     .unwrap_or("{}")
                     .to_string(),
+                call_id: payload
+                    .get("call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
             })
         }
         "tool_call_completed" => {
@@ -276,6 +281,11 @@ fn map_db_event_to_proto(
                     .get("success")
                     .and_then(serde_json::Value::as_bool)
                     .unwrap_or(true),
+                call_id: payload
+                    .get("call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
             })
         }
         "partial_answer" => ask_question_response::Event::PartialAnswer(AgentPartialAnswer {

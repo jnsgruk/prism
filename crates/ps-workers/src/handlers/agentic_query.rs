@@ -219,11 +219,16 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     let cid = conv_id;
                     let answer = query_result.answer_text.clone();
                     let tool_calls = query_result.tool_calls;
+                    let tool_steps = query_result.tool_steps;
                     ctx.run(move || {
                         let repos = repos.clone();
                         let answer = answer.clone();
+                        let tool_steps = tool_steps;
                         async move {
-                            let trace = serde_json::json!({ "tool_call_count": tool_calls });
+                            let trace = serde_json::json!({
+                                "tool_call_count": tool_calls,
+                                "steps": tool_steps,
+                            });
                             repos
                                 .reasoning
                                 .create_message(&CreateMessageParams {
@@ -374,9 +379,21 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
 }
 
 /// Result of the core query execution.
+/// A completed tool call recorded during the query for persistence in the reasoning trace.
+#[derive(Clone, serde::Serialize)]
+pub struct CompletedToolStep {
+    pub tool_name: String,
+    pub call_id: String,
+    pub arguments: String,
+    pub result_summary: String,
+    pub duration_ms: i32,
+    pub success: bool,
+}
+
 pub struct QueryResult {
     pub answer_text: String,
     pub tool_calls: i32,
+    pub tool_steps: Vec<CompletedToolStep>,
 }
 
 /// Core agentic query logic: connect to `OpenCode`, stream events, write to DB.
@@ -435,6 +452,7 @@ pub async fn run_agentic_query_core(
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
     let mut answer_text = String::new();
     let mut tool_calls = 0i32;
+    let mut tool_steps: Vec<CompletedToolStep> = Vec::new();
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -533,12 +551,21 @@ pub async fn run_agentic_query_core(
                             &serde_json::json!({
                                 "tool_name": s.tool_name,
                                 "arguments_json": s.arguments_json,
+                                "call_id": s.call_id,
                             }),
                         )
                         .await;
                 }
                 Event::ToolCallCompleted(c) => {
                     tool_calls += 1;
+                    tool_steps.push(CompletedToolStep {
+                        tool_name: c.tool_name.clone(),
+                        call_id: c.call_id.clone(),
+                        arguments: String::new(),
+                        result_summary: c.result_summary.clone(),
+                        duration_ms: c.duration_ms,
+                        success: c.success,
+                    });
                     let _ = repos
                         .reasoning
                         .append_event(
@@ -549,6 +576,7 @@ pub async fn run_agentic_query_core(
                                 "result_summary": c.result_summary,
                                 "duration_ms": c.duration_ms,
                                 "success": c.success,
+                                "call_id": c.call_id,
                             }),
                         )
                         .await;
@@ -595,6 +623,7 @@ pub async fn run_agentic_query_core(
     Ok(QueryResult {
         answer_text,
         tool_calls,
+        tool_steps,
     })
 }
 

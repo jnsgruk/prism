@@ -20,6 +20,7 @@ describe("ThinkingStep", () => {
   it("renders MCP tool call with Database icon", () => {
     const step: AgentStep = {
       kind: "tool",
+      callId: "call-1",
       toolName: "mcp_prism_list_teams",
       argumentsJson: "{}",
       status: "running",
@@ -33,6 +34,7 @@ describe("ThinkingStep", () => {
   it("renders bash tool call with command from argumentsJson", () => {
     const step: AgentStep = {
       kind: "tool",
+      callId: "call-2",
       toolName: "bash",
       argumentsJson: JSON.stringify({ command: "ls -la /tmp" }),
       status: "running",
@@ -45,6 +47,7 @@ describe("ThinkingStep", () => {
   it("renders completed tool with duration in ms", () => {
     const step: AgentStep = {
       kind: "tool",
+      callId: "call-3",
       toolName: "grep",
       argumentsJson: "{}",
       status: "completed",
@@ -59,6 +62,7 @@ describe("ThinkingStep", () => {
   it("renders completed tool with duration in seconds", () => {
     const step: AgentStep = {
       kind: "tool",
+      callId: "call-4",
       toolName: "grep",
       argumentsJson: "{}",
       status: "completed",
@@ -73,6 +77,7 @@ describe("ThinkingStep", () => {
   it("renders error tool with X icon", () => {
     const step: AgentStep = {
       kind: "tool",
+      callId: "call-5",
       toolName: "bash",
       argumentsJson: JSON.stringify({ command: "exit 1" }),
       status: "error",

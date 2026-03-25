@@ -1,10 +1,12 @@
 use ps_proto::canonical::prism::v1::{
-    GetArtifactDownloadUrlRequest, GetArtifactDownloadUrlResponse, GetConversationRequest,
-    GetConversationResponse, ListConversationsRequest, ListConversationsResponse,
-    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
+    DeleteConversationRequest, DeleteConversationResponse, GetArtifactDownloadUrlRequest,
+    GetArtifactDownloadUrlResponse, GetConversationRequest, GetConversationResponse,
+    ListConversationsRequest, ListConversationsResponse, RenameConversationRequest,
+    RenameConversationResponse, SaveInsightFromConversationRequest,
+    SaveInsightFromConversationResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::error;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use super::super::common::{db_err, require_auth, to_timestamp};
@@ -135,6 +137,81 @@ pub async fn get_conversation(
         messages,
         artifacts,
     }))
+}
+
+pub async fn delete_conversation(
+    svc: &ReasoningServiceImpl,
+    request: Request<DeleteConversationRequest>,
+) -> Result<Response<DeleteConversationResponse>, Status> {
+    let ctx = require_auth(&request)?;
+    let req = request.into_inner();
+
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+    let pod_name = svc
+        .repos
+        .reasoning
+        .delete_conversation(conv_id, ctx.user_id)
+        .await
+        .map_err(db_err)?;
+
+    // Fire-and-forget: tell Restate to cancel any in-flight query for this
+    // conversation so the reaper can clean up the pod promptly.
+    if pod_name.is_some() {
+        let url = format!(
+            "{}/AgenticQueryHandler/{}/cancel/send",
+            svc.restate_url, conv_id,
+        );
+        let client = svc.http_client.clone();
+        tokio::spawn(async move {
+            if let Err(e) = client
+                .post(&url)
+                .header("content-type", "application/json")
+                .body("{}")
+                .send()
+                .await
+            {
+                warn!(error = %e, "failed to send cancel to Restate for deleted conversation");
+            }
+        });
+    }
+
+    info!(conversation_id = %conv_id, "conversation deleted");
+    Ok(Response::new(DeleteConversationResponse {}))
+}
+
+pub async fn rename_conversation(
+    svc: &ReasoningServiceImpl,
+    request: Request<RenameConversationRequest>,
+) -> Result<Response<RenameConversationResponse>, Status> {
+    let ctx = require_auth(&request)?;
+    let req = request.into_inner();
+
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+    if req.title.is_empty() {
+        return Err(Status::invalid_argument("title must not be empty"));
+    }
+    if req.title.len() > 200 {
+        return Err(Status::invalid_argument(
+            "title must be 200 characters or less",
+        ));
+    }
+
+    svc.repos
+        .reasoning
+        .rename_conversation(conv_id, ctx.user_id, &req.title)
+        .await
+        .map_err(db_err)?;
+
+    info!(conversation_id = %conv_id, title = %req.title, "conversation renamed");
+    Ok(Response::new(RenameConversationResponse {}))
 }
 
 pub async fn save_insight_from_conversation(
