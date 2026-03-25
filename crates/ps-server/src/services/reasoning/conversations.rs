@@ -41,6 +41,7 @@ pub async fn list_conversations(
             artifact_count: c.artifact_count.try_into().unwrap_or(0),
             created_at: Some(to_timestamp(c.created_at)),
             last_activity_at: Some(to_timestamp(c.last_activity_at)),
+            query_status: c.query_status,
         })
         .collect();
 
@@ -99,6 +100,7 @@ pub async fn get_conversation(
         artifact_count: artifacts_list.len().try_into().unwrap_or(0),
         created_at: Some(to_timestamp(conv.created_at)),
         last_activity_at: Some(to_timestamp(conv.last_activity_at)),
+        query_status: conv.query_status,
     };
 
     let messages = messages_list

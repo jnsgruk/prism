@@ -22,8 +22,18 @@ pub struct Conversation {
     pub total_prompt_tokens: i32,
     pub total_completion_tokens: i32,
     pub total_estimated_cost_usd: f32,
+    pub query_status: String,
     pub created_at: OffsetDateTime,
     pub last_activity_at: OffsetDateTime,
+}
+
+/// A row from `reasoning.conversation_events`.
+pub struct ConversationEvent {
+    pub id: i64,
+    pub conversation_id: Uuid,
+    pub event_type: String,
+    pub payload: serde_json::Value,
+    pub created_at: OffsetDateTime,
 }
 
 /// A conversation with aggregate counts for list views.
@@ -35,6 +45,7 @@ pub struct ConversationSummary {
     pub container_status: String,
     pub total_tool_calls: i32,
     pub total_estimated_cost_usd: f32,
+    pub query_status: String,
     pub message_count: i64,
     pub artifact_count: i64,
     pub created_at: OffsetDateTime,
@@ -112,7 +123,7 @@ impl ReasoningRepo {
             RETURNING id, user_id, title, status, model_name,
                       container_pod_name, container_status, opencode_session_id,
                       total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                      total_estimated_cost_usd, created_at, last_activity_at
+                      total_estimated_cost_usd, query_status, created_at, last_activity_at
             "#,
             params.user_id,
             params.title,
@@ -131,7 +142,7 @@ impl ReasoningRepo {
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                   total_estimated_cost_usd, created_at, last_activity_at
+                   total_estimated_cost_usd, query_status, created_at, last_activity_at
             FROM reasoning.conversations
             WHERE id = $1
             "#,
@@ -156,7 +167,7 @@ impl ReasoningRepo {
                     r#"
                     SELECT c.id, c.title, c.status, c.model_name, c.container_status,
                            c.total_tool_calls, c.total_estimated_cost_usd,
-                           c.created_at, c.last_activity_at,
+                           c.query_status, c.created_at, c.last_activity_at,
                            (SELECT COUNT(*) FROM reasoning.conversation_messages m
                             WHERE m.conversation_id = c.id) AS "message_count!",
                            (SELECT COUNT(*) FROM reasoning.conversation_artifacts a
@@ -239,6 +250,86 @@ impl ReasoningRepo {
             prompt_tokens,
             completion_tokens,
             estimated_cost_usd,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    // -----------------------------------------------------------------------
+    // Conversation events (ephemeral streaming log)
+    // -----------------------------------------------------------------------
+
+    /// Append an event to the conversation event log.
+    pub async fn append_event(
+        &self,
+        conversation_id: Uuid,
+        event_type: &str,
+        payload: &serde_json::Value,
+    ) -> Result<ConversationEvent, Error> {
+        let row = sqlx::query_as!(
+            ConversationEvent,
+            r#"
+            INSERT INTO reasoning.conversation_events (conversation_id, event_type, payload)
+            VALUES ($1, $2, $3)
+            RETURNING id, conversation_id, event_type, payload, created_at
+            "#,
+            conversation_id,
+            event_type,
+            payload,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row)
+    }
+
+    /// Poll events after a given cursor (BIGINT id), ordered by insertion.
+    pub async fn poll_events(
+        &self,
+        conversation_id: Uuid,
+        after_id: i64,
+    ) -> Result<Vec<ConversationEvent>, Error> {
+        let rows = sqlx::query_as!(
+            ConversationEvent,
+            r#"
+            SELECT id, conversation_id, event_type, payload, created_at
+            FROM reasoning.conversation_events
+            WHERE conversation_id = $1 AND id > $2
+            ORDER BY id
+            "#,
+            conversation_id,
+            after_id,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Delete all events for a conversation (cleanup after completion).
+    pub async fn delete_events(&self, conversation_id: Uuid) -> Result<u64, Error> {
+        let result = sqlx::query!(
+            "DELETE FROM reasoning.conversation_events WHERE conversation_id = $1",
+            conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    /// Update the query lifecycle status on a conversation.
+    pub async fn update_query_status(
+        &self,
+        conversation_id: Uuid,
+        query_status: &str,
+    ) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE reasoning.conversations
+            SET query_status = $2, last_activity_at = now()
+            WHERE id = $1
+            "#,
+            conversation_id,
+            query_status,
         )
         .execute(&self.pool)
         .await?;
@@ -387,7 +478,7 @@ impl ReasoningRepo {
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                   total_estimated_cost_usd, created_at, last_activity_at
+                   total_estimated_cost_usd, query_status, created_at, last_activity_at
             FROM reasoning.conversations
             ORDER BY created_at
             "#,
@@ -411,6 +502,7 @@ impl ReasoningRepo {
                     "total_prompt_tokens": c.total_prompt_tokens,
                     "total_completion_tokens": c.total_completion_tokens,
                     "total_estimated_cost_usd": c.total_estimated_cost_usd,
+                    "query_status": c.query_status,
                     "created_at": c.created_at.to_string(),
                     "last_activity_at": c.last_activity_at.to_string(),
                 })

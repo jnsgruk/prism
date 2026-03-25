@@ -474,6 +474,8 @@ message ConversationSummary {
   int32 artifact_count = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp last_activity_at = 11;
+  // Query lifecycle status: 'idle', 'pending', 'running', 'completed', 'failed', 'cancelled'.
+  string query_status = 12;
 }
 
 message GetConversationRequest {

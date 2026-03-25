@@ -5,8 +5,8 @@ mod enrichments;
 
 pub use api_usage::{ApiUsageRecord, DailySpend, ModelSpend, TaskSpend};
 pub use conversations::{
-    Conversation, ConversationArtifact, ConversationMessage, ConversationSummary,
-    CreateArtifactParams, CreateConversationParams, CreateMessageParams,
+    Conversation, ConversationArtifact, ConversationEvent, ConversationMessage,
+    ConversationSummary, CreateArtifactParams, CreateConversationParams, CreateMessageParams,
 };
 pub use embeddings::{
     EmbeddingQueueEntry, EmbeddingStatus, QueuedEmbedding, QueuedEnrichmentData,
