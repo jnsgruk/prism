@@ -143,6 +143,16 @@ export const ConversationHistory = (): React.ReactElement => {
     [deleteMutation, conversationId, navigate],
   );
 
+  const handleDeleteAll = useCallback(() => {
+    const ids = data?.conversations.map((c) => c.id) ?? [];
+    if (ids.length === 0) return;
+    for (const id of ids) {
+      deleteMutation.mutate(id);
+    }
+    toast.success(`Deleting ${ids.length} conversation${ids.length > 1 ? "s" : ""}`);
+    navigate("/ask");
+  }, [data, deleteMutation, navigate]);
+
   const handleRenameStart = useCallback((id: string, existingTitle: string) => {
     setRenameTarget({ id, title: existingTitle });
     setRenameDialogOpen(true);
@@ -190,7 +200,19 @@ export const ConversationHistory = (): React.ReactElement => {
         </PopoverTrigger>
         <PopoverContent className="w-[36rem] p-0" align="center">
           <Command>
-            <CommandInput placeholder="Search conversations..." />
+            <div className="flex items-center gap-1 pr-1">
+              <CommandInput placeholder="Search conversations..." />
+              {data && data.conversations.length > 0 && (
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete all conversations"
+                  onClick={handleDeleteAll}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              )}
+            </div>
             <CommandList className="max-h-[28rem] p-1">
               <CommandEmpty>No conversations found.</CommandEmpty>
               {data?.conversations.map((conv) => (
