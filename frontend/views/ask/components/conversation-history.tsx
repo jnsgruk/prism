@@ -200,7 +200,7 @@ export const ConversationHistory = (): React.ReactElement => {
         </PopoverTrigger>
         <PopoverContent className="w-[36rem] p-0" align="center">
           <Command>
-            <div className="flex items-center gap-1 pr-1">
+            <div className="flex items-center gap-1 pr-1 *:first:min-w-0 *:first:flex-1">
               <CommandInput placeholder="Search conversations..." />
               {data && data.conversations.length > 0 && (
                 <button
