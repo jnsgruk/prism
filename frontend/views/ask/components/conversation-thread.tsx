@@ -117,6 +117,7 @@ export const ConversationThread = ({
           state={state}
           steps={state.steps}
           answer={state.status === "streaming" ? state.partialAnswer : state.answer}
+          question={state.question}
           artifacts={state.artifacts}
           supportingData={state.status === "completed" ? state.supportingData : undefined}
         />

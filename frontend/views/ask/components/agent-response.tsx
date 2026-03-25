@@ -33,16 +33,21 @@ export const AgentResponse = ({
   state,
   steps,
   answer,
+  question,
   artifacts,
   supportingData,
 }: {
   state: AgentState;
   steps: AgentStep[];
   answer: string;
+  question?: string;
   artifacts: ArtifactInfo[];
   supportingData?: string;
 }): React.ReactElement => {
   const toolCallCount = steps.filter((s) => s.kind === "tool").length;
+  // Filter out echoed question text that OpenCode sends as the first Part::Text
+  const isEchoedQuestion = question && answer.trim() === question.trim();
+  const displayAnswer = isEchoedQuestion ? "" : answer;
 
   return (
     <div className="flex gap-3">
@@ -52,13 +57,13 @@ export const AgentResponse = ({
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         {steps.length > 0 && state.status === "streaming" && <ThinkingSteps steps={steps} />}
 
-        {state.status === "streaming" && !answer && steps.length === 0 && (
+        {state.status === "streaming" && !displayAnswer && steps.length === 0 && (
           <Badge variant="secondary" className="animate-pulse">
             Thinking...
           </Badge>
         )}
 
-        {answer && <AnswerContent content={answer} />}
+        {displayAnswer && <AnswerContent content={displayAnswer} />}
 
         {artifacts.length > 0 && <ArtifactList artifacts={artifacts} />}
 
