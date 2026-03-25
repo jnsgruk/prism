@@ -2,10 +2,11 @@ use crate::define_api_test;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest,
-    GetAiSettingsRequest, GetConversationRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
-    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
-    ListAiModelsRequest, ListConversationsRequest, RefreshModelCatalogueRequest,
-    SetProviderSecretRequest, UpdateAiSettingsRequest,
+    GetAiSettingsRequest, GetArtifactDownloadUrlRequest, GetConversationRequest,
+    GetCostSummaryRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
+    GetEnrichmentsRequest, GetStorageHealthRequest, ListAiModelsRequest, ListConversationsRequest,
+    RefreshModelCatalogueRequest, SaveInsightFromConversationRequest, SetProviderSecretRequest,
+    UpdateAiSettingsRequest,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -537,3 +538,67 @@ define_api_test!(conversation_requires_auth, |server| async move {
         .expect_err("should require auth");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
 });
+
+// ---------------------------------------------------------------------------
+// SaveInsightFromConversation — stub returns Unimplemented
+// ---------------------------------------------------------------------------
+
+define_api_test!(
+    save_insight_from_conversation_unimplemented,
+    |server| async move {
+        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+        let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+        let mut req = Request::new(SaveInsightFromConversationRequest {
+            conversation_id: uuid::Uuid::now_v7().to_string(),
+            message_id: uuid::Uuid::now_v7().to_string(),
+            title: "Test insight".into(),
+        });
+        auth(&mut req, &token);
+
+        let err = client
+            .save_insight_from_conversation(req)
+            .await
+            .expect_err("should be unimplemented");
+        assert_eq!(err.code(), tonic::Code::Unimplemented);
+    }
+);
+
+// ---------------------------------------------------------------------------
+// GetArtifactDownloadUrl — not found
+// ---------------------------------------------------------------------------
+
+define_api_test!(get_artifact_download_url_not_found, |server| async move {
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let mut req = Request::new(GetArtifactDownloadUrlRequest {
+        artifact_id: uuid::Uuid::now_v7().to_string(),
+    });
+    auth(&mut req, &token);
+
+    let err = client
+        .get_artifact_download_url(req)
+        .await
+        .expect_err("should be not found");
+    assert_eq!(err.code(), tonic::Code::NotFound);
+});
+
+// ---------------------------------------------------------------------------
+// GetArtifactDownloadUrl — requires auth
+// ---------------------------------------------------------------------------
+
+define_api_test!(
+    get_artifact_download_url_requires_auth,
+    |server| async move {
+        let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+        let err = client
+            .get_artifact_download_url(GetArtifactDownloadUrlRequest {
+                artifact_id: uuid::Uuid::now_v7().to_string(),
+            })
+            .await
+            .expect_err("should require auth");
+        assert_eq!(err.code(), tonic::Code::Unauthenticated);
+    }
+);

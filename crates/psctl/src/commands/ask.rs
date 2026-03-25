@@ -188,3 +188,41 @@ fn truncate_args(s: &str, max: usize) -> String {
     let inner = inner.trim();
     truncate(inner, max)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::items_after_statements)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_short_unchanged() {
+        assert_eq!(truncate("hello world", 20), "hello world");
+    }
+
+    #[test]
+    fn truncate_long_adds_ellipsis() {
+        let input = "abcdefghij";
+        let result = truncate(input, 5);
+        // Should keep 4 chars + ellipsis (max - 1 chars + \u{2026})
+        assert_eq!(result, "abcd\u{2026}");
+    }
+
+    #[test]
+    fn truncate_newlines_replaced() {
+        assert_eq!(truncate("a\nb\nc", 20), "a b c");
+    }
+
+    #[test]
+    fn truncate_args_strips_braces() {
+        let input = r#"{"team": "Kernel"}"#;
+        let result = truncate_args(input, 80);
+        assert_eq!(result, r#""team": "Kernel""#);
+    }
+
+    #[test]
+    fn truncate_args_handles_no_braces() {
+        let input = "plain text";
+        let result = truncate_args(input, 80);
+        assert_eq!(result, "plain text");
+    }
+}

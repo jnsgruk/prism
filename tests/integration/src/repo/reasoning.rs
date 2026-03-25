@@ -768,3 +768,112 @@ define_repo_test!(conversation_artifacts_crud, |repos, pool| async move {
 
     drop(a2);
 });
+
+// ---------------------------------------------------------------------------
+// Conversation export (backup)
+// ---------------------------------------------------------------------------
+
+define_repo_test!(conversation_export_roundtrip, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+
+    // Create a conversation with messages and an artifact.
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("Export test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    let msg = repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "user",
+            content: "What is the team velocity?",
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 25,
+            completion_tokens: 0,
+        })
+        .await
+        .unwrap();
+
+    let assistant_msg = repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id: conv.id,
+            role: "assistant",
+            content: "The team velocity is 42 points per sprint.",
+            reasoning_trace: Some(&serde_json::json!({"steps": ["query_metrics"]})),
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 60,
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .create_artifact(&CreateArtifactParams {
+            conversation_id: conv.id,
+            message_id: Some(assistant_msg.id),
+            artifact_key: &format!("conversations/{}/velocity.csv", conv.id),
+            display_name: "velocity.csv",
+            content_type: Some("text/csv"),
+            size_bytes: 512,
+        })
+        .await
+        .unwrap();
+
+    // Verify count.
+    let count = repos.reasoning.count_conversations().await.unwrap();
+    assert_eq!(count, 1);
+
+    // Export conversations.
+    let exported_convs = repos.reasoning.export_conversations().await.unwrap();
+    assert_eq!(exported_convs.len(), 1);
+    assert_eq!(exported_convs[0]["id"], conv.id.to_string());
+    assert_eq!(exported_convs[0]["title"], "Export test");
+    assert_eq!(exported_convs[0]["status"], "active");
+    assert_eq!(exported_convs[0]["model_name"], "test-model");
+    assert_eq!(exported_convs[0]["user_id"], user_id.to_string());
+
+    // Export messages.
+    let exported_msgs = repos
+        .reasoning
+        .export_conversation_messages()
+        .await
+        .unwrap();
+    assert_eq!(exported_msgs.len(), 2);
+    assert_eq!(exported_msgs[0]["role"], "user");
+    assert_eq!(exported_msgs[0]["content"], "What is the team velocity?");
+    assert_eq!(exported_msgs[0]["conversation_id"], conv.id.to_string());
+    assert_eq!(exported_msgs[1]["role"], "assistant");
+    assert!(exported_msgs[1]["reasoning_trace"].is_object());
+
+    // Export artifacts.
+    let exported_artifacts = repos
+        .reasoning
+        .export_conversation_artifacts()
+        .await
+        .unwrap();
+    assert_eq!(exported_artifacts.len(), 1);
+    assert_eq!(exported_artifacts[0]["display_name"], "velocity.csv");
+    assert_eq!(exported_artifacts[0]["content_type"], "text/csv");
+    assert_eq!(exported_artifacts[0]["size_bytes"], 512);
+    assert_eq!(
+        exported_artifacts[0]["conversation_id"],
+        conv.id.to_string()
+    );
+    assert!(
+        exported_artifacts[0]["artifact_key"]
+            .as_str()
+            .unwrap()
+            .contains("velocity.csv")
+    );
+
+    drop(msg);
+});
