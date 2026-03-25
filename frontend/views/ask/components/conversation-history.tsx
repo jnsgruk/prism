@@ -176,7 +176,7 @@ export const ConversationHistory = (): React.ReactElement => {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" size="sm" className="w-64 justify-between gap-1.5" />}
+          render={<Button variant="outline" size="sm" className="w-72 justify-between gap-1.5" />}
         >
           <span className="truncate text-sm">
             {conversationId ? currentTitle : "Select conversation"}
@@ -186,17 +186,17 @@ export const ConversationHistory = (): React.ReactElement => {
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-[28rem] p-0" align="center">
+        <PopoverContent className="w-[36rem] p-0" align="center">
           <Command>
             <CommandInput placeholder="Search conversations..." />
-            <CommandList className="max-h-80">
+            <CommandList className="max-h-[28rem] p-1">
               <CommandEmpty>No conversations found.</CommandEmpty>
               {data?.conversations.map((conv) => (
                 <CommandItem
                   key={conv.id}
                   value={`${conv.title ?? "Untitled conversation"} ${conv.id}`}
                   onSelect={() => handleSelect(conv.id)}
-                  className="group/command-item"
+                  className="group/command-item py-2.5"
                 >
                   <ConversationItemContent
                     conv={conv}
