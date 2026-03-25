@@ -1,12 +1,35 @@
-import { History, MessageSquare, Paperclip } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ChevronDown, MessageSquare, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ConversationSummary } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
-import { useListConversations } from "@/views/ask/hooks/use-conversations";
+import {
+  useDeleteConversation,
+  useListConversations,
+  useRenameConversation,
+} from "@/views/ask/hooks/use-conversations";
 
 const formatRelative = (ts?: { seconds: bigint }): string => {
   if (!ts) return "";
@@ -24,15 +47,22 @@ const statusDot = (containerStatus: string): string => {
   return "bg-muted-foreground";
 };
 
-const ConversationItem = ({ conv }: { conv: ConversationSummary }): React.ReactElement => (
-  <Link
-    to={`/ask/${conv.id}`}
-    className="flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted"
-  >
+const ConversationItemContent = ({
+  conv,
+  onDelete,
+  onRename,
+}: {
+  conv: ConversationSummary;
+  onDelete: (id: string) => void;
+  onRename: (id: string, existingTitle: string) => void;
+}): React.ReactElement => (
+  <div className="flex w-full items-center gap-2">
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-1.5">
-        <span className={`inline-block size-2 rounded-full ${statusDot(conv.containerStatus)}`} />
-        <p className="truncate text-sm font-medium">{conv.title || "Untitled conversation"}</p>
+        <span
+          className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`}
+        />
+        <span className="truncate text-sm">{conv.title || "Untitled conversation"}</span>
       </div>
       <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-0.5">
@@ -48,36 +78,164 @@ const ConversationItem = ({ conv }: { conv: ConversationSummary }): React.ReactE
         <span>{formatRelative(conv.lastActivityAt)}</span>
       </div>
     </div>
-  </Link>
+    <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-data-selected/command-item:opacity-100">
+      <button
+        type="button"
+        className="rounded p-1 hover:bg-accent"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename(conv.id, conv.title ?? "");
+        }}
+      >
+        <Pencil className="size-3.5 text-muted-foreground" />
+      </button>
+      <button
+        type="button"
+        className="rounded p-1 hover:bg-destructive/10"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(conv.id);
+        }}
+      >
+        <Trash2 className="size-3.5 text-destructive" />
+      </button>
+    </div>
+  </div>
 );
 
 export const ConversationHistory = (): React.ReactElement => {
-  const { data } = useListConversations();
+  const { conversationId } = useParams<{ conversationId?: string }>();
+  const navigate = useNavigate();
+  const { data } = useListConversations(1, 50);
+  const deleteMutation = useDeleteConversation();
+  const renameMutation = useRenameConversation();
+
+  const [open, setOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const currentTitle =
+    data?.conversations.find((c) => c.id === conversationId)?.title ?? "New conversation";
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      setOpen(false);
+      navigate(`/ask/${id}`);
+    },
+    [navigate],
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          toast.success("Conversation deleted");
+          if (id === conversationId) {
+            navigate("/ask");
+          }
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to delete conversation");
+        },
+      });
+    },
+    [deleteMutation, conversationId, navigate],
+  );
+
+  const handleRenameStart = useCallback((id: string, existingTitle: string) => {
+    setRenameTarget({ id, title: existingTitle });
+    setRenameDialogOpen(true);
+  }, []);
+
+  const handleRenameSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!renameTarget) return;
+      const title = renameInputRef.current?.value.trim();
+      if (!title) return;
+
+      renameMutation.mutate(
+        { conversationId: renameTarget.id, title },
+        {
+          onSuccess: () => {
+            toast.success("Conversation renamed");
+            setRenameDialogOpen(false);
+            setRenameTarget(null);
+          },
+          onError: (err) => {
+            toast.error(err instanceof Error ? err.message : "Failed to rename conversation");
+          },
+        },
+      );
+    },
+    [renameTarget, renameMutation],
+  );
 
   return (
-    <Sheet>
-      <SheetTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
-        <History className="size-4" />
-        History
-        {data && data.totalCount > 0 && (
-          <Badge variant="secondary" className="ml-0.5">
-            {data.totalCount}
-          </Badge>
-        )}
-      </SheetTrigger>
-      <SheetContent className="w-80 sm:w-96">
-        <SheetHeader>
-          <SheetTitle>Conversations</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 max-h-[calc(100vh-8rem)] space-y-1 overflow-y-auto">
-          {data?.conversations.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">No conversations yet.</p>
-          )}
-          {data?.conversations.map((conv) => (
-            <ConversationItem key={conv.id} conv={conv} />
-          ))}
-        </div>
-      </SheetContent>
-    </Sheet>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={<Button variant="outline" size="sm" className="w-64 justify-between gap-1.5" />}
+        >
+          <span className="truncate text-sm">
+            {conversationId ? currentTitle : "Select conversation"}
+          </span>
+          <div className="flex items-center gap-1">
+            {data && data.totalCount > 0 && <Badge variant="secondary">{data.totalCount}</Badge>}
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-[28rem] p-0" align="center">
+          <Command>
+            <CommandInput placeholder="Search conversations..." />
+            <CommandList className="max-h-80">
+              <CommandEmpty>No conversations found.</CommandEmpty>
+              {data?.conversations.map((conv) => (
+                <CommandItem
+                  key={conv.id}
+                  value={`${conv.title ?? "Untitled conversation"} ${conv.id}`}
+                  onSelect={() => handleSelect(conv.id)}
+                  className="group/command-item"
+                >
+                  <ConversationItemContent
+                    conv={conv}
+                    onDelete={handleDelete}
+                    onRename={handleRenameStart}
+                  />
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleRenameSubmit}>
+            <DialogHeader>
+              <DialogTitle>Rename conversation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+              <Label htmlFor="conv-title">Title</Label>
+              <Input
+                id="conv-title"
+                ref={renameInputRef}
+                defaultValue={renameTarget?.title ?? ""}
+                maxLength={200}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+              <Button type="submit" disabled={renameMutation.isPending}>
+                {renameMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

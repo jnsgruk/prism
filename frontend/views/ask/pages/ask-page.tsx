@@ -49,29 +49,24 @@ const AskPage = (): React.ReactElement => {
   const isActive = state.status === "streaming" || state.status === "container_starting";
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
-  const headerActions = (
-    <div className="flex items-center gap-2">
-      <ConversationHistory />
-      {conversationId && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => {
-            reset();
-            navigate("/ask");
-          }}
-        >
-          <Plus className="size-4" />
-          New
-        </Button>
-      )}
-    </div>
-  );
+  const headerActions = conversationId ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      onClick={() => {
+        reset();
+        navigate("/ask");
+      }}
+    >
+      <Plus className="size-4" />
+      New
+    </Button>
+  ) : null;
 
   return (
     <>
-      <PageHeader title="Ask" description="Query your engineering data" actions={headerActions} />
+      <PageHeader title="Ask" center={<ConversationHistory />} actions={headerActions} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isLoading && conversationId ? (
           <div className="flex flex-1 items-center justify-center">

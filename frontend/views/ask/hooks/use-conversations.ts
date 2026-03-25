@@ -50,6 +50,35 @@ export const useGetArtifactDownloadUrl = (): UseMutationResult<
     mutationFn: (artifactId: string) => client.getArtifactDownloadUrl({ artifactId }),
   });
 
+export const useDeleteConversation = (): UseMutationResult<object, Error, string> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) => client.deleteConversation({ conversationId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+    },
+  });
+};
+
+export const useRenameConversation = (): UseMutationResult<
+  object,
+  Error,
+  { conversationId: string; title: string }
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (req: { conversationId: string; title: string }) => client.renameConversation(req),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: conversationKeys.detail(variables.conversationId),
+      });
+    },
+  });
+};
+
 export const useSaveInsightFromConversation = (): UseMutationResult<
   SaveInsightFromConversationResponse,
   Error,
