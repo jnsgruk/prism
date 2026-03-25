@@ -59,13 +59,12 @@ fn map_tool_part(
     input: &serde_json::Value,
 ) -> Option<AskQuestionResponse> {
     match state {
-        Some(ToolState::Pending(_)) => Some(agent_event(
+        Some(ToolState::Pending(_) | ToolState::Running(_)) => Some(agent_event(
             ask_question_response::Event::ToolCallStarted(AgentToolCallStarted {
                 tool_name: tool_name.to_string(),
                 arguments_json: input.to_string(),
             }),
         )),
-        Some(ToolState::Running(_)) => None, // Already sent Started on Pending.
         Some(ToolState::Completed(completed)) => {
             let duration_ms = completed
                 .time

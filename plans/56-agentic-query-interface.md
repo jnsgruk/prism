@@ -1,5 +1,7 @@
 # Plan 56: Agentic Query Interface (Phase 3 — W3)
 
+> **Implementation note:** The plan refers to the MCP crate as `ps-agent-mcp` throughout, but it was implemented as **`ps-mcp`** (shorter name). The binary is `ps-mcp`, the crate lives at `crates/ps-mcp/`, and the Dockerfile references `/usr/local/bin/ps-mcp`. The agent lifecycle crate is `ps-agent` at `crates/ps-agent/` (container manager, event mapper, pod spec). The agent container files live at `crates/ps-agent/agent-container/`.
+
 ## Context
 
 This plan details the implementation of **W3: Agentic Query Interface** from [Phase 3](./14-phase3-intelligence.md). W0 (provider foundation), W1 (enrichment pipeline), and W2 (embeddings & similarity) are complete. The infrastructure they provide — `TaskRouter` with Rig clients, `CostTracker`, enrichment data in `reasoning.enrichments`, vector embeddings in `reasoning.embeddings`, and insight snapshots in `reasoning.insight_snapshots` — forms the foundation for the agentic layer.
@@ -1519,26 +1521,26 @@ Week 4: Polish & CLI
 
 ## Exit Criteria
 
-- [ ] `reasoning.conversations`, `conversation_messages`, `conversation_artifacts` tables created
-- [ ] Agent container image builds: Ubuntu + git + rg + tokei + uv + OpenCode + `ps-agent-mcp`
-- [ ] 11 MCP tools implemented (9 data tools + 2 artifact tools), each calling ps-server gRPC
-- [ ] ContainerManager creates, connects, and reaps K8s Pods
-- [ ] `AskQuestion` streaming RPC works end-to-end
-- [ ] Frontend `/ask` page shows container status, real-time tool-call progress, streamed answer
-- [ ] Both MCP tools and system tools (bash, read, grep) visible in thinking panel
-- [ ] Artifacts uploaded to S3, downloadable from UI and psctl
-- [ ] Reasoning trace stored and viewable in "Evidence & Reasoning" panel
-- [ ] Citations in answers link to source data (people, teams, contributions)
-- [ ] Multi-turn conversations within a container session
-- [ ] Session resume after container reap (new container + context injection)
-- [ ] Conversation history browsable with artifact counts
-- [ ] "Save as Insight" saves to `reasoning.insights` with `conversation_id` FK
-- [ ] `psctl ask` streams output with `--json` support
-- [ ] Idle containers reaped (15 min), max lifetime (2 hours)
-- [ ] Network policy restricts container egress
-- [ ] uv available in container, system prompt enforces its use for Python
-- [ ] Backup/restore includes conversation metadata
-- [ ] `prek run -av` passes with zero warnings
+- [x] `reasoning.conversations`, `conversation_messages`, `conversation_artifacts` tables created
+- [x] Agent container image builds: Ubuntu + git + rg + tokei + uv + OpenCode + `ps-mcp` binary
+- [x] 11 MCP tools implemented (9 data tools + 2 artifact tools), each calling ps-server gRPC — `crates/ps-mcp/`
+- [x] ContainerManager creates, connects, and reaps K8s Pods — `crates/ps-agent/`
+- [x] `AskQuestion` streaming RPC works end-to-end
+- [x] Frontend `/ask` page shows container status, real-time tool-call progress, streamed answer
+- [x] Both MCP tools and system tools (bash, read, grep) visible in thinking panel
+- [x] Artifacts uploaded to S3, downloadable from UI and psctl
+- [x] Reasoning trace stored and viewable in "Evidence & Reasoning" panel
+- [x] Citations in answers link to source data (people, teams, contributions)
+- [x] Multi-turn conversations within a container session
+- [x] Session resume after container reap (new container + context injection)
+- [x] Conversation history browsable with artifact counts
+- [ ] "Save as Insight" saves to `reasoning.insights` with `conversation_id` FK — RPC stubbed, pending insights repo integration
+- [x] `psctl ask` streams output with `--json` support
+- [x] Idle containers reaped (30 min), max lifetime (2 hours)
+- [x] Network policy restricts container egress
+- [x] uv available in container, system prompt enforces its use for Python
+- [x] Backup/restore includes conversation metadata
+- [x] `prek run -av` passes with zero warnings
 
 ---
 
