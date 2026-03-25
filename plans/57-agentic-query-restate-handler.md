@@ -136,7 +136,9 @@ Add to `ps-core/src/repo/reasoning/conversations.rs`:
 **Files:**
 | File | Action |
 |------|--------|
-| `crates/ps-core/src/repo/reasoning/conversations.rs` | **Modify** — add event CRUD methods |
+| `crates/ps-core/src/repo/reasoning/conversations.rs` | **Modify** — add event CRUD methods + `ConversationEvent` struct |
+
+**Testing:** 6 repo tests — see [Step 2 testing detail](#step-2-conversation-events-repo-define_repo_test) in the Testing Strategy section.
 
 ### Step 3: AgenticQueryHandler (Restate Object)
 
@@ -181,6 +183,8 @@ The `run_query` method follows this flow:
 | `crates/ps-workers/src/handlers/mod.rs` | **Modify** — add `pub mod agentic_query` |
 | `crates/ps-workers/src/main.rs` | **Modify** — instantiate + bind handler |
 
+**Testing:** 5 handler tests with wiremock OpenCode — see [Step 3 testing detail](#step-3-agenticqueryhandler-define_source_test--wiremock) in the Testing Strategy section. The handler's core orchestration logic (SSE parsing, event writing, artifact interception) is extracted into a testable function separate from the `ctx.run()` wrappers.
+
 ### Step 4: AgentPodReaperHandler (Restate Service)
 
 Replace the `tokio::spawn` interval timer in ps-server's main.rs.
@@ -205,6 +209,8 @@ Flow:
 | `crates/ps-workers/src/handlers/mod.rs` | **Modify** — add `pub mod agent_reaper` |
 | `crates/ps-workers/src/main.rs` | **Modify** — instantiate + bind, seed first reap invocation |
 
+**Testing:** 1 unit test — see [Step 4 testing detail](#step-4-agentpodreaperhandler-unit-test) in the Testing Strategy section.
+
 ### Step 5: Rewrite ps-server AskQuestion to poll-and-stream
 
 Replace the current `ask_question()` in `ps-server/services/reasoning/agent_query.rs`:
@@ -226,6 +232,8 @@ This reduces `agent_query.rs` from ~460 lines to ~120 lines (thin adapter).
 |------|--------|
 | `crates/ps-server/src/services/reasoning/agent_query.rs` | **Rewrite** — poll-based streaming |
 | `crates/ps-server/src/main.rs` | **Modify** — remove pod reaper spawn, remove ContainerManager init (moves to ps-workers) |
+
+**Testing:** 6 API tests — see [Step 5 testing detail](#step-5-ps-server-poll-and-stream-define_api_test) in the Testing Strategy section. Tests seed `conversation_events` directly in DB, bypassing Restate, and verify the poll-stream adapter emits correct proto events.
 
 ### Step 6: Move ContainerManager + dependencies to ps-workers
 
@@ -259,14 +267,290 @@ The streaming protocol doesn't change (still gRPC server-stream with `AskQuestio
 
 ### Step 8: Tests
 
-| Level | Test |
-|-------|------|
-| Repo | `conversation_events` append, poll with cursor, delete |
-| Repo | `query_status` transitions |
-| API | `AskQuestion` with mock Restate (verify trigger + poll loop) |
-| Handler | `AgenticQueryHandler.run_query` with mock ContainerManager + OpenCode |
-| Handler | `AgentPodReaperHandler.reap` with mock ContainerManager |
-| E2E | Full flow: question → handler → pod → OpenCode → events → stream |
+Testing is distributed across steps — each step includes its own tests (see per-step testing sections below). This section provides the overall strategy and test matrix.
+
+---
+
+## Testing Strategy
+
+### Approach
+
+Tests follow the same infrastructure as the rest of the codebase:
+
+- **Repo tests** use `define_repo_test!` — real PostgreSQL (testcontainers), no gRPC server
+- **API tests** use `define_api_test!` — full gRPC server + real PostgreSQL
+- **Handler tests** use `define_source_test!` — real PostgreSQL + wiremock for HTTP mocking (OpenCode API)
+- **Frontend tests** use vitest + happy-dom with mocked Connect transport
+
+The Restate SDK context (`ctx`) is **not directly testable** in integration tests — Restate handlers are tested by exercising the logic they call, not the journaling framework. This matches the existing pattern: ingestion handler tests verify source adapters (fetch/store/watermark), not the `ctx.run()` wrappers.
+
+### Test Matrix
+
+| Step | Level | Test | Macro / Tool | Count |
+|------|-------|------|-------------|-------|
+| 2 | Repo | `conversation_events_append_and_poll` — append 5 events, poll with cursor=0 returns all, poll with cursor=3 returns last 2 | `define_repo_test!` | 1 |
+| 2 | Repo | `conversation_events_poll_empty` — poll on conversation with no events returns empty vec | `define_repo_test!` | 1 |
+| 2 | Repo | `conversation_events_delete` — append events, delete, poll returns empty | `define_repo_test!` | 1 |
+| 2 | Repo | `conversation_events_cursor_ordering` — events returned in insertion order (by BIGINT id, not timestamp) | `define_repo_test!` | 1 |
+| 2 | Repo | `query_status_transitions` — create conversation (idle), update to pending, running, completed; verify each state persists | `define_repo_test!` | 1 |
+| 2 | Repo | `query_status_cancel` — running → cancelled transition works | `define_repo_test!` | 1 |
+| 3 | Handler | `agentic_query_writes_events` — call handler orchestration logic (extracted as testable fn) with wiremock OpenCode, verify events written to DB | `define_source_test!` | 1 |
+| 3 | Handler | `agentic_query_stores_message_on_completion` — verify assistant message created in DB after SSE stream completes | `define_source_test!` | 1 |
+| 3 | Handler | `agentic_query_handles_opencode_error` — OpenCode returns error event, verify query_status set to 'failed' and error event written | `define_source_test!` | 1 |
+| 3 | Handler | `agentic_query_intercepts_artifact_upload` — tool_call_completed for `prism_upload_artifact` triggers artifact DB record | `define_source_test!` | 1 |
+| 3 | Handler | `agentic_query_updates_totals` — verify conversation totals (tool_calls, tokens, cost) updated after completion | `define_source_test!` | 1 |
+| 4 | Unit | `reaper_deletes_expired_pods` — inline `#[cfg(test)]` with mock ContainerManager trait, verify reap call + session cleanup | unit test | 1 |
+| 5 | API | `ask_question_triggers_and_polls` — create conversation + events directly in DB, call AskQuestion RPC, verify events streamed back in order | `define_api_test!` | 1 |
+| 5 | API | `ask_question_streams_final_answer` — seed DB with events including final_answer, verify stream closes after final_answer received | `define_api_test!` | 1 |
+| 5 | API | `ask_question_streams_error` — seed DB with error event, verify error proto emitted and stream closes | `define_api_test!` | 1 |
+| 5 | API | `ask_question_validates_empty_question` — empty question returns InvalidArgument | `define_api_test!` | 1 |
+| 5 | API | `ask_question_validates_long_question` — >4000 char question returns InvalidArgument | `define_api_test!` | 1 |
+| 5 | API | `ask_question_requires_auth` — unauthenticated request returns Unauthenticated | `define_api_test!` | 1 |
+| 5 | Frontend | `useAskQuestion` state transitions remain unchanged — existing tests continue to pass | vitest | 0 (existing) |
+| 5 | Frontend | `psctl ask` output formatting — existing tests continue to pass | cargo test | 0 (existing) |
+| **Total** | | | | **18 new** |
+
+### Per-Step Testing Detail
+
+#### Step 2: Conversation Events Repo (`define_repo_test!`)
+
+Six repo-level tests validating the new `conversation_events` table and `query_status` column.
+
+**Pattern:**
+```rust
+define_repo_test!(conversation_events_append_and_poll, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+    let conv = repos.reasoning.create_conversation(&CreateConversationParams {
+        user_id, title: Some("test"), model_name: "test",
+    }).await.unwrap();
+
+    // Append events
+    repos.reasoning.append_event(conv.id, "container_status",
+        &serde_json::json!({"status": "creating", "message": "Starting..."})).await.unwrap();
+    repos.reasoning.append_event(conv.id, "tool_call_started",
+        &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"})).await.unwrap();
+
+    // Poll from start
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].event_type, "container_status");
+    assert_eq!(events[1].event_type, "tool_call_started");
+
+    // Poll from cursor (after first event)
+    let events = repos.reasoning.poll_events(conv.id, events[0].id).await.unwrap();
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "tool_call_started");
+});
+```
+
+**Files:**
+| File | Action |
+|------|--------|
+| `tests/integration/src/repo/reasoning.rs` | **Modify** — add 6 tests after existing conversation tests |
+
+#### Step 3: AgenticQueryHandler (`define_source_test!` + wiremock)
+
+Five handler-level tests that exercise the orchestration logic. The handler's core logic is extracted into a testable function that takes dependencies as parameters (repos, HTTP client, config) — the Restate `ctx.run()` wrappers are thin and not tested directly, matching the existing ingestion pattern.
+
+**OpenCode mocking strategy:** Use `wiremock::MockServer` to simulate OpenCode's HTTP + SSE API:
+
+- **Session creation:** `POST /sessions` → returns `{"id": "sess-1"}`
+- **Send message:** `POST /sessions/sess-1/messages` → returns `202`
+- **SSE subscription:** `GET /events` → returns SSE stream with:
+  - `event: message.part.updated` (text/tool/reasoning parts)
+  - `event: session.idle` (signals completion)
+  - `event: session.error` (signals failure)
+
+The wiremock mock returns pre-built SSE payloads matching OpenCode's event format. This validates that the handler correctly:
+1. Parses OpenCode events
+2. Writes corresponding `conversation_events` rows
+3. Intercepts artifact uploads
+4. Stores the final message
+5. Updates conversation totals
+
+**Note:** Pod creation (`ContainerManager::ensure_pod()`) is **not** called in these tests — the handler logic is tested with a pre-existing "pod IP" (the wiremock server URL). ContainerManager has its own unit tests in `ps-agent/pod_spec.rs` (9 existing tests).
+
+**Pattern:**
+```rust
+define_source_test!(agentic_query_writes_events, |ctx| async move {
+    let user_id = insert_user(&ctx.pool).await;
+    let conv = ctx.repos.reasoning.create_conversation(&CreateConversationParams {
+        user_id, title: Some("test query"), model_name: "test-model",
+    }).await.unwrap();
+
+    // Mock OpenCode session creation
+    Mock::given(method("POST")).and(path("/sessions"))
+        .respond_with(ResponseTemplate::new(200)
+            .set_body_json(serde_json::json!({"id": "sess-1"})))
+        .mount(&ctx.mock_server).await;
+
+    // Mock SSE stream with tool call + final answer
+    let sse_body = build_sse_stream(&[
+        sse_tool_pending("mcp_prism_list_teams", "{}"),
+        sse_tool_completed("mcp_prism_list_teams", "3 teams found"),
+        sse_text_part("The team has 42 members."),
+        sse_session_idle(),
+    ]);
+    Mock::given(method("GET")).and(path("/events"))
+        .respond_with(ResponseTemplate::new(200)
+            .insert_header("content-type", "text/event-stream")
+            .set_body_string(sse_body))
+        .mount(&ctx.mock_server).await;
+
+    // Mock send message
+    Mock::given(method("POST")).and(path_regex("/sessions/.*/messages"))
+        .respond_with(ResponseTemplate::new(202))
+        .mount(&ctx.mock_server).await;
+
+    // Run the handler's core logic (extracted from ctx.run wrappers)
+    let pod_url = ctx.mock_server.uri();
+    run_agentic_query_core(&ctx.repos, &ctx.http_client, conv.id, &pod_url,
+        "sess-1", "How many team members?").await.unwrap();
+
+    // Verify events written
+    let events = ctx.repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert!(events.iter().any(|e| e.event_type == "tool_call_started"));
+    assert!(events.iter().any(|e| e.event_type == "tool_call_completed"));
+    assert!(events.iter().any(|e| e.event_type == "final_answer"));
+
+    // Verify message stored
+    let messages = ctx.repos.reasoning.list_messages(conv.id).await.unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].role, "assistant");
+    assert!(messages[0].content.contains("42 members"));
+});
+```
+
+**SSE helper functions** (new file `tests/integration/src/common/opencode_helpers.rs`):
+
+```rust
+/// Build an SSE response body from a sequence of events.
+pub fn build_sse_stream(events: &[String]) -> String { ... }
+
+/// SSE event: tool call pending (maps to ToolCallStarted proto)
+pub fn sse_tool_pending(tool_name: &str, input: &str) -> String { ... }
+
+/// SSE event: tool call completed (maps to ToolCallCompleted proto)
+pub fn sse_tool_completed(tool_name: &str, output: &str) -> String { ... }
+
+/// SSE event: text part (maps to PartialAnswer proto)
+pub fn sse_text_part(text: &str) -> String { ... }
+
+/// SSE event: session idle (signals query complete)
+pub fn sse_session_idle() -> String { ... }
+
+/// SSE event: session error
+pub fn sse_session_error(message: &str) -> String { ... }
+```
+
+**Files:**
+| File | Action |
+|------|--------|
+| `tests/integration/src/source/agentic_query.rs` | **Create** — 5 handler tests |
+| `tests/integration/src/source/mod.rs` | **Modify** — add `mod agentic_query` |
+| `tests/integration/src/common/opencode_helpers.rs` | **Create** — SSE response builders |
+| `tests/integration/src/common/mod.rs` | **Modify** — add `pub mod opencode_helpers` |
+
+#### Step 4: AgentPodReaperHandler (unit test)
+
+One unit test using a mock `ContainerManager`. Since `ContainerManager` takes a `kube::Client` which is hard to mock, the reaper logic is tested by extracting the orchestration into a function that takes a trait:
+
+```rust
+#[cfg(test)]
+mod tests {
+    // Test that reap() calls reap_idle_pods and returns reaped session IDs
+    #[tokio::test]
+    async fn reaper_deletes_expired_pods() {
+        // Uses a mock that returns 2 reaped token session IDs
+        // Verifies the handler would call delete_session for each
+    }
+}
+```
+
+**Files:**
+| File | Action |
+|------|--------|
+| `crates/ps-workers/src/handlers/agent_reaper.rs` | Inline `#[cfg(test)]` module |
+
+#### Step 5: ps-server Poll-and-Stream (`define_api_test!`)
+
+Six API-level tests validating the rewritten `ask_question()` thin adapter. These tests bypass Restate entirely — they seed `conversation_events` directly in the DB (simulating what the handler would write), then call the gRPC `AskQuestion` RPC and verify the poll-and-stream loop emits the correct proto events.
+
+**Why this works:** The poll-and-stream adapter reads from `conversation_events` regardless of who wrote them. By seeding events directly, we test the streaming logic in isolation without needing a running Restate cluster or agent container.
+
+**Pattern:**
+```rust
+define_api_test!(ask_question_triggers_and_polls, |server| async move {
+    let (user_id, token) = create_admin_user(&server.pool).await;
+    let repos = Repos::new(server.pool.clone());
+
+    // Create conversation and seed events (simulating handler output)
+    let conv = repos.reasoning.create_conversation(&CreateConversationParams {
+        user_id, title: Some("test"), model_name: "test",
+    }).await.unwrap();
+    repos.reasoning.update_query_status(conv.id, "running").await.unwrap();
+
+    repos.reasoning.append_event(conv.id, "container_status",
+        &json!({"status": "ready", "message": "Agent ready"})).await.unwrap();
+    repos.reasoning.append_event(conv.id, "tool_call_started",
+        &json!({"tool_name": "list_teams", "arguments_json": "{}"})).await.unwrap();
+    repos.reasoning.append_event(conv.id, "final_answer",
+        &json!({"answer": "There are 5 teams.", "conversation_id": conv.id.to_string(),
+                 "tool_call_count": 1, "duration_ms": 2500})).await.unwrap();
+
+    // Call AskQuestion RPC with the existing conversation ID
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "How many teams?".into(),
+        conversation_id: Some(conv.id.to_string()),
+    });
+    auth(&mut req, &token);
+
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    // Collect all events
+    let mut events = vec![];
+    while let Some(msg) = stream.message().await.unwrap() {
+        events.push(msg);
+    }
+
+    // Verify event sequence
+    assert!(events.len() >= 3);
+    // First event: container_status
+    assert!(matches!(events[0].event.as_ref().unwrap(),
+        ask_question_response::Event::ContainerStatus(_)));
+    // Last event: final_answer
+    assert!(matches!(events.last().unwrap().event.as_ref().unwrap(),
+        ask_question_response::Event::FinalAnswer(_)));
+});
+```
+
+**Note:** The `TestServer` in `tests/integration/src/common/server.rs` sets `restate_url` to `http://127.0.0.1:1` (dummy, connection-refused). The rewritten `ask_question()` must handle the Restate trigger failure gracefully in tests — either by checking if the handler is already running (events already seeded), or by making the trigger best-effort with the poll loop as the primary mechanism.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `tests/integration/src/api/reasoning.rs` | **Modify** — add 6 tests |
+
+### Test Infrastructure Changes
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `tests/integration/src/common/opencode_helpers.rs` | **Create** | SSE response builders for wiremock (tool events, text parts, session lifecycle) |
+| `tests/integration/src/common/mod.rs` | **Modify** | Add `pub mod opencode_helpers` |
+| `tests/integration/src/source/agentic_query.rs` | **Create** | Handler-level tests with wiremock OpenCode |
+| `tests/integration/src/source/mod.rs` | **Modify** | Add `mod agentic_query` |
+
+### What Is NOT Tested (and why)
+
+| Concern | Reason |
+|---------|--------|
+| Restate `ctx.run()` journaling | Restate SDK correctness is upstream's responsibility; we test the logic inside closures, not the journal |
+| Actual K8s Pod creation | Requires a live K8s cluster; covered by manual E2E testing and `ps-agent/pod_spec.rs` unit tests (9 existing) |
+| OpenCode server behaviour | OpenCode is a third-party tool; wiremock validates our SSE parsing, not OpenCode's behaviour |
+| gRPC streaming backpressure | Difficult to test deterministically; covered by manual load testing |
+| Multi-instance ps-server polling | Requires multiple server instances; architectural guarantee (DB polling is inherently multi-reader safe) |
 
 ---
 
@@ -329,4 +613,9 @@ Week 3: Integration
 - [ ] `psctl ask` and frontend `/ask` work unchanged
 - [ ] `conversation_events` cleaned up after query completion
 - [ ] Cancellation works: client disconnect → handler cancel
+- [ ] 6 repo tests for conversation_events and query_status
+- [ ] 5 handler tests with wiremock OpenCode (events, messages, artifacts, errors, totals)
+- [ ] 6 API tests for poll-and-stream adapter (trigger, stream, final, error, validation, auth)
+- [ ] 1 unit test for pod reaper logic
+- [ ] Existing frontend + psctl tests continue to pass unchanged
 - [ ] `prek run -av` passes with zero warnings
