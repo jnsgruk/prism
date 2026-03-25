@@ -877,3 +877,217 @@ define_repo_test!(conversation_export_roundtrip, |repos, pool| async move {
 
     drop(msg);
 });
+
+// ---------------------------------------------------------------------------
+// Conversation events — Plan 57
+// ---------------------------------------------------------------------------
+
+define_repo_test!(
+    conversation_events_append_and_poll,
+    |repos, pool| async move {
+        let user_id = insert_user(&pool).await;
+        let conv = repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some("test events"),
+                model_name: "test-model",
+            })
+            .await
+            .unwrap();
+
+        // Append events.
+        repos
+            .reasoning
+            .append_event(
+                conv.id,
+                "container_status",
+                &serde_json::json!({"status": "creating", "message": "Starting..."}),
+            )
+            .await
+            .unwrap();
+        repos
+            .reasoning
+            .append_event(
+                conv.id,
+                "tool_call_started",
+                &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
+            )
+            .await
+            .unwrap();
+
+        // Poll from start.
+        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].event_type, "container_status");
+        assert_eq!(events[1].event_type, "tool_call_started");
+
+        // Poll from cursor (after first event).
+        let events = repos
+            .reasoning
+            .poll_events(conv.id, events[0].id)
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_type, "tool_call_started");
+    }
+);
+
+define_repo_test!(conversation_events_poll_empty, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("empty events"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert!(events.is_empty());
+});
+
+define_repo_test!(conversation_events_delete, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("delete events"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "container_status",
+            &serde_json::json!({"status": "ready"}),
+        )
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "final_answer",
+            &serde_json::json!({"answer": "done"}),
+        )
+        .await
+        .unwrap();
+
+    let deleted = repos.reasoning.delete_events(conv.id).await.unwrap();
+    assert_eq!(deleted, 2);
+
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert!(events.is_empty());
+});
+
+define_repo_test!(
+    conversation_events_cursor_ordering,
+    |repos, pool| async move {
+        let user_id = insert_user(&pool).await;
+        let conv = repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some("ordering test"),
+                model_name: "test-model",
+            })
+            .await
+            .unwrap();
+
+        // Insert 5 events.
+        for i in 0..5 {
+            repos
+                .reasoning
+                .append_event(
+                    conv.id,
+                    "partial_answer",
+                    &serde_json::json!({"text": format!("answer {i}")}),
+                )
+                .await
+                .unwrap();
+        }
+
+        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+        assert_eq!(events.len(), 5);
+        // Verify monotonically increasing IDs.
+        for i in 1..events.len() {
+            assert!(events[i].id > events[i - 1].id);
+        }
+        // Verify order matches insertion order.
+        for (i, event) in events.iter().enumerate() {
+            let text = event.payload.get("text").unwrap().as_str().unwrap();
+            assert_eq!(text, format!("answer {i}"));
+        }
+    }
+);
+
+define_repo_test!(query_status_transitions, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("status transitions"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    // Default status is idle.
+    assert_eq!(conv.query_status, "idle");
+
+    // Transition through lifecycle.
+    for status in &["pending", "running", "completed"] {
+        repos
+            .reasoning
+            .update_query_status(conv.id, status)
+            .await
+            .unwrap();
+        let updated = repos
+            .reasoning
+            .get_conversation(conv.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(updated.query_status, *status);
+    }
+});
+
+define_repo_test!(query_status_cancel, |repos, pool| async move {
+    let user_id = insert_user(&pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("cancel test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    repos
+        .reasoning
+        .update_query_status(conv.id, "running")
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .update_query_status(conv.id, "cancelled")
+        .await
+        .unwrap();
+
+    let conv = repos
+        .reasoning
+        .get_conversation(conv.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(conv.query_status, "cancelled");
+});

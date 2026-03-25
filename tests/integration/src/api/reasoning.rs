@@ -1,12 +1,13 @@
 use crate::define_api_test;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
-    AiProvider, AiTaskConfig, DeleteEnrichmentsByTypeRequest, FindSimilarRequest,
-    GetAiSettingsRequest, GetArtifactDownloadUrlRequest, GetConversationRequest,
-    GetCostSummaryRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
-    GetEnrichmentsRequest, GetStorageHealthRequest, ListAiModelsRequest, ListConversationsRequest,
-    RefreshModelCatalogueRequest, SaveInsightFromConversationRequest, SetProviderSecretRequest,
-    UpdateAiSettingsRequest,
+    AiProvider, AiTaskConfig, AskQuestionRequest, DeleteEnrichmentsByTypeRequest,
+    FindSimilarRequest, GetAiSettingsRequest, GetArtifactDownloadUrlRequest,
+    GetConversationRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
+    ListAiModelsRequest, ListConversationsRequest, RefreshModelCatalogueRequest,
+    SaveInsightFromConversationRequest, SetProviderSecretRequest, UpdateAiSettingsRequest,
+    ask_question_response,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -602,3 +603,238 @@ define_api_test!(
         assert_eq!(err.code(), tonic::Code::Unauthenticated);
     }
 );
+
+// ---------------------------------------------------------------------------
+// AskQuestion — poll-and-stream (Plan 57)
+// ---------------------------------------------------------------------------
+
+define_api_test!(ask_question_triggers_and_polls, |server| async move {
+    let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let repos = ps_core::repo::Repos::new(server.pool.clone());
+
+    // Create conversation and seed events (simulating handler output).
+    let conv = repos
+        .reasoning
+        .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            user_id,
+            title: Some("test polling"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .update_query_status(conv.id, "running")
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "container_status",
+            &serde_json::json!({"status": "ready", "message": "Agent ready"}),
+        )
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "tool_call_started",
+            &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
+        )
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "final_answer",
+            &serde_json::json!({"answer": "There are 5 teams.", "conversation_id": conv.id.to_string(), "tool_call_count": 1}),
+        )
+        .await
+        .unwrap();
+
+    // Call AskQuestion RPC with the existing conversation ID.
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "How many teams?".into(),
+        conversation_id: Some(conv.id.to_string()),
+    });
+    auth(&mut req, &token);
+
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    // Collect all events.
+    let mut events = vec![];
+    while let Some(msg) = stream.message().await.unwrap() {
+        events.push(msg);
+    }
+
+    // Verify event sequence — at least container_status, tool_call_started, final_answer.
+    assert!(events.len() >= 3);
+    assert!(matches!(
+        events[0].event.as_ref().unwrap(),
+        ask_question_response::Event::ContainerStatus(_)
+    ));
+    assert!(matches!(
+        events.last().unwrap().event.as_ref().unwrap(),
+        ask_question_response::Event::FinalAnswer(_)
+    ));
+});
+
+define_api_test!(ask_question_streams_final_answer, |server| async move {
+    let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let repos = ps_core::repo::Repos::new(server.pool.clone());
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            user_id,
+            title: Some("final answer test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .update_query_status(conv.id, "running")
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "final_answer",
+            &serde_json::json!({"answer": "42", "conversation_id": conv.id.to_string(), "tool_call_count": 0}),
+        )
+        .await
+        .unwrap();
+
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "What is the meaning of life?".into(),
+        conversation_id: Some(conv.id.to_string()),
+    });
+    auth(&mut req, &token);
+
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    let mut events = vec![];
+    while let Some(msg) = stream.message().await.unwrap() {
+        events.push(msg);
+    }
+
+    // Stream should close after final_answer.
+    assert!(!events.is_empty());
+    let last = events.last().unwrap();
+    match last.event.as_ref().unwrap() {
+        ask_question_response::Event::FinalAnswer(f) => {
+            assert_eq!(f.answer, "42");
+        }
+        other => panic!("Expected FinalAnswer, got {other:?}"),
+    }
+});
+
+define_api_test!(ask_question_streams_error, |server| async move {
+    let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let repos = ps_core::repo::Repos::new(server.pool.clone());
+
+    let conv = repos
+        .reasoning
+        .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            user_id,
+            title: Some("error test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .update_query_status(conv.id, "running")
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "error",
+            &serde_json::json!({"message": "Agent crashed", "retryable": false}),
+        )
+        .await
+        .unwrap();
+
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "Will this fail?".into(),
+        conversation_id: Some(conv.id.to_string()),
+    });
+    auth(&mut req, &token);
+
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    let mut events = vec![];
+    while let Some(msg) = stream.message().await.unwrap() {
+        events.push(msg);
+    }
+
+    assert!(!events.is_empty());
+    let last = events.last().unwrap();
+    match last.event.as_ref().unwrap() {
+        ask_question_response::Event::Error(e) => {
+            assert_eq!(e.message, "Agent crashed");
+            assert!(!e.retryable);
+        }
+        other => panic!("Expected Error, got {other:?}"),
+    }
+});
+
+define_api_test!(ask_question_validates_empty_question, |server| async move {
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "   ".into(),
+        conversation_id: None,
+    });
+    auth(&mut req, &token);
+
+    let err = client
+        .ask_question(req)
+        .await
+        .expect_err("should reject empty");
+    assert_eq!(err.code(), tonic::Code::InvalidArgument);
+});
+
+define_api_test!(ask_question_validates_long_question, |server| async move {
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        question: "x".repeat(4001),
+        conversation_id: None,
+    });
+    auth(&mut req, &token);
+
+    let err = client
+        .ask_question(req)
+        .await
+        .expect_err("should reject long question");
+    assert_eq!(err.code(), tonic::Code::InvalidArgument);
+});
+
+define_api_test!(ask_question_requires_auth, |server| async move {
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let err = client
+        .ask_question(AskQuestionRequest {
+            question: "Hello".into(),
+            conversation_id: None,
+        })
+        .await
+        .expect_err("should require auth");
+    assert_eq!(err.code(), tonic::Code::Unauthenticated);
+});
