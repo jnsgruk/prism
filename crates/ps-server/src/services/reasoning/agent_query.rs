@@ -109,6 +109,7 @@ pub async fn ask_question(
 
     let trigger_request = serde_json::json!({
         "conversation_id": conversation_id.to_string(),
+        "user_id": ctx.user_id.to_string(),
         "question": req.question,
         "model": model_name,
         "small_model": model_name,
@@ -149,8 +150,20 @@ pub async fn ask_question(
 
     tokio::spawn(async move {
         let mut cursor: i64 = 0;
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
 
         loop {
+            if tokio::time::Instant::now() >= deadline {
+                let _ = tx
+                    .send(Ok(AskQuestionResponse {
+                        event: Some(ask_question_response::Event::Error(AgentError {
+                            message: "Query timed out".into(),
+                            retryable: true,
+                        })),
+                    }))
+                    .await;
+                return;
+            }
             // Poll for new events.
             match repos.reasoning.poll_events(conv_id, cursor).await {
                 Ok(events) => {

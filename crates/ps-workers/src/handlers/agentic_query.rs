@@ -14,6 +14,7 @@ pub struct AgenticQueryHandlerImpl {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgenticQueryRequest {
     pub conversation_id: String,
+    pub user_id: String,
     pub question: String,
     pub model: String,
     pub small_model: String,
@@ -40,6 +41,10 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
             .conversation_id
             .parse()
             .map_err(|e| TerminalError::new(format!("invalid conversation_id: {e}")))?;
+        let user_id: Uuid = request
+            .user_id
+            .parse()
+            .map_err(|e| TerminalError::new(format!("invalid user_id: {e}")))?;
 
         let span = tracing::info_span!(
             "agentic_query",
@@ -94,7 +99,7 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                         .auth
                         .create_session(
                             tsid,
-                            Uuid::nil(),
+                            user_id,
                             &th,
                             "agent_service",
                             Some(time::OffsetDateTime::now_utc() + time::Duration::hours(3)),
