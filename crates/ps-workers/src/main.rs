@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use ps_workers::handlers::SharedState;
+use ps_workers::handlers::agent_reaper::{AgentPodReaperHandler, AgentPodReaperHandlerImpl};
+use ps_workers::handlers::agentic_query::{AgenticQueryHandler, AgenticQueryHandlerImpl};
 use ps_workers::handlers::discourse_ingestion::{
     DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
 };
@@ -23,6 +25,9 @@ use tracing::{error, info, warn};
 #[tokio::main]
 #[allow(clippy::expect_used, clippy::too_many_lines)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Install the rustls crypto provider before any TLS usage (kube, object_store).
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -45,11 +50,72 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .expect("failed to build HTTP client");
 
+    // Container manager — optional, requires K8s access
+    let container_manager = match kube::Client::try_default().await {
+        Ok(kube_client) => {
+            let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
+            let agent_image =
+                std::env::var("AGENT_IMAGE").unwrap_or_else(|_| "prism/prism-agent:latest".into());
+            info!(agent_image = %agent_image, "using agent container image");
+            let config = ps_agent::AgentPodConfig {
+                image: agent_image,
+                namespace: namespace.clone(),
+                model: String::new(),
+                small_model: String::new(),
+                prism_api_url: "http://ps-server:8080".to_string(),
+                service_token: String::new(),
+                s3_endpoint: std::env::var("S3_ENDPOINT").unwrap_or_default(),
+                s3_bucket: std::env::var("S3_BUCKET").unwrap_or_else(|_| "ps-artifacts".into()),
+                s3_access_key_id: std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default(),
+                s3_secret_access_key: std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default(),
+                provider_keys: vec![],
+            };
+            Some(Arc::new(ps_agent::ContainerManager::new(
+                kube_client,
+                namespace,
+                config,
+            )))
+        }
+        Err(e) => {
+            warn!(error = %e, "K8s not available — agent containers disabled");
+            None
+        }
+    };
+
+    // Object storage — optional, configured via env vars
+    let artifact_store: Option<Arc<dyn ps_core::ArtifactStore>> =
+        if let (Ok(endpoint), Ok(bucket)) =
+            (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
+        {
+            let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
+            let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
+            match ps_core::artifact_store::S3ArtifactStore::new(
+                &endpoint,
+                &bucket,
+                &access_key,
+                &secret_key_s3,
+            ) {
+                Ok(store) => {
+                    info!(%endpoint, %bucket, "S3 artifact store configured");
+                    Some(Arc::new(store))
+                }
+                Err(e) => {
+                    warn!(error = %e, "failed to configure S3 artifact store");
+                    None
+                }
+            }
+        } else {
+            info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
+            None
+        };
+
     // Build shared state for all handlers
     let state = SharedState {
         repos: ps_core::repo::Repos::new(pool.clone()),
         secret_key,
         http_client,
+        container_manager,
+        artifact_store,
     };
 
     let ingestion = GithubIngestionHandlerImpl {
@@ -150,6 +216,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state: state.clone(),
     };
 
+    let agentic_query = AgenticQueryHandlerImpl {
+        state: state.clone(),
+    };
+
+    let agent_reaper = AgentPodReaperHandlerImpl {
+        state: state.clone(),
+    };
+
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
     let health_addr = format!("0.0.0.0:{health_port}").parse()?;
@@ -188,6 +262,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .bind(enrichment.serve())
                 .bind(embedding.serve())
                 .bind(model_catalogue.serve())
+                .bind(agentic_query.serve())
+                .bind(agent_reaper.serve())
                 .build(),
         )
         .listen_and_serve(restate_addr)

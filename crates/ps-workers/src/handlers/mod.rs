@@ -1,3 +1,5 @@
+pub mod agent_reaper;
+pub mod agentic_query;
 pub mod discourse_ingestion;
 pub mod embedding;
 pub mod enrichment;
@@ -11,6 +13,8 @@ pub mod metrics_compute;
 pub mod model_catalogue;
 mod run_lifecycle;
 
+use std::sync::Arc;
+
 use ps_core::models::SourceConfig;
 use ps_core::repo::Repos;
 use zeroize::Zeroizing;
@@ -23,6 +27,8 @@ pub struct SharedState {
     pub repos: Repos,
     pub secret_key: Zeroizing<[u8; 32]>,
     pub http_client: reqwest::Client,
+    pub container_manager: Option<Arc<ps_agent::ContainerManager>>,
+    pub artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
 }
 
 /// Load an enabled source config by source type (the Restate virtual object key).

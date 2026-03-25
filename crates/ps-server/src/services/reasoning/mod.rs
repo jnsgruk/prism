@@ -34,7 +34,6 @@ pub struct ReasoningServiceImpl {
     secret_key: Zeroizing<[u8; 32]>,
     router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
     artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
-    container_manager: Option<Arc<ps_agent::ContainerManager>>,
     restate_url: String,
     http_client: reqwest::Client,
 }
@@ -45,7 +44,6 @@ impl ReasoningServiceImpl {
         secret_key: Zeroizing<[u8; 32]>,
         router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
         artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
-        container_manager: Option<Arc<ps_agent::ContainerManager>>,
         restate_url: String,
     ) -> Self {
         Self {
@@ -53,7 +51,6 @@ impl ReasoningServiceImpl {
             secret_key,
             router,
             artifact_store,
-            container_manager,
             restate_url,
             http_client: reqwest::Client::new(),
         }

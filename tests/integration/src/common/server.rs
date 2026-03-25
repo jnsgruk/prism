@@ -62,7 +62,6 @@ impl TestServer {
             test_secret_key(),
             router,
             None, // no artifact store in tests
-            None, // no container manager in tests
             "http://127.0.0.1:1".into(),
         );
 

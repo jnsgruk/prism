@@ -12,7 +12,6 @@ ps-core = { path = "../ps-core" }
 ps-proto = { path = "../ps-proto" }
 ps-metrics = { path = "../ps-metrics" }
 ps-reasoning = { path = "../ps-reasoning" }
-ps-agent = { path = "../ps-agent" }
 tokio.workspace = true
 tokio-stream.workspace = true
 async-stream.workspace = true
@@ -38,5 +37,4 @@ zeroize.workspace = true
 futures.workspace = true
 object_store.workspace = true
 url.workspace = true
-kube = { version = "3.1", features = ["client"] }
 rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }

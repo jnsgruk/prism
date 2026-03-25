@@ -9,6 +9,7 @@ workspace = true
 
 [dependencies]
 ps-core = { path = "../ps-core" }
+ps-agent = { path = "../ps-agent" }
 ps-metrics = { path = "../ps-metrics" }
 ps-proto = { path = "../ps-proto" }
 ps-reasoning = { path = "../ps-reasoning" }
@@ -29,6 +30,10 @@ base64.workspace = true
 thiserror.workspace = true
 restate-sdk.workspace = true
 zeroize.workspace = true
+kube = { version = "3.1", features = ["client"] }
+object_store.workspace = true
+url.workspace = true
+rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
 
 [dev-dependencies]
 wiremock.workspace = true
