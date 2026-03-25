@@ -26,6 +26,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Ask a natural-language question about engineering data
+    Ask {
+        /// The question to ask
+        question: String,
+
+        /// Output structured JSON instead of formatted text
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Show ingestion status for all sources
     Status,
 
@@ -143,6 +153,7 @@ async fn main() -> Result<()> {
     let mut clients = client::connect(&cli.server, cli.token.as_ref())?;
 
     match cli.command {
+        Command::Ask { question, json } => commands::ask(&mut clients, &question, json).await,
         Command::Status => commands::status(&mut clients).await,
         Command::Sources => commands::sources(&mut clients).await,
         Command::Runs { source } => commands::runs(&mut clients, source).await,

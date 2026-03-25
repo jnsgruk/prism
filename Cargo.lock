@@ -3516,6 +3516,7 @@ dependencies = [
  "dotenvy",
  "prost-types 0.13.5",
  "ps-proto",
+ "serde_json",
  "time",
  "tokio",
  "tokio-stream",

@@ -1629,4 +1629,119 @@ impl ReasoningRepo {
         .await?;
         Ok(row)
     }
+
+    // -----------------------------------------------------------------------
+    // Backup / export
+    // -----------------------------------------------------------------------
+
+    /// Count all conversations (for backup manifest).
+    pub async fn count_conversations(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT count(*) as "count!: i64" FROM reasoning.conversations"#,)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all conversations as JSON values for backup.
+    pub async fn export_conversations(&self) -> Result<Vec<serde_json::Value>, Error> {
+        let rows: Vec<Conversation> = sqlx::query_as!(
+            Conversation,
+            r#"
+            SELECT id, user_id, title, status, model_name,
+                   container_pod_name, container_status, opencode_session_id,
+                   total_tool_calls, total_prompt_tokens, total_completion_tokens,
+                   total_estimated_cost_usd, created_at, last_activity_at
+            FROM reasoning.conversations
+            ORDER BY created_at
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|c| {
+                serde_json::json!({
+                    "id": c.id,
+                    "user_id": c.user_id,
+                    "title": c.title,
+                    "status": c.status,
+                    "model_name": c.model_name,
+                    "container_pod_name": c.container_pod_name,
+                    "container_status": c.container_status,
+                    "opencode_session_id": c.opencode_session_id,
+                    "total_tool_calls": c.total_tool_calls,
+                    "total_prompt_tokens": c.total_prompt_tokens,
+                    "total_completion_tokens": c.total_completion_tokens,
+                    "total_estimated_cost_usd": c.total_estimated_cost_usd,
+                    "created_at": c.created_at.to_string(),
+                    "last_activity_at": c.last_activity_at.to_string(),
+                })
+            })
+            .collect())
+    }
+
+    /// Export all conversation messages as JSON values for backup.
+    pub async fn export_conversation_messages(&self) -> Result<Vec<serde_json::Value>, Error> {
+        let rows: Vec<ConversationMessage> = sqlx::query_as!(
+            ConversationMessage,
+            r#"
+            SELECT id, conversation_id, role, content,
+                   reasoning_trace, supporting_data,
+                   prompt_tokens, completion_tokens, created_at
+            FROM reasoning.conversation_messages
+            ORDER BY created_at
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|m| {
+                serde_json::json!({
+                    "id": m.id,
+                    "conversation_id": m.conversation_id,
+                    "role": m.role,
+                    "content": m.content,
+                    "reasoning_trace": m.reasoning_trace,
+                    "supporting_data": m.supporting_data,
+                    "prompt_tokens": m.prompt_tokens,
+                    "completion_tokens": m.completion_tokens,
+                    "created_at": m.created_at.to_string(),
+                })
+            })
+            .collect())
+    }
+
+    /// Export all conversation artifacts as JSON values for backup.
+    pub async fn export_conversation_artifacts(&self) -> Result<Vec<serde_json::Value>, Error> {
+        let rows: Vec<ConversationArtifact> = sqlx::query_as!(
+            ConversationArtifact,
+            r#"
+            SELECT id, conversation_id, message_id, artifact_key,
+                   display_name, content_type, size_bytes, created_at
+            FROM reasoning.conversation_artifacts
+            ORDER BY created_at
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|a| {
+                serde_json::json!({
+                    "id": a.id,
+                    "conversation_id": a.conversation_id,
+                    "message_id": a.message_id,
+                    "artifact_key": a.artifact_key,
+                    "display_name": a.display_name,
+                    "content_type": a.content_type,
+                    "size_bytes": a.size_bytes,
+                    "created_at": a.created_at.to_string(),
+                })
+            })
+            .collect())
+    }
 }

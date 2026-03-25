@@ -1,3 +1,4 @@
+mod ask;
 mod backup;
 mod contributions;
 mod embed;
@@ -11,6 +12,7 @@ mod sources;
 mod status;
 mod trigger;
 
+pub use ask::ask;
 pub use backup::backup;
 pub use contributions::contributions;
 pub use embed::embed_status;

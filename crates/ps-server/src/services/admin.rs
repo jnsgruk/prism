@@ -45,11 +45,12 @@ impl AdminService for AdminServiceImpl {
             let mut buf = Vec::new();
 
             // Gather table counts in parallel
-            let (source_count, people_count, team_count, user_count) = tokio::try_join!(
+            let (source_count, people_count, team_count, user_count, conversation_count) = tokio::try_join!(
                 async { repos.config.count_sources().await.map_err(db_err) },
                 async { repos.org.count_people().await.map_err(db_err) },
                 async { repos.org.count_teams().await.map_err(db_err) },
                 async { repos.auth.count_users().await.map_err(db_err) },
+                async { repos.reasoning.count_conversations().await.map_err(db_err) },
             )?;
 
             let mut table_counts = BTreeMap::new();
@@ -59,6 +60,7 @@ impl AdminService for AdminServiceImpl {
                 table_counts.insert("people".into(), people_count as i32);
                 table_counts.insert("teams".into(), team_count as i32);
                 table_counts.insert("users".into(), user_count as i32);
+                table_counts.insert("conversations".into(), conversation_count as i32);
             }
 
             let manifest = BackupManifest {
@@ -88,6 +90,19 @@ impl AdminService for AdminServiceImpl {
 
             let user_rows = repos.auth.export_users().await.map_err(db_err)?;
             writer.write_table("users", &user_rows)
+                .map_err(backup_err)?;
+
+            // Conversation tables (metadata only — artifact files in S3 are not included)
+            let conv_rows = repos.reasoning.export_conversations().await.map_err(db_err)?;
+            writer.write_table("conversations", &conv_rows)
+                .map_err(backup_err)?;
+
+            let msg_rows = repos.reasoning.export_conversation_messages().await.map_err(db_err)?;
+            writer.write_table("conversation_messages", &msg_rows)
+                .map_err(backup_err)?;
+
+            let artifact_rows = repos.reasoning.export_conversation_artifacts().await.map_err(db_err)?;
+            writer.write_table("conversation_artifacts", &artifact_rows)
                 .map_err(backup_err)?;
 
             writer.finish()
