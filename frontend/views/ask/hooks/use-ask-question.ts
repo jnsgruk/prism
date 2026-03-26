@@ -204,25 +204,37 @@ export const useAskQuestion = (): {
               // OpenCode sends cumulative text per reasoning part — the
               // part_index identifies which block is being updated.
               //
-              // If the matching reasoning step is the last entry in the
-              // array we can update it in place (still streaming the same
-              // block, no tool calls have interleaved).
-              //
-              // If it exists earlier in the array (tool calls came after
-              // it), remove it from the old position and re-append so the
-              // reasoning text appears in chronological order rather than
-              // stuck at the top above tool calls that came later.
+              // part_index can be recycled across agent turns (a new
+              // assistant message resets the index to 0). We detect this
+              // by checking whether the incoming text is a continuation
+              // of the existing text (cumulative) or a fresh start (new
+              // block). Search from the end so we match the most recent
+              // block when duplicates exist.
               const idx = event.value.partIndex;
-              const existingIdx = steps.findIndex(
+              const existingIdx = steps.findLastIndex(
                 (s): s is ReasoningStep => s.kind === "reasoning" && s.partIndex === idx,
               );
-              if (existingIdx !== -1 && existingIdx === steps.length - 1) {
-                // Still the last entry — replace with new object for React.
-                steps[existingIdx] = { kind: "reasoning", text: event.value.text, partIndex: idx };
-              } else if (existingIdx !== -1) {
-                // Interleaved by tool calls — move to end.
-                steps.splice(existingIdx, 1);
-                steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
+              if (existingIdx !== -1) {
+                const existing = steps[existingIdx] as ReasoningStep;
+                const isContinuation =
+                  event.value.text.startsWith(existing.text) ||
+                  existing.text.startsWith(event.value.text);
+
+                if (!isContinuation) {
+                  // New reasoning block with a recycled partIndex — preserve old block.
+                  steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
+                } else if (existingIdx === steps.length - 1) {
+                  // Still the last entry — replace with new object for React.
+                  steps[existingIdx] = {
+                    kind: "reasoning",
+                    text: event.value.text,
+                    partIndex: idx,
+                  };
+                } else {
+                  // Interleaved by tool calls — move to end.
+                  steps.splice(existingIdx, 1);
+                  steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
+                }
               } else {
                 steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
               }
