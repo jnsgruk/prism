@@ -98,9 +98,23 @@ export const ConversationThread = ({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, state]);
 
+  // When AgentResponse is active (streaming/completed), the refetched messages
+  // may already include the latest assistant message. Filter it out to prevent
+  // duplication — the AgentResponse has richer data (live steps, thinking text).
+  const isAgentActive = state.status === "streaming" || state.status === "completed";
+  let activeAnswer = "";
+  if (state.status === "streaming") activeAnswer = state.partialAnswer;
+  else if (state.status === "completed") activeAnswer = state.answer;
+  const displayMessages = isAgentActive
+    ? messages.filter(
+        (m, i) =>
+          !(m.role === "assistant" && m.content === activeAnswer && i === messages.length - 1),
+      )
+    : messages;
+
   return (
     <div className="space-y-6">
-      {messages.map((msg) => (
+      {displayMessages.map((msg) => (
         <div key={msg.id}>
           {msg.role === "user" ? (
             <UserMessage content={msg.content} />
@@ -110,10 +124,9 @@ export const ConversationThread = ({
         </div>
       ))}
 
-      {conversationArtifacts.length > 0 &&
-        (state.status === "idle" || state.status === "completed") && (
-          <ArtifactList artifacts={conversationArtifacts} />
-        )}
+      {conversationArtifacts.length > 0 && state.status === "idle" && (
+        <ArtifactList artifacts={conversationArtifacts} />
+      )}
 
       {state.status !== "idle" && state.status !== "error" && (
         <>
@@ -126,9 +139,7 @@ export const ConversationThread = ({
 
       {state.status === "container_starting" && <ContainerStatus message={state.message} />}
 
-      {(state.status === "streaming" ||
-        (state.status === "completed" &&
-          !messages.some((m) => m.role === "assistant" && m.content === state.answer))) && (
+      {isAgentActive && (
         <AgentResponse
           state={state}
           steps={state.steps}
