@@ -19,40 +19,46 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
   try {
     const trace = JSON.parse(json);
-    return (trace.steps ?? []).map(
-      (
-        s: {
-          kind?: string;
-          tool_name?: string;
-          call_id?: string;
-          arguments?: string;
-          result_summary?: string;
-          duration_ms?: number;
-          text?: string;
-          part_index?: number;
-        },
-        i: number,
-      ): AgentStep => {
-        if (s.kind === "reasoning") {
+    return (trace.steps ?? [])
+      .filter(
+        (s: { kind?: string; text?: string }) =>
+          // Drop empty reasoning entries left by intermediate cumulative updates.
+          !(s.kind === "reasoning" && !s.text),
+      )
+      .map(
+        (
+          s: {
+            kind?: string;
+            tool_name?: string;
+            call_id?: string;
+            arguments?: string;
+            result_summary?: string;
+            duration_ms?: number;
+            text?: string;
+            part_index?: number;
+          },
+          i: number,
+        ): AgentStep => {
+          if (s.kind === "reasoning") {
+            return {
+              kind: "reasoning" as const,
+              text: s.text ?? "",
+              partIndex: s.part_index ?? i,
+            };
+          }
+          // Default to tool step (backward compatible with traces without kind field)
           return {
-            kind: "reasoning" as const,
-            text: s.text ?? "",
-            partIndex: s.part_index ?? i,
+            kind: "tool" as const,
+            callId: s.call_id ?? `trace-${i}`,
+            toolName: s.tool_name ?? "unknown",
+            argumentsJson: s.arguments ?? "{}",
+            resultSummary: s.result_summary,
+            durationMs: s.duration_ms,
+            success: true,
+            status: "completed" as const,
           };
-        }
-        // Default to tool step (backward compatible with traces without kind field)
-        return {
-          kind: "tool" as const,
-          callId: s.call_id ?? `trace-${i}`,
-          toolName: s.tool_name ?? "unknown",
-          argumentsJson: s.arguments ?? "{}",
-          resultSummary: s.result_summary,
-          durationMs: s.duration_ms,
-          success: true,
-          status: "completed" as const,
-        };
-      },
-    );
+        },
+      );
   } catch {
     return [];
   }
