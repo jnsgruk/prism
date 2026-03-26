@@ -99,18 +99,19 @@ export const ConversationThread = ({
   }, [messages, state]);
 
   // When AgentResponse is active (streaming/completed), the refetched messages
-  // may already include the latest assistant message. Filter it out to prevent
-  // duplication — the AgentResponse has richer data (live steps, thinking text).
+  // may already include the assistant response for the current turn. Filter out
+  // all assistant messages after the user's question to prevent duplication —
+  // AgentResponse has richer data (live steps, thinking text, token usage).
   const isAgentActive = state.status === "streaming" || state.status === "completed";
-  let activeAnswer = "";
-  if (state.status === "streaming") activeAnswer = state.partialAnswer;
-  else if (state.status === "completed") activeAnswer = state.answer;
-  const displayMessages = isAgentActive
-    ? messages.filter(
-        (m, i) =>
-          !(m.role === "assistant" && m.content === activeAnswer && i === messages.length - 1),
-      )
-    : messages;
+  const displayMessages = ((): ConversationMessage[] => {
+    if (!isAgentActive) return messages;
+    const question = state.question;
+    const lastQuestionIdx = messages.findLastIndex(
+      (m) => m.role === "user" && m.content === question,
+    );
+    if (lastQuestionIdx === -1) return messages;
+    return messages.filter((_, i) => i <= lastQuestionIdx);
+  })();
 
   return (
     <div className="space-y-6">

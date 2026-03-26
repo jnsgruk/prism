@@ -481,6 +481,9 @@ impl ReasoningRepo {
                 (conversation_id, message_id, artifact_key, display_name,
                  content_type, size_bytes)
             VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (conversation_id, artifact_key) DO UPDATE
+                SET display_name = EXCLUDED.display_name,
+                    size_bytes = EXCLUDED.size_bytes
             RETURNING id, conversation_id, message_id, artifact_key, display_name,
                       content_type, size_bytes, created_at
             "#,
