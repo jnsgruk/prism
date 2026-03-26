@@ -15,6 +15,7 @@ const ContributionDetailPage = lazy(
   () => import("@/views/contributions/pages/contribution-detail-page"),
 );
 const AskPage = lazy(() => import("@/views/ask/pages/ask-page"));
+const ChatHistoryPage = lazy(() => import("@/views/ask/pages/chat-history-page"));
 const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page"));
 
 export const App = (): React.ReactElement => (
@@ -30,6 +31,7 @@ export const App = (): React.ReactElement => (
         <Route path="/contributions/:contributionId" element={<ContributionDetailPage />} />
         <Route path="/ingestion" element={<IngestionPage />} />
         <Route path="/ask" element={<AskPage />} />
+        <Route path="/ask/history" element={<ChatHistoryPage />} />
         <Route path="/ask/:conversationId" element={<AskPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />

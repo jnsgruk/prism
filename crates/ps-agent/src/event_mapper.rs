@@ -34,6 +34,7 @@ fn map_message_part(
     props: &opencode_sdk::types::event::MessagePartEventProps,
 ) -> Option<AskQuestionResponse> {
     let part = props.part.as_ref()?;
+    let part_index = i32::try_from(props.index.unwrap_or(0)).unwrap_or(0);
 
     match part {
         Part::Tool {
@@ -49,7 +50,10 @@ fn map_message_part(
         ))),
 
         Part::Reasoning { text, .. } => Some(agent_event(ask_question_response::Event::Thinking(
-            AgentThinking { text: text.clone() },
+            AgentThinking {
+                text: text.clone(),
+                part_index,
+            },
         ))),
 
         _ => None,

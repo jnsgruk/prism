@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useAskQuestion } from "@/views/ask/hooks/use-ask-question";
 import { useGetConversation } from "@/views/ask/hooks/use-conversations";
-import { ConversationHistory } from "@/views/ask/components/conversation-history";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
 import { QueryInput } from "@/views/ask/components/query-input";
 import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
@@ -40,11 +39,15 @@ const AskPage = (): React.ReactElement => {
     [ask, conversationId],
   );
 
+  // Navigate to the conversation URL as soon as we learn the conversation ID
+  // (from the conversationCreated event), not just on completion.
+  const stateConversationId =
+    state.status !== "idle" && state.status !== "error" ? state.conversationId : undefined;
   useEffect(() => {
-    if (state.status === "completed" && !conversationId && state.conversationId) {
-      navigate(`/ask/${state.conversationId}`, { replace: true });
+    if (!conversationId && stateConversationId) {
+      navigate(`/ask/${stateConversationId}`, { replace: true });
     }
-  }, [state, conversationId, navigate]);
+  }, [stateConversationId, conversationId, navigate]);
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
@@ -66,7 +69,7 @@ const AskPage = (): React.ReactElement => {
 
   return (
     <>
-      <PageHeader title="Ask" center={<ConversationHistory />} actions={headerActions} />
+      <PageHeader title="Ask" actions={headerActions} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isLoading && conversationId ? (
           <div className="flex flex-1 items-center justify-center">

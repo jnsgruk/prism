@@ -11,6 +11,7 @@ import { AgentResponse } from "./agent-response";
 import { ArtifactList } from "./artifact-list";
 import { ContainerStatus } from "./container-status";
 import { EvidencePanel } from "./evidence-panel";
+import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
 
@@ -56,9 +57,8 @@ const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): Reac
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         <AnswerContent content={msg.content} />
-        {(steps.length > 0 || msg.supportingDataJson) && (
-          <EvidencePanel steps={steps} supportingData={msg.supportingDataJson} />
-        )}
+        {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
+        {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
         {totalTokens > 0 && (
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {toolCallCount > 0 && <span>{toolCallCount} tool calls</span>}

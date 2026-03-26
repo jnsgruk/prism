@@ -1,8 +1,10 @@
 use bytes::Bytes;
+use object_store::ClientOptions;
 use object_store::ObjectStore;
 use object_store::aws::AmazonS3Builder;
 use object_store::path::Path;
 use std::sync::Arc;
+use tracing::{debug, error, info};
 
 /// Manages uploading and listing conversation artifacts in S3/RustFS.
 #[derive(Clone)]
@@ -16,9 +18,14 @@ impl ArtifactStore {
     ///
     /// When `endpoint` is `None`, uses the default AWS S3 endpoint.
     pub fn new(endpoint: Option<&str>, bucket: &str, session_id: &str) -> Self {
+        let client_options = ClientOptions::new()
+            .with_connect_timeout(std::time::Duration::from_secs(5))
+            .with_timeout(std::time::Duration::from_secs(30));
+
         let mut builder = AmazonS3Builder::from_env()
             .with_bucket_name(bucket)
-            .with_allow_http(true);
+            .with_allow_http(true)
+            .with_client_options(client_options);
 
         if let Some(ep) = endpoint {
             builder = builder.with_endpoint(ep);
@@ -29,6 +36,11 @@ impl ArtifactStore {
 
         #[allow(clippy::expect_used)]
         let store = builder.build().expect("failed to build S3 client");
+
+        info!(
+            endpoint = endpoint.unwrap_or("default-aws"),
+            bucket, session_id, "artifact store initialised"
+        );
 
         Self {
             store: Arc::new(store),
@@ -46,6 +58,14 @@ impl ArtifactStore {
     ) -> Result<String, object_store::Error> {
         let key = format!("conversations/{}/{}", self.session_id, filename);
         let path = Path::from(key.as_str());
+        let size = data.len();
+
+        debug!(
+            key = %key,
+            size_bytes = size,
+            content_type = content_type.unwrap_or("none"),
+            "uploading artifact to S3"
+        );
 
         let mut opts = object_store::PutOptions::default();
         if let Some(ct) = content_type {
@@ -53,8 +73,22 @@ impl ArtifactStore {
                 .insert(object_store::Attribute::ContentType, ct.to_string().into());
         }
 
-        self.store.put_opts(&path, data.into(), opts).await?;
-        Ok(key)
+        match self.store.put_opts(&path, data.into(), opts).await {
+            Ok(_) => {
+                info!(key = %key, size_bytes = size, "artifact uploaded successfully");
+                Ok(key)
+            }
+            Err(e) => {
+                error!(
+                    key = %key,
+                    size_bytes = size,
+                    error = %e,
+                    error_debug = ?e,
+                    "artifact upload failed"
+                );
+                Err(e)
+            }
+        }
     }
 
     /// List all artifacts for the current session.
@@ -62,7 +96,15 @@ impl ArtifactStore {
         use futures::TryStreamExt;
 
         let prefix = Path::from(format!("conversations/{}/", self.session_id));
-        let entries: Vec<_> = self.store.list(Some(&prefix)).try_collect().await?;
+        debug!(prefix = %prefix, "listing artifacts");
+
+        let entries: Vec<_> = match self.store.list(Some(&prefix)).try_collect().await {
+            Ok(entries) => entries,
+            Err(e) => {
+                error!(prefix = %prefix, error = %e, error_debug = ?e, "artifact list failed");
+                return Err(e);
+            }
+        };
 
         Ok(entries
             .into_iter()

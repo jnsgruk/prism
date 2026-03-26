@@ -55,7 +55,9 @@ export const AgentResponse = ({
         <Sparkles className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
-        {steps.length > 0 && state.status === "streaming" && <ThinkingSteps steps={steps} />}
+        {steps.length > 0 && (
+          <ThinkingSteps steps={steps} defaultOpen={state.status === "streaming"} />
+        )}
 
         {state.status === "streaming" && !displayAnswer && steps.length === 0 && (
           <Badge variant="secondary" className="animate-pulse">
@@ -69,7 +71,7 @@ export const AgentResponse = ({
 
         {state.status === "completed" && (
           <>
-            <EvidencePanel steps={steps} supportingData={supportingData} />
+            <EvidencePanel supportingData={supportingData} />
             <TokenSummary
               promptTokens={state.tokenUsage.promptTokens}
               completionTokens={state.tokenUsage.completionTokens}

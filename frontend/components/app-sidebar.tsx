@@ -16,13 +16,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import {
   Activity,
   ChevronsUpDown,
+  History,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Settings,
   Sparkles,
   UserRound,
@@ -32,19 +33,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
+import { useListConversations } from "@/views/ask/hooks/use-conversations";
 
 type User = {
   displayName: string;
   username: string;
 };
-
-const NAV_ITEMS = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard },
-  { title: "Teams", href: "/teams", icon: Users },
-  { title: "People", href: "/people", icon: UserRound },
-  { title: "Ingestion", href: "/ingestion", icon: Activity },
-  { title: "Ask", href: "/ask", icon: Sparkles },
-];
 
 const UserInitials = ({ name }: { name: string }): React.ReactElement => {
   const initials = name
@@ -70,6 +64,46 @@ const UserInfoBlock = ({ user }: { user: User }): React.ReactElement => (
     </div>
   </>
 );
+
+const RecentChats = (): React.ReactElement => {
+  const { data } = useListConversations(1, 5);
+  const { pathname } = useLocation();
+  const recent = data?.conversations.slice(0, 5) ?? [];
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Recent chats</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {recent.map((conv) => (
+            <SidebarMenuItem key={conv.id}>
+              <SidebarMenuButton
+                size="sm"
+                render={<Link to={`/ask/${conv.id}`} />}
+                isActive={pathname === `/ask/${conv.id}`}
+                tooltip={conv.title || "Untitled"}
+              >
+                <MessageSquare />
+                <span>{conv.title || "Untitled"}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="sm"
+              render={<Link to="/ask/history" />}
+              isActive={pathname === "/ask/history"}
+              tooltip="History"
+            >
+              <History />
+              <span>History</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+};
 
 export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
   const { pathname } = useLocation();
@@ -101,21 +135,77 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>Insights</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link to={item.href} />}
-                    isActive={isActive(item.href)}
-                    tooltip={item.title}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link to="/" />}
+                  isActive={isActive("/")}
+                  tooltip="Dashboard"
+                >
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link to="/ask" />}
+                  isActive={pathname === "/ask"}
+                  tooltip="Ask"
+                >
+                  <Sparkles />
+                  <span>Ask</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <RecentChats />
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Organization</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link to="/teams" />}
+                  isActive={isActive("/teams")}
+                  tooltip="Teams"
+                >
+                  <Users />
+                  <span>Teams</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link to="/people" />}
+                  isActive={isActive("/people")}
+                  tooltip="People"
+                >
+                  <UserRound />
+                  <span>People</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Data</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link to="/ingestion" />}
+                  isActive={isActive("/ingestion")}
+                  tooltip="Ingestion"
+                >
+                  <Activity />
+                  <span>Ingestion</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -157,8 +247,6 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 };

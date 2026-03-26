@@ -672,10 +672,15 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
         events.push(msg);
     }
 
-    // Verify event sequence — at least container_status, tool_call_started, final_answer.
-    assert!(events.len() >= 3);
+    // Verify event sequence — conversation_created first, then at least container_status,
+    // tool_call_started, final_answer.
+    assert!(events.len() >= 4);
     assert!(matches!(
         events[0].event.as_ref().unwrap(),
+        ask_question_response::Event::ConversationCreated(_)
+    ));
+    assert!(matches!(
+        events[1].event.as_ref().unwrap(),
         ask_question_response::Event::ContainerStatus(_)
     ));
     assert!(matches!(

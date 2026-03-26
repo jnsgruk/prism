@@ -27,6 +27,7 @@ export type ToolCallStep = {
 export type ReasoningStep = {
   kind: "reasoning";
   text: string;
+  partIndex: number;
 };
 
 export type AgentStep = ToolCallStep | ReasoningStep;
@@ -39,10 +40,11 @@ export type TokenUsage = {
 
 export type AgentState =
   | { status: "idle" }
-  | { status: "container_starting"; message: string; question: string }
+  | { status: "container_starting"; message: string; question: string; conversationId?: string }
   | {
       status: "streaming";
       question: string;
+      conversationId?: string;
       steps: AgentStep[];
       partialAnswer: string;
       artifacts: ArtifactInfo[];
@@ -86,8 +88,14 @@ export const useAskQuestion = (): {
       const steps: AgentStep[] = [];
       let partialAnswer = "";
       const artifacts: ArtifactInfo[] = [];
+      let streamConversationId: string | undefined = conversationId;
 
-      setState({ status: "container_starting", message: "Initialising agent...", question });
+      setState({
+        status: "container_starting",
+        message: "Initialising agent...",
+        question,
+        conversationId,
+      });
 
       try {
         const stream = client.askQuestion({ question, conversationId }, { signal: abort.signal });
@@ -99,8 +107,25 @@ export const useAskQuestion = (): {
           if (!event.case) continue;
 
           switch (event.case) {
+            case "conversationCreated": {
+              streamConversationId = event.value.conversationId;
+              queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+              setState({
+                status: "container_starting",
+                message: "Initialising agent...",
+                question,
+                conversationId: streamConversationId,
+              });
+              break;
+            }
+
             case "containerStatus": {
-              setState({ status: "container_starting", message: event.value.message, question });
+              setState({
+                status: "container_starting",
+                message: event.value.message,
+                question,
+                conversationId: streamConversationId,
+              });
               break;
             }
 
@@ -121,6 +146,7 @@ export const useAskQuestion = (): {
               setState({
                 status: "streaming",
                 question,
+                conversationId: streamConversationId,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -149,6 +175,7 @@ export const useAskQuestion = (): {
               setState({
                 status: "streaming",
                 question,
+                conversationId: streamConversationId,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -161,6 +188,7 @@ export const useAskQuestion = (): {
               setState({
                 status: "streaming",
                 question,
+                conversationId: streamConversationId,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -169,19 +197,35 @@ export const useAskQuestion = (): {
             }
 
             case "thinking": {
-              // Update existing reasoning step or add a new one.
-              // OpenCode sends cumulative text for each reasoning part,
-              // so we update the last reasoning step if it's the most
-              // recent entry (i.e. no tool calls happened since).
-              const lastStep = steps[steps.length - 1];
-              if (lastStep?.kind === "reasoning") {
-                lastStep.text = event.value.text;
+              // OpenCode sends cumulative text per reasoning part — the
+              // part_index identifies which block is being updated.
+              //
+              // If the matching reasoning step is the last entry in the
+              // array we can update it in place (still streaming the same
+              // block, no tool calls have interleaved).
+              //
+              // If it exists earlier in the array (tool calls came after
+              // it), remove it from the old position and re-append so the
+              // reasoning text appears in chronological order rather than
+              // stuck at the top above tool calls that came later.
+              const idx = event.value.partIndex;
+              const existingIdx = steps.findIndex(
+                (s): s is ReasoningStep => s.kind === "reasoning" && s.partIndex === idx,
+              );
+              if (existingIdx !== -1 && existingIdx === steps.length - 1) {
+                // Still the last entry — update in place.
+                (steps[existingIdx] as ReasoningStep).text = event.value.text;
+              } else if (existingIdx !== -1) {
+                // Interleaved by tool calls — move to end.
+                steps.splice(existingIdx, 1);
+                steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
               } else {
-                steps.push({ kind: "reasoning", text: event.value.text });
+                steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
               }
               setState({
                 status: "streaming",
                 question,
+                conversationId: streamConversationId,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],
@@ -194,6 +238,7 @@ export const useAskQuestion = (): {
               setState({
                 status: "streaming",
                 question,
+                conversationId: streamConversationId,
                 steps: [...steps],
                 partialAnswer,
                 artifacts: [...artifacts],

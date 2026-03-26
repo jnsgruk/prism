@@ -10,6 +10,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import type { AgentStep, ToolCallStep } from "@/views/ask/hooks/use-ask-question";
 
@@ -77,7 +79,11 @@ const ToolStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
 
 export const ThinkingStep = ({ step }: { step: AgentStep }): React.ReactElement => {
   if (step.kind === "reasoning") {
-    return <p className="py-1 text-sm italic text-muted-foreground">{step.text}</p>;
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none py-1 text-muted-foreground">
+        <Markdown remarkPlugins={[remarkGfm]}>{step.text}</Markdown>
+      </div>
+    );
   }
   return <ToolStep step={step} />;
 };

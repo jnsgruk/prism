@@ -28,11 +28,14 @@ spec:
         - port: 8080
           protocol: TCP
     # RustFS / S3 (for artifact uploads).
+    # Service exposes port 80 (targetPort 9000). Allow both for CNI compatibility.
     - to:
         - podSelector:
             matchLabels:
               app: rustfs
       ports:
+        - port: 80
+          protocol: TCP
         - port: 9000
           protocol: TCP
     # External HTTPS (GitHub, Jira, Discourse, LLM API providers).

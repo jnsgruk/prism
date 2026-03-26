@@ -371,6 +371,8 @@ message AskQuestionResponse {
     AgentThinking thinking = 6;
     AgentContainerStatus container_status = 7;
     AgentArtifactUploaded artifact_uploaded = 8;
+    // Sent as the first event when a new conversation is created or resumed.
+    AgentConversationCreated conversation_created = 9;
   }
 }
 
@@ -406,6 +408,10 @@ message AgentPartialAnswer {
 // AgentThinking indicates the agent is reasoning (e.g. extended thinking).
 message AgentThinking {
   string text = 1;
+  // Part index from the underlying SSE stream — identifies which reasoning
+  // block this update belongs to so the client can properly interleave
+  // reasoning and tool-call steps without clobbering earlier blocks.
+  int32 part_index = 2;
 }
 
 // AgentFinalAnswer is the completed response with metadata.
@@ -430,6 +436,14 @@ message AgentError {
   string message = 1;
   // Whether the client can retry the question.
   bool retryable = 2;
+}
+
+// AgentConversationCreated is sent as the first stream event, providing the
+// conversation ID so the client can update the URL and sidebar immediately.
+message AgentConversationCreated {
+  string conversation_id = 1;
+  // Initial title (truncated question).
+  string title = 2;
 }
 
 // AgentContainerStatus reports container lifecycle progress.

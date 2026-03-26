@@ -15,7 +15,9 @@
         "SERVICE_TOKEN": "{env:SERVICE_TOKEN}",
         "SESSION_ID": "{env:SESSION_ID}",
         "S3_ENDPOINT": "{env:S3_ENDPOINT}",
-        "S3_BUCKET": "{env:S3_BUCKET}"
+        "S3_BUCKET": "{env:S3_BUCKET}",
+        "AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}",
+        "AWS_SECRET_ACCESS_KEY": "{env:AWS_SECRET_ACCESS_KEY}"
       }
     }
   },

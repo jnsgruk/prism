@@ -81,6 +81,10 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
                 }
             }
 
+            ask_question_response::Event::ConversationCreated(_) => {
+                // Handled by the frontend; CLI ignores this event.
+            }
+
             ask_question_response::Event::Thinking(_) => {
                 // Thinking text is not shown in CLI to keep output clean.
             }

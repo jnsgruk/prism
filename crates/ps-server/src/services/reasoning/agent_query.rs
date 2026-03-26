@@ -1,7 +1,7 @@
 use ps_proto::canonical::prism::v1::{
-    AgentContainerStatus, AgentError, AgentFinalAnswer, AgentPartialAnswer, AgentThinking,
-    AgentToolCallCompleted, AgentToolCallStarted, AskQuestionRequest, AskQuestionResponse,
-    ask_question_response,
+    AgentContainerStatus, AgentConversationCreated, AgentError, AgentFinalAnswer,
+    AgentPartialAnswer, AgentThinking, AgentToolCallCompleted, AgentToolCallStarted,
+    AskQuestionRequest, AskQuestionResponse, ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
@@ -147,6 +147,20 @@ pub async fn ask_question(
     let repos = svc.repos.clone();
     let conv_id = conversation_id;
     let (tx, rx) = tokio::sync::mpsc::channel(64);
+
+    // Send conversation_created as the first event so the client can update
+    // the URL and sidebar immediately.
+    let conv_title = req.question.chars().take(100).collect::<String>();
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::ConversationCreated(
+                AgentConversationCreated {
+                    conversation_id: conversation_id.to_string(),
+                    title: conv_title,
+                },
+            )),
+        }))
+        .await;
 
     tokio::spawn(async move {
         let mut cursor: i64 = 0;
@@ -301,6 +315,10 @@ fn map_db_event_to_proto(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
+            part_index: payload
+                .get("part_index")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0) as i32,
         }),
         "artifact_uploaded" => ask_question_response::Event::ArtifactUploaded(
             ps_proto::canonical::prism::v1::AgentArtifactUploaded {

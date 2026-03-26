@@ -7,14 +7,15 @@ import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { ThinkingStep } from "./thinking-step";
 
 describe("ThinkingStep", () => {
-  it("renders reasoning step as italic text", () => {
-    const step: AgentStep = { kind: "reasoning", text: "Analysing team data..." };
+  it("renders reasoning step with markdown formatting", () => {
+    const step: AgentStep = { kind: "reasoning", text: "Analysing team data...", partIndex: 0 };
     render(<ThinkingStep step={step} />);
 
     const el = screen.getByText("Analysing team data...");
     expect(el).toBeInTheDocument();
+    // Rendered inside a prose div with markdown (p tag inside div)
     expect(el.tagName).toBe("P");
-    expect(el.classList.contains("italic")).toBe(true);
+    expect(el.closest(".prose")).toBeTruthy();
   });
 
   it("renders MCP tool call with Database icon", () => {
