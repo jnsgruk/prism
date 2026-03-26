@@ -164,6 +164,7 @@
               typescript-go
               oxlint
               oxfmt
+              nodejs
 
               # Nix tooling
               nil
