@@ -156,21 +156,25 @@ export const useAskQuestion = (): {
 
             case "toolCallCompleted": {
               const completedCallId = event.value.callId;
-              const target = completedCallId
-                ? steps.find(
+              const targetIdx = completedCallId
+                ? steps.findIndex(
                     (s): s is ToolCallStep => s.kind === "tool" && s.callId === completedCallId,
                   )
-                : steps.findLast(
+                : steps.findLastIndex(
                     (s): s is ToolCallStep =>
                       s.kind === "tool" &&
                       s.toolName === event.value.toolName &&
                       s.status === "running",
                   );
-              if (target) {
-                target.resultSummary = event.value.resultSummary;
-                target.durationMs = event.value.durationMs;
-                target.success = event.value.success;
-                target.status = event.value.success ? "completed" : "error";
+              if (targetIdx !== -1) {
+                const old = steps[targetIdx] as ToolCallStep;
+                steps[targetIdx] = {
+                  ...old,
+                  resultSummary: event.value.resultSummary,
+                  durationMs: event.value.durationMs,
+                  success: event.value.success,
+                  status: event.value.success ? "completed" : "error",
+                };
               }
               setState({
                 status: "streaming",
@@ -213,8 +217,8 @@ export const useAskQuestion = (): {
                 (s): s is ReasoningStep => s.kind === "reasoning" && s.partIndex === idx,
               );
               if (existingIdx !== -1 && existingIdx === steps.length - 1) {
-                // Still the last entry — update in place.
-                (steps[existingIdx] as ReasoningStep).text = event.value.text;
+                // Still the last entry — replace with new object for React.
+                steps[existingIdx] = { kind: "reasoning", text: event.value.text, partIndex: idx };
               } else if (existingIdx !== -1) {
                 // Interleaved by tool calls — move to end.
                 steps.splice(existingIdx, 1);

@@ -1,5 +1,5 @@
 import { Loader2, Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { PageHeader } from "@/components/page-header";
@@ -28,7 +28,28 @@ const AskPage = (): React.ReactElement => {
     [conversationData],
   );
 
+  // Track the conversation ID that the current stream created so that
+  // navigating from /ask → /ask/{id} mid-stream does NOT trigger a reset.
+  const streamConvIdRef = useRef<string | undefined>(undefined);
+
+  // Navigate to the conversation URL as soon as we learn the conversation ID
+  // (from the conversationCreated event), not just on completion.
+  const stateConversationId =
+    state.status !== "idle" && state.status !== "error" ? state.conversationId : undefined;
   useEffect(() => {
+    if (!conversationId && stateConversationId) {
+      streamConvIdRef.current = stateConversationId;
+      navigate(`/ask/${stateConversationId}`, { replace: true });
+    }
+  }, [stateConversationId, conversationId, navigate]);
+
+  // Reset state when the user navigates to a different conversation, but NOT
+  // when we just navigated to the conversation the current stream created.
+  useEffect(() => {
+    if (conversationId === streamConvIdRef.current) {
+      streamConvIdRef.current = undefined;
+      return;
+    }
     reset();
   }, [conversationId, reset]);
 
@@ -38,16 +59,6 @@ const AskPage = (): React.ReactElement => {
     },
     [ask, conversationId],
   );
-
-  // Navigate to the conversation URL as soon as we learn the conversation ID
-  // (from the conversationCreated event), not just on completion.
-  const stateConversationId =
-    state.status !== "idle" && state.status !== "error" ? state.conversationId : undefined;
-  useEffect(() => {
-    if (!conversationId && stateConversationId) {
-      navigate(`/ask/${stateConversationId}`, { replace: true });
-    }
-  }, [stateConversationId, conversationId, navigate]);
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
