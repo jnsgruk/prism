@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reasoning.conversation_artifacts\n                (conversation_id, message_id, artifact_key, display_name,\n                 content_type, size_bytes)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING id, conversation_id, message_id, artifact_key, display_name,\n                      content_type, size_bytes, created_at\n            ",
+  "query": "\n            INSERT INTO reasoning.conversation_artifacts\n                (conversation_id, message_id, artifact_key, display_name,\n                 content_type, size_bytes)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (conversation_id, artifact_key) DO UPDATE\n                SET display_name = EXCLUDED.display_name,\n                    size_bytes = EXCLUDED.size_bytes\n            RETURNING id, conversation_id, message_id, artifact_key, display_name,\n                      content_type, size_bytes, created_at\n            ",
   "describe": {
     "columns": [
       {
@@ -65,5 +65,5 @@
       false
     ]
   },
-  "hash": "851eddb6c4120bb1d0a004c8ea1a6f6f838a26bd9b9532703c2692cc86087c53"
+  "hash": "f7eb2b20264e3210aaecf97af386187fe32f48b6174fb040045f58bd35d47d71"
 }
