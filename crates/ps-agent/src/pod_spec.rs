@@ -62,6 +62,7 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
         env_var("S3_BUCKET", &config.s3_bucket),
         env_var("AWS_ACCESS_KEY_ID", &config.s3_access_key_id),
         env_var("AWS_SECRET_ACCESS_KEY", &config.s3_secret_access_key),
+        env_var("AWS_DEFAULT_REGION", "us-east-1"),
         env_var("RUST_LOG", "ps_mcp=debug,info"),
     ];
 

@@ -22,23 +22,36 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
     return (trace.steps ?? []).map(
       (
         s: {
-          tool_name: string;
+          kind?: string;
+          tool_name?: string;
           call_id?: string;
           arguments?: string;
           result_summary?: string;
           duration_ms?: number;
+          text?: string;
+          part_index?: number;
         },
         i: number,
-      ) => ({
-        kind: "tool" as const,
-        callId: s.call_id ?? `trace-${i}`,
-        toolName: s.tool_name,
-        argumentsJson: s.arguments ?? "{}",
-        resultSummary: s.result_summary,
-        durationMs: s.duration_ms,
-        success: true,
-        status: "completed" as const,
-      }),
+      ): AgentStep => {
+        if (s.kind === "reasoning") {
+          return {
+            kind: "reasoning" as const,
+            text: s.text ?? "",
+            partIndex: s.part_index ?? i,
+          };
+        }
+        // Default to tool step (backward compatible with traces without kind field)
+        return {
+          kind: "tool" as const,
+          callId: s.call_id ?? `trace-${i}`,
+          toolName: s.tool_name ?? "unknown",
+          argumentsJson: s.arguments ?? "{}",
+          resultSummary: s.result_summary,
+          durationMs: s.duration_ms,
+          success: true,
+          status: "completed" as const,
+        };
+      },
     );
   } catch {
     return [];
@@ -97,9 +110,10 @@ export const ConversationThread = ({
         </div>
       ))}
 
-      {conversationArtifacts.length > 0 && state.status === "idle" && (
-        <ArtifactList artifacts={conversationArtifacts} />
-      )}
+      {conversationArtifacts.length > 0 &&
+        (state.status === "idle" || state.status === "completed") && (
+          <ArtifactList artifacts={conversationArtifacts} />
+        )}
 
       {state.status !== "idle" && state.status !== "error" && (
         <>
@@ -112,7 +126,9 @@ export const ConversationThread = ({
 
       {state.status === "container_starting" && <ContainerStatus message={state.message} />}
 
-      {(state.status === "streaming" || state.status === "completed") && (
+      {(state.status === "streaming" ||
+        (state.status === "completed" &&
+          !messages.some((m) => m.role === "assistant" && m.content === state.answer))) && (
         <AgentResponse
           state={state}
           steps={state.steps}

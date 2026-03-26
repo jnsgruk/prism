@@ -219,15 +219,15 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     let cid = conv_id;
                     let answer = query_result.answer_text.clone();
                     let tool_calls = query_result.tool_calls;
-                    let tool_steps = query_result.tool_steps;
+                    let trace_steps = query_result.trace_steps;
                     ctx.run(move || {
                         let repos = repos.clone();
                         let answer = answer.clone();
-                        let tool_steps = tool_steps;
+                        let trace_steps = trace_steps;
                         async move {
                             let trace = serde_json::json!({
                                 "tool_call_count": tool_calls,
-                                "steps": tool_steps,
+                                "steps": trace_steps,
                             });
                             repos
                                 .reasoning
@@ -379,21 +379,10 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
 }
 
 /// Result of the core query execution.
-/// A completed tool call recorded during the query for persistence in the reasoning trace.
-#[derive(Clone, serde::Serialize)]
-pub struct CompletedToolStep {
-    pub tool_name: String,
-    pub call_id: String,
-    pub arguments: String,
-    pub result_summary: String,
-    pub duration_ms: i32,
-    pub success: bool,
-}
-
 pub struct QueryResult {
     pub answer_text: String,
     pub tool_calls: i32,
-    pub tool_steps: Vec<CompletedToolStep>,
+    pub trace_steps: Vec<serde_json::Value>,
 }
 
 /// Core agentic query logic: connect to `OpenCode`, stream events, write to DB.
@@ -452,7 +441,7 @@ pub async fn run_agentic_query_core(
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
     let mut answer_text = String::new();
     let mut tool_calls = 0i32;
-    let mut tool_steps: Vec<CompletedToolStep> = Vec::new();
+    let mut trace_steps: Vec<serde_json::Value> = Vec::new();
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -558,14 +547,14 @@ pub async fn run_agentic_query_core(
                 }
                 Event::ToolCallCompleted(c) => {
                     tool_calls += 1;
-                    tool_steps.push(CompletedToolStep {
-                        tool_name: c.tool_name.clone(),
-                        call_id: c.call_id.clone(),
-                        arguments: String::new(),
-                        result_summary: c.result_summary.clone(),
-                        duration_ms: c.duration_ms,
-                        success: c.success,
-                    });
+                    trace_steps.push(serde_json::json!({
+                        "kind": "tool",
+                        "tool_name": c.tool_name,
+                        "call_id": c.call_id,
+                        "result_summary": c.result_summary,
+                        "duration_ms": c.duration_ms,
+                        "success": c.success,
+                    }));
                     let _ = repos
                         .reasoning
                         .append_event(
@@ -593,12 +582,31 @@ pub async fn run_agentic_query_core(
                         .await;
                 }
                 Event::Thinking(t) => {
+                    // Thinking events are cumulative per part_index —
+                    // update in place if the last trace entry matches.
+                    let pi = t.part_index;
+                    let updated = trace_steps.last_mut().is_some_and(|last| {
+                        last.get("kind").and_then(|v| v.as_str()) == Some("reasoning")
+                            && last.get("part_index").and_then(serde_json::Value::as_i64)
+                                == Some(i64::from(pi))
+                    });
+                    if updated {
+                        if let Some(last) = trace_steps.last_mut() {
+                            last["text"] = serde_json::Value::String(t.text.clone());
+                        }
+                    } else {
+                        trace_steps.push(serde_json::json!({
+                            "kind": "reasoning",
+                            "text": t.text,
+                            "part_index": pi,
+                        }));
+                    }
                     let _ = repos
                         .reasoning
                         .append_event(
                             conversation_id,
                             "thinking",
-                            &serde_json::json!({"text": t.text}),
+                            &serde_json::json!({"text": t.text, "part_index": t.part_index}),
                         )
                         .await;
                 }
@@ -623,7 +631,7 @@ pub async fn run_agentic_query_core(
     Ok(QueryResult {
         answer_text,
         tool_calls,
-        tool_steps,
+        trace_steps,
     })
 }
 

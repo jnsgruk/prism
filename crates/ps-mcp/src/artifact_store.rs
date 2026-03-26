@@ -19,11 +19,13 @@ impl ArtifactStore {
     /// When `endpoint` is `None`, uses the default AWS S3 endpoint.
     pub fn new(endpoint: Option<&str>, bucket: &str, session_id: &str) -> Self {
         let client_options = ClientOptions::new()
+            .with_allow_http(true)
             .with_connect_timeout(std::time::Duration::from_secs(5))
             .with_timeout(std::time::Duration::from_secs(30));
 
         let mut builder = AmazonS3Builder::from_env()
             .with_bucket_name(bucket)
+            .with_region("us-east-1") // Required by SigV4 signer, ignored by RustFS/MinIO
             .with_allow_http(true)
             .with_client_options(client_options);
 
