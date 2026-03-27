@@ -115,12 +115,21 @@ export const ConversationThread = ({
   const isAgentActive = state.status === "streaming" || state.status === "completed";
   const displayMessages = ((): ConversationMessage[] => {
     if (!isAgentActive) return messages;
+
+    // Try to match by question text first.
     const question = state.question;
-    const lastQuestionIdx = messages.findLastIndex(
-      (m) => m.role === "user" && m.content === question,
-    );
-    if (lastQuestionIdx === -1) return messages;
-    return messages.filter((_, i) => i <= lastQuestionIdx);
+    let cutoffIdx = question
+      ? messages.findLastIndex((m) => m.role === "user" && m.content === question)
+      : -1;
+
+    // Fallback: if no match (e.g. during resume with empty question), cut off
+    // after the last user message to avoid showing the duplicate assistant response.
+    if (cutoffIdx === -1) {
+      cutoffIdx = messages.findLastIndex((m) => m.role === "user");
+    }
+
+    if (cutoffIdx === -1) return messages;
+    return messages.filter((_, i) => i <= cutoffIdx);
   })();
 
   return (

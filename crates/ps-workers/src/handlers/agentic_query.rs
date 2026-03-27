@@ -255,21 +255,6 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     .await?;
                 }
 
-                // Clean up ephemeral events after message is persisted.
-                {
-                    let repos = self.state.repos.clone();
-                    let cid = conv_id;
-                    ctx.run(move || {
-                        let repos = repos.clone();
-                        async move {
-                            let _ = repos.reasoning.delete_events(cid).await;
-                            Ok(Json::from(()))
-                        }
-                    })
-                    .name("cleanup_events")
-                    .await?;
-                }
-
                 // Update conversation totals (journaled).
                 {
                     let repos = self.state.repos.clone();
@@ -330,6 +315,22 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                         }
                     })
                     .name("finalize")
+                    .await?;
+                }
+
+                // Clean up ephemeral events after finalize has completed
+                // and the server poll loop has seen the terminal event.
+                {
+                    let repos = self.state.repos.clone();
+                    let cid = conv_id;
+                    ctx.run(move || {
+                        let repos = repos.clone();
+                        async move {
+                            let _ = repos.reasoning.delete_events(cid).await;
+                            Ok(Json::from(()))
+                        }
+                    })
+                    .name("cleanup_events")
                     .await?;
                 }
             }
