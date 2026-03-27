@@ -1,5 +1,5 @@
 import { createClient } from "@connectrpc/connect";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import type {
@@ -10,6 +10,7 @@ import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
 import { conversationKeys } from "./use-conversations";
+import { deriveSteps, type StreamEvent } from "@/views/ask/lib/derive-steps";
 
 const client = createClient(ReasoningService, transport);
 
@@ -22,12 +23,14 @@ export type ToolCallStep = {
   durationMs?: number;
   success?: boolean;
   status: "running" | "completed" | "error";
+  stepId?: string;
 };
 
 export type ReasoningStep = {
   kind: "reasoning";
   text: string;
   partIndex: number;
+  stepId?: string;
 };
 
 export type AgentStep = ToolCallStep | ReasoningStep;
@@ -70,27 +73,232 @@ const toArtifactInfo = (a: AgentArtifactUploaded): ArtifactInfo =>
     sizeBytes: a.sizeBytes,
   }) as ArtifactInfo;
 
+type StreamMeta =
+  | { status: "idle" }
+  | { status: "container_starting"; message: string; question: string; conversationId?: string }
+  | {
+      status: "streaming";
+      question: string;
+      conversationId?: string;
+      partialAnswer: string;
+      artifacts: ArtifactInfo[];
+    }
+  | {
+      status: "completed";
+      question: string;
+      answer: string;
+      conversationId: string;
+      supportingData: string;
+      tokenUsage: TokenUsage;
+      durationMs: number;
+      artifacts: ArtifactInfo[];
+    }
+  | { status: "error"; message: string; retryable: boolean };
+
 export const useAskQuestion = (): {
   state: AgentState;
   ask: (question: string, conversationId?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
+  resume: (conversationId: string) => Promise<void>;
 } => {
-  const [state, setState] = useState<AgentState>({ status: "idle" });
+  const [events, setEvents] = useState<StreamEvent[]>([]);
+  const [meta, setMeta] = useState<StreamMeta>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
+  const nextEventId = useRef(0);
+
+  // Derive steps from events -- pure, deterministic, memoized.
+  const steps = useMemo(() => deriveSteps(events), [events]);
+
+  // Helper to append a step event from a proto response.
+  const appendStepEvent = useCallback(
+    (
+      eventCase: string,
+      value: { stepId?: string; stepSeq?: number; [key: string]: unknown },
+    ): void => {
+      let stepId = "";
+      let stepSeq = 0;
+      let eventType = "";
+      let payload: Record<string, unknown> = {};
+
+      switch (eventCase) {
+        case "thinking":
+          stepId = (value.stepId as string) ?? "";
+          stepSeq = (value.stepSeq as number) ?? 0;
+          eventType = "thinking";
+          payload = { text: value.text, part_index: value.partIndex };
+          break;
+        case "toolCallStarted":
+          stepId = (value.stepId as string) ?? "";
+          stepSeq = (value.stepSeq as number) ?? 0;
+          eventType = "tool_call_started";
+          payload = {
+            tool_name: value.toolName,
+            arguments_json: value.argumentsJson,
+            call_id: value.callId,
+          };
+          break;
+        case "toolCallCompleted":
+          stepId = (value.stepId as string) ?? "";
+          stepSeq = (value.stepSeq as number) ?? 0;
+          eventType = "tool_call_completed";
+          payload = {
+            tool_name: value.toolName,
+            result_summary: value.resultSummary,
+            duration_ms: value.durationMs,
+            success: value.success,
+            call_id: value.callId,
+          };
+          break;
+        default:
+          return;
+      }
+
+      if (!stepId) return;
+
+      const id = nextEventId.current++;
+      setEvents((prev) => [...prev, { id, eventType, stepId, stepSeq, payload }]);
+    },
+    [],
+  );
+
+  /** Process a stream of AskQuestion/ResumeStream responses. */
+  const processStream = useCallback(
+    async (
+      stream: AsyncIterable<{ event: { case?: string; value?: Record<string, unknown> } }>,
+      abort: AbortController,
+      question: string,
+      initialConversationId?: string,
+    ) => {
+      let partialAnswer = "";
+      const artifacts: ArtifactInfo[] = [];
+      let streamConversationId: string | undefined = initialConversationId;
+
+      for await (const response of stream) {
+        if (abort.signal.aborted) break;
+
+        const { event } = response;
+        if (!event.case) continue;
+
+        switch (event.case) {
+          case "conversationCreated": {
+            const v = event.value as { conversationId: string };
+            streamConversationId = v.conversationId;
+            queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+            setMeta((prev) =>
+              prev.status === "container_starting"
+                ? { ...prev, conversationId: streamConversationId }
+                : prev,
+            );
+            break;
+          }
+
+          case "containerStatus": {
+            const v = event.value as { message: string };
+            setMeta({
+              status: "container_starting",
+              message: v.message,
+              question,
+              conversationId: streamConversationId,
+            });
+            break;
+          }
+
+          case "partialAnswer": {
+            const v = event.value as { text: string };
+            partialAnswer = v.text;
+            setMeta({
+              status: "streaming",
+              question,
+              conversationId: streamConversationId,
+              partialAnswer,
+              artifacts: [...artifacts],
+            });
+            break;
+          }
+
+          case "artifactUploaded": {
+            const v = event.value as AgentArtifactUploaded;
+            artifacts.push(toArtifactInfo(v));
+            setMeta((prev) =>
+              prev.status === "streaming" ? { ...prev, artifacts: [...artifacts] } : prev,
+            );
+            break;
+          }
+
+          case "finalAnswer": {
+            const v = event.value as {
+              answer: string;
+              conversationId: string;
+              supportingDataJson: string;
+              promptTokens: number;
+              completionTokens: number;
+              estimatedCostUsd: number;
+              durationMs: number;
+              artifacts: ArtifactInfo[];
+            };
+            setMeta({
+              status: "completed",
+              question,
+              answer: v.answer,
+              conversationId: v.conversationId,
+              supportingData: v.supportingDataJson,
+              tokenUsage: {
+                promptTokens: v.promptTokens,
+                completionTokens: v.completionTokens,
+                estimatedCostUsd: v.estimatedCostUsd,
+              },
+              durationMs: v.durationMs,
+              artifacts: [...artifacts, ...v.artifacts],
+            });
+            queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+            if (v.conversationId) {
+              queryClient.invalidateQueries({
+                queryKey: conversationKeys.detail(v.conversationId),
+              });
+            }
+            break;
+          }
+
+          case "error": {
+            const v = event.value as { message: string; retryable: boolean };
+            setMeta({ status: "error", message: v.message, retryable: v.retryable });
+            break;
+          }
+
+          case "thinking":
+          case "toolCallStarted":
+          case "toolCallCompleted": {
+            // Transition from container_starting to streaming on first step event.
+            setMeta((prev) =>
+              prev.status === "container_starting"
+                ? {
+                    status: "streaming",
+                    question,
+                    conversationId: streamConversationId,
+                    partialAnswer,
+                    artifacts: [...artifacts],
+                  }
+                : prev,
+            );
+            appendStepEvent(event.case, event.value as Record<string, unknown>);
+            break;
+          }
+        }
+      }
+    },
+    [queryClient, appendStepEvent],
+  );
 
   const ask = useCallback(
     async (question: string, conversationId?: string) => {
       const abort = new AbortController();
       abortRef.current = abort;
+      setEvents([]);
+      nextEventId.current = 0;
 
-      const steps: AgentStep[] = [];
-      let partialAnswer = "";
-      const artifacts: ArtifactInfo[] = [];
-      let streamConversationId: string | undefined = conversationId;
-
-      setState({
+      setMeta({
         status: "container_starting",
         message: "Initialising agent...",
         question,
@@ -99,208 +307,10 @@ export const useAskQuestion = (): {
 
       try {
         const stream = client.askQuestion({ question, conversationId }, { signal: abort.signal });
-
-        for await (const response of stream) {
-          if (abort.signal.aborted) break;
-
-          const { event } = response;
-          if (!event.case) continue;
-
-          switch (event.case) {
-            case "conversationCreated": {
-              streamConversationId = event.value.conversationId;
-              queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
-              setState({
-                status: "container_starting",
-                message: "Initialising agent...",
-                question,
-                conversationId: streamConversationId,
-              });
-              break;
-            }
-
-            case "containerStatus": {
-              setState({
-                status: "container_starting",
-                message: event.value.message,
-                question,
-                conversationId: streamConversationId,
-              });
-              break;
-            }
-
-            case "toolCallStarted": {
-              const callId = event.value.callId;
-              const existing = callId
-                ? steps.find((s): s is ToolCallStep => s.kind === "tool" && s.callId === callId)
-                : undefined;
-              if (!existing) {
-                steps.push({
-                  kind: "tool",
-                  callId: callId || crypto.randomUUID(),
-                  toolName: event.value.toolName,
-                  argumentsJson: event.value.argumentsJson,
-                  status: "running",
-                });
-              }
-              setState({
-                status: "streaming",
-                question,
-                conversationId: streamConversationId,
-                steps: [...steps],
-                partialAnswer,
-                artifacts: [...artifacts],
-              });
-              break;
-            }
-
-            case "toolCallCompleted": {
-              const completedCallId = event.value.callId;
-              const targetIdx = completedCallId
-                ? steps.findIndex(
-                    (s): s is ToolCallStep => s.kind === "tool" && s.callId === completedCallId,
-                  )
-                : steps.findLastIndex(
-                    (s): s is ToolCallStep =>
-                      s.kind === "tool" &&
-                      s.toolName === event.value.toolName &&
-                      s.status === "running",
-                  );
-              if (targetIdx !== -1) {
-                const old = steps[targetIdx] as ToolCallStep;
-                steps[targetIdx] = {
-                  ...old,
-                  resultSummary: event.value.resultSummary,
-                  durationMs: event.value.durationMs,
-                  success: event.value.success,
-                  status: event.value.success ? "completed" : "error",
-                };
-              }
-              setState({
-                status: "streaming",
-                question,
-                conversationId: streamConversationId,
-                steps: [...steps],
-                partialAnswer,
-                artifacts: [...artifacts],
-              });
-              break;
-            }
-
-            case "partialAnswer": {
-              partialAnswer = event.value.text;
-              setState({
-                status: "streaming",
-                question,
-                conversationId: streamConversationId,
-                steps: [...steps],
-                partialAnswer,
-                artifacts: [...artifacts],
-              });
-              break;
-            }
-
-            case "thinking": {
-              // OpenCode sends cumulative text per reasoning part — the
-              // part_index identifies which block is being updated.
-              //
-              // part_index can be recycled across agent turns (a new
-              // assistant message resets the index to 0). We detect this
-              // by checking whether the incoming text is a continuation
-              // of the existing text (cumulative) or a fresh start (new
-              // block). Search from the end so we match the most recent
-              // block when duplicates exist.
-              const idx = event.value.partIndex;
-              const existingIdx = steps.findLastIndex(
-                (s): s is ReasoningStep => s.kind === "reasoning" && s.partIndex === idx,
-              );
-              if (existingIdx !== -1) {
-                const existing = steps[existingIdx] as ReasoningStep;
-                const isContinuation =
-                  event.value.text.startsWith(existing.text) ||
-                  existing.text.startsWith(event.value.text);
-
-                if (!isContinuation) {
-                  // New reasoning block with a recycled partIndex — preserve old block.
-                  steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
-                } else if (existingIdx === steps.length - 1) {
-                  // Still the last entry — replace with new object for React.
-                  steps[existingIdx] = {
-                    kind: "reasoning",
-                    text: event.value.text,
-                    partIndex: idx,
-                  };
-                } else {
-                  // Interleaved by tool calls — move to end.
-                  steps.splice(existingIdx, 1);
-                  steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
-                }
-              } else {
-                steps.push({ kind: "reasoning", text: event.value.text, partIndex: idx });
-              }
-              setState({
-                status: "streaming",
-                question,
-                conversationId: streamConversationId,
-                steps: [...steps],
-                partialAnswer,
-                artifacts: [...artifacts],
-              });
-              break;
-            }
-
-            case "artifactUploaded": {
-              artifacts.push(toArtifactInfo(event.value));
-              setState({
-                status: "streaming",
-                question,
-                conversationId: streamConversationId,
-                steps: [...steps],
-                partialAnswer,
-                artifacts: [...artifacts],
-              });
-              break;
-            }
-
-            case "finalAnswer": {
-              const final = event.value;
-              setState({
-                status: "completed",
-                question,
-                steps: [...steps],
-                answer: final.answer,
-                conversationId: final.conversationId,
-                supportingData: final.supportingDataJson,
-                tokenUsage: {
-                  promptTokens: final.promptTokens,
-                  completionTokens: final.completionTokens,
-                  estimatedCostUsd: final.estimatedCostUsd,
-                },
-                durationMs: final.durationMs,
-                artifacts: [...artifacts, ...final.artifacts],
-              });
-              queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
-              if (final.conversationId) {
-                queryClient.invalidateQueries({
-                  queryKey: conversationKeys.detail(final.conversationId),
-                });
-              }
-              break;
-            }
-
-            case "error": {
-              setState({
-                status: "error",
-                message: event.value.message,
-                retryable: event.value.retryable,
-              });
-              break;
-            }
-          }
-        }
+        await processStream(stream, abort, question, conversationId);
       } catch (err) {
         if (!abort.signal.aborted) {
-          setState({
+          setMeta({
             status: "error",
             message: err instanceof Error ? err.message : "An unexpected error occurred",
             retryable: true,
@@ -308,17 +318,64 @@ export const useAskQuestion = (): {
         }
       }
     },
-    [queryClient],
+    [processStream],
+  );
+
+  const resume = useCallback(
+    async (conversationId: string) => {
+      const abort = new AbortController();
+      abortRef.current = abort;
+      setEvents([]);
+      nextEventId.current = 0;
+
+      setMeta({
+        status: "streaming",
+        question: "",
+        conversationId,
+        partialAnswer: "",
+        artifacts: [],
+      });
+
+      try {
+        const stream = client.resumeStream(
+          { conversationId, lastEventId: BigInt(0) },
+          { signal: abort.signal },
+        );
+        await processStream(stream, abort, "", conversationId);
+      } catch (err) {
+        if (!abort.signal.aborted) {
+          setMeta({
+            status: "error",
+            message: err instanceof Error ? err.message : "Connection lost",
+            retryable: true,
+          });
+        }
+      }
+    },
+    [processStream],
   );
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
-    setState({ status: "idle" });
+    setMeta({ status: "idle" });
+    setEvents([]);
   }, []);
 
   const reset = useCallback(() => {
-    setState({ status: "idle" });
+    setMeta({ status: "idle" });
+    setEvents([]);
   }, []);
 
-  return { state, ask, cancel, reset };
+  // Build full AgentState by combining meta + derived steps.
+  const state: AgentState = useMemo(() => {
+    if (meta.status === "streaming") {
+      return { ...meta, steps };
+    }
+    if (meta.status === "completed") {
+      return { ...meta, steps };
+    }
+    return meta;
+  }, [meta, steps]);
+
+  return { state, ask, cancel, reset, resume };
 };

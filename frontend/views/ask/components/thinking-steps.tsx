@@ -46,7 +46,10 @@ export const ThinkingSteps = ({
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-1 space-y-0.5 border-l-2 border-border pl-3">
         {steps.map((step, i) => (
-          <ThinkingStep key={step.kind === "tool" ? step.callId : `reasoning-${i}`} step={step} />
+          <ThinkingStep
+            key={step.stepId ?? (step.kind === "tool" ? step.callId : `reasoning-${i}`)}
+            step={step}
+          />
         ))}
       </CollapsibleContent>
     </Collapsible>
