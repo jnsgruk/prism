@@ -6,6 +6,17 @@ vi.mock("@/views/ask/hooks/use-artifacts", () => ({
     download: vi.fn(),
     isPending: false,
   }),
+  usePreviewArtifact: (): {
+    preview: ReturnType<typeof vi.fn>;
+    isPending: boolean;
+    state: null;
+    close: ReturnType<typeof vi.fn>;
+  } => ({
+    preview: vi.fn(),
+    isPending: false,
+    state: null,
+    close: vi.fn(),
+  }),
 }));
 
 // Import after mock setup
@@ -21,8 +32,8 @@ describe("ArtifactList", () => {
 
   it("renders artifact display names", () => {
     const artifacts = [
-      { id: "a1", displayName: "team-report.csv", sizeBytes: 2048 },
-      { id: "a2", displayName: "velocity-chart.png", sizeBytes: 153600 },
+      { id: "a1", displayName: "team-report.csv", contentType: "text/csv", sizeBytes: 2048 },
+      { id: "a2", displayName: "velocity-chart.png", contentType: "image/png", sizeBytes: 153600 },
     ];
     render(<ArtifactList artifacts={artifacts} />);
 
@@ -56,5 +67,40 @@ describe("ArtifactList", () => {
     render(<ArtifactList artifacts={artifacts} />);
 
     expect(screen.getByText("3.0 KB")).toBeInTheDocument();
+  });
+
+  it("shows preview button for previewable content types", () => {
+    const artifacts = [
+      { id: "a1", displayName: "chart.png", contentType: "image/png", sizeBytes: 1024 },
+    ];
+    render(<ArtifactList artifacts={artifacts} />);
+
+    // Should have 2 buttons: preview (Eye) + download
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(2);
+  });
+
+  it("hides preview button when contentType is missing", () => {
+    const artifacts = [{ id: "a1", displayName: "unknown.bin", sizeBytes: 1024 }];
+    render(<ArtifactList artifacts={artifacts} />);
+
+    // Should have only 1 button: download
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+  });
+
+  it("hides preview button for non-previewable content types", () => {
+    const artifacts = [
+      {
+        id: "a1",
+        displayName: "archive.zip",
+        contentType: "application/zip",
+        sizeBytes: 1024,
+      },
+    ];
+    render(<ArtifactList artifacts={artifacts} />);
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
   });
 });
