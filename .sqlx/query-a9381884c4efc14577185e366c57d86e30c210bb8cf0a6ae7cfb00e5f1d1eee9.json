@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reasoning.conversation_events (conversation_id, event_type, payload)\n            VALUES ($1, $2, $3)\n            RETURNING id, conversation_id, event_type, payload, created_at\n            ",
+  "query": "\n            SELECT id, conversation_id, event_type, payload, step_id, step_seq, created_at\n            FROM reasoning.conversation_events\n            WHERE conversation_id = $1 AND id > $2\n            ORDER BY id\n            ",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,16 @@
       },
       {
         "ordinal": 4,
+        "name": "step_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "step_seq",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -32,8 +42,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Jsonb"
+        "Int8"
       ]
     },
     "nullable": [
@@ -41,8 +50,10 @@
       false,
       false,
       false,
+      true,
+      true,
       false
     ]
   },
-  "hash": "0ba8a7a28feb28a43470638a8bc3b1a574bb9fb1b86f7f1642b53022ec8daf76"
+  "hash": "a9381884c4efc14577185e366c57d86e30c210bb8cf0a6ae7cfb00e5f1d1eee9"
 }
