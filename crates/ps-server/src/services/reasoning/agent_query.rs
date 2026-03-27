@@ -200,8 +200,6 @@ pub async fn ask_question(
                             }
 
                             if is_terminal {
-                                // Clean up events after streaming is complete.
-                                let _ = repos.reasoning.delete_events(conv_id).await;
                                 return;
                             }
                         }
@@ -225,7 +223,6 @@ pub async fn ask_question(
             if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await
                 && matches!(conv.query_status.as_str(), "cancelled" | "failed")
             {
-                let _ = repos.reasoning.delete_events(conv_id).await;
                 return;
             }
 

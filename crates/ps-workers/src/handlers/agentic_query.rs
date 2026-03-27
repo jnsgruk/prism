@@ -255,6 +255,21 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     .await?;
                 }
 
+                // Clean up ephemeral events after message is persisted.
+                {
+                    let repos = self.state.repos.clone();
+                    let cid = conv_id;
+                    ctx.run(move || {
+                        let repos = repos.clone();
+                        async move {
+                            let _ = repos.reasoning.delete_events(cid).await;
+                            Ok(Json::from(()))
+                        }
+                    })
+                    .name("cleanup_events")
+                    .await?;
+                }
+
                 // Update conversation totals (journaled).
                 {
                     let repos = self.state.repos.clone();
@@ -449,7 +464,7 @@ pub async fn run_agentic_query_core(
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
     let mut answer_text = String::new();
     let mut tool_calls = 0i32;
-    let mut trace_steps: Vec<serde_json::Value> = Vec::new();
+    let mut registry = super::step_registry::StepRegistry::new();
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -542,6 +557,7 @@ pub async fn run_agentic_query_core(
             use ps_proto::canonical::prism::v1::ask_question_response::Event;
             match evt {
                 Event::ToolCallStarted(s) => {
+                    let identity = registry.tool_started(&s.call_id);
                     let _ = repos
                         .reasoning
                         .append_event(
@@ -552,21 +568,14 @@ pub async fn run_agentic_query_core(
                                 "arguments_json": s.arguments_json,
                                 "call_id": s.call_id,
                             }),
-                            None,
-                            None,
+                            Some(&identity.step_id),
+                            Some(identity.step_seq),
                         )
                         .await;
                 }
                 Event::ToolCallCompleted(c) => {
                     tool_calls += 1;
-                    trace_steps.push(serde_json::json!({
-                        "kind": "tool",
-                        "tool_name": c.tool_name,
-                        "call_id": c.call_id,
-                        "result_summary": c.result_summary,
-                        "duration_ms": c.duration_ms,
-                        "success": c.success,
-                    }));
+                    let identity = registry.tool_completed(&c.call_id);
                     let _ = repos
                         .reasoning
                         .append_event(
@@ -579,8 +588,8 @@ pub async fn run_agentic_query_core(
                                 "success": c.success,
                                 "call_id": c.call_id,
                             }),
-                            None,
-                            None,
+                            Some(&identity.step_id),
+                            Some(identity.step_seq),
                         )
                         .await;
                 }
@@ -598,33 +607,15 @@ pub async fn run_agentic_query_core(
                         .await;
                 }
                 Event::Thinking(t) => {
-                    // Thinking events are cumulative per part_index —
-                    // update in place if the last trace entry matches.
-                    let pi = t.part_index;
-                    let updated = trace_steps.last_mut().is_some_and(|last| {
-                        last.get("kind").and_then(|v| v.as_str()) == Some("reasoning")
-                            && last.get("part_index").and_then(serde_json::Value::as_i64)
-                                == Some(i64::from(pi))
-                    });
-                    if updated {
-                        if let Some(last) = trace_steps.last_mut() {
-                            last["text"] = serde_json::Value::String(t.text.clone());
-                        }
-                    } else {
-                        trace_steps.push(serde_json::json!({
-                            "kind": "reasoning",
-                            "text": t.text,
-                            "part_index": pi,
-                        }));
-                    }
+                    let identity = registry.thinking_step(t.part_index, &t.text);
                     let _ = repos
                         .reasoning
                         .append_event(
                             conversation_id,
                             "thinking",
                             &serde_json::json!({"text": t.text, "part_index": t.part_index}),
-                            None,
-                            None,
+                            Some(&identity.step_id),
+                            Some(identity.step_seq),
                         )
                         .await;
                 }
@@ -648,11 +639,123 @@ pub async fn run_agentic_query_core(
         }
     }
 
+    // Derive the reasoning trace from all conversation events.
+    let all_events = repos
+        .reasoning
+        .get_all_events(conversation_id)
+        .await
+        .unwrap_or_default();
+    let trace_steps = derive_trace_from_events(&all_events);
+
     Ok(QueryResult {
         answer_text,
         tool_calls,
         trace_steps,
     })
+}
+
+/// Derive the reasoning trace from conversation events.
+/// This produces the same structure as the frontend's `deriveSteps()`.
+fn derive_trace_from_events(
+    events: &[ps_core::repo::reasoning::ConversationEvent],
+) -> Vec<serde_json::Value> {
+    use std::collections::BTreeMap;
+
+    // BTreeMap keyed by step_seq for deterministic ordering.
+    let mut steps: BTreeMap<i32, serde_json::Value> = BTreeMap::new();
+
+    for event in events {
+        let Some(step_seq) = event.step_seq else {
+            continue;
+        };
+        let Some(ref step_id) = event.step_id else {
+            continue;
+        };
+
+        match event.event_type.as_str() {
+            "thinking" => {
+                let text = event
+                    .payload
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let part_index = event
+                    .payload
+                    .get("part_index")
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(0);
+                // Always overwrite — later events have more complete text.
+                steps.insert(
+                    step_seq,
+                    serde_json::json!({
+                        "kind": "reasoning",
+                        "text": text,
+                        "part_index": part_index,
+                        "step_id": step_id,
+                    }),
+                );
+            }
+            "tool_call_started" => {
+                let tool_name = event
+                    .payload
+                    .get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let call_id = event
+                    .payload
+                    .get("call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let args = event
+                    .payload
+                    .get("arguments_json")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("{}");
+                steps.entry(step_seq).or_insert_with(|| {
+                    serde_json::json!({
+                        "kind": "tool",
+                        "tool_name": tool_name,
+                        "call_id": call_id,
+                        "arguments": args,
+                        "step_id": step_id,
+                    })
+                });
+            }
+            "tool_call_completed" => {
+                if let Some(step) = steps.get_mut(&step_seq)
+                    && let Some(obj) = step.as_object_mut()
+                {
+                    obj.insert(
+                        "result_summary".into(),
+                        event
+                            .payload
+                            .get("result_summary")
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    obj.insert(
+                        "duration_ms".into(),
+                        event
+                            .payload
+                            .get("duration_ms")
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    obj.insert(
+                        "success".into(),
+                        event
+                            .payload
+                            .get("success")
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Bool(true)),
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    steps.into_values().collect()
 }
 
 /// Poll for Pod readiness. Returns the pod IP on success.
