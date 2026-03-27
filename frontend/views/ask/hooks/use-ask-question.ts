@@ -97,7 +97,7 @@ type StreamMeta =
 
 export const useAskQuestion = (): {
   state: AgentState;
-  ask: (question: string, conversationId?: string) => Promise<void>;
+  ask: (question: string, conversationId?: string, modelOverride?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
   resume: (conversationId: string) => Promise<void>;
@@ -292,7 +292,7 @@ export const useAskQuestion = (): {
   );
 
   const ask = useCallback(
-    async (question: string, conversationId?: string) => {
+    async (question: string, conversationId?: string, modelOverride?: string) => {
       const abort = new AbortController();
       abortRef.current = abort;
       setEvents([]);
@@ -306,7 +306,10 @@ export const useAskQuestion = (): {
       });
 
       try {
-        const stream = client.askQuestion({ question, conversationId }, { signal: abort.signal });
+        const stream = client.askQuestion(
+          { question, conversationId, modelOverride },
+          { signal: abort.signal },
+        );
         await processStream(stream, abort, question, conversationId);
       } catch (err) {
         if (!abort.signal.aborted) {

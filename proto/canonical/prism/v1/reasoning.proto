@@ -362,6 +362,9 @@ message AskQuestionRequest {
   string question = 1;
   // Optional conversation ID to resume. If omitted, a new conversation starts.
   optional string conversation_id = 2;
+  // If set, overrides the admin-configured agentic model for this query.
+  // Format: "provider/model_id" (e.g. "google/gemini-2.5-flash").
+  optional string model_override = 3;
 }
 
 message ResumeStreamRequest {

@@ -11,6 +11,7 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
     let req = AskQuestionRequest {
         question: question.to_string(),
         conversation_id: None,
+        model_override: None,
     };
 
     let resp = clients.reasoning.ask_question(req).await?;

@@ -2,17 +2,22 @@ import { ArrowUp, Square } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ModelSelector } from "@/views/ask/components/model-selector";
 
 export const QueryInput = ({
   onSubmit,
   onCancel,
   isStreaming,
   disabled,
+  selectedModel,
+  onModelChange,
 }: {
   onSubmit: (question: string) => void;
   onCancel: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  selectedModel: string | undefined;
+  onModelChange: (modelId: string | undefined) => void;
 }): React.ReactElement => {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,6 +64,9 @@ export const QueryInput = ({
         rows={1}
         disabled={disabled}
       />
+      <div className="absolute bottom-2 left-2">
+        <ModelSelector value={selectedModel} onSelect={onModelChange} disabled={isStreaming} />
+      </div>
       <div className="absolute bottom-2 right-2">
         {isStreaming ? (
           <Button variant="destructive" size="icon" className="size-8" onClick={onCancel}>

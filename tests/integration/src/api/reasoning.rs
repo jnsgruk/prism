@@ -666,6 +666,7 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
     let mut req = Request::new(AskQuestionRequest {
         question: "How many teams?".into(),
         conversation_id: Some(conv.id.to_string()),
+        model_override: None,
     });
     auth(&mut req, &token);
 
@@ -729,6 +730,7 @@ define_api_test!(ask_question_streams_final_answer, |server| async move {
     let mut req = Request::new(AskQuestionRequest {
         question: "What is the meaning of life?".into(),
         conversation_id: Some(conv.id.to_string()),
+        model_override: None,
     });
     auth(&mut req, &token);
 
@@ -785,6 +787,7 @@ define_api_test!(ask_question_streams_error, |server| async move {
     let mut req = Request::new(AskQuestionRequest {
         question: "Will this fail?".into(),
         conversation_id: Some(conv.id.to_string()),
+        model_override: None,
     });
     auth(&mut req, &token);
 
@@ -814,6 +817,7 @@ define_api_test!(ask_question_validates_empty_question, |server| async move {
     let mut req = Request::new(AskQuestionRequest {
         question: "   ".into(),
         conversation_id: None,
+        model_override: None,
     });
     auth(&mut req, &token);
 
@@ -831,6 +835,7 @@ define_api_test!(ask_question_validates_long_question, |server| async move {
     let mut req = Request::new(AskQuestionRequest {
         question: "x".repeat(4001),
         conversation_id: None,
+        model_override: None,
     });
     auth(&mut req, &token);
 
@@ -848,6 +853,7 @@ define_api_test!(ask_question_requires_auth, |server| async move {
         .ask_question(AskQuestionRequest {
             question: "Hello".into(),
             conversation_id: None,
+            model_override: None,
         })
         .await
         .expect_err("should require auth");

@@ -1,5 +1,5 @@
 import { Loader2, Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { PageHeader } from "@/components/page-header";
@@ -15,6 +15,7 @@ const AskPage = (): React.ReactElement => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const { state, ask, cancel, reset, resume } = useAskQuestion();
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
@@ -76,9 +77,9 @@ const AskPage = (): React.ReactElement => {
 
   const handleAsk = useCallback(
     (question: string): void => {
-      ask(question, conversationId);
+      ask(question, conversationId, selectedModel);
     },
-    [ask, conversationId],
+    [ask, conversationId, selectedModel],
   );
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
@@ -128,6 +129,8 @@ const AskPage = (): React.ReactElement => {
                 onCancel={cancel}
                 isStreaming={isActive}
                 disabled={isLoading}
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
               />
             </div>
           </>

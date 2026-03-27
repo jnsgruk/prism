@@ -34,6 +34,23 @@ pub async fn ask_question(
         ));
     }
 
+    // Resolve model name and provider keys once — used for both conversation
+    // creation and the Restate trigger.
+    let (model_name, provider_keys) = {
+        let router = svc.router.read().await;
+        let config = router.config();
+        let model = match req.model_override.as_deref() {
+            Some(ovr) if !ovr.is_empty() && ovr.contains('/') => ovr.to_owned(),
+            _ => format!(
+                "{}/{}",
+                config.tasks.agentic.provider.as_str(),
+                config.tasks.agentic.model
+            ),
+        };
+        let keys = router.provider_env_vars();
+        (model, keys)
+    };
+
     // Create or resume conversation.
     let existing_conv = if let Some(ref id) = req.conversation_id {
         let conv_id = id
@@ -51,15 +68,6 @@ pub async fn ask_question(
     let conversation_id = if let Some(ref conv) = existing_conv {
         conv.id
     } else {
-        let model_name = {
-            let router = svc.router.read().await;
-            let config = router.config();
-            format!(
-                "{}/{}",
-                config.tasks.agentic.provider.as_str(),
-                config.tasks.agentic.model
-            )
-        };
         let conv = svc
             .repos
             .reasoning
@@ -94,19 +102,6 @@ pub async fn ask_question(
         .update_query_status(conversation_id, "pending")
         .await
         .map_err(db_err)?;
-
-    // Fire-and-forget: trigger the Restate handler.
-    let (model_name, provider_keys) = {
-        let router = svc.router.read().await;
-        let config = router.config();
-        let model = format!(
-            "{}/{}",
-            config.tasks.agentic.provider.as_str(),
-            config.tasks.agentic.model
-        );
-        let keys = router.provider_env_vars();
-        (model, keys)
-    };
 
     let trigger_request = serde_json::json!({
         "conversation_id": conversation_id.to_string(),
