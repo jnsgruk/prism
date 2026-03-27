@@ -466,6 +466,7 @@ pub async fn run_agentic_query_core(
     let mut answer_text = String::new();
     let mut tool_calls = 0i32;
     let mut registry = super::step_registry::StepRegistry::new();
+    let mut event_mapper = ps_agent::event_mapper::EventMapper::new();
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -552,7 +553,7 @@ pub async fn run_agentic_query_core(
         }
 
         // Map event to proto and write to DB.
-        if let Some(proto_event) = ps_agent::event_mapper::map_event(&event)
+        if let Some(proto_event) = event_mapper.map_event(&event)
             && let Some(ref evt) = proto_event.event
         {
             use ps_proto::canonical::prism::v1::ask_question_response::Event;
@@ -712,15 +713,26 @@ fn derive_trace_from_events(
                     .get("arguments_json")
                     .and_then(|v| v.as_str())
                     .unwrap_or("{}");
-                steps.entry(step_seq).or_insert_with(|| {
-                    serde_json::json!({
-                        "kind": "tool",
-                        "tool_name": tool_name,
-                        "call_id": call_id,
-                        "arguments": args,
-                        "step_id": step_id,
+                steps
+                    .entry(step_seq)
+                    .and_modify(|step| {
+                        // Update arguments if the new event has non-empty args
+                        // (e.g. Running event may have args that Pending lacked).
+                        if args != "{}"
+                            && let Some(obj) = step.as_object_mut()
+                        {
+                            obj.insert("arguments".into(), serde_json::json!(args));
+                        }
                     })
-                });
+                    .or_insert_with(|| {
+                        serde_json::json!({
+                            "kind": "tool",
+                            "tool_name": tool_name,
+                            "call_id": call_id,
+                            "arguments": args,
+                            "step_id": step_id,
+                        })
+                    });
             }
             "tool_call_completed" => {
                 if let Some(step) = steps.get_mut(&step_seq)

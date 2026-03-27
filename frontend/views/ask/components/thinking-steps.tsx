@@ -23,34 +23,35 @@ export const ThinkingSteps = ({
   if (steps.length === 0) return null;
 
   const toolSteps = steps.filter((s) => s.kind === "tool");
-  const running = toolSteps.filter((s) => s.status === "running").length;
-  const isActive = running > 0 || defaultOpen;
+  // Show "Working" only while actively streaming (defaultOpen=true).
+  // Don't rely on orphaned running steps — some tools (e.g. OpenCode's "task")
+  // never receive a completed event.
+  const isActive = defaultOpen;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-        {isActive ? (
-          <>
-            <Loader2 className="size-3.5 animate-spin" />
-            Working
-          </>
-        ) : (
-          "Agent activity"
-        )}
+        Agent activity
         {toolSteps.length > 0 && (
           <Badge variant="secondary" className="ml-1">
             {toolSteps.length} tool call{toolSteps.length !== 1 && "s"}
           </Badge>
         )}
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-1 space-y-0.5 border-l-2 border-border pl-3">
+      <CollapsibleContent className="mt-2 space-y-1 border-l-2 border-border pl-4">
         {steps.map((step, i) => (
           <ThinkingStep
             key={step.stepId ?? (step.kind === "tool" ? step.callId : `reasoning-${i}`)}
             step={step}
           />
         ))}
+        {isActive && (
+          <div className="flex items-center gap-1.5 py-1 text-sm text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            Working...
+          </div>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );

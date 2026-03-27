@@ -219,11 +219,41 @@ pub async fn ask_question(
                 }
             }
 
-            // Check if query has been cancelled or failed without events.
-            if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await
-                && matches!(conv.query_status.as_str(), "cancelled" | "failed")
-            {
-                return;
+            // Check if query reached a terminal status without us seeing the event
+            // (can happen when cleanup_events deletes the final_answer before we poll it).
+            if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await {
+                match conv.query_status.as_str() {
+                    "cancelled" | "failed" => return,
+                    "completed" => {
+                        // Synthesize a final_answer from the stored assistant message.
+                        let answer = repos
+                            .reasoning
+                            .list_messages(conv_id)
+                            .await
+                            .ok()
+                            .and_then(|msgs| {
+                                msgs.into_iter()
+                                    .rev()
+                                    .find(|m| m.role == "assistant")
+                                    .map(|m| m.content)
+                            })
+                            .unwrap_or_default();
+                        let _ = tx
+                            .send(Ok(AskQuestionResponse {
+                                event: Some(ask_question_response::Event::FinalAnswer(
+                                    AgentFinalAnswer {
+                                        answer,
+                                        conversation_id: conv_id.to_string(),
+                                        tool_call_count: conv.total_tool_calls,
+                                        ..Default::default()
+                                    },
+                                )),
+                            }))
+                            .await;
+                        return;
+                    }
+                    _ => {}
+                }
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -350,11 +380,40 @@ async fn stream_resume_events(
             }
         }
 
-        // Check for cancelled/failed status without events.
-        if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await
-            && matches!(conv.query_status.as_str(), "cancelled" | "failed")
-        {
-            return;
+        // Check if query reached a terminal status without us seeing the event.
+        if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await {
+            match conv.query_status.as_str() {
+                "cancelled" | "failed" => return,
+                "completed" => {
+                    use ps_proto::canonical::prism::v1::resume_stream_response;
+                    let answer = repos
+                        .reasoning
+                        .list_messages(conv_id)
+                        .await
+                        .ok()
+                        .and_then(|msgs| {
+                            msgs.into_iter()
+                                .rev()
+                                .find(|m| m.role == "assistant")
+                                .map(|m| m.content)
+                        })
+                        .unwrap_or_default();
+                    let _ = tx
+                        .send(Ok(ResumeStreamResponse {
+                            event: Some(resume_stream_response::Event::FinalAnswer(
+                                AgentFinalAnswer {
+                                    answer,
+                                    conversation_id: conv_id.to_string(),
+                                    tool_call_count: conv.total_tool_calls,
+                                    ..Default::default()
+                                },
+                            )),
+                        }))
+                        .await;
+                    return;
+                }
+                _ => {}
+            }
         }
 
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;

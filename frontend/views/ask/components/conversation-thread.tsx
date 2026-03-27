@@ -70,8 +70,6 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
 
 const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): React.ReactElement => {
   const steps = parseReasoningTrace(msg.reasoningTraceJson);
-  const toolCallCount = steps.filter((s) => s.kind === "tool").length;
-  const totalTokens = msg.promptTokens + msg.completionTokens;
 
   return (
     <div className="flex gap-3">
@@ -79,15 +77,9 @@ const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): Reac
         <Sparkles className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
-        <AnswerContent content={msg.content} />
         {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
+        <AnswerContent content={msg.content} />
         {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
-        {totalTokens > 0 && (
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            {toolCallCount > 0 && <span>{toolCallCount} tool calls</span>}
-            <span>{totalTokens} tokens</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -116,17 +108,13 @@ export const ConversationThread = ({
   const displayMessages = ((): ConversationMessage[] => {
     if (!isAgentActive) return messages;
 
-    // Try to match by question text first.
+    // Find the current question in messages and cut off everything after it,
+    // so the server's copy of the current turn doesn't duplicate AgentResponse.
+    // If the question isn't in messages yet (optimistic submit), show everything.
     const question = state.question;
-    let cutoffIdx = question
+    const cutoffIdx = question
       ? messages.findLastIndex((m) => m.role === "user" && m.content === question)
       : -1;
-
-    // Fallback: if no match (e.g. during resume with empty question), cut off
-    // after the last user message to avoid showing the duplicate assistant response.
-    if (cutoffIdx === -1) {
-      cutoffIdx = messages.findLastIndex((m) => m.role === "user");
-    }
 
     if (cutoffIdx === -1) return messages;
     return messages.filter((_, i) => i <= cutoffIdx);

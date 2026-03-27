@@ -75,7 +75,7 @@ describe("ThinkingStep", () => {
     expect(screen.getByText("2.5s")).toBeInTheDocument();
   });
 
-  it("renders error tool with X icon", () => {
+  it("renders error tool with X icon and expandable result", () => {
     const step: AgentStep = {
       kind: "tool",
       callId: "call-5",
@@ -88,9 +88,13 @@ describe("ThinkingStep", () => {
     };
     const { container } = render(<ThinkingStep step={step} />);
 
-    // The X icon is rendered for error status — it's an SVG with the lucide-react "x" class
+    // The X icon is rendered for error status
     const svg = container.querySelector("svg.lucide-x");
     expect(svg).toBeInTheDocument();
-    expect(screen.getByText("Command failed")).toBeInTheDocument();
+    // Result is collapsed by default — expand chevron is present
+    const chevron = container.querySelector("svg.lucide-chevron-right");
+    expect(chevron).toBeInTheDocument();
+    // Result not visible until expanded
+    expect(screen.queryByText("Command failed")).not.toBeInTheDocument();
   });
 });

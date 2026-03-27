@@ -20,7 +20,10 @@ export const AnswerContent = ({ content }: { content: string }): React.ReactElem
           );
         },
         pre: ({ children, ...props }) => (
-          <pre className="overflow-x-auto rounded-md bg-muted p-3 text-sm" {...props}>
+          <pre
+            className="overflow-x-auto rounded-md bg-muted p-3 text-sm text-foreground"
+            {...props}
+          >
             {children}
           </pre>
         ),
@@ -33,7 +36,7 @@ export const AnswerContent = ({ content }: { content: string }): React.ReactElem
               </code>
             );
           return (
-            <code className="rounded bg-muted px-1 py-0.5 text-sm" {...props}>
+            <code className="rounded bg-muted px-1 py-0.5 text-sm text-foreground" {...props}>
               {children}
             </code>
           );

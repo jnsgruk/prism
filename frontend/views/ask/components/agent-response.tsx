@@ -8,27 +8,6 @@ import { ArtifactList } from "./artifact-list";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
 
-const TokenSummary = ({
-  promptTokens,
-  completionTokens,
-  estimatedCostUsd,
-  durationMs,
-  toolCallCount,
-}: {
-  promptTokens: number;
-  completionTokens: number;
-  estimatedCostUsd: number;
-  durationMs: number;
-  toolCallCount: number;
-}): React.ReactElement => (
-  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-    <span>{toolCallCount} tool calls</span>
-    <span>{promptTokens + completionTokens} tokens</span>
-    <span>${estimatedCostUsd.toFixed(4)}</span>
-    <span>{(durationMs / 1000).toFixed(1)}s</span>
-  </div>
-);
-
 export const AgentResponse = ({
   state,
   steps,
@@ -44,7 +23,6 @@ export const AgentResponse = ({
   artifacts: ArtifactInfo[];
   supportingData?: string;
 }): React.ReactElement => {
-  const toolCallCount = steps.filter((s) => s.kind === "tool").length;
   // Filter out echoed question text that OpenCode sends as the first Part::Text
   const isEchoedQuestion = question && answer.trim() === question.trim();
   const displayAnswer = isEchoedQuestion ? "" : answer;
@@ -69,17 +47,8 @@ export const AgentResponse = ({
 
         {artifacts.length > 0 && <ArtifactList artifacts={artifacts} />}
 
-        {state.status === "completed" && (
-          <>
-            <EvidencePanel supportingData={supportingData} />
-            <TokenSummary
-              promptTokens={state.tokenUsage.promptTokens}
-              completionTokens={state.tokenUsage.completionTokens}
-              estimatedCostUsd={state.tokenUsage.estimatedCostUsd}
-              durationMs={state.durationMs}
-              toolCallCount={toolCallCount}
-            />
-          </>
+        {state.status === "completed" && supportingData && (
+          <EvidencePanel supportingData={supportingData} />
         )}
       </div>
     </div>

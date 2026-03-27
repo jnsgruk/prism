@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Check,
+  ChevronRight,
   Database,
   FileText,
   FolderSearch,
@@ -26,17 +28,52 @@ const toolIcon = (toolName: string): LucideIcon => {
   return Terminal;
 };
 
-const toolLabel = (step: ToolCallStep): string => {
-  if (step.toolName === "bash") {
-    try {
-      const args = JSON.parse(step.argumentsJson);
-      const cmd = args.command ?? args.cmd ?? "";
-      return cmd.length > 60 ? `${cmd.slice(0, 60)}...` : cmd;
-    } catch {
-      return "bash";
-    }
+/** Try to parse argumentsJson, handling double-encoded strings. */
+const parseArgs = (json: string): Record<string, unknown> | null => {
+  try {
+    let parsed = JSON.parse(json);
+    // Handle double-encoded JSON (string containing JSON).
+    if (typeof parsed === "string") parsed = JSON.parse(parsed);
+    return typeof parsed === "object" && parsed !== null ? parsed : null;
+  } catch {
+    return null;
   }
-  return step.toolName.replace(/^prism_/, "").replace(/_/g, " ");
+};
+
+const truncLabel = (s: string, max = 80): string => (s.length > max ? `${s.slice(0, max)}...` : s);
+
+const toolLabel = (step: ToolCallStep): string => {
+  const args = parseArgs(step.argumentsJson);
+  const name = step.toolName.replace(/^prism_/, "").replace(/_/g, " ");
+
+  if (!args) return name;
+
+  switch (step.toolName) {
+    case "bash": {
+      const cmd = (args.command ?? args.cmd ?? args.input) as string | undefined;
+      return cmd ? truncLabel(cmd) : "bash";
+    }
+    case "write":
+    case "read":
+    case "edit":
+    case "patch": {
+      const path = (args.file_path ?? args.filePath ?? args.path) as string | undefined;
+      if (!path) return name;
+      // Show just the filename for short labels.
+      const filename = path.split("/").pop() ?? path;
+      return `${name} ${filename}`;
+    }
+    case "glob": {
+      const pattern = (args.pattern ?? args.glob) as string | undefined;
+      return pattern ? `glob ${truncLabel(pattern, 60)}` : name;
+    }
+    case "grep": {
+      const pattern = (args.pattern ?? args.regex) as string | undefined;
+      return pattern ? `grep ${truncLabel(pattern, 60)}` : name;
+    }
+    default:
+      return name;
+  }
 };
 
 const statusIcon = (status: ToolCallStep["status"]): React.ReactElement => {
@@ -50,29 +87,43 @@ const statusIcon = (status: ToolCallStep["status"]): React.ReactElement => {
 };
 
 const ToolStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
+  const [expanded, setExpanded] = useState(false);
   const Icon = toolIcon(step.toolName);
+  const hasDetails = !!step.resultSummary && step.status !== "running";
 
   return (
-    <div className="flex items-start gap-2 py-1 text-sm">
-      <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className={step.toolName === "bash" ? "font-mono text-xs" : ""}>
-            {toolLabel(step)}
+    <div className="py-1 text-sm">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left"
+        onClick={() => hasDetails && setExpanded((v) => !v)}
+        disabled={!hasDetails}
+      >
+        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span
+          className={`min-w-0 truncate ${["bash", "write", "read", "edit", "patch", "glob", "grep"].includes(step.toolName) ? "font-mono text-xs" : ""}`}
+        >
+          {toolLabel(step)}
+        </span>
+        {statusIcon(step.status)}
+        {step.durationMs != null && step.status !== "running" && (
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {step.durationMs < 1000
+              ? `${step.durationMs}ms`
+              : `${(step.durationMs / 1000).toFixed(1)}s`}
           </span>
-          {statusIcon(step.status)}
-          {step.durationMs != null && step.status !== "running" && (
-            <span className="text-xs text-muted-foreground">
-              {step.durationMs < 1000
-                ? `${step.durationMs}ms`
-                : `${(step.durationMs / 1000).toFixed(1)}s`}
-            </span>
-          )}
-        </div>
-        {step.resultSummary && step.status !== "running" && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{step.resultSummary}</p>
         )}
-      </div>
+        {hasDetails && (
+          <ChevronRight
+            className={`size-3 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
+        )}
+      </button>
+      {expanded && step.resultSummary && (
+        <pre className="mt-1 ml-5.5 max-h-64 overflow-auto rounded bg-muted p-2 font-mono text-xs text-muted-foreground">
+          {step.resultSummary}
+        </pre>
+      )}
     </div>
   );
 };

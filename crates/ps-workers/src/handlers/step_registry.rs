@@ -72,8 +72,13 @@ impl StepRegistry {
     }
 
     /// Assign identity for a tool call started event.
+    /// Idempotent — repeated calls for the same `call_id` (e.g. Pending then
+    /// Running updates from `OpenCode`) reuse the original identity.
     pub fn tool_started(&mut self, call_id: &str) -> StepIdentity {
         let step_id = format!("tool-{call_id}");
+        if let Some(&step_seq) = self.steps.get(&step_id) {
+            return StepIdentity { step_id, step_seq };
+        }
         let step_seq = self.next_seq;
         self.next_seq += 1;
         self.steps.insert(step_id.clone(), step_seq);
@@ -136,6 +141,18 @@ mod tests {
         let completed = reg.tool_completed("abc-123");
         assert_eq!(started.step_id, completed.step_id);
         assert_eq!(started.step_seq, completed.step_seq);
+    }
+
+    #[test]
+    fn tool_started_is_idempotent() {
+        let mut reg = StepRegistry::new();
+        let first = reg.tool_started("abc-123");
+        let second = reg.tool_started("abc-123");
+        assert_eq!(first.step_id, second.step_id);
+        assert_eq!(first.step_seq, second.step_seq);
+        // Next tool still gets the next seq.
+        let other = reg.tool_started("def-456");
+        assert_eq!(other.step_seq, first.step_seq + 1);
     }
 
     #[test]
