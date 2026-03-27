@@ -185,7 +185,7 @@ pub async fn ask_question(
                     for event in events {
                         cursor = event.id;
 
-                        let proto_event = map_db_event_to_proto(&event.event_type, &event.payload);
+                        let proto_event = map_db_event_to_proto(&event);
                         if let Some(response) = proto_event {
                             let is_terminal = matches!(
                                 response.event,
@@ -318,8 +318,7 @@ async fn stream_resume_events(
             Ok(events) => {
                 for event in events {
                     cursor = event.id;
-                    let proto_event =
-                        map_db_event_to_resume_proto(&event.event_type, &event.payload);
+                    let proto_event = map_db_event_to_resume_proto(&event);
                     if let Some(response) = proto_event {
                         let is_terminal = matches!(
                             response.event,
@@ -364,11 +363,10 @@ async fn stream_resume_events(
 
 /// Map a database event to a `ResumeStreamResponse` proto.
 fn map_db_event_to_resume_proto(
-    event_type: &str,
-    payload: &serde_json::Value,
+    event: &ps_core::repo::reasoning::ConversationEvent,
 ) -> Option<ResumeStreamResponse> {
     use ps_proto::canonical::prism::v1::resume_stream_response;
-    let ask_resp = map_db_event_to_proto(event_type, payload)?;
+    let ask_resp = map_db_event_to_proto(event)?;
     let ask_evt = ask_resp.event?;
 
     let event = match ask_evt {
@@ -399,11 +397,16 @@ fn map_db_event_to_resume_proto(
 }
 
 /// Map a database event row to a proto `AskQuestionResponse`.
+#[allow(clippy::too_many_lines)]
 fn map_db_event_to_proto(
-    event_type: &str,
-    payload: &serde_json::Value,
+    event: &ps_core::repo::reasoning::ConversationEvent,
 ) -> Option<AskQuestionResponse> {
-    let event = match event_type {
+    let event_type = &event.event_type;
+    let payload = &event.payload;
+    let step_id = event.step_id.clone().unwrap_or_default();
+    let step_seq = event.step_seq.unwrap_or(0);
+
+    let proto_event = match event_type.as_str() {
         "container_status" => ask_question_response::Event::ContainerStatus(AgentContainerStatus {
             status: payload
                 .get("status")
@@ -433,8 +436,8 @@ fn map_db_event_to_proto(
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string(),
-                step_id: String::new(),
-                step_seq: 0,
+                step_id: step_id.clone(),
+                step_seq,
             })
         }
         "tool_call_completed" => {
@@ -463,8 +466,8 @@ fn map_db_event_to_proto(
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string(),
-                step_id: String::new(),
-                step_seq: 0,
+                step_id: step_id.clone(),
+                step_seq,
             })
         }
         "partial_answer" => ask_question_response::Event::PartialAnswer(AgentPartialAnswer {
@@ -484,8 +487,8 @@ fn map_db_event_to_proto(
                 .get("part_index")
                 .and_then(serde_json::Value::as_i64)
                 .unwrap_or(0) as i32,
-            step_id: String::new(),
-            step_seq: 0,
+            step_id,
+            step_seq,
         }),
         "artifact_uploaded" => ask_question_response::Event::ArtifactUploaded(
             ps_proto::canonical::prism::v1::AgentArtifactUploaded {
@@ -548,5 +551,7 @@ fn map_db_event_to_proto(
         _ => return None,
     };
 
-    Some(AskQuestionResponse { event: Some(event) })
+    Some(AskQuestionResponse {
+        event: Some(proto_event),
+    })
 }
