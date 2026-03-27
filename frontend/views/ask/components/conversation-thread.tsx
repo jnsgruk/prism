@@ -36,14 +36,17 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
             duration_ms?: number;
             text?: string;
             part_index?: number;
+            step_id?: string;
           },
           i: number,
         ): AgentStep => {
+          const stepId = s.step_id ?? undefined;
           if (s.kind === "reasoning") {
             return {
               kind: "reasoning" as const,
               text: s.text ?? "",
               partIndex: s.part_index ?? i,
+              stepId,
             };
           }
           // Default to tool step (backward compatible with traces without kind field)
@@ -56,6 +59,7 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
             durationMs: s.duration_ms,
             success: true,
             status: "completed" as const,
+            stepId,
           };
         },
       );
