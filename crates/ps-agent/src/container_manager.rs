@@ -3,7 +3,10 @@
 //! Each conversation gets its own Pod. Pods are created on demand, reused for
 //! follow-up questions, and reaped when idle or after a maximum lifetime.
 
-use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::api::core::v1::{
+    PersistentVolumeClaim, PersistentVolumeClaimSpec, Pod, VolumeResourceRequirements,
+};
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use kube::Client as KubeClient;
 use kube::api::{Api, DeleteParams, ListParams, PostParams};
 
@@ -11,9 +14,21 @@ use crate::pod_spec::{
     ANNOTATION_LAST_ACTIVITY, ANNOTATION_TOKEN_SESSION_ID, AgentPodConfig, LABEL_APP_VALUE,
     LABEL_SESSION,
 };
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info, warn};
+
+/// Size of each workspace PVC.
+const WORKSPACE_PVC_SIZE: &str = "5Gi";
+
+/// Label value used to identify workspace PVCs.
+const PVC_LABEL_APP_VALUE: &str = "prism-agent-workspace";
+
+/// Compute the PVC name for a given session (conversation) ID.
+pub fn pvc_name_for_session(session_id: &str) -> String {
+    format!("prism-ws-{}", &session_id[..8.min(session_id.len())])
+}
 
 /// Port exposed by the `OpenCode` server inside each agent container.
 pub const OPENCODE_PORT: u16 = 4096;
@@ -96,7 +111,9 @@ impl ContainerManager {
         if !overrides.provider_keys.is_empty() {
             config.provider_keys = overrides.provider_keys.clone();
         }
-        let mut pod = crate::pod_spec::build_agent_pod(session_id, &config);
+        // Ensure workspace PVC exists for this conversation.
+        let pvc_name = self.ensure_pvc(session_id).await?;
+        let mut pod = crate::pod_spec::build_agent_pod(session_id, &config, Some(&pvc_name));
 
         // Store the token's session ID so reap_idle_pods can clean it up.
         if let Some(annotations) = pod.metadata.annotations.as_mut() {
@@ -285,6 +302,82 @@ impl ContainerManager {
         let lp = ListParams::default().labels(&format!("app={LABEL_APP_VALUE}"));
         let list = pods.list(&lp).await?;
         Ok(list.items.len())
+    }
+
+    /// Ensure a workspace PVC exists for the given session, creating it if needed.
+    ///
+    /// Returns the PVC name. Idempotent — returns the existing name if already present.
+    pub async fn ensure_pvc(&self, session_id: &str) -> Result<String, kube::Error> {
+        let name = pvc_name_for_session(session_id);
+        let pvcs: Api<PersistentVolumeClaim> = Api::namespaced(self.kube.clone(), &self.namespace);
+
+        // Check if PVC already exists.
+        match pvcs.get(&name).await {
+            Ok(_) => return Ok(name),
+            Err(kube::Error::Api(ref e)) if e.code == 404 => {}
+            Err(e) => return Err(e),
+        }
+
+        let pvc = PersistentVolumeClaim {
+            metadata: k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta {
+                name: Some(name.clone()),
+                namespace: Some(self.namespace.clone()),
+                labels: Some(BTreeMap::from([
+                    (
+                        crate::pod_spec::LABEL_APP.to_string(),
+                        PVC_LABEL_APP_VALUE.to_string(),
+                    ),
+                    (LABEL_SESSION.to_string(), session_id.to_string()),
+                ])),
+                ..Default::default()
+            },
+            spec: Some(PersistentVolumeClaimSpec {
+                access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+                resources: Some(VolumeResourceRequirements {
+                    requests: Some(BTreeMap::from([(
+                        "storage".to_string(),
+                        Quantity(WORKSPACE_PVC_SIZE.to_string()),
+                    )])),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        pvcs.create(&PostParams::default(), &pvc).await?;
+        info!(session_id, pvc_name = %name, "Created workspace PVC");
+        Ok(name)
+    }
+
+    /// Delete the workspace PVC for a session.
+    pub async fn delete_pvc(&self, session_id: &str) -> Result<(), kube::Error> {
+        let name = pvc_name_for_session(session_id);
+        let pvcs: Api<PersistentVolumeClaim> = Api::namespaced(self.kube.clone(), &self.namespace);
+
+        match pvcs.delete(&name, &DeleteParams::default()).await {
+            Ok(_) => info!(pvc_name = %name, session_id, "Deleted workspace PVC"),
+            Err(kube::Error::Api(ref e)) if e.code == 404 => {}
+            Err(e) => warn!(pvc_name = %name, error = %e, "Failed to delete workspace PVC"),
+        }
+        Ok(())
+    }
+
+    /// List all workspace PVCs. Returns `(pvc_name, session_id)` pairs.
+    pub async fn list_workspace_pvcs(&self) -> Result<Vec<(String, String)>, kube::Error> {
+        let pvcs: Api<PersistentVolumeClaim> = Api::namespaced(self.kube.clone(), &self.namespace);
+        let lp = ListParams::default().labels(&format!("app={PVC_LABEL_APP_VALUE}"));
+        let list = pvcs.list(&lp).await?;
+
+        Ok(list
+            .items
+            .iter()
+            .filter_map(|pvc| {
+                let name = pvc.metadata.name.clone()?;
+                let session_id = pvc.metadata.labels.as_ref()?.get(LABEL_SESSION)?.clone();
+                Some((name, session_id))
+            })
+            .collect())
     }
 
     /// Create an `OpenCode` SDK client pointing at the given Pod IP.
