@@ -386,7 +386,7 @@ impl ContainerManager {
     ) -> Result<opencode_sdk::Client, opencode_sdk::OpencodeError> {
         opencode_sdk::ClientBuilder::new()
             .base_url(format!("http://{pod_ip}:{OPENCODE_PORT}"))
-            .directory("/workspace")
+            .directory("/home/agent")
             .timeout_secs(120)
             .build()
     }

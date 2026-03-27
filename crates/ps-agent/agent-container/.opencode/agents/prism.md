@@ -138,4 +138,4 @@ Upload generated files (CSVs, reports, charts) to S3 as conversation artifacts, 
 
 ## Current context
 - Current date: {current_date}
-- Workspace: /workspace (ephemeral, empty at session start)
+- Workspace: /workspace (persistent across conversation turns)

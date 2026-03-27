@@ -72,13 +72,13 @@ ENV PATH="/root/.opencode/bin:$PATH"
 # ps-mcp binary from the builder stage
 COPY --from=builder /out/ps-mcp /usr/local/bin/ps-mcp
 
-# Workspace for cloned repos and generated files
-RUN mkdir /workspace
-WORKDIR /workspace
+# OpenCode project directory — config and agent prompts live here.
+# Kept separate from /workspace (PVC) so config isn't shadowed by the mount.
+RUN mkdir -p /home/agent /workspace
+WORKDIR /home/agent
 
-# OpenCode configuration + agent prompt (in WORKDIR so opencode discovers it)
-COPY crates/ps-agent/agent-container/opencode.json /workspace/opencode.json
-COPY crates/ps-agent/agent-container/.opencode/ /workspace/.opencode/
+COPY crates/ps-agent/agent-container/opencode.json /home/agent/opencode.json
+COPY crates/ps-agent/agent-container/.opencode/ /home/agent/.opencode/
 
 EXPOSE 4096
 
