@@ -155,6 +155,17 @@ impl ReasoningRepo {
         Ok(row)
     }
 
+    /// Check if a conversation exists by ID.
+    pub async fn conversation_exists(&self, id: Uuid) -> Result<bool, Error> {
+        let row = sqlx::query!(
+            r#"SELECT EXISTS(SELECT 1 FROM reasoning.conversations WHERE id = $1) as "exists!""#,
+            id,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.exists)
+    }
+
     /// List conversations for a user, newest first, with message/artifact counts.
     pub async fn list_conversations(
         &self,

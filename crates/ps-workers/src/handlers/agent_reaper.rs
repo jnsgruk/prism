@@ -1,7 +1,13 @@
 use restate_sdk::prelude::*;
-use tracing::info;
+use std::sync::atomic::{AtomicU64, Ordering};
+use tracing::{info, warn};
 
 use super::SharedState;
+
+/// Run orphan PVC cleanup every N reaper invocations (~10 minutes at 60s intervals).
+const ORPHAN_CHECK_INTERVAL: u64 = 10;
+
+static REAP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct AgentPodReaperHandlerImpl {
     pub state: SharedState,
@@ -46,6 +52,44 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
             })
             .name("cleanup_sessions")
             .await?;
+            // Periodically check for orphaned workspace PVCs.
+            let count = REAP_COUNTER.fetch_add(1, Ordering::Relaxed);
+            if count.is_multiple_of(ORPHAN_CHECK_INTERVAL) {
+                match cm.list_workspace_pvcs().await {
+                    Ok(pvcs) if !pvcs.is_empty() => {
+                        let repos = self.state.repos.clone();
+                        for (pvc_name, session_id) in &pvcs {
+                            let Ok(conv_id) = session_id.parse::<uuid::Uuid>() else {
+                                continue;
+                            };
+                            match repos.reasoning.conversation_exists(conv_id).await {
+                                Ok(false) => {
+                                    info!(pvc_name, session_id, "deleting orphaned workspace PVC");
+                                    if let Err(e) = cm.delete_pvc(session_id).await {
+                                        warn!(
+                                            pvc_name,
+                                            error = %e,
+                                            "failed to delete orphaned PVC"
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!(
+                                        session_id,
+                                        error = %e,
+                                        "failed to check conversation existence for PVC cleanup"
+                                    );
+                                }
+                                Ok(true) => {}
+                            }
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(error = %e, "failed to list workspace PVCs for orphan cleanup");
+                    }
+                }
+            }
         } else {
             info!("no container manager configured, skipping reap");
         }
