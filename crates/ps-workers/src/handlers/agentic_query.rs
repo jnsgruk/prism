@@ -28,6 +28,9 @@ pub trait AgenticQueryHandler {
 
     /// Cancel a running query.
     async fn cancel() -> Result<(), TerminalError>;
+
+    /// Clean up pod and workspace PVC for a conversation.
+    async fn cleanup_storage() -> Result<(), TerminalError>;
 }
 
 impl AgenticQueryHandler for AgenticQueryHandlerImpl {
@@ -397,6 +400,22 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
         })
         .name("update_status_cancelled")
         .await?;
+
+        Ok(())
+    }
+
+    async fn cleanup_storage(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
+        let session_id = ctx.key().to_string();
+        info!(session_id, "cleaning up pod and workspace PVC");
+
+        if let Some(ref cm) = self.state.container_manager {
+            if let Err(e) = cm.delete_pod(&session_id).await {
+                warn!(error = %e, "failed to delete pod during cleanup");
+            }
+            if let Err(e) = cm.delete_pvc(&session_id).await {
+                warn!(error = %e, "failed to delete workspace PVC during cleanup");
+            }
+        }
 
         Ok(())
     }

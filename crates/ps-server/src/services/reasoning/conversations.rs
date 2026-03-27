@@ -158,23 +158,37 @@ pub async fn delete_conversation(
         .await
         .map_err(db_err)?;
 
-    // Fire-and-forget: tell Restate to cancel any in-flight query for this
-    // conversation so the reaper can clean up the pod promptly.
-    if pod_name.is_some() {
-        let url = format!(
-            "{}/AgenticQueryHandler/{}/cancel/send",
-            svc.restate_url, conv_id,
-        );
+    // Fire-and-forget: cancel any in-flight query and clean up pod + workspace PVC.
+    {
+        let restate_url = svc.restate_url.clone();
         let client = svc.http_client.clone();
         tokio::spawn(async move {
+            // Cancel running query if a pod exists.
+            if pod_name.is_some() {
+                let cancel_url =
+                    format!("{restate_url}/AgenticQueryHandler/{conv_id}/cancel/send",);
+                if let Err(e) = client
+                    .post(&cancel_url)
+                    .header("content-type", "application/json")
+                    .body("{}")
+                    .send()
+                    .await
+                {
+                    warn!(error = %e, "failed to send cancel to Restate for deleted conversation");
+                }
+            }
+
+            // Clean up pod and workspace PVC.
+            let cleanup_url =
+                format!("{restate_url}/AgenticQueryHandler/{conv_id}/cleanup_storage/send",);
             if let Err(e) = client
-                .post(&url)
+                .post(&cleanup_url)
                 .header("content-type", "application/json")
                 .body("{}")
                 .send()
                 .await
             {
-                warn!(error = %e, "failed to send cancel to Restate for deleted conversation");
+                warn!(error = %e, "failed to send cleanup_storage to Restate for deleted conversation");
             }
         });
     }
