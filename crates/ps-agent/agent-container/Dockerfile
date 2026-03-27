@@ -48,6 +48,7 @@ FROM ubuntu:24.04 AS agent-runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates xz-utils \
+    python3 python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # ripgrep
