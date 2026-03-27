@@ -26,18 +26,18 @@ COPY . .
 
 # Stub out workspace members whose source is not in the build context.
 RUN find crates tests -name Cargo.toml -exec sh -c '\
-      dir=$(dirname "$1"); \
-      if [ ! -f "$dir/src/main.rs" ] && [ ! -f "$dir/src/lib.rs" ]; then \
-        mkdir -p "$dir/src" && touch "$dir/src/lib.rs"; \
-      fi' _ {} \;
+    dir=$(dirname "$1"); \
+    if [ ! -f "$dir/src/main.rs" ] && [ ! -f "$dir/src/lib.rs" ]; then \
+    mkdir -p "$dir/src" && touch "$dir/src/lib.rs"; \
+    fi' _ {} \;
 
 ENV SQLX_OFFLINE=true
 ARG PROFILE
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build \
-        $([ "$PROFILE" = "release" ] && echo "--release") \
-        --bin ps-mcp \
+    $([ "$PROFILE" = "release" ] && echo "--release") \
+    --bin ps-mcp \
     && mkdir -p /out \
     && cp target/$([ "$PROFILE" = "release" ] && echo "release" || echo "debug")/ps-mcp /out/ps-mcp
 
@@ -48,21 +48,21 @@ FROM ubuntu:24.04 AS agent-runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates xz-utils \
-    python3 python3-venv \
+    python3 python3-venv ripgrep \
     && rm -rf /var/lib/apt/lists/*
-
-# ripgrep
-RUN ARCH="$(uname -m)" && \
-    curl -sL "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-${ARCH}-unknown-linux-musl.tar.gz" \
-    | tar xz --strip-components=1 -C /usr/local/bin --wildcards '*/rg'
-
-# tokei (code statistics)
-RUN curl -sL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-x86_64-unknown-linux-gnu.tar.gz \
-    | tar xz -C /usr/local/bin
 
 # uv (Python version + environment manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
+RUN uv venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install pandas matplotlib plotly kaleido seaborn tabulate
+
+# mise (polyglot tool version manager — node, go, ruby, etc.)
+RUN curl -fsSL https://mise.run | sh
+ENV MISE_DATA_DIR="/root/.local/share/mise"
+ENV MISE_YES=1
 
 # OpenCode — pinned version for stability
 ARG OPENCODE_VERSION=0.1.0
