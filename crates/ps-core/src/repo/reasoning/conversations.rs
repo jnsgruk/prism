@@ -33,6 +33,8 @@ pub struct ConversationEvent {
     pub conversation_id: Uuid,
     pub event_type: String,
     pub payload: serde_json::Value,
+    pub step_id: Option<String>,
+    pub step_seq: Option<i32>,
     pub created_at: OffsetDateTime,
 }
 
@@ -266,17 +268,22 @@ impl ReasoningRepo {
         conversation_id: Uuid,
         event_type: &str,
         payload: &serde_json::Value,
+        step_id: Option<&str>,
+        step_seq: Option<i32>,
     ) -> Result<ConversationEvent, Error> {
         let row = sqlx::query_as!(
             ConversationEvent,
             r#"
-            INSERT INTO reasoning.conversation_events (conversation_id, event_type, payload)
-            VALUES ($1, $2, $3)
-            RETURNING id, conversation_id, event_type, payload, created_at
+            INSERT INTO reasoning.conversation_events
+              (conversation_id, event_type, payload, step_id, step_seq)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, conversation_id, event_type, payload, step_id, step_seq, created_at
             "#,
             conversation_id,
             event_type,
             payload,
+            step_id,
+            step_seq,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -292,7 +299,7 @@ impl ReasoningRepo {
         let rows = sqlx::query_as!(
             ConversationEvent,
             r#"
-            SELECT id, conversation_id, event_type, payload, created_at
+            SELECT id, conversation_id, event_type, payload, step_id, step_seq, created_at
             FROM reasoning.conversation_events
             WHERE conversation_id = $1 AND id > $2
             ORDER BY id
@@ -310,6 +317,34 @@ impl ReasoningRepo {
         let result = sqlx::query!(
             "DELETE FROM reasoning.conversation_events WHERE conversation_id = $1",
             conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    /// Return all events for a conversation, ordered by insertion.
+    /// Used by the worker to derive the final reasoning trace.
+    pub async fn get_all_events(
+        &self,
+        conversation_id: Uuid,
+    ) -> Result<Vec<ConversationEvent>, Error> {
+        self.poll_events(conversation_id, 0).await
+    }
+
+    /// Delete stale events for conversations that are no longer active.
+    /// Used as a safety net for cases where the worker crashes before cleanup.
+    pub async fn cleanup_stale_events(&self, max_age_hours: i32) -> Result<u64, Error> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM reasoning.conversation_events
+            WHERE conversation_id IN (
+                SELECT id FROM reasoning.conversations
+                WHERE query_status IN ('completed', 'failed', 'cancelled')
+            )
+            AND created_at < now() - make_interval(hours => $1)
+            "#,
+            max_age_hours,
         )
         .execute(&self.pool)
         .await?;

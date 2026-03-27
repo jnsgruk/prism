@@ -633,6 +633,8 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
             conv.id,
             "container_status",
             &serde_json::json!({"status": "ready", "message": "Agent ready"}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -642,6 +644,8 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
             conv.id,
             "tool_call_started",
             &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -651,6 +655,8 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
             conv.id,
             "final_answer",
             &serde_json::json!({"answer": "There are 5 teams.", "conversation_id": conv.id.to_string(), "tool_call_count": 1}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -713,6 +719,8 @@ define_api_test!(ask_question_streams_final_answer, |server| async move {
             conv.id,
             "final_answer",
             &serde_json::json!({"answer": "42", "conversation_id": conv.id.to_string(), "tool_call_count": 0}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -767,6 +775,8 @@ define_api_test!(ask_question_streams_error, |server| async move {
             conv.id,
             "error",
             &serde_json::json!({"message": "Agent crashed", "retryable": false}),
+            None,
+            None,
         )
         .await
         .unwrap();

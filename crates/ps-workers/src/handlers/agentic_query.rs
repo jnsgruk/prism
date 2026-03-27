@@ -137,6 +137,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                             cid,
                             "container_status",
                             &serde_json::json!({"status": "creating", "message": "Starting agent container..."}),
+                            None,
+                            None,
                         )
                         .await
                         .map_err(|e| TerminalError::new(format!("failed to append event: {e}")))?;
@@ -186,6 +188,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                             cid,
                             "container_status",
                             &serde_json::json!({"status": "ready", "message": "Agent ready"}),
+                            None,
+                            None,
                         )
                         .await
                         .map_err(|e| TerminalError::new(format!("failed to append event: {e}")))?;
@@ -293,6 +297,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                                         "conversation_id": cid.to_string(),
                                         "tool_call_count": tc,
                                     }),
+                                    None,
+                                    None,
                                 )
                                 .await
                                 .map_err(|e| {
@@ -327,6 +333,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                                 cid,
                                 "error",
                                 &serde_json::json!({"message": err_msg, "retryable": false}),
+                                None,
+                                None,
                             )
                             .await
                             .map_err(|e| {
@@ -516,6 +524,8 @@ pub async fn run_agentic_query_core(
                                 "content_type": content_type.unwrap_or("application/octet-stream"),
                                 "size_bytes": size_bytes,
                             }),
+                            None,
+                            None,
                         )
                         .await;
                 }
@@ -542,6 +552,8 @@ pub async fn run_agentic_query_core(
                                 "arguments_json": s.arguments_json,
                                 "call_id": s.call_id,
                             }),
+                            None,
+                            None,
                         )
                         .await;
                 }
@@ -567,6 +579,8 @@ pub async fn run_agentic_query_core(
                                 "success": c.success,
                                 "call_id": c.call_id,
                             }),
+                            None,
+                            None,
                         )
                         .await;
                 }
@@ -578,6 +592,8 @@ pub async fn run_agentic_query_core(
                             conversation_id,
                             "partial_answer",
                             &serde_json::json!({"text": a.text}),
+                            None,
+                            None,
                         )
                         .await;
                 }
@@ -607,6 +623,8 @@ pub async fn run_agentic_query_core(
                             conversation_id,
                             "thinking",
                             &serde_json::json!({"text": t.text, "part_index": t.part_index}),
+                            None,
+                            None,
                         )
                         .await;
                 }
@@ -620,6 +638,8 @@ pub async fn run_agentic_query_core(
                                 "message": e.message,
                                 "retryable": e.retryable,
                             }),
+                            None,
+                            None,
                         )
                         .await;
                 }

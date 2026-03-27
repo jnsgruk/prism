@@ -903,6 +903,8 @@ define_repo_test!(
                 conv.id,
                 "container_status",
                 &serde_json::json!({"status": "creating", "message": "Starting..."}),
+                None,
+                None,
             )
             .await
             .unwrap();
@@ -912,6 +914,8 @@ define_repo_test!(
                 conv.id,
                 "tool_call_started",
                 &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
+                None,
+                None,
             )
             .await
             .unwrap();
@@ -967,6 +971,8 @@ define_repo_test!(conversation_events_delete, |repos, pool| async move {
             conv.id,
             "container_status",
             &serde_json::json!({"status": "ready"}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -976,6 +982,8 @@ define_repo_test!(conversation_events_delete, |repos, pool| async move {
             conv.id,
             "final_answer",
             &serde_json::json!({"answer": "done"}),
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -1009,6 +1017,8 @@ define_repo_test!(
                     conv.id,
                     "partial_answer",
                     &serde_json::json!({"text": format!("answer {i}")}),
+                    None,
+                    None,
                 )
                 .await
                 .unwrap();
@@ -1059,6 +1069,72 @@ define_repo_test!(query_status_transitions, |repos, pool| async move {
         assert_eq!(updated.query_status, *status);
     }
 });
+
+define_repo_test!(
+    conversation_events_step_identity,
+    |repos, pool| async move {
+        let user_id = insert_user(&pool).await;
+        let conv = repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some("step identity test"),
+                model_name: "test-model",
+            })
+            .await
+            .unwrap();
+
+        // Append events with step_id and step_seq.
+        repos
+            .reasoning
+            .append_event(
+                conv.id,
+                "thinking",
+                &serde_json::json!({"text": "thinking", "part_index": 0}),
+                Some("think-0-0"),
+                Some(0),
+            )
+            .await
+            .unwrap();
+        repos
+            .reasoning
+            .append_event(
+                conv.id,
+                "tool_call_started",
+                &serde_json::json!({"tool_name": "bash", "call_id": "c1", "arguments_json": "{}"}),
+                Some("tool-c1"),
+                Some(1),
+            )
+            .await
+            .unwrap();
+
+        // Append event with NULL step_id/step_seq (backward compat).
+        repos
+            .reasoning
+            .append_event(
+                conv.id,
+                "partial_answer",
+                &serde_json::json!({"text": "answer"}),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].step_id.as_deref(), Some("think-0-0"));
+        assert_eq!(events[0].step_seq, Some(0));
+        assert_eq!(events[1].step_id.as_deref(), Some("tool-c1"));
+        assert_eq!(events[1].step_seq, Some(1));
+        assert_eq!(events[2].step_id, None);
+        assert_eq!(events[2].step_seq, None);
+
+        // Verify ordering is still by id.
+        assert!(events[0].id < events[1].id);
+        assert!(events[1].id < events[2].id);
+    }
+);
 
 define_repo_test!(query_status_cancel, |repos, pool| async move {
     let user_id = insert_user(&pool).await;
