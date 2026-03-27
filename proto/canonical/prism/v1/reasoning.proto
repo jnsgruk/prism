@@ -55,6 +55,10 @@ service ReasoningService {
   // Returns a server stream of events: container status, tool calls, partial answer,
   // artifact uploads, and final answer with reasoning trace.
   rpc AskQuestion(AskQuestionRequest) returns (stream AskQuestionResponse);
+  // ResumeStream reconnects to an in-flight agentic query, replaying all
+  // events from last_event_id (0 = start). Returns the same event stream
+  // as AskQuestion. Terminates when the query completes or is cancelled.
+  rpc ResumeStream(ResumeStreamRequest) returns (stream ResumeStreamResponse);
   // ListConversations returns the user's conversation history, newest first.
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   // GetConversation returns a single conversation with its messages and artifacts.
@@ -360,6 +364,27 @@ message AskQuestionRequest {
   optional string conversation_id = 2;
 }
 
+message ResumeStreamRequest {
+  string conversation_id = 1;
+  // Resume from this event cursor. 0 replays all events from the start.
+  int64 last_event_id = 2;
+}
+
+// ResumeStreamResponse carries the same event types as AskQuestionResponse,
+// used when reconnecting to an in-flight query.
+message ResumeStreamResponse {
+  oneof event {
+    AgentToolCallStarted tool_call_started = 1;
+    AgentToolCallCompleted tool_call_completed = 2;
+    AgentPartialAnswer partial_answer = 3;
+    AgentFinalAnswer final_answer = 4;
+    AgentError error = 5;
+    AgentThinking thinking = 6;
+    AgentContainerStatus container_status = 7;
+    AgentArtifactUploaded artifact_uploaded = 8;
+  }
+}
+
 // AskQuestionResponse is a server-streamed event emitted during an agentic query.
 message AskQuestionResponse {
   oneof event {
@@ -384,6 +409,10 @@ message AgentToolCallStarted {
   string arguments_json = 2;
   // Unique identifier for this tool call (used to correlate start/complete and deduplicate updates).
   string call_id = 3;
+  // Server-assigned stable identity for this step.
+  string step_id = 4;
+  // Server-assigned display order (monotonically increasing per conversation).
+  int32 step_seq = 5;
 }
 
 // AgentToolCallCompleted indicates a tool call has finished.
@@ -397,6 +426,10 @@ message AgentToolCallCompleted {
   bool success = 4;
   // Unique identifier for this tool call (correlates with AgentToolCallStarted.call_id).
   string call_id = 5;
+  // Server-assigned stable identity for this step.
+  string step_id = 6;
+  // Server-assigned display order (monotonically increasing per conversation).
+  int32 step_seq = 7;
 }
 
 // AgentPartialAnswer streams incremental text of the agent's response.
@@ -412,6 +445,10 @@ message AgentThinking {
   // block this update belongs to so the client can properly interleave
   // reasoning and tool-call steps without clobbering earlier blocks.
   int32 part_index = 2;
+  // Server-assigned stable identity for this reasoning block.
+  string step_id = 3;
+  // Server-assigned display order (monotonically increasing per conversation).
+  int32 step_seq = 4;
 }
 
 // AgentFinalAnswer is the completed response with metadata.

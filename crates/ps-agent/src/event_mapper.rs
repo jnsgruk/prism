@@ -53,6 +53,8 @@ fn map_message_part(
             AgentThinking {
                 text: text.clone(),
                 part_index,
+                step_id: String::new(),
+                step_seq: 0,
             },
         ))),
 
@@ -73,6 +75,8 @@ fn map_tool_part(
                 tool_name: tool_name.to_string(),
                 arguments_json: input.to_string(),
                 call_id: call_id.to_string(),
+                step_id: String::new(),
+                step_seq: 0,
             }),
         )),
         Some(ToolState::Completed(completed)) => {
@@ -90,6 +94,8 @@ fn map_tool_part(
                     duration_ms,
                     success: true,
                     call_id: call_id.to_string(),
+                    step_id: String::new(),
+                    step_seq: 0,
                 }),
             ))
         }
@@ -100,6 +106,8 @@ fn map_tool_part(
                 duration_ms: 0,
                 success: false,
                 call_id: call_id.to_string(),
+                step_id: String::new(),
+                step_seq: 0,
             }),
         )),
         _ => None,

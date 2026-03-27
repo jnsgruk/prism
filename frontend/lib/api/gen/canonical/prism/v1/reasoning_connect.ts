@@ -42,6 +42,8 @@ import {
   RefreshModelCatalogueResponse,
   RenameConversationRequest,
   RenameConversationResponse,
+  ResumeStreamRequest,
+  ResumeStreamResponse,
   SaveInsightFromConversationRequest,
   SaveInsightFromConversationResponse,
   SearchByTextRequest,
@@ -245,6 +247,19 @@ export const ReasoningService = {
       name: "AskQuestion",
       I: AskQuestionRequest,
       O: AskQuestionResponse,
+      kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * ResumeStream reconnects to an in-flight agentic query, replaying all
+     * events from last_event_id (0 = start). Returns the same event stream
+     * as AskQuestion. Terminates when the query completes or is cancelled.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.ResumeStream
+     */
+    resumeStream: {
+      name: "ResumeStream",
+      I: ResumeStreamRequest,
+      O: ResumeStreamResponse,
       kind: MethodKind.ServerStreaming,
     },
     /**

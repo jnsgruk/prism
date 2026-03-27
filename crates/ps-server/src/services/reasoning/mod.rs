@@ -22,9 +22,10 @@ use ps_proto::canonical::prism::v1::{
     GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
     ListConversationsRequest, ListConversationsResponse, RefreshModelCatalogueRequest,
     RefreshModelCatalogueResponse, RenameConversationRequest, RenameConversationResponse,
-    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
-    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
-    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    ResumeStreamRequest, ResumeStreamResponse, SaveInsightFromConversationRequest,
+    SaveInsightFromConversationResponse, SearchByTextRequest, SearchByTextResponse,
+    SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest, TestProviderResponse,
+    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -69,6 +70,8 @@ impl ReasoningServiceImpl {
 impl ReasoningService for ReasoningServiceImpl {
     type AskQuestionStream =
         tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
+    type ResumeStreamStream =
+        tokio_stream::wrappers::ReceiverStream<Result<ResumeStreamResponse, Status>>;
 
     async fn get_ai_settings(
         &self,
@@ -180,6 +183,13 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<AskQuestionRequest>,
     ) -> Result<Response<Self::AskQuestionStream>, Status> {
         agent_query::ask_question(self, request).await
+    }
+
+    async fn resume_stream(
+        &self,
+        request: Request<ResumeStreamRequest>,
+    ) -> Result<Response<Self::ResumeStreamStream>, Status> {
+        agent_query::resume_stream(self, request).await
     }
 
     async fn list_conversations(
