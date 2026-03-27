@@ -32,6 +32,7 @@ export const ThinkingSteps = ({
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+        {isActive && <Loader2 className="size-3.5 animate-spin" />}
         Agent activity
         {toolSteps.length > 0 && (
           <Badge variant="secondary" className="ml-1">
