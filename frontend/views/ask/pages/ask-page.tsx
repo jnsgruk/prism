@@ -14,7 +14,7 @@ import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
 const AskPage = (): React.ReactElement => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
-  const { state, ask, cancel, reset } = useAskQuestion();
+  const { state, ask, cancel, reset, resume } = useAskQuestion();
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
@@ -52,6 +52,27 @@ const AskPage = (): React.ReactElement => {
     }
     reset();
   }, [conversationId, reset]);
+
+  // Auto-resume if we navigate to a conversation with an active query.
+  const queryStatus = conversationData?.conversation?.queryStatus;
+  const hasResumed = useRef(false);
+
+  useEffect(() => {
+    if (
+      conversationId &&
+      (queryStatus === "running" || queryStatus === "pending") &&
+      state.status === "idle" &&
+      !hasResumed.current
+    ) {
+      hasResumed.current = true;
+      resume(conversationId);
+    }
+  }, [conversationId, queryStatus, state.status, resume]);
+
+  // Reset the resume guard when conversation changes.
+  useEffect(() => {
+    hasResumed.current = false;
+  }, [conversationId]);
 
   const handleAsk = useCallback(
     (question: string): void => {
