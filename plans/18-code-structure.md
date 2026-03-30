@@ -251,14 +251,14 @@ Both `mod.rs` (Rust) and `index.ts` (TypeScript) serve the same purpose: declare
 | Crate           | Role       | Structure                                                                |
 | :-------------- | :--------- | :----------------------------------------------------------------------- |
 | `ps-server`     | Service    | `features/` with full tier escalation                                    |
-| `ps-workers`    | Service    | Restate worker handlers: ingestion, team sync, metrics compute           |
+| `ps-workers`    | Service    | `features/` with full tier escalation; `infra/` for Restate plumbing     |
 | `ps-core`       | Library    | Domain types, traits, and repository layer organised by concern          |
 | `ps-metrics`    | Library    | Metric computation logic (DORA, flow, etc.)                              |
 | `ps-proto`      | Generated  | Protobuf types — never manually edited                                   |
 | `ps-migrate`    | Migrations | Sequential migration files, k8s init container                           |
 | `psctl`         | CLI        | Lightweight gRPC client                                                  |
 
-The `ps-workers` crate hosts all Restate handlers (ingestion, team sync, metrics compute). Source adapters are nested by platform (github/, jira/, etc.) and implement the `Source` trait from `ps-core`. The three-tier escalation applies normally: domain types shared across crates belong in `ps-core`.
+The `ps-workers` crate hosts all Restate handlers. Features live in `features/` with full tier escalation: `ingestion/` (GitHub, Jira, Discourse — each owning handler + source adapter + client; GitHub also includes team sync), `identity_resolution/`, `reasoning/` (enrichment, embedding, insights, model catalogue, agent reaper, agentic query), and `metrics/`. Service-level plumbing (`SharedState`, journaling macros, retry, source registry, secret decryption) lives in `infra/`. Source adapters implement the `Source` trait from `ps-core`. Domain types shared across crates belong in `ps-core`.
 
 ### TypeScript packages
 

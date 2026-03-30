@@ -6,8 +6,8 @@ use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-fn discourse_source() -> ps_workers::discourse::source::DiscourseSource {
-    ps_workers::discourse::source::DiscourseSource
+fn discourse_source() -> ps_workers::features::ingestion::discourse::source::DiscourseSource {
+    ps_workers::features::ingestion::discourse::source::DiscourseSource
 }
 
 fn discourse_settings(mock_uri: &str) -> serde_json::Value {

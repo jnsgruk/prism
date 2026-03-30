@@ -6,8 +6,8 @@ use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, ResponseTemplate};
 
-fn jira_source() -> ps_workers::jira::source::JiraSource {
-    ps_workers::jira::source::JiraSource
+fn jira_source() -> ps_workers::features::ingestion::jira::source::JiraSource {
+    ps_workers::features::ingestion::jira::source::JiraSource
 }
 
 fn jira_settings(mock_uri: &str, projects: &[&str]) -> serde_json::Value {

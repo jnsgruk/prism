@@ -6,8 +6,8 @@ use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-fn github_source() -> ps_workers::github::source::GitHubSource {
-    ps_workers::github::source::GitHubSource
+fn github_source() -> ps_workers::features::ingestion::github::source::GitHubSource {
+    ps_workers::features::ingestion::github::source::GitHubSource
 }
 
 /// Build settings JSON pointing at the mock server with the given orgs.

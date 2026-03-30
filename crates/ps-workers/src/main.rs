@@ -1,22 +1,6 @@
 use std::sync::Arc;
 
-use ps_workers::handlers::SharedState;
-use ps_workers::handlers::agent_reaper::{AgentPodReaperHandler, AgentPodReaperHandlerImpl};
-use ps_workers::handlers::agentic_query::{AgenticQueryHandler, AgenticQueryHandlerImpl};
-use ps_workers::handlers::discourse_ingestion::{
-    DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
-};
-use ps_workers::handlers::embedding::{EmbeddingHandler, EmbeddingHandlerImpl};
-use ps_workers::handlers::enrichment::{EnrichmentHandler, EnrichmentHandlerImpl};
-use ps_workers::handlers::github_ingestion::{GithubIngestionHandler, GithubIngestionHandlerImpl};
-use ps_workers::handlers::github_team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
-use ps_workers::handlers::identity_resolution::{
-    IdentityResolutionHandler, IdentityResolutionHandlerImpl,
-};
-use ps_workers::handlers::insights::{InsightsHandler, InsightsHandlerImpl};
-use ps_workers::handlers::jira_ingestion::{JiraIngestionHandler, JiraIngestionHandlerImpl};
-use ps_workers::handlers::metrics_compute::{MetricsComputeHandler, MetricsComputeHandlerImpl};
-use ps_workers::handlers::model_catalogue::{ModelCatalogueHandler, ModelCatalogueHandlerImpl};
+use ps_workers::infra::SharedState;
 use restate_sdk::prelude::*;
 use tonic::transport::Server;
 use tonic_health::ServingStatus;
@@ -118,28 +102,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         artifact_store,
     };
 
-    let ingestion = GithubIngestionHandlerImpl {
-        state: state.clone(),
-    };
-    let team_sync = GithubTeamSyncHandlerImpl {
-        state: state.clone(),
-    };
-    let jira_ingestion = JiraIngestionHandlerImpl {
-        state: state.clone(),
-    };
-    let discourse_ingestion = DiscourseIngestionHandlerImpl {
-        state: state.clone(),
-    };
-    let identity_resolution = IdentityResolutionHandlerImpl {
-        state: state.clone(),
-    };
-    let metrics_compute = MetricsComputeHandlerImpl {
-        state: state.clone(),
-    };
-    let insights_compute = InsightsHandlerImpl {
-        state: state.clone(),
-    };
-
     // AI provider routing for enrichment handler
     let ai_router = {
         let ai_config = ps_reasoning::types::AiConfig::default();
@@ -202,28 +164,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(tokio::sync::RwLock::new(router))
     };
 
-    let enrichment = EnrichmentHandlerImpl {
-        state: state.clone(),
-        router: ai_router.clone(),
-    };
-
-    let embedding = EmbeddingHandlerImpl {
-        state: state.clone(),
-        router: ai_router,
-    };
-
-    let model_catalogue = ModelCatalogueHandlerImpl {
-        state: state.clone(),
-    };
-
-    let agentic_query = AgenticQueryHandlerImpl {
-        state: state.clone(),
-    };
-
-    let agent_reaper = AgentPodReaperHandlerImpl {
-        state: state.clone(),
-    };
-
     // Health service for k8s probes
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
     let health_addr = format!("0.0.0.0:{health_port}").parse()?;
@@ -244,30 +184,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Restate endpoint — all handlers bound to a single endpoint
+    // Restate endpoint — all handlers bound via feature bind() functions
     let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
     let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
 
     info!(%restate_addr, "starting Restate endpoint");
     let restate_server = tokio::spawn(async move {
-        HttpServer::new(
-            Endpoint::builder()
-                .bind(ingestion.serve())
-                .bind(team_sync.serve())
-                .bind(jira_ingestion.serve())
-                .bind(discourse_ingestion.serve())
-                .bind(identity_resolution.serve())
-                .bind(metrics_compute.serve())
-                .bind(insights_compute.serve())
-                .bind(enrichment.serve())
-                .bind(embedding.serve())
-                .bind(model_catalogue.serve())
-                .bind(agentic_query.serve())
-                .bind(agent_reaper.serve())
-                .build(),
-        )
-        .listen_and_serve(restate_addr)
-        .await;
+        let endpoint = Endpoint::builder();
+        let endpoint = ps_workers::features::ingestion::bind(endpoint, &state);
+        let endpoint = ps_workers::features::identity_resolution::bind(endpoint, &state);
+        let endpoint = ps_workers::features::metrics::bind(endpoint, &state);
+        let endpoint = ps_workers::features::reasoning::bind(endpoint, &state, ai_router);
+
+        HttpServer::new(endpoint.build())
+            .listen_and_serve(restate_addr)
+            .await;
     });
 
     // Register with Restate admin (best-effort, retries on startup)

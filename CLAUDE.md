@@ -81,7 +81,14 @@ crates/
 │       └── backup.rs # Export/import logic
 ├── ps-proto/         # Generated Rust code from proto definitions (pedantic lints disabled)
 ├── ps-server/        # API server binary (tonic + tonic-web), services, auth interceptor
-├── ps-workers/       # Restate worker binary — ingestion, team sync, metrics compute handlers
+├── ps-workers/       # Restate worker binary
+│   └── src/
+│       ├── infra/    # Service plumbing: SharedState, journaling macros, retry, registry, secrets
+│       └── features/ # Feature modules with full tier escalation
+│           ├── ingestion/           # GitHub (+ team sync), Jira, Discourse (handler + source + client each)
+│           ├── identity_resolution/ # Discourse identity mapping
+│           ├── reasoning/           # AI pipeline: enrichment, embedding, insights, agentic query, model catalogue, agent reaper
+│           └── metrics/             # Metric snapshot computation
 ├── ps-metrics/       # Metric computation logic (DORA, flow, etc.)
 ├── ps-migrate/       # Migration binary for k8s init container
 └── psctl/            # Lightweight CLI client (depends only on ps-proto)
@@ -375,7 +382,7 @@ All `ctx.run()` closures must have `.name("step_name")` labels for journal debug
 
 #### Run Lifecycle
 
-Managed by macros in `handlers/run_lifecycle.rs`:
+Managed by macros in `infra/run_lifecycle.rs`:
 
 - **`create_run!`** — inside `ctx.run()`, generates `Uuid::now_v7()` inside the closure so retries reuse the journaled ID (no duplicate runs)
 - **`complete_run!`** — inside `ctx.run()`, marks complete + clears `current_invocation_id`
@@ -386,7 +393,7 @@ All log errors rather than propagating — run lifecycle failure should not abor
 
 #### `journaled!` / `journaled_value!` Macros
 
-For ad-hoc `ctx.run()` calls that don't fit the run lifecycle macros, use the journaling macros from `handlers/run_lifecycle.rs`. They handle the double-clone dance required by Restate's `Fn` closures (outer clone to move into the closure, inner clone for retry replay).
+For ad-hoc `ctx.run()` calls that don't fit the run lifecycle macros, use the journaling macros from `infra/run_lifecycle.rs`. They handle the double-clone dance required by Restate's `Fn` closures (outer clone to move into the closure, inner clone for retry replay).
 
 ```rust
 // Unit-returning — for status updates, event writes, DB mutations:
@@ -423,7 +430,7 @@ Changing the sequence of `ctx.run()` calls in a handler **breaks in-flight invoc
 
 ### Ingestion Handler Pattern
 
-The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion()` in `handlers/ingestion_common.rs`. Platform-specific logic is abstracted behind the `Source` trait.
+The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion()` in `features/ingestion/lib/`. Platform-specific logic is abstracted behind the `Source` trait.
 
 #### Source Trait (`ps-core/src/ingestion.rs`)
 
