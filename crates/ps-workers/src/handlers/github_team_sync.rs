@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::SharedState;
 use super::ingestion_common::decrypt_required_secret;
-use super::run_lifecycle::{complete_run, create_run, fail_run};
+use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
 use crate::github::client::GitHubClient;
 use crate::github::types::GitHubTeam;
 
@@ -172,7 +172,7 @@ impl GithubTeamSyncHandlerImpl {
             let result = client
                 .list_org_teams(org, page)
                 .await
-                .map_err(|e| TerminalError::new(format!("GitHub API error: {e}")))?;
+                .map_err(terminal_err("GitHub API error"))?;
 
             all_teams.extend(result.items);
 
@@ -224,19 +224,19 @@ impl GithubTeamSyncHandlerImpl {
                         description.as_deref(),
                     )
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
 
                 repos
                     .org
                     .replace_github_team_members(db_id, &members)
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
 
                 repos
                     .org
                     .replace_github_team_repos(db_id, &team_repos)
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
 
                 Ok(Json::from(()))
             }
@@ -269,7 +269,7 @@ impl GithubTeamSyncHandlerImpl {
                         .org
                         .remove_stale_github_teams(source_id, &org, &slugs)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(count))
                 }
             })
@@ -301,7 +301,7 @@ async fn fetch_all_members(
         let result = client
             .list_team_members(org, team_slug, page)
             .await
-            .map_err(|e| TerminalError::new(format!("GitHub API error: {e}")))?;
+            .map_err(terminal_err("GitHub API error"))?;
 
         members.extend(result.items.into_iter().map(|u| u.login.to_lowercase()));
 
@@ -327,7 +327,7 @@ async fn fetch_all_repos(
         let result = client
             .list_team_repos(org, team_slug, page)
             .await
-            .map_err(|e| TerminalError::new(format!("GitHub API error: {e}")))?;
+            .map_err(terminal_err("GitHub API error"))?;
 
         repos.extend(
             result

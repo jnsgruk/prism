@@ -384,6 +384,22 @@ Managed by macros in `handlers/run_lifecycle.rs`:
 
 All log errors rather than propagating — run lifecycle failure should not abort the handler.
 
+#### `journaled!` Macro
+
+For ad-hoc `ctx.run()` calls that don't fit the run lifecycle macros (status updates, event writes, one-off DB operations), use the `journaled!` macro from `handlers/run_lifecycle.rs`:
+
+```rust
+journaled!(ctx, "step_name", [repos, some_string], {
+    repos.reasoning.update_something(id, &some_string).await
+        .map_err(terminal_err("failed to update"))?;
+});
+```
+
+- The capture list `[repos, some_string]` handles the double-clone dance (outer clone to move into the closure, inner clone for Restate's `Fn` retry semantics).
+- `Copy` types (e.g. `Uuid`, `i32`) don't need listing — the `move` closure captures them directly.
+- Use `terminal_err("context")` (also from `run_lifecycle.rs`) instead of `.map_err(|e| TerminalError::new(format!("context: {e}")))`.
+- The macro propagates errors with `?` and returns `()`. For `ctx.run()` calls that return a value, use the manual pattern.
+
 #### Frontend Dispatch
 
 - Use `TriggerHandler` RPC (fire-and-forget to Restate), never synchronous RPCs for long operations.

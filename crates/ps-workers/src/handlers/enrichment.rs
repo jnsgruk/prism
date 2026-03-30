@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::SharedState;
 use super::embedding::EmbeddingHandlerClient;
 use super::insights::InsightsHandlerClient;
-use super::run_lifecycle::{complete_run, create_run, fail_run};
+use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
 
 /// Max contributions to process per enrichment type per batch.
 /// Items within a batch are processed concurrently, so this can be larger
@@ -313,7 +313,7 @@ impl EnrichmentHandlerImpl {
                         .reasoning
                         .find_queued_for_enrichment(&etype, MAX_BATCH_SIZE)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(contributions))
                 }
             })
@@ -363,7 +363,7 @@ impl EnrichmentHandlerImpl {
                             cost_f32,
                         )
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(()))
                 }
             })
@@ -385,7 +385,7 @@ impl EnrichmentHandlerImpl {
                         .reasoning
                         .delete_fully_enriched_entries()
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(deleted))
                 }
             })
@@ -438,7 +438,7 @@ impl EnrichmentHandlerImpl {
                         .reasoning
                         .bulk_enqueue_embeddings(&entries)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(count))
                 }
             })

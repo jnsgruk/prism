@@ -14,6 +14,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use super::SharedState;
+use super::run_lifecycle::terminal_err;
 use crate::registry;
 
 /// Serialisable fetch result for Restate journaling.
@@ -134,11 +135,11 @@ pub(super) async fn decrypt_required_secret(
         .config
         .get_encrypted_secret(source_id, key)
         .await
-        .map_err(|e| TerminalError::new(format!("db error: {e}")))?
+        .map_err(terminal_err("db error"))?
         .ok_or_else(|| TerminalError::new(format!("source has no {key} configured")))?;
 
     let decrypted = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
-        .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
+        .map_err(terminal_err("decrypt error"))?;
 
     String::from_utf8(decrypted).map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))
 }
@@ -156,14 +157,13 @@ pub(super) async fn decrypt_optional_secret(
         .config
         .get_encrypted_secret(source_id, key)
         .await
-        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+        .map_err(terminal_err("db error"))?;
 
     match encrypted {
         Some(enc) => {
             let decrypted = ps_core::crypto::decrypt(&state.secret_key, &enc)
-                .map_err(|e| TerminalError::new(format!("decrypt error: {e}")))?;
-            let s = String::from_utf8(decrypted)
-                .map_err(|e| TerminalError::new(format!("invalid encoding: {e}")))?;
+                .map_err(terminal_err("decrypt error"))?;
+            let s = String::from_utf8(decrypted).map_err(terminal_err("invalid encoding"))?;
             Ok(Some(s))
         }
         None => Ok(None),
@@ -511,7 +511,7 @@ pub(super) async fn fetch_batch(
     let result = src
         .fetch_batch(ing_ctx, cursor)
         .await
-        .map_err(|e| TerminalError::new(format!("fetch failed: {e}")))?;
+        .map_err(terminal_err("fetch failed"))?;
 
     Ok(SerFetchResult {
         items: result.items,
@@ -541,7 +541,7 @@ pub(super) async fn store_batch(
                 let count = src
                     .store_batch(&ic, &items)
                     .await
-                    .map_err(|e| TerminalError::new(format!("store failed: {e}")))?;
+                    .map_err(terminal_err("store failed"))?;
                 #[allow(clippy::cast_possible_wrap)]
                 Ok(Json::from(count as i32))
             }
@@ -576,7 +576,7 @@ pub(super) async fn advance_watermark(
             let watermark = extract_watermark(&wm, &field).unwrap_or_default();
             src.advance_watermark(&ic, &watermark, total_items)
                 .await
-                .map_err(|e| TerminalError::new(format!("advance failed: {e}")))?;
+                .map_err(terminal_err("advance failed"))?;
             Ok(Json::from(()))
         }
     })
@@ -745,7 +745,7 @@ async fn retry_skipped_diffs(
                     .activity
                     .get_contribution_ids_by_platform_ids("github", &platform_ids)
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
 
                 let content_by_pid: std::collections::HashMap<&str, &serde_json::Value> = items
                     .iter()
@@ -769,7 +769,7 @@ async fn retry_skipped_diffs(
                         .reasoning
                         .bulk_enqueue_enrichments(&entries)
                         .await
-                        .map_err(|e| TerminalError::new(format!("enqueue error: {e}")))?;
+                        .map_err(terminal_err("enqueue error"))?;
                 }
 
                 #[allow(clippy::cast_possible_wrap)]

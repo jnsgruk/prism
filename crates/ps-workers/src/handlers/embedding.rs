@@ -12,7 +12,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
-use super::run_lifecycle::{complete_run, create_run, fail_run};
+use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
 
 /// Max contributions to fetch from the embedding queue per cycle.
 const MAX_BATCH_SIZE: i64 = 500;
@@ -194,7 +194,7 @@ impl EmbeddingHandlerImpl {
                         .reasoning
                         .find_queued_for_embedding(MAX_BATCH_SIZE)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(items))
                 }
             })
@@ -241,7 +241,7 @@ impl EmbeddingHandlerImpl {
                         .reasoning
                         .log_api_usage(provider.as_str(), &model, "embedding", tokens, 0, cost_f32)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(()))
                 }
             })
@@ -263,7 +263,7 @@ impl EmbeddingHandlerImpl {
                         .reasoning
                         .delete_embedded_queue_entries()
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(deleted))
                 }
             })

@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use super::SharedState;
 use super::ingestion_common::decrypt_optional_secret;
-use super::run_lifecycle::{complete_run, create_run};
+use super::run_lifecycle::{complete_run, create_run, terminal_err};
 use crate::discourse::client::DiscourseClient;
 
 pub struct IdentityResolutionHandlerImpl {
@@ -131,7 +131,7 @@ impl IdentityResolutionHandlerImpl {
                         .config
                         .list_sources()
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
 
                     let discourse_sources: Vec<SourceInfo> = sources
                         .into_iter()
@@ -186,7 +186,7 @@ impl IdentityResolutionHandlerImpl {
         let source_id: Uuid = source
             .id
             .parse()
-            .map_err(|e| TerminalError::new(format!("invalid source_id: {e}")))?;
+            .map_err(terminal_err("invalid source_id"))?;
 
         // Decrypt API key outside ctx.run() to avoid journaling plaintext.
         let api_key = decrypt_optional_secret(&self.state, source_id, "api_key").await?;
@@ -275,7 +275,7 @@ impl IdentityResolutionHandlerImpl {
                         .org
                         .ensure_resolution_rows(&p)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(count))
                 }
             })
@@ -300,7 +300,7 @@ impl IdentityResolutionHandlerImpl {
                         .org
                         .get_pending_resolutions(&p)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
 
                     let people: Vec<PendingPerson> = rows
                         .into_iter()
@@ -334,7 +334,7 @@ impl IdentityResolutionHandlerImpl {
         let person_id: Uuid = person
             .person_id
             .parse()
-            .map_err(|e| TerminalError::new(format!("invalid person_id: {e}")))?;
+            .map_err(terminal_err("invalid person_id"))?;
 
         // Strategy 1: Admin API email lookup (preferred).
         // Wrapped in ctx.run() so the result is journaled for deterministic replay.
@@ -428,7 +428,7 @@ impl IdentityResolutionHandlerImpl {
                         .org
                         .get_candidate_usernames(person_id)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(names))
                 }
             })
@@ -458,7 +458,7 @@ impl IdentityResolutionHandlerImpl {
                     .org
                     .resolve_identity(person_id, &p, &u)
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
                 Ok(Json::from(()))
             }
         })
@@ -486,7 +486,7 @@ impl IdentityResolutionHandlerImpl {
                     .org
                     .mark_unresolved(person_id, &p)
                     .await
-                    .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                    .map_err(terminal_err("db error"))?;
                 Ok(Json::from(()))
             }
         })
@@ -511,7 +511,7 @@ impl IdentityResolutionHandlerImpl {
                         .activity
                         .backfill_discourse_person_ids(&p)
                         .await
-                        .map_err(|e| TerminalError::new(format!("db error: {e}")))?;
+                        .map_err(terminal_err("db error"))?;
                     Ok(Json::from(count))
                 }
             })

@@ -2,11 +2,11 @@ use ps_core::models::AiProvider;
 use ps_reasoning::catalogue;
 use restate_sdk::prelude::*;
 use serde::Serialize;
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use super::SharedState;
-use super::run_lifecycle::create_run;
+use super::run_lifecycle::{complete_run, create_run, fail_run};
 
 pub struct ModelCatalogueHandlerImpl {
     pub state: SharedState,
@@ -164,9 +164,7 @@ impl ModelCatalogueHandlerImpl {
             progress.status_message = err_msg.clone();
             self.update_progress(run_id, 0, &progress).await;
 
-            if let Err(e) = self.state.repos.activity.fail_run(run_id, &err_msg).await {
-                error!(error = %e, "failed to record run failure");
-            }
+            fail_run!(ctx, self.state.repos, run_id, "_model_catalogue", &err_msg);
             return Err(TerminalError::new(err_msg));
         }
 
@@ -174,15 +172,13 @@ impl ModelCatalogueHandlerImpl {
         progress.status_message = format!("{total_models} models cached");
         self.update_progress(run_id, total_models, &progress).await;
 
-        if let Err(e) = self
-            .state
-            .repos
-            .activity
-            .complete_run(run_id, total_models)
-            .await
-        {
-            error!(error = %e, "failed to record run completion");
-        }
+        complete_run!(
+            ctx,
+            self.state.repos,
+            run_id,
+            "_model_catalogue",
+            total_models
+        );
 
         Ok(())
     }
