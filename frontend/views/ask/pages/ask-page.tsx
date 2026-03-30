@@ -5,7 +5,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { useAskQuestion } from "@/views/ask/hooks/use-ask-question";
+import { useAiModels } from "@/views/admin/hooks/use-ai-settings";
+import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
 import { useGetConversation } from "@/views/ask/hooks/use-conversations";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
 import { QueryInput } from "@/views/ask/components/query-input";
@@ -83,8 +84,30 @@ const AskPage = (): React.ReactElement => {
   );
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
-  const contextUsage =
-    state.status === "streaming" || state.status === "completed" ? state.contextUsage : undefined;
+
+  // Resolve context usage: prefer live streaming data, fall back to stored conversation totals.
+  const conv = conversationData?.conversation;
+  const { data: modelsResponse } = useAiModels(undefined, "tool_use");
+  const contextUsage = useMemo((): ContextUsage | undefined => {
+    // Live streaming data takes priority.
+    if (state.status === "streaming" || state.status === "completed") {
+      if (state.contextUsage) return state.contextUsage;
+    }
+    // Fall back to stored conversation totals.
+    if (!conv || (conv.totalPromptTokens === 0 && conv.totalCompletionTokens === 0)) {
+      return undefined;
+    }
+    // Look up model context_length from the catalogue using the conversation's model_name.
+    const modelId = conv.modelName.split("/").slice(1).join("/");
+    const model = modelsResponse?.models?.find((m) => m.id === modelId);
+    const contextWindow = model?.contextLength ?? 0;
+    return {
+      inputTokens: conv.totalPromptTokens,
+      outputTokens: conv.totalCompletionTokens,
+      contextWindow,
+    };
+  }, [state, conv, modelsResponse]);
+
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
   const headerActions = conversationId ? (

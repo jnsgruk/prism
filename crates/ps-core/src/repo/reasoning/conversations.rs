@@ -47,6 +47,8 @@ pub struct ConversationSummary {
     pub container_status: String,
     pub total_tool_calls: i32,
     pub total_estimated_cost_usd: f32,
+    pub total_prompt_tokens: i32,
+    pub total_completion_tokens: i32,
     pub query_status: String,
     pub message_count: i64,
     pub artifact_count: i64,
@@ -180,6 +182,7 @@ impl ReasoningRepo {
                     r#"
                     SELECT c.id, c.title, c.status, c.model_name, c.container_status,
                            c.total_tool_calls, c.total_estimated_cost_usd,
+                           c.total_prompt_tokens, c.total_completion_tokens,
                            c.query_status, c.created_at, c.last_activity_at,
                            (SELECT COUNT(*) FROM reasoning.conversation_messages m
                             WHERE m.conversation_id = c.id) AS "message_count!",

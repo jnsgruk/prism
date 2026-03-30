@@ -44,6 +44,8 @@ pub async fn list_conversations(
             created_at: Some(to_timestamp(c.created_at)),
             last_activity_at: Some(to_timestamp(c.last_activity_at)),
             query_status: c.query_status,
+            total_prompt_tokens: c.total_prompt_tokens,
+            total_completion_tokens: c.total_completion_tokens,
         })
         .collect();
 
@@ -103,6 +105,8 @@ pub async fn get_conversation(
         created_at: Some(to_timestamp(conv.created_at)),
         last_activity_at: Some(to_timestamp(conv.last_activity_at)),
         query_status: conv.query_status,
+        total_prompt_tokens: conv.total_prompt_tokens,
+        total_completion_tokens: conv.total_completion_tokens,
     };
 
     let messages = messages_list

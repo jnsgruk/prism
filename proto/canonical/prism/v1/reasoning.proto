@@ -552,6 +552,9 @@ message ConversationSummary {
   google.protobuf.Timestamp last_activity_at = 11;
   // Query lifecycle status: 'idle', 'pending', 'running', 'completed', 'failed', 'cancelled'.
   string query_status = 12;
+  // Cumulative token counts across all turns in this conversation.
+  int32 total_prompt_tokens = 13;
+  int32 total_completion_tokens = 14;
 }
 
 message GetConversationRequest {
