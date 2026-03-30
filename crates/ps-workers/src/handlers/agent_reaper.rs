@@ -49,40 +49,7 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
             // Periodically check for orphaned workspace PVCs.
             let count = REAP_COUNTER.fetch_add(1, Ordering::Relaxed);
             if count.is_multiple_of(ORPHAN_CHECK_INTERVAL) {
-                match cm.list_workspace_pvcs().await {
-                    Ok(pvcs) if !pvcs.is_empty() => {
-                        let repos = self.state.repos.clone();
-                        for (pvc_name, session_id) in &pvcs {
-                            let Ok(conv_id) = session_id.parse::<uuid::Uuid>() else {
-                                continue;
-                            };
-                            match repos.reasoning.conversation_exists(conv_id).await {
-                                Ok(false) => {
-                                    info!(pvc_name, session_id, "deleting orphaned workspace PVC");
-                                    if let Err(e) = cm.delete_pvc(session_id).await {
-                                        warn!(
-                                            pvc_name,
-                                            error = %e,
-                                            "failed to delete orphaned PVC"
-                                        );
-                                    }
-                                }
-                                Err(e) => {
-                                    warn!(
-                                        session_id,
-                                        error = %e,
-                                        "failed to check conversation existence for PVC cleanup"
-                                    );
-                                }
-                                Ok(true) => {}
-                            }
-                        }
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!(error = %e, "failed to list workspace PVCs for orphan cleanup");
-                    }
-                }
+                self.cleanup_orphaned_pvcs(cm).await;
             }
         } else {
             info!("no container manager configured, skipping reap");
@@ -95,6 +62,45 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
 
         info!("agent pod reaper complete, next run in 60s");
         Ok(())
+    }
+}
+
+impl AgentPodReaperHandlerImpl {
+    /// Delete workspace PVCs whose conversations no longer exist.
+    async fn cleanup_orphaned_pvcs(&self, cm: &ps_agent::ContainerManager) {
+        let pvcs = match cm.list_workspace_pvcs().await {
+            Ok(pvcs) if !pvcs.is_empty() => pvcs,
+            Ok(_) => return,
+            Err(e) => {
+                warn!(error = %e, "failed to list workspace PVCs for orphan cleanup");
+                return;
+            }
+        };
+
+        for (pvc_name, session_id) in &pvcs {
+            let Ok(conv_id) = session_id.parse::<uuid::Uuid>() else {
+                continue;
+            };
+
+            match self
+                .state
+                .repos
+                .reasoning
+                .conversation_exists(conv_id)
+                .await
+            {
+                Ok(false) => {
+                    info!(pvc_name, session_id, "deleting orphaned workspace PVC");
+                    if let Err(e) = cm.delete_pvc(session_id).await {
+                        warn!(pvc_name, error = %e, "failed to delete orphaned PVC");
+                    }
+                }
+                Err(e) => {
+                    warn!(session_id, error = %e, "failed to check conversation existence");
+                }
+                Ok(true) => {}
+            }
+        }
     }
 }
 
