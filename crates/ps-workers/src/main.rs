@@ -207,8 +207,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let self_url = std::env::var("RESTATE_SELF_URL")
         .unwrap_or_else(|_| format!("http://ps-workers:{restate_port}"));
 
+    let restate_ingress_url =
+        std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
+
     tokio::spawn(async move {
         register_with_restate(&restate_admin_url, &self_url).await;
+        bootstrap_reaper(&restate_admin_url, &restate_ingress_url).await;
     });
 
     // Wait for either server to exit
@@ -266,4 +270,63 @@ async fn register_with_restate(admin_url: &str, self_url: &str) {
     }
 
     error!("gave up registering with Restate after 10 attempts");
+}
+
+/// Ensure the agent pod reaper loop is running.
+///
+/// Queries the Restate SQL endpoint for any active `AgentPodReaperHandler`
+/// invocations. If none exist, sends a bootstrap invocation to start the
+/// self-scheduling chain. This makes the reaper survive deploys and journal
+/// resets without risking duplicate chains.
+async fn bootstrap_reaper(admin_url: &str, ingress_url: &str) {
+    let client = reqwest::Client::new();
+
+    // Check for existing reaper invocations via Restate SQL API.
+    let sql_url = format!("{admin_url}/query");
+    let query = "SELECT id FROM sys_invocation \
+                 WHERE target_service_name = 'AgentPodReaperHandler' \
+                 AND (status = 'scheduled' OR status = 'running' OR status = 'ready') \
+                 LIMIT 1";
+
+    let has_active = match client
+        .post(&sql_url)
+        .json(&serde_json::json!(query))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            let body = resp.text().await.unwrap_or_default();
+            // The SQL response contains rows — if there's any match beyond the
+            // header, the reaper is already scheduled.
+            body.lines().count() > 1
+        }
+        Ok(resp) => {
+            warn!(status = %resp.status(), "failed to query Restate for reaper status, bootstrapping anyway");
+            false
+        }
+        Err(e) => {
+            warn!(error = %e, "failed to reach Restate SQL endpoint, bootstrapping anyway");
+            false
+        }
+    };
+
+    if has_active {
+        info!("agent pod reaper already scheduled, skipping bootstrap");
+        return;
+    }
+
+    let send_url = format!("{ingress_url}/AgentPodReaperHandler/reap/send");
+    match client.post(&send_url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            info!("bootstrapped agent pod reaper loop");
+        }
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            error!(%status, body, "failed to bootstrap agent pod reaper");
+        }
+        Err(e) => {
+            error!(error = %e, "failed to send reaper bootstrap invocation");
+        }
+    }
 }
