@@ -14,7 +14,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use super::SharedState;
-use super::run_lifecycle::terminal_err;
+use super::run_lifecycle::{journaled, journaled_value, terminal_err};
 use crate::registry;
 
 /// Serialisable fetch result for Restate journaling.
@@ -52,20 +52,11 @@ pub(super) async fn load_source_config(
 ) -> Result<SourceConfig, TerminalError> {
     let repos = repos.clone();
     let name = source_name.to_string();
-    Ok(ctx
-        .run(|| {
-            let repos = repos.clone();
-            let name = name.clone();
-            async move {
-                let config = super::load_source_config(&repos, &name)
-                    .await
-                    .map_err(TerminalError::new)?;
-                Ok(Json::from(config))
-            }
-        })
-        .name("load_config")
-        .await?
-        .into_inner())
+    Ok(journaled_value!(ctx, "load_config", [repos, name], {
+        super::load_source_config(&repos, &name)
+            .await
+            .map_err(TerminalError::new)?
+    }))
 }
 
 /// Create an ingestion run record inside a Restate `ctx.run()` closure.
@@ -531,24 +522,14 @@ pub(super) async fn store_batch(
     let ic = ing_ctx.clone();
     let items = items.to_vec();
 
-    Ok(ctx
-        .run(|| {
-            let ic = ic.clone();
-            let items = items.clone();
-            async move {
-                let src = registry::create_source(&ic.source_config.source_type)
-                    .ok_or_else(|| TerminalError::new("source unavailable"))?;
-                let count = src
-                    .store_batch(&ic, &items)
-                    .await
-                    .map_err(terminal_err("store failed"))?;
-                #[allow(clippy::cast_possible_wrap)]
-                Ok(Json::from(count as i32))
-            }
-        })
-        .name("store_batch")
-        .await?
-        .into_inner())
+    #[allow(clippy::cast_possible_wrap)]
+    Ok(journaled_value!(ctx, "store_batch", [ic, items], {
+        let src = registry::create_source(&ic.source_config.source_type)
+            .ok_or_else(|| TerminalError::new("source unavailable"))?;
+        src.store_batch(&ic, &items)
+            .await
+            .map_err(terminal_err("store failed"))? as i32
+    }))
 }
 
 /// Advance the watermark inside a Restate `ctx.run()` closure.
@@ -566,22 +547,14 @@ pub(super) async fn advance_watermark(
     let wm = cursor.to_string();
     let field = watermark_field.to_string();
 
-    ctx.run(|| {
-        let ic = ic.clone();
-        let wm = wm.clone();
-        let field = field.clone();
-        async move {
-            let src = registry::create_source(&ic.source_config.source_type)
-                .ok_or_else(|| TerminalError::new("source unavailable"))?;
-            let watermark = extract_watermark(&wm, &field).unwrap_or_default();
-            src.advance_watermark(&ic, &watermark, total_items)
-                .await
-                .map_err(terminal_err("advance failed"))?;
-            Ok(Json::from(()))
-        }
-    })
-    .name("advance_watermark")
-    .await?;
+    journaled!(ctx, "advance_watermark", [ic, wm, field], {
+        let src = registry::create_source(&ic.source_config.source_type)
+            .ok_or_else(|| TerminalError::new("source unavailable"))?;
+        let watermark = extract_watermark(&wm, &field).unwrap_or_default();
+        src.advance_watermark(&ic, &watermark, total_items)
+            .await
+            .map_err(terminal_err("advance failed"))?;
+    });
 
     Ok(())
 }

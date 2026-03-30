@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use super::SharedState;
 use super::ingestion_common::decrypt_optional_secret;
-use super::run_lifecycle::{complete_run, create_run, terminal_err};
+use super::run_lifecycle::{complete_run, create_run, journaled, journaled_value, terminal_err};
 use crate::discourse::client::DiscourseClient;
 
 pub struct IdentityResolutionHandlerImpl {
@@ -122,43 +122,34 @@ impl IdentityResolutionHandlerImpl {
         &self,
         ctx: &Context<'_>,
     ) -> Result<Vec<SourceInfo>, TerminalError> {
-        let repos = self.state.repos.clone();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let sources = repos
-                        .config
-                        .list_sources()
-                        .await
-                        .map_err(terminal_err("db error"))?;
+        let repos = &self.state.repos;
+        Ok(journaled_value!(ctx, "list_discourse_sources", [repos], {
+            let sources = repos
+                .config
+                .list_sources()
+                .await
+                .map_err(terminal_err("db error"))?;
 
-                    let discourse_sources: Vec<SourceInfo> = sources
-                        .into_iter()
-                        .filter(|s| s.enabled && s.source_type.is_discourse())
-                        .map(|s| {
-                            let base_url = s
-                                .settings
-                                .get("base_url")
-                                .and_then(serde_json::Value::as_str)
-                                .unwrap_or("")
-                                .trim_end_matches('/')
-                                .to_string();
-                            SourceInfo {
-                                id: s.id.to_string(),
-                                name: s.name,
-                                platform: s.source_type.to_string(),
-                                base_url,
-                            }
-                        })
-                        .collect();
-
-                    Ok(Json::from(discourse_sources))
-                }
-            })
-            .name("list_discourse_sources")
-            .await?
-            .into_inner())
+            sources
+                .into_iter()
+                .filter(|s| s.enabled && s.source_type.is_discourse())
+                .map(|s| {
+                    let base_url = s
+                        .settings
+                        .get("base_url")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("")
+                        .trim_end_matches('/')
+                        .to_string();
+                    SourceInfo {
+                        id: s.id.to_string(),
+                        name: s.name,
+                        platform: s.source_type.to_string(),
+                        base_url,
+                    }
+                })
+                .collect::<Vec<SourceInfo>>()
+        }))
     }
 
     /// Resolve identities for a single Discourse source.
@@ -264,24 +255,15 @@ impl IdentityResolutionHandlerImpl {
         ctx: &Context<'_>,
         platform: &str,
     ) -> Result<u64, TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let p = platform.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let p = p.clone();
-                async move {
-                    let count = repos
-                        .org
-                        .ensure_resolution_rows(&p)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(count))
-                }
-            })
-            .name("ensure_pending_rows")
-            .await?
-            .into_inner())
+        Ok(journaled_value!(ctx, "ensure_pending_rows", [repos, p], {
+            repos
+                .org
+                .ensure_resolution_rows(&p)
+                .await
+                .map_err(terminal_err("db error"))?
+        }))
     }
 
     async fn load_pending(
@@ -289,34 +271,23 @@ impl IdentityResolutionHandlerImpl {
         ctx: &Context<'_>,
         platform: &str,
     ) -> Result<Vec<PendingPerson>, TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let p = platform.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let p = p.clone();
-                async move {
-                    let rows = repos
-                        .org
-                        .get_pending_resolutions(&p)
-                        .await
-                        .map_err(terminal_err("db error"))?;
+        Ok(journaled_value!(ctx, "load_pending", [repos, p], {
+            let rows = repos
+                .org
+                .get_pending_resolutions(&p)
+                .await
+                .map_err(terminal_err("db error"))?;
 
-                    let people: Vec<PendingPerson> = rows
-                        .into_iter()
-                        .map(|r| PendingPerson {
-                            person_id: r.person_id.to_string(),
-                            name: r.person_name,
-                            email: r.email,
-                        })
-                        .collect();
-
-                    Ok(Json::from(people))
-                }
-            })
-            .name("load_pending")
-            .await?
-            .into_inner())
+            rows.into_iter()
+                .map(|r| PendingPerson {
+                    person_id: r.person_id.to_string(),
+                    name: r.person_name,
+                    email: r.email,
+                })
+                .collect::<Vec<PendingPerson>>()
+        }))
     }
 
     /// Try to resolve a single person's identity on a Discourse platform.
@@ -419,22 +390,19 @@ impl IdentityResolutionHandlerImpl {
         person_id: Uuid,
         person_index: usize,
     ) -> Result<Vec<String>, TerminalError> {
-        let repos = self.state.repos.clone();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let names = repos
-                        .org
-                        .get_candidate_usernames(person_id)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(names))
-                }
-            })
-            .name(format!("load_candidates_{person_index}"))
-            .await?
-            .into_inner())
+        let repos = &self.state.repos;
+        Ok(journaled_value!(
+            ctx,
+            format!("load_candidates_{person_index}"),
+            [repos],
+            {
+                repos
+                    .org
+                    .get_candidate_usernames(person_id)
+                    .await
+                    .map_err(terminal_err("db error"))?
+            }
+        ))
     }
 
     async fn store_resolution(
@@ -445,25 +413,22 @@ impl IdentityResolutionHandlerImpl {
         username: &str,
         person_index: usize,
     ) -> Result<(), TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let p = platform.to_string();
         let u = username.to_string();
 
-        ctx.run(|| {
-            let repos = repos.clone();
-            let p = p.clone();
-            let u = u.clone();
-            async move {
+        journaled!(
+            ctx,
+            format!("store_resolution_{person_index}"),
+            [repos, p, u],
+            {
                 repos
                     .org
                     .resolve_identity(person_id, &p, &u)
                     .await
                     .map_err(terminal_err("db error"))?;
-                Ok(Json::from(()))
             }
-        })
-        .name(format!("store_resolution_{person_index}"))
-        .await?;
+        );
 
         Ok(())
     }
@@ -475,23 +440,21 @@ impl IdentityResolutionHandlerImpl {
         platform: &str,
         person_index: usize,
     ) -> Result<(), TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let p = platform.to_string();
 
-        ctx.run(|| {
-            let repos = repos.clone();
-            let p = p.clone();
-            async move {
+        journaled!(
+            ctx,
+            format!("store_unresolved_{person_index}"),
+            [repos, p],
+            {
                 repos
                     .org
                     .mark_unresolved(person_id, &p)
                     .await
                     .map_err(terminal_err("db error"))?;
-                Ok(Json::from(()))
             }
-        })
-        .name(format!("store_unresolved_{person_index}"))
-        .await?;
+        );
 
         Ok(())
     }

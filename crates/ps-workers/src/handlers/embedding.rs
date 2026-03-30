@@ -12,7 +12,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::SharedState;
-use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
+use super::run_lifecycle::{complete_run, create_run, fail_run, journaled_value, terminal_err};
 
 /// Max contributions to fetch from the embedding queue per cycle.
 const MAX_BATCH_SIZE: i64 = 500;
@@ -185,22 +185,14 @@ impl EmbeddingHandlerImpl {
     // -----------------------------------------------------------------------
 
     async fn find_queued(&self, ctx: &Context<'_>) -> Result<Vec<QueuedEmbedding>, TerminalError> {
-        let repos = self.state.repos.clone();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let items = repos
-                        .reasoning
-                        .find_queued_for_embedding(MAX_BATCH_SIZE)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(items))
-                }
-            })
-            .name("fetch_queue")
-            .await?
-            .into_inner())
+        let repos = &self.state.repos;
+        Ok(journaled_value!(ctx, "fetch_queue", [repos], {
+            repos
+                .reasoning
+                .find_queued_for_embedding(MAX_BATCH_SIZE)
+                .await
+                .map_err(terminal_err("db error"))?
+        }))
     }
 
     async fn log_cost(

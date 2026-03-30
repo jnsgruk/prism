@@ -202,6 +202,34 @@ macro_rules! journaled {
     }};
 }
 
+/// Like [`journaled!`] but returns a value.
+///
+/// The body is an expression evaluating to `T: Serialize + Deserialize`.
+/// The macro wraps it in `Json<T>` for Restate journaling and unwraps
+/// with `.into_inner()` on the way out.
+///
+/// ```ignore
+/// let items: Vec<Item> = journaled_value!(ctx, "fetch_queue", [repos], {
+///     repos.reasoning.find_queued(100).await
+///         .map_err(terminal_err("db error"))?
+/// });
+/// ```
+macro_rules! journaled_value {
+    ($ctx:expr, $name:expr, [$($var:ident),* $(,)?], $body:block) => {{
+        $(let $var = $var.clone();)*
+        $ctx.run(move || {
+            $(let $var = $var.clone();)*
+            async move {
+                let __val = $body;
+                Ok(::restate_sdk::prelude::Json::from(__val))
+            }
+        })
+        .name($name)
+        .await?
+        .into_inner()
+    }};
+}
+
 /// Concise error mapper for converting any `Display` error into a
 /// `TerminalError` with a contextual prefix.
 ///
@@ -220,3 +248,4 @@ pub(super) use complete_run_with_warnings;
 pub(super) use create_run;
 pub(super) use fail_run;
 pub(super) use journaled;
+pub(super) use journaled_value;

@@ -5,7 +5,9 @@ use uuid::Uuid;
 
 use super::SharedState;
 use super::ingestion_common::decrypt_required_secret;
-use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
+use super::run_lifecycle::{
+    complete_run, create_run, fail_run, journaled, journaled_value, terminal_err,
+};
 use crate::github::client::GitHubClient;
 use crate::github::types::GitHubTeam;
 
@@ -89,22 +91,13 @@ impl GithubTeamSyncHandlerImpl {
         ctx: &ObjectContext<'_>,
         source_name: &str,
     ) -> Result<SourceConfig, TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let name = source_name.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let name = name.clone();
-                async move {
-                    let config = super::load_source_config(&repos, &name)
-                        .await
-                        .map_err(TerminalError::new)?;
-                    Ok(Json::from(config))
-                }
-            })
-            .name("load_config")
-            .await?
-            .into_inner())
+        Ok(journaled_value!(ctx, "load_config", [repos, name], {
+            super::load_source_config(&repos, &name)
+                .await
+                .map_err(TerminalError::new)?
+        }))
     }
 
     /// Sync all teams for a single GitHub org. Returns the number of teams synced.
@@ -195,7 +188,7 @@ impl GithubTeamSyncHandlerImpl {
         members: &[String],
         team_repos: &[(String, String)],
     ) -> Result<(), TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let slug = team.slug.clone();
         let name = team.name.clone();
         let description = team.description.clone();
@@ -204,20 +197,25 @@ impl GithubTeamSyncHandlerImpl {
         let members = members.to_vec();
         let team_repos = team_repos.to_vec();
 
-        ctx.run(|| {
-            let repos = repos.clone();
-            let org = org_owned.clone();
-            let slug = slug.clone();
-            let name = name.clone();
-            let description = description.clone();
-            let members = members.clone();
-            let team_repos = team_repos.clone();
-            async move {
+        let step_name = format!("store_team_{slug}");
+        journaled!(
+            ctx,
+            step_name,
+            [
+                repos,
+                org_owned,
+                slug,
+                name,
+                description,
+                members,
+                team_repos
+            ],
+            {
                 let db_id = repos
                     .org
                     .upsert_github_team(
                         source_id,
-                        &org,
+                        &org_owned,
                         team_id,
                         &slug,
                         &name,
@@ -237,12 +235,8 @@ impl GithubTeamSyncHandlerImpl {
                     .replace_github_team_repos(db_id, &team_repos)
                     .await
                     .map_err(terminal_err("db error"))?;
-
-                Ok(Json::from(()))
             }
-        })
-        .name(format!("store_team_{slug}"))
-        .await?;
+        );
 
         Ok(())
     }
@@ -255,27 +249,22 @@ impl GithubTeamSyncHandlerImpl {
         org: &str,
         synced_slugs: &[String],
     ) -> Result<u64, TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let org_owned = org.to_string();
         let slugs = synced_slugs.to_vec();
 
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let org = org_owned.clone();
-                let slugs = slugs.clone();
-                async move {
-                    let count = repos
-                        .org
-                        .remove_stale_github_teams(source_id, &org, &slugs)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(count))
-                }
-            })
-            .name("remove_stale_teams")
-            .await?
-            .into_inner())
+        Ok(journaled_value!(
+            ctx,
+            "remove_stale_teams",
+            [repos, org_owned, slugs],
+            {
+                repos
+                    .org
+                    .remove_stale_github_teams(source_id, &org_owned, &slugs)
+                    .await
+                    .map_err(terminal_err("db error"))?
+            }
+        ))
     }
 }
 

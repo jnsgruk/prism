@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tracing::{info, warn};
 
 use super::SharedState;
+use super::run_lifecycle::journaled;
 
 /// Run orphan PVC cleanup every N reaper invocations (~10 minutes at 60s intervals).
 const ORPHAN_CHECK_INTERVAL: u64 = 10;
@@ -31,27 +32,20 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
             }
 
             // Clean up auth sessions for reaped pods (journaled).
-            let repos = self.state.repos.clone();
-            ctx.run(move || {
-                let repos = repos.clone();
-                let sessions = reaped_sessions.clone();
-                async move {
-                    for sid in &sessions {
-                        if let Ok(uuid) = sid.parse::<uuid::Uuid>()
-                            && let Err(e) = repos.auth.delete_session(uuid).await
-                        {
-                            tracing::warn!(
-                                session_id = %sid,
-                                error = %e,
-                                "failed to delete reaped agent token"
-                            );
-                        }
+            let repos = &self.state.repos;
+            journaled!(ctx, "cleanup_sessions", [repos, reaped_sessions], {
+                for sid in &reaped_sessions {
+                    if let Ok(uuid) = sid.parse::<uuid::Uuid>()
+                        && let Err(e) = repos.auth.delete_session(uuid).await
+                    {
+                        tracing::warn!(
+                            session_id = %sid,
+                            error = %e,
+                            "failed to delete reaped agent token"
+                        );
                     }
-                    Ok(Json::from(()))
                 }
-            })
-            .name("cleanup_sessions")
-            .await?;
+            });
             // Periodically check for orphaned workspace PVCs.
             let count = REAP_COUNTER.fetch_add(1, Ordering::Relaxed);
             if count.is_multiple_of(ORPHAN_CHECK_INTERVAL) {

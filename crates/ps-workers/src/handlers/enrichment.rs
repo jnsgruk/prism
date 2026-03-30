@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::SharedState;
 use super::embedding::EmbeddingHandlerClient;
 use super::insights::InsightsHandlerClient;
-use super::run_lifecycle::{complete_run, create_run, fail_run, terminal_err};
+use super::run_lifecycle::{complete_run, create_run, fail_run, journaled_value, terminal_err};
 
 /// Max contributions to process per enrichment type per batch.
 /// Items within a batch are processed concurrently, so this can be larger
@@ -302,24 +302,20 @@ impl EnrichmentHandlerImpl {
         enrichment_type: &str,
         iteration: u32,
     ) -> Result<Vec<QueuedContribution>, TerminalError> {
-        let repos = self.state.repos.clone();
+        let repos = &self.state.repos;
         let etype = enrichment_type.to_string();
-        Ok(ctx
-            .run(|| {
-                let repos = repos.clone();
-                let etype = etype.clone();
-                async move {
-                    let contributions = repos
-                        .reasoning
-                        .find_queued_for_enrichment(&etype, MAX_BATCH_SIZE)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(contributions))
-                }
-            })
-            .name(format!("find_{enrichment_type}_{iteration}"))
-            .await?
-            .into_inner())
+        Ok(journaled_value!(
+            ctx,
+            format!("find_{enrichment_type}_{iteration}"),
+            [repos, etype],
+            {
+                repos
+                    .reasoning
+                    .find_queued_for_enrichment(&etype, MAX_BATCH_SIZE)
+                    .await
+                    .map_err(terminal_err("db error"))?
+            }
+        ))
     }
 
     async fn log_cost(
