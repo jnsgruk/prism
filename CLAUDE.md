@@ -384,21 +384,28 @@ Managed by macros in `handlers/run_lifecycle.rs`:
 
 All log errors rather than propagating — run lifecycle failure should not abort the handler.
 
-#### `journaled!` Macro
+#### `journaled!` / `journaled_value!` Macros
 
-For ad-hoc `ctx.run()` calls that don't fit the run lifecycle macros (status updates, event writes, one-off DB operations), use the `journaled!` macro from `handlers/run_lifecycle.rs`:
+For ad-hoc `ctx.run()` calls that don't fit the run lifecycle macros, use the journaling macros from `handlers/run_lifecycle.rs`. They handle the double-clone dance required by Restate's `Fn` closures (outer clone to move into the closure, inner clone for retry replay).
 
 ```rust
+// Unit-returning — for status updates, event writes, DB mutations:
 journaled!(ctx, "step_name", [repos, some_string], {
     repos.reasoning.update_something(id, &some_string).await
         .map_err(terminal_err("failed to update"))?;
 });
+
+// Value-returning — for queries that need the result:
+let items = journaled_value!(ctx, "fetch_queue", [repos], {
+    repos.reasoning.find_queued(100).await
+        .map_err(terminal_err("db error"))?
+});
 ```
 
-- The capture list `[repos, some_string]` handles the double-clone dance (outer clone to move into the closure, inner clone for Restate's `Fn` retry semantics).
-- `Copy` types (e.g. `Uuid`, `i32`) don't need listing — the `move` closure captures them directly.
-- Use `terminal_err("context")` (also from `run_lifecycle.rs`) instead of `.map_err(|e| TerminalError::new(format!("context: {e}")))`.
-- The macro propagates errors with `?` and returns `()`. For `ctx.run()` calls that return a value, use the manual pattern.
+- The capture list `[repos, some_string]` lists variables that need cloning. `Copy` types (e.g. `Uuid`, `i32`) are captured by the `move` closure directly — don't list them.
+- Use `terminal_err("context")` instead of `.map_err(|e| TerminalError::new(format!("context: {e}")))`.
+- Both macros propagate errors with `?`. For fire-and-forget calls that catch errors locally (e.g. `log_cost`, `cleanup_queue`), use the manual `ctx.run()` pattern instead.
+- If the step name uses a captured variable (e.g. `format!("store_team_{slug}")`), compute the name *before* the macro invocation to avoid borrow-after-move.
 
 #### Frontend Dispatch
 
