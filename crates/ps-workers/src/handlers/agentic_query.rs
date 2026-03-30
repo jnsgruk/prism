@@ -444,7 +444,7 @@ pub struct QueryResult {
 #[allow(clippy::too_many_lines)]
 pub async fn run_agentic_query_core(
     repos: &Repos,
-    _http_client: &reqwest::Client,
+    http_client: &reqwest::Client,
     conversation_id: Uuid,
     pod_ip: &str,
     question: &str,
@@ -493,17 +493,26 @@ pub async fn run_agentic_query_core(
         };
         let (provider_id, model_id) = model_name.split_once('/').unwrap_or(("google", model_name));
         info!(provider_id, model_id, "triggering session compaction");
-        client
-            .sessions()
-            .summarize(
-                &opencode_session_id,
-                &ps_agent::opencode_sdk::types::session::SummarizeRequest {
-                    provider_id: provider_id.to_string(),
-                    model_id: model_id.to_string(),
-                    auto: None,
-                },
-            )
+        // Bypass opencode-sdk's SummarizeRequest which serializes as camelCase (providerId)
+        // but OpenCode's API expects Go-style casing (providerID, modelID).
+        let summarize_url = format!(
+            "http://{pod_ip}:{port}/session/{sid}/summarize",
+            port = ps_agent::OPENCODE_PORT,
+            sid = opencode_session_id,
+        );
+        let resp = http_client
+            .post(&summarize_url)
+            .json(&serde_json::json!({
+                "providerID": provider_id,
+                "modelID": model_id,
+            }))
+            .send()
             .await?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("compaction failed (HTTP {status}): {body}").into());
+        }
         info!("compaction triggered");
     } else {
         info!("sending question to OpenCode");

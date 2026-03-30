@@ -101,8 +101,8 @@ impl EventMapper {
                     self.cumulative_output += usage.output;
                     Some(agent_event(ask_question_response::Event::TokenUsage(
                         AgentTokenUsage {
-                            input_tokens: self.cumulative_input as i64,
-                            output_tokens: self.cumulative_output as i64,
+                            input_tokens: self.cumulative_input.cast_signed(),
+                            output_tokens: self.cumulative_output.cast_signed(),
                             context_window: 0, // Populated by the handler with model info
                         },
                     )))
