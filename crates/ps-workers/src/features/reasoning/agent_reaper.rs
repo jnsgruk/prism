@@ -14,14 +14,18 @@ pub struct AgentPodReaperHandlerImpl {
     pub state: SharedState,
 }
 
-#[restate_sdk::service]
+/// Fixed object key — ensures a single reaper chain via Restate's per-key
+/// exclusive access guarantee. Duplicate sends queue rather than fork.
+pub const REAPER_KEY: &str = "singleton";
+
+#[restate_sdk::object]
 pub trait AgentPodReaperHandler {
     /// Reap idle/expired agent pods and schedule the next run.
     async fn reap() -> Result<(), TerminalError>;
 }
 
 impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
-    async fn reap(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
+    async fn reap(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
         info!("starting agent pod reaper");
 
         if let Some(ref cm) = self.state.container_manager {
@@ -55,8 +59,8 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
             info!("no container manager configured, skipping reap");
         }
 
-        // Schedule next run in 60 seconds.
-        ctx.service_client::<AgentPodReaperHandlerClient>()
+        // Schedule next run in 60 seconds (same key — serialized, no forks).
+        ctx.object_client::<AgentPodReaperHandlerClient>(REAPER_KEY)
             .reap()
             .send_after(std::time::Duration::from_secs(60));
 
