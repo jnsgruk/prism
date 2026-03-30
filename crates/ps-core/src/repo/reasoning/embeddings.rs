@@ -290,7 +290,7 @@ impl ReasoningRepo {
                 c.platform,
                 c.contribution_type,
                 c.state,
-                c.external_url,
+                c.url AS external_url,
                 c.created_at,
                 p.display_name,
                 (e.embedding <=> $1::vector)::float8 as distance
