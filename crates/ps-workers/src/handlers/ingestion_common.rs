@@ -44,6 +44,43 @@ pub(super) fn extract_watermark(cursor_json: &str, field: &str) -> Option<String
         .map(String::from)
 }
 
+/// Fetch a batch with panic isolation. Panics in source `fetch_batch()`
+/// implementations are caught and converted to `TerminalError`.
+async fn fetch_batch_catch_panic(
+    ing_ctx: &IngestionContext,
+    cursor: &str,
+) -> Result<Result<SerFetchResult, TerminalError>, TerminalError> {
+    use futures::FutureExt as _;
+    use std::panic::AssertUnwindSafe;
+
+    AssertUnwindSafe(fetch_batch(ing_ctx, cursor))
+        .catch_unwind()
+        .await
+        .map_err(|panic| {
+            let msg = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown panic");
+            TerminalError::new(format!("fetch panicked: {msg}"))
+        })
+}
+
+/// Best-effort progress update (not journaled).
+macro_rules! update_progress {
+    ($ing_ctx:expr, $run_id:expr, $total_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
+        let progress = $tracker.build_progress($cursor, $batch.rate_limit.as_ref());
+        if let Err(e) = $ing_ctx
+            .repos
+            .activity
+            .update_run_progress_detail($run_id, $total_items, &progress)
+            .await
+        {
+            tracing::debug!(error = %e, "failed to update run progress");
+        }
+    }};
+}
+
 /// Load a source config inside a Restate `ctx.run()` closure.
 pub(super) async fn load_source_config(
     ctx: &ObjectContext<'_>,
@@ -193,21 +230,7 @@ pub(super) async fn fetch_store_loop(
     let mut last_progress_log = std::time::Instant::now();
 
     loop {
-        let batch = {
-            use futures::FutureExt as _;
-            use std::panic::AssertUnwindSafe;
-            AssertUnwindSafe(fetch_batch(ing_ctx, &cursor))
-                .catch_unwind()
-                .await
-                .map_err(|panic| {
-                    let msg = panic
-                        .downcast_ref::<String>()
-                        .map(String::as_str)
-                        .or_else(|| panic.downcast_ref::<&str>().copied())
-                        .unwrap_or("unknown panic");
-                    TerminalError::new(format!("fetch panicked: {msg}"))
-                })??
-        };
+        let batch = fetch_batch_catch_panic(ing_ctx, &cursor).await??;
 
         // Update cursor from etag if present (Jira/Discourse pattern),
         // which carries watermark state even when next_cursor is None.
@@ -241,16 +264,7 @@ pub(super) async fn fetch_store_loop(
 
             // Update progress before sleeping so the UI reflects the
             // exhausted rate limit rather than showing a stale snapshot.
-            let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
-            if let Err(e) = ing_ctx
-                .repos
-                .activity
-                .update_run_progress_detail(run_id, total_items, &progress)
-                .await
-            {
-                tracing::debug!(error = %e, "failed to update run progress");
-            }
-
+            update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
             ctx.sleep(wait).await?;
             // Don't advance cursor — retry the same position after sleep.
             continue;
@@ -290,15 +304,7 @@ pub(super) async fn fetch_store_loop(
             retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs).await?;
         }
 
-        let progress = tracker.build_progress(&cursor, batch.rate_limit.as_ref());
-        if let Err(e) = ing_ctx
-            .repos
-            .activity
-            .update_run_progress_detail(run_id, total_items, &progress)
-            .await
-        {
-            tracing::debug!(error = %e, "failed to update run progress");
-        }
+        update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
 
         // Periodic progress log at info level for long-running backfills
         if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {

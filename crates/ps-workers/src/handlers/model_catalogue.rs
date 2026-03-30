@@ -87,74 +87,24 @@ impl ModelCatalogueHandlerImpl {
                 continue;
             };
 
-            let models = match catalogue::fetch_models(&self.state.http_client, *provider, &api_key)
-                .await
-            {
-                Ok(m) => m,
-                Err(e) => {
-                    let err_msg = format!("{provider_str}: {e}");
-                    warn!(provider = %provider_str, error = %e, "failed to fetch model catalogue");
-                    let prov_progress = ProviderProgress {
-                        models_fetched: 0,
-                        error: Some(e.to_string()),
-                    };
-                    match *provider {
-                        AiProvider::Google => progress.google = Some(prov_progress),
-                        AiProvider::OpenRouter => progress.openrouter = Some(prov_progress),
-                    }
+            match self.refresh_provider(*provider, &api_key).await {
+                Ok(count) => {
+                    #[allow(clippy::cast_possible_wrap)]
+                    let count_i32 = count as i32;
+                    total_models += count_i32;
+                    set_provider_progress(&mut progress, *provider, count, None);
+                    self.update_progress(run_id, total_models, &progress).await;
+                    debug!(provider = %provider_str, count, "model catalogue refreshed");
+                }
+                Err(err_msg) => {
+                    warn!(provider = %provider_str, "{err_msg}");
+                    set_provider_progress(&mut progress, *provider, 0, Some(&err_msg));
                     had_error = true;
                     if first_error.is_none() {
                         first_error = Some(err_msg);
                     }
-                    continue;
                 }
-            };
-
-            let count = models.len();
-
-            if let Err(e) = self
-                .state
-                .repos
-                .config
-                .replace_ai_models(&provider_str, &models)
-                .await
-            {
-                let err_msg = format!("{provider_str}: failed to store models: {e}");
-                warn!(provider = %provider_str, error = %e, "failed to store model catalogue");
-                had_error = true;
-                if first_error.is_none() {
-                    first_error = Some(err_msg);
-                }
-                continue;
             }
-
-            // Record refresh timestamp
-            let ts_key = format!("ai.models_refreshed.{provider_str}");
-            let now = time::OffsetDateTime::now_utc()
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_default();
-            let _ = self
-                .state
-                .repos
-                .config
-                .set_global_setting(&ts_key, &serde_json::json!(now))
-                .await;
-
-            #[allow(clippy::cast_possible_wrap)]
-            let count_i32 = count as i32;
-            total_models += count_i32;
-
-            let prov_progress = ProviderProgress {
-                models_fetched: count,
-                error: None,
-            };
-            match *provider {
-                AiProvider::Google => progress.google = Some(prov_progress),
-                AiProvider::OpenRouter => progress.openrouter = Some(prov_progress),
-            }
-            self.update_progress(run_id, total_models, &progress).await;
-
-            debug!(provider = %provider_str, count, "model catalogue refreshed");
         }
 
         // Complete or fail the run
@@ -197,6 +147,37 @@ impl ModelCatalogueHandlerImpl {
         }
     }
 
+    /// Fetch models from one provider and store them. Returns the count on
+    /// success, or an error message string on failure.
+    async fn refresh_provider(&self, provider: AiProvider, api_key: &str) -> Result<usize, String> {
+        let provider_str = provider.to_string();
+        let models = catalogue::fetch_models(&self.state.http_client, provider, api_key)
+            .await
+            .map_err(|e| format!("{provider_str}: {e}"))?;
+
+        let count = models.len();
+        self.state
+            .repos
+            .config
+            .replace_ai_models(&provider_str, &models)
+            .await
+            .map_err(|e| format!("{provider_str}: failed to store models: {e}"))?;
+
+        // Record refresh timestamp.
+        let ts_key = format!("ai.models_refreshed.{provider_str}");
+        let now = time::OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_default();
+        let _ = self
+            .state
+            .repos
+            .config
+            .set_global_setting(&ts_key, &serde_json::json!(now))
+            .await;
+
+        Ok(count)
+    }
+
     /// Decrypt a provider API key from the global secrets store.
     async fn decrypt_provider_key(&self, secret_key_name: &str) -> Option<String> {
         let encrypted = match self
@@ -221,5 +202,21 @@ impl ModelCatalogueHandlerImpl {
                 None
             }
         }
+    }
+}
+
+fn set_provider_progress(
+    progress: &mut CatalogueProgress,
+    provider: AiProvider,
+    models_fetched: usize,
+    error: Option<&str>,
+) {
+    let prov = ProviderProgress {
+        models_fetched,
+        error: error.map(String::from),
+    };
+    match provider {
+        AiProvider::Google => progress.google = Some(prov),
+        AiProvider::OpenRouter => progress.openrouter = Some(prov),
     }
 }

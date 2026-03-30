@@ -7,6 +7,16 @@ use super::ingestion_common::decrypt_optional_secret;
 use super::run_lifecycle::{complete_run, create_run, journaled, journaled_value, terminal_err};
 use crate::discourse::client::DiscourseClient;
 
+/// Result of a Discourse API lookup attempt.
+enum LookupOutcome {
+    /// Found a matching username.
+    Found(String),
+    /// No match — try next strategy.
+    NotFound,
+    /// API rate-limited — caller should sleep and retry.
+    RateLimited,
+}
+
 pub struct IdentityResolutionHandlerImpl {
     pub state: SharedState,
 }
@@ -308,42 +318,85 @@ impl IdentityResolutionHandlerImpl {
             .map_err(terminal_err("invalid person_id"))?;
 
         // Strategy 1: Admin API email lookup (preferred).
-        // Wrapped in ctx.run() so the result is journaled for deterministic replay.
-        if let Some(email) = &person.email
-            && !email.is_empty()
+        match self
+            .try_email_lookup(ctx, client, person, person_index)
+            .await?
         {
-            let c = client.clone();
-            let e = email.clone();
-            let result = ctx
-                .run(|| async move {
-                    match c.admin_user_search(&e).await {
-                        Ok(Some(username)) => Ok(Json::from(LookupResult::Found(username))),
-                        Ok(None) => Ok(Json::from(LookupResult::NotFound)),
-                        Err(err) if err.is_rate_limit() => {
-                            Ok(Json::from(LookupResult::RateLimited))
-                        }
-                        Err(err) => Err(TerminalError::new(format!(
-                            "discourse admin search failed: {err}"
-                        ))
-                        .into()),
-                    }
-                })
-                .name(format!("email_lookup_{person_index}"))
-                .await?
-                .into_inner();
-
-            match result {
-                LookupResult::Found(username) => {
-                    self.store_resolution(ctx, person_id, platform, &username, person_index)
-                        .await?;
-                    return Ok(Some(true));
-                }
-                LookupResult::RateLimited => return Ok(None),
-                LookupResult::NotFound => {}
+            LookupOutcome::Found(username) => {
+                self.store_resolution(ctx, person_id, platform, &username, person_index)
+                    .await?;
+                return Ok(Some(true));
             }
+            LookupOutcome::RateLimited => return Ok(None),
+            LookupOutcome::NotFound => {}
         }
 
         // Strategy 2: Username probing via existing identities.
+        match self
+            .try_username_probe(ctx, client, person_id, person_index)
+            .await?
+        {
+            LookupOutcome::Found(username) => {
+                self.store_resolution(ctx, person_id, platform, &username, person_index)
+                    .await?;
+                return Ok(Some(true));
+            }
+            LookupOutcome::RateLimited => return Ok(None),
+            LookupOutcome::NotFound => {}
+        }
+
+        // No match found.
+        self.store_unresolved(ctx, person_id, platform, person_index)
+            .await?;
+        Ok(Some(false))
+    }
+
+    /// Try resolving via Discourse admin email search.
+    /// Wrapped in `ctx.run()` so the API result is journaled.
+    async fn try_email_lookup(
+        &self,
+        ctx: &Context<'_>,
+        client: &DiscourseClient,
+        person: &PendingPerson,
+        person_index: usize,
+    ) -> Result<LookupOutcome, TerminalError> {
+        let email = match &person.email {
+            Some(e) if !e.is_empty() => e.clone(),
+            _ => return Ok(LookupOutcome::NotFound),
+        };
+
+        let c = client.clone();
+        let result = ctx
+            .run(|| async move {
+                match c.admin_user_search(&email).await {
+                    Ok(Some(username)) => Ok(Json::from(LookupResult::Found(username))),
+                    Ok(None) => Ok(Json::from(LookupResult::NotFound)),
+                    Err(err) if err.is_rate_limit() => Ok(Json::from(LookupResult::RateLimited)),
+                    Err(err) => Err(TerminalError::new(format!(
+                        "discourse admin search failed: {err}"
+                    ))
+                    .into()),
+                }
+            })
+            .name(format!("email_lookup_{person_index}"))
+            .await?
+            .into_inner();
+
+        Ok(match result {
+            LookupResult::Found(username) => LookupOutcome::Found(username),
+            LookupResult::NotFound => LookupOutcome::NotFound,
+            LookupResult::RateLimited => LookupOutcome::RateLimited,
+        })
+    }
+
+    /// Try resolving via username probing against existing identities.
+    async fn try_username_probe(
+        &self,
+        ctx: &Context<'_>,
+        client: &DiscourseClient,
+        person_id: Uuid,
+        person_index: usize,
+    ) -> Result<LookupOutcome, TerminalError> {
         let candidates = self
             .load_candidate_usernames(ctx, person_id, person_index)
             .await?;
@@ -368,20 +421,13 @@ impl IdentityResolutionHandlerImpl {
                 .into_inner();
 
             match result {
-                ProbeResult::Exists => {
-                    self.store_resolution(ctx, person_id, platform, candidate, person_index)
-                        .await?;
-                    return Ok(Some(true));
-                }
-                ProbeResult::RateLimited => return Ok(None),
+                ProbeResult::Exists => return Ok(LookupOutcome::Found(candidate.clone())),
+                ProbeResult::RateLimited => return Ok(LookupOutcome::RateLimited),
                 ProbeResult::NotFound => {}
             }
         }
 
-        // No match found.
-        self.store_unresolved(ctx, person_id, platform, person_index)
-            .await?;
-        Ok(Some(false))
+        Ok(LookupOutcome::NotFound)
     }
 
     async fn load_candidate_usernames(

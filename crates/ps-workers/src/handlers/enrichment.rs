@@ -121,21 +121,9 @@ impl EnrichmentHandlerImpl {
 
         loop {
             // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
-            let router = self.router.read().await;
-            if let Some(cap) = router.budget_cap_usd() {
-                let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-                match cost_tracker.check_budget(cap).await {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        warn!(cap, "daily budget exceeded");
-                        break;
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "failed to check budget, continuing cautiously");
-                    }
-                }
+            if self.is_budget_exceeded().await {
+                break;
             }
-            drop(router);
 
             // Step 2: Fetch one batch per enrichment type (journaled DB reads, fast)
             let all_types = EnrichmentType::all();
@@ -290,6 +278,27 @@ impl EnrichmentHandlerImpl {
         }
 
         Ok(())
+    }
+
+    /// Check whether the daily AI budget has been exceeded.
+    /// Returns `true` if the loop should break.
+    async fn is_budget_exceeded(&self) -> bool {
+        let router = self.router.read().await;
+        let Some(cap) = router.budget_cap_usd() else {
+            return false;
+        };
+        let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
+        match cost_tracker.check_budget(cap).await {
+            Ok(true) => false,
+            Ok(false) => {
+                warn!(cap, "daily budget exceeded");
+                true
+            }
+            Err(e) => {
+                warn!(error = %e, "failed to check budget, continuing cautiously");
+                false
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
