@@ -170,6 +170,33 @@ impl ContainerManager {
         }
     }
 
+    /// Poll until the pod for `session_id` reaches the Running phase.
+    ///
+    /// Returns the pod IP on success, or an error string if the pod
+    /// disappears or the 60-second deadline elapses.
+    pub async fn wait_for_ready(&self, session_id: &str) -> Result<String, String> {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(60);
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+
+        loop {
+            interval.tick().await;
+            if tokio::time::Instant::now() >= deadline {
+                return Err("timed out waiting for agent container".into());
+            }
+
+            match self.get_pod_status(session_id).await {
+                Ok(PodStatus::Running { pod_ip, .. }) => return Ok(pod_ip),
+                Ok(PodStatus::Pending) => {}
+                Ok(PodStatus::Gone) => {
+                    return Err("agent container failed to start".into());
+                }
+                Err(e) => {
+                    return Err(format!("error checking container status: {e}"));
+                }
+            }
+        }
+    }
+
     /// Update the last-activity annotation on the Pod to prevent reaping.
     pub async fn update_activity(&self, session_id: &str) -> Result<(), kube::Error> {
         let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);

@@ -167,7 +167,56 @@ macro_rules! fail_run {
     }};
 }
 
+/// Run a block inside a journaled `ctx.run()` closure.
+///
+/// Handles the double-clone dance required by Restate's `Fn` closures
+/// (first clone to move into the closure, second clone because the
+/// closure may be called multiple times on replay).
+///
+/// Variables listed in the capture list are cloned twice automatically.
+/// Variables that are `Copy` (e.g. `Uuid`) can be used in the body
+/// without listing them — the `move` closure captures them directly.
+///
+/// The body must be a block of async statements. Errors should use `?`
+/// with `TerminalError` (use `.map_err(terminal_err("context"))` for
+/// concise conversion).
+///
+/// ```ignore
+/// journaled!(ctx, "step_name", [repos, some_string], {
+///     repos.reasoning.update_something(id, &some_string).await
+///         .map_err(terminal_err("failed to update"))?;
+/// });
+/// ```
+macro_rules! journaled {
+    ($ctx:expr, $name:expr, [$($var:ident),* $(,)?], $body:block) => {{
+        $(let $var = $var.clone();)*
+        $ctx.run(move || {
+            $(let $var = $var.clone();)*
+            async move {
+                $body
+                Ok(::restate_sdk::prelude::Json::from(()))
+            }
+        })
+        .name($name)
+        .await?;
+    }};
+}
+
+/// Concise error mapper for converting any `Display` error into a
+/// `TerminalError` with a contextual prefix.
+///
+/// ```ignore
+/// repos.reasoning.update_status(id, "running").await
+///     .map_err(terminal_err("failed to update status"))?;
+/// ```
+pub(super) fn terminal_err<E: std::fmt::Display>(
+    context: &str,
+) -> impl FnOnce(E) -> ::restate_sdk::prelude::TerminalError + '_ {
+    move |e| ::restate_sdk::prelude::TerminalError::new(format!("{context}: {e}"))
+}
+
 pub(super) use complete_run;
 pub(super) use complete_run_with_warnings;
 pub(super) use create_run;
 pub(super) use fail_run;
+pub(super) use journaled;

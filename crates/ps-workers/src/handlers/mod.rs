@@ -12,7 +12,6 @@ pub mod jira_ingestion;
 pub mod metrics_compute;
 pub mod model_catalogue;
 mod run_lifecycle;
-pub mod step_registry;
 
 use std::sync::Arc;
 
