@@ -41,6 +41,12 @@ export type TokenUsage = {
   estimatedCostUsd: number;
 };
 
+export type ContextUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  contextWindow: number;
+};
+
 export type AgentState =
   | { status: "idle" }
   | { status: "container_starting"; message: string; question: string; conversationId?: string }
@@ -51,6 +57,7 @@ export type AgentState =
       steps: AgentStep[];
       partialAnswer: string;
       artifacts: ArtifactInfo[];
+      contextUsage?: ContextUsage;
     }
   | {
       status: "completed";
@@ -62,6 +69,7 @@ export type AgentState =
       tokenUsage: TokenUsage;
       durationMs: number;
       artifacts: ArtifactInfo[];
+      contextUsage?: ContextUsage;
     }
   | { status: "error"; message: string; retryable: boolean };
 
@@ -82,6 +90,7 @@ type StreamMeta =
       conversationId?: string;
       partialAnswer: string;
       artifacts: ArtifactInfo[];
+      contextUsage?: ContextUsage;
     }
   | {
       status: "completed";
@@ -92,6 +101,7 @@ type StreamMeta =
       tokenUsage: TokenUsage;
       durationMs: number;
       artifacts: ArtifactInfo[];
+      contextUsage?: ContextUsage;
     }
   | { status: "error"; message: string; retryable: boolean };
 
@@ -258,6 +268,23 @@ export const useAskQuestion = (): {
                 queryKey: conversationKeys.detail(v.conversationId),
               });
             }
+            break;
+          }
+
+          case "tokenUsage": {
+            const v = event.value as {
+              inputTokens: bigint;
+              outputTokens: bigint;
+              contextWindow: bigint;
+            };
+            const usage: ContextUsage = {
+              inputTokens: Number(v.inputTokens),
+              outputTokens: Number(v.outputTokens),
+              contextWindow: Number(v.contextWindow),
+            };
+            setMeta((prev) =>
+              prev.status === "streaming" ? { ...prev, contextUsage: usage } : prev,
+            );
             break;
           }
 

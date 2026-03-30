@@ -1,8 +1,8 @@
 use ps_proto::canonical::prism::v1::{
     AgentContainerStatus, AgentConversationCreated, AgentError, AgentFinalAnswer,
-    AgentPartialAnswer, AgentThinking, AgentToolCallCompleted, AgentToolCallStarted,
-    AskQuestionRequest, AskQuestionResponse, ResumeStreamRequest, ResumeStreamResponse,
-    ask_question_response,
+    AgentPartialAnswer, AgentThinking, AgentTokenUsage, AgentToolCallCompleted,
+    AgentToolCallStarted, AskQuestionRequest, AskQuestionResponse, ResumeStreamRequest,
+    ResumeStreamResponse, ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
@@ -444,6 +444,7 @@ fn map_db_event_to_resume_proto(
         ask_question_response::Event::ArtifactUploaded(v) => {
             resume_stream_response::Event::ArtifactUploaded(v)
         }
+        ask_question_response::Event::TokenUsage(v) => resume_stream_response::Event::TokenUsage(v),
         ask_question_response::Event::ConversationCreated(_) => return None,
     };
 
@@ -568,6 +569,20 @@ fn map_db_event_to_proto(
                 download_url: String::new(),
             },
         ),
+        "token_usage" => ask_question_response::Event::TokenUsage(AgentTokenUsage {
+            input_tokens: payload
+                .get("input_tokens")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0),
+            output_tokens: payload
+                .get("output_tokens")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0),
+            context_window: payload
+                .get("context_window")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0),
+        }),
         "final_answer" => ask_question_response::Event::FinalAnswer(AgentFinalAnswer {
             answer: payload
                 .get("answer")
@@ -580,8 +595,16 @@ fn map_db_event_to_proto(
                 .unwrap_or("")
                 .to_string(),
             supporting_data_json: String::new(),
-            prompt_tokens: 0,
-            completion_tokens: 0,
+            prompt_tokens: payload
+                .get("prompt_tokens")
+                .and_then(serde_json::Value::as_i64)
+                .and_then(|v| i32::try_from(v).ok())
+                .unwrap_or(0),
+            completion_tokens: payload
+                .get("completion_tokens")
+                .and_then(serde_json::Value::as_i64)
+                .and_then(|v| i32::try_from(v).ok())
+                .unwrap_or(0),
             estimated_cost_usd: 0.0,
             tool_call_count: payload
                 .get("tool_call_count")

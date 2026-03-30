@@ -11,6 +11,7 @@ const defaultProps = {
   isStreaming: false,
   selectedModel: undefined,
   onModelChange: vi.fn(),
+  contextUsage: undefined,
 };
 
 setupCleanup();

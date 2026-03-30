@@ -385,6 +385,7 @@ message ResumeStreamResponse {
     AgentThinking thinking = 6;
     AgentContainerStatus container_status = 7;
     AgentArtifactUploaded artifact_uploaded = 8;
+    AgentTokenUsage token_usage = 9;
   }
 }
 
@@ -401,6 +402,7 @@ message AskQuestionResponse {
     AgentArtifactUploaded artifact_uploaded = 8;
     // Sent as the first event when a new conversation is created or resumed.
     AgentConversationCreated conversation_created = 9;
+    AgentTokenUsage token_usage = 10;
   }
 }
 
@@ -500,6 +502,17 @@ message AgentArtifactUploaded {
   string content_type = 3;
   int64 size_bytes = 4;
   string download_url = 5;
+}
+
+// AgentTokenUsage reports cumulative token consumption for a conversation turn,
+// enabling the client to display context window utilization.
+message AgentTokenUsage {
+  // Cumulative input tokens consumed in this conversation.
+  int64 input_tokens = 1;
+  // Cumulative output tokens consumed in this conversation.
+  int64 output_tokens = 2;
+  // Model's maximum context window size in tokens.
+  int64 context_window = 3;
 }
 
 // ArtifactInfo describes an artifact attached to a conversation response.

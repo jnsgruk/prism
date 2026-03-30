@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use opencode_sdk::types::event::Event;
 use opencode_sdk::types::message::{Part, ToolState};
 use ps_proto::canonical::prism::v1::{
-    AgentContainerStatus, AgentError, AgentPartialAnswer, AgentThinking, AgentToolCallCompleted,
-    AgentToolCallStarted, AskQuestionResponse, ask_question_response,
+    AgentContainerStatus, AgentError, AgentPartialAnswer, AgentThinking, AgentTokenUsage,
+    AgentToolCallCompleted, AgentToolCallStarted, AskQuestionResponse, ask_question_response,
 };
 
 /// Stateful mapper that accumulates text across multiple `Part::Text` blocks.
@@ -19,6 +19,10 @@ use ps_proto::canonical::prism::v1::{
 pub struct EventMapper {
     /// Text content per part index, ordered by index for stable concatenation.
     text_parts: BTreeMap<i32, String>,
+    /// Cumulative input tokens across all steps.
+    cumulative_input: u64,
+    /// Cumulative output tokens across all steps.
+    cumulative_output: u64,
 }
 
 impl EventMapper {
@@ -91,8 +95,29 @@ impl EventMapper {
                 )))
             }
 
+            Part::StepFinish { tokens, .. } => {
+                if let Some(usage) = tokens {
+                    self.cumulative_input += usage.input;
+                    self.cumulative_output += usage.output;
+                    Some(agent_event(ask_question_response::Event::TokenUsage(
+                        AgentTokenUsage {
+                            input_tokens: self.cumulative_input as i64,
+                            output_tokens: self.cumulative_output as i64,
+                            context_window: 0, // Populated by the handler with model info
+                        },
+                    )))
+                } else {
+                    None
+                }
+            }
+
             _ => None,
         }
+    }
+
+    /// Return cumulative token totals (input, output).
+    pub fn token_totals(&self) -> (u64, u64) {
+        (self.cumulative_input, self.cumulative_output)
     }
 
     /// Concatenate all tracked text parts in index order.

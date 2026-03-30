@@ -227,6 +227,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     let answer = query_result.answer_text.clone();
                     let tool_calls = query_result.tool_calls;
                     let trace_steps = query_result.trace_steps;
+                    let input_tok = query_result.input_tokens as i32;
+                    let output_tok = query_result.output_tokens as i32;
                     ctx.run(move || {
                         let repos = repos.clone();
                         let answer = answer.clone();
@@ -244,8 +246,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                                     content: &answer,
                                     reasoning_trace: Some(&trace),
                                     supporting_data: None,
-                                    prompt_tokens: 0,
-                                    completion_tokens: 0,
+                                    prompt_tokens: input_tok,
+                                    completion_tokens: output_tok,
                                 })
                                 .await
                                 .map_err(|e| {
@@ -263,12 +265,14 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     let repos = self.state.repos.clone();
                     let cid = conv_id;
                     let tc = query_result.tool_calls;
+                    let pt = query_result.input_tokens as i32;
+                    let ct = query_result.output_tokens as i32;
                     ctx.run(move || {
                         let repos = repos.clone();
                         async move {
                             repos
                                 .reasoning
-                                .update_conversation_totals(cid, tc, 0, 0, 0.0)
+                                .update_conversation_totals(cid, tc, pt, ct, 0.0)
                                 .await
                                 .map_err(|e| {
                                     TerminalError::new(format!("failed to update totals: {e}"))
@@ -286,6 +290,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                     let cid = conv_id;
                     let answer = query_result.answer_text;
                     let tc = query_result.tool_calls;
+                    let fa_input = query_result.input_tokens;
+                    let fa_output = query_result.output_tokens;
                     ctx.run(move || {
                         let repos = repos.clone();
                         let answer = answer.clone();
@@ -299,6 +305,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
                                         "answer": answer,
                                         "conversation_id": cid.to_string(),
                                         "tool_call_count": tc,
+                                        "prompt_tokens": fa_input,
+                                        "completion_tokens": fa_output,
                                     }),
                                     None,
                                     None,
@@ -426,6 +434,8 @@ pub struct QueryResult {
     pub answer_text: String,
     pub tool_calls: i32,
     pub trace_steps: Vec<serde_json::Value>,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
 }
 
 /// Core agentic query logic: connect to `OpenCode`, stream events, write to DB.
@@ -471,14 +481,40 @@ pub async fn run_agentic_query_core(
     let mut subscription = client.subscribe().await?;
     info!("SSE subscription established");
 
-    info!("sending question to OpenCode");
-    let prompt =
-        ps_agent::opencode_sdk::types::message::PromptRequest::text(question).with_agent("prism");
-    client
-        .messages()
-        .prompt_async(&opencode_session_id, &prompt)
-        .await?;
-    info!("question sent, streaming events");
+    // Check for /compact command — trigger session summarization instead of prompt.
+    let is_compact = question.trim().eq_ignore_ascii_case("/compact");
+
+    if is_compact {
+        info!("triggering session compaction");
+        // Extract provider/model from the conversation's model_name (format: "provider/model_id").
+        let model_name: &str = if conv.model_name.is_empty() {
+            "google/gemini-2.5-flash"
+        } else {
+            &conv.model_name
+        };
+        let (provider_id, model_id) = model_name.split_once('/').unwrap_or(("google", model_name));
+        client
+            .sessions()
+            .summarize(
+                &opencode_session_id,
+                &ps_agent::opencode_sdk::types::session::SummarizeRequest {
+                    provider_id: provider_id.to_string(),
+                    model_id: model_id.to_string(),
+                    auto: None,
+                },
+            )
+            .await?;
+        info!("compaction triggered");
+    } else {
+        info!("sending question to OpenCode");
+        let prompt = ps_agent::opencode_sdk::types::message::PromptRequest::text(question)
+            .with_agent("prism");
+        client
+            .messages()
+            .prompt_async(&opencode_session_id, &prompt)
+            .await?;
+        info!("question sent, streaming events");
+    }
 
     // Stream events until idle or timeout (5 minutes).
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(300);
@@ -640,6 +676,22 @@ pub async fn run_agentic_query_core(
                         )
                         .await;
                 }
+                Event::TokenUsage(t) => {
+                    let _ = repos
+                        .reasoning
+                        .append_event(
+                            conversation_id,
+                            "token_usage",
+                            &serde_json::json!({
+                                "input_tokens": t.input_tokens,
+                                "output_tokens": t.output_tokens,
+                                "context_window": t.context_window,
+                            }),
+                            None,
+                            None,
+                        )
+                        .await;
+                }
                 Event::Error(e) => {
                     let _ = repos
                         .reasoning
@@ -660,6 +712,8 @@ pub async fn run_agentic_query_core(
         }
     }
 
+    let (total_input, total_output) = event_mapper.token_totals();
+
     // Derive the reasoning trace from all conversation events.
     let all_events = repos
         .reasoning
@@ -672,6 +726,8 @@ pub async fn run_agentic_query_core(
         answer_text,
         tool_calls,
         trace_steps,
+        input_tokens: total_input.cast_signed(),
+        output_tokens: total_output.cast_signed(),
     })
 }
 

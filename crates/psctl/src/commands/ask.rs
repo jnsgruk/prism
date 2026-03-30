@@ -124,6 +124,7 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
                 }
                 return Ok(());
             }
+            ask_question_response::Event::TokenUsage(_) => {}
         }
     }
 

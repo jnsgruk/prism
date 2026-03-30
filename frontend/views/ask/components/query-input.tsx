@@ -2,7 +2,9 @@ import { ArrowUp, Square } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ContextIndicator } from "@/views/ask/components/context-indicator";
 import { ModelSelector } from "@/views/ask/components/model-selector";
+import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
 
 export const QueryInput = ({
   onSubmit,
@@ -11,6 +13,7 @@ export const QueryInput = ({
   disabled,
   selectedModel,
   onModelChange,
+  contextUsage,
 }: {
   onSubmit: (question: string) => void;
   onCancel: () => void;
@@ -18,6 +21,7 @@ export const QueryInput = ({
   disabled?: boolean;
   selectedModel: string | undefined;
   onModelChange: (modelId: string | undefined) => void;
+  contextUsage?: ContextUsage;
 }): React.ReactElement => {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,8 +68,11 @@ export const QueryInput = ({
         rows={1}
         disabled={disabled}
       />
-      <div className="absolute bottom-2 left-2">
+      <div className="absolute bottom-2 left-2 flex items-center gap-1">
         <ModelSelector value={selectedModel} onSelect={onModelChange} disabled={isStreaming} />
+        {contextUsage && contextUsage.contextWindow > 0 && (
+          <ContextIndicator contextUsage={contextUsage} onCompact={() => onSubmit("/compact")} />
+        )}
       </div>
       <div className="absolute bottom-2 right-2">
         {isStreaming ? (

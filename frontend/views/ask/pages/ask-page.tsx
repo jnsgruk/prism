@@ -83,6 +83,8 @@ const AskPage = (): React.ReactElement => {
   );
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
+  const contextUsage =
+    state.status === "streaming" || state.status === "completed" ? state.contextUsage : undefined;
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
   const headerActions = conversationId ? (
@@ -131,6 +133,7 @@ const AskPage = (): React.ReactElement => {
                 disabled={isLoading}
                 selectedModel={selectedModel}
                 onModelChange={setSelectedModel}
+                contextUsage={contextUsage}
               />
             </div>
           </>
