@@ -485,7 +485,6 @@ pub async fn run_agentic_query_core(
     let is_compact = question.trim().eq_ignore_ascii_case("/compact");
 
     if is_compact {
-        info!("triggering session compaction");
         // Extract provider/model from the conversation's model_name (format: "provider/model_id").
         let model_name: &str = if conv.model_name.is_empty() {
             "google/gemini-2.5-flash"
@@ -493,6 +492,7 @@ pub async fn run_agentic_query_core(
             &conv.model_name
         };
         let (provider_id, model_id) = model_name.split_once('/').unwrap_or(("google", model_name));
+        info!(provider_id, model_id, "triggering session compaction");
         client
             .sessions()
             .summarize(

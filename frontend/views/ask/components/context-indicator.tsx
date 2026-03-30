@@ -9,8 +9,8 @@ const formatTokens = (n: number): string => {
   return String(n);
 };
 
-const SIZE = 20;
-const STROKE = 2.5;
+const SIZE = 24;
+const STROKE = 3;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -28,7 +28,7 @@ export const ContextIndicator = ({
   const pct = Math.min(used / contextWindow, 1);
   const offset = CIRCUMFERENCE * (1 - pct);
 
-  let colorClass = "text-muted-foreground";
+  let colorClass = "text-foreground/40";
   if (pct > 0.9) colorClass = "text-destructive";
   else if (pct > 0.7) colorClass = "text-yellow-500";
 

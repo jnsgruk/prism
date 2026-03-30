@@ -68,13 +68,13 @@ export const QueryInput = ({
         rows={1}
         disabled={disabled}
       />
-      <div className="absolute bottom-2 left-2 flex items-center gap-1">
+      <div className="absolute bottom-2 left-2">
         <ModelSelector value={selectedModel} onSelect={onModelChange} disabled={isStreaming} />
+      </div>
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
         {contextUsage && contextUsage.contextWindow > 0 && (
           <ContextIndicator contextUsage={contextUsage} onCompact={() => onSubmit("/compact")} />
         )}
-      </div>
-      <div className="absolute bottom-2 right-2">
         {isStreaming ? (
           <Button variant="destructive" size="icon" className="size-8" onClick={onCancel}>
             <Square className="size-3.5" />

@@ -86,26 +86,28 @@ const AskPage = (): React.ReactElement => {
   const isActive = state.status === "streaming" || state.status === "container_starting";
 
   // Resolve context usage: prefer live streaming data, fall back to stored conversation totals.
+  // Use a ref to persist the last known value so it doesn't disappear between turns.
   const conv = conversationData?.conversation;
   const { data: modelsResponse } = useAiModels(undefined, "tool_use");
+  const lastContextUsage = useRef<ContextUsage | undefined>(undefined);
   const contextUsage = useMemo((): ContextUsage | undefined => {
+    let usage: ContextUsage | undefined;
     // Live streaming data takes priority.
     if (state.status === "streaming" || state.status === "completed") {
-      if (state.contextUsage) return state.contextUsage;
+      usage = state.contextUsage;
     }
     // Fall back to stored conversation totals.
-    if (!conv || (conv.totalPromptTokens === 0 && conv.totalCompletionTokens === 0)) {
-      return undefined;
+    if (!usage && conv && (conv.totalPromptTokens > 0 || conv.totalCompletionTokens > 0)) {
+      const modelId = conv.modelName.split("/").slice(1).join("/");
+      const model = modelsResponse?.models?.find((m) => m.id === modelId);
+      usage = {
+        inputTokens: conv.totalPromptTokens,
+        outputTokens: conv.totalCompletionTokens,
+        contextWindow: model?.contextLength ?? 0,
+      };
     }
-    // Look up model context_length from the catalogue using the conversation's model_name.
-    const modelId = conv.modelName.split("/").slice(1).join("/");
-    const model = modelsResponse?.models?.find((m) => m.id === modelId);
-    const contextWindow = model?.contextLength ?? 0;
-    return {
-      inputTokens: conv.totalPromptTokens,
-      outputTokens: conv.totalCompletionTokens,
-      contextWindow,
-    };
+    if (usage) lastContextUsage.current = usage;
+    return usage ?? lastContextUsage.current;
   }, [state, conv, modelsResponse]);
 
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
