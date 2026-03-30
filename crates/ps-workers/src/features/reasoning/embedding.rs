@@ -64,26 +64,7 @@ impl EmbeddingHandlerImpl {
 
         info!("starting embedding cycle");
 
-        // Step 2: Check daily budget (NOT journaled — read-only)
-        {
-            let router = self.router.read().await;
-            if let Some(cap) = router.budget_cap_usd() {
-                let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-                match cost_tracker.check_budget(cap).await {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        warn!(cap, "daily budget exceeded, pausing embedding");
-                        complete_run!(ctx, self.state.repos, run_id, "_embedding", 0i32);
-                        return Ok(());
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "failed to check budget, continuing cautiously");
-                    }
-                }
-            }
-        }
-
-        // Step 3: Resolve embedding model from TaskRouter (NOT journaled)
+        // Step 2: Resolve embedding model from TaskRouter (NOT journaled)
         let (model_name, embedding_model) = {
             let router = self.router.read().await;
             let task_config = router.task_config(TaskType::Embeddings);
@@ -99,84 +80,113 @@ impl EmbeddingHandlerImpl {
             }
         };
 
-        // Step 4: Fetch queued batch (journaled — DB read)
-        let items = self.find_queued(ctx).await?;
+        let mut total_embedded = 0usize;
+        let mut total_skipped = 0usize;
+        let mut total_errors = 0usize;
+        let mut iteration = 0u32;
 
-        if items.is_empty() {
-            debug!("no items in embedding queue");
-            complete_run!(ctx, self.state.repos, run_id, "_embedding", 0i32);
-            return Ok(());
+        loop {
+            // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
+            {
+                let router = self.router.read().await;
+                if let Some(cap) = router.budget_cap_usd() {
+                    let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
+                    match cost_tracker.check_budget(cap).await {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            warn!(cap, "daily budget exceeded, pausing embedding");
+                            break;
+                        }
+                        Err(e) => {
+                            warn!(error = %e, "failed to check budget, continuing cautiously");
+                        }
+                    }
+                }
+            }
+
+            // Step 3: Fetch queued batch (journaled — DB read)
+            let items = self.find_queued(ctx, iteration).await?;
+
+            if items.is_empty() {
+                debug!("no items in embedding queue");
+                break;
+            }
+
+            let batch_size = items.len();
+            info!(batch_size, iteration, "processing embedding batch");
+
+            // Step 4: Process batch (NOT journaled — API calls are idempotent on replay)
+            let result = match embeddings::process_embedding_batch(
+                &items,
+                embedding_model.as_ref(),
+                &self.state.repos,
+                &model_name,
+            )
+            .await
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    let msg = format!("embedding error: {e}");
+                    warn!(%msg);
+                    fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
+                    return Err(TerminalError::new(msg));
+                }
+            };
+
+            // Step 5: Log cost (journaled)
+            self.log_cost(ctx, &model_name, iteration, &result).await;
+
+            // Step 6: Clean up queue (journaled)
+            self.cleanup_queue(ctx, iteration).await;
+
+            // Accumulate totals
+            total_embedded += result.embedded;
+            total_skipped += result.skipped;
+            total_errors += result.errors;
+
+            // Step 7: Update progress (NOT journaled)
+            let progress = EmbeddingProgress {
+                phase: "processing".into(),
+                embedded: total_embedded,
+                skipped: total_skipped,
+                errors: total_errors,
+                status_message: format!(
+                    "Embedded {total_embedded}, skipped {total_skipped}, errors {total_errors}"
+                ),
+            };
+            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+            let items_so_far = total_embedded as i32;
+            self.update_progress(run_id, items_so_far, &progress).await;
+
+            iteration += 1;
+
+            // Last batch was partial → queue is drained
+            if batch_size < MAX_BATCH_SIZE as usize {
+                break;
+            }
         }
 
-        let batch_size = items.len();
-        info!(batch_size, "processing embedding batch");
-
-        // Step 5: Process batch (NOT journaled — API calls are idempotent on replay)
-        let result = match embeddings::process_embedding_batch(
-            &items,
-            embedding_model.as_ref(),
-            &self.state.repos,
-            &model_name,
-        )
-        .await
-        {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("embedding error: {e}");
-                warn!(%msg);
-                fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
-                return Err(TerminalError::new(msg));
-            }
-        };
-
-        // Step 6: Log cost (journaled)
-        self.log_cost(ctx, &model_name, &result).await;
-
-        // Step 7: Clean up queue (journaled)
-        self.cleanup_queue(ctx).await;
-
-        // Step 8: Update progress (NOT journaled)
-        let progress = EmbeddingProgress {
-            phase: "complete".into(),
-            embedded: result.embedded,
-            skipped: result.skipped,
-            errors: result.errors,
-            status_message: format!(
-                "Embedded {}, skipped {}, errors {}",
-                result.embedded, result.skipped, result.errors
-            ),
-        };
-        self.update_progress(run_id, &result, &progress).await;
-
-        // Step 9: Complete/fail run (journaled)
+        // Step 8: Complete/fail run (journaled)
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let total = result.embedded as i32;
-        if result.errors > 0 && result.embedded == 0 {
+        let total = total_embedded as i32;
+        if total_errors > 0 && total_embedded == 0 {
             fail_run!(
                 ctx,
                 self.state.repos,
                 run_id,
                 "_embedding",
-                &format!("all {} items failed", result.errors)
+                &format!("all {total_errors} items failed")
             );
-            warn!(errors = result.errors, "embedding cycle failed");
+            warn!(errors = total_errors, "embedding cycle failed");
         } else {
             complete_run!(ctx, self.state.repos, run_id, "_embedding", total);
             info!(
-                embedded = result.embedded,
-                skipped = result.skipped,
-                errors = result.errors,
+                embedded = total_embedded,
+                skipped = total_skipped,
+                errors = total_errors,
                 duration_secs = start.elapsed().as_secs(),
                 "embedding cycle complete"
             );
-        }
-
-        // Step 10: If items remain in queue → self-invoke with short delay
-        if batch_size >= MAX_BATCH_SIZE as usize {
-            ctx.service_client::<EmbeddingHandlerClient>()
-                .run_cycle()
-                .send_after(std::time::Duration::from_secs(5));
-            debug!("scheduled next embedding cycle (queue may have more items)");
         }
 
         Ok(())
@@ -186,9 +196,14 @@ impl EmbeddingHandlerImpl {
     // ctx.run() wrappers
     // -----------------------------------------------------------------------
 
-    async fn find_queued(&self, ctx: &Context<'_>) -> Result<Vec<QueuedEmbedding>, TerminalError> {
+    async fn find_queued(
+        &self,
+        ctx: &Context<'_>,
+        iteration: u32,
+    ) -> Result<Vec<QueuedEmbedding>, TerminalError> {
         let repos = &self.state.repos;
-        Ok(journaled_value!(ctx, "fetch_queue", [repos], {
+        let step = format!("fetch_queue_{iteration}");
+        Ok(journaled_value!(ctx, step, [repos], {
             repos
                 .reasoning
                 .find_queued_for_embedding(MAX_BATCH_SIZE)
@@ -201,6 +216,7 @@ impl EmbeddingHandlerImpl {
         &self,
         ctx: &Context<'_>,
         model_name: &str,
+        iteration: u32,
         result: &embeddings::BatchResult,
     ) {
         if result.total_tokens == 0 {
@@ -226,6 +242,7 @@ impl EmbeddingHandlerImpl {
         let tokens = result.total_tokens as i32;
         let model_name = model_name.to_string();
 
+        let step = format!("log_cost_{iteration}");
         let log_result = ctx
             .run(|| {
                 let repos = repos.clone();
@@ -239,7 +256,7 @@ impl EmbeddingHandlerImpl {
                     Ok(Json::from(()))
                 }
             })
-            .name("log_cost")
+            .name(&step)
             .await;
 
         if let Err(e) = log_result {
@@ -247,8 +264,9 @@ impl EmbeddingHandlerImpl {
         }
     }
 
-    async fn cleanup_queue(&self, ctx: &Context<'_>) {
+    async fn cleanup_queue(&self, ctx: &Context<'_>, iteration: u32) {
         let repos = self.state.repos.clone();
+        let step = format!("cleanup_queue_{iteration}");
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
@@ -261,7 +279,7 @@ impl EmbeddingHandlerImpl {
                     Ok(Json::from(deleted))
                 }
             })
-            .name("cleanup_queue")
+            .name(&step)
             .await;
 
         match result {
@@ -281,14 +299,7 @@ impl EmbeddingHandlerImpl {
     // Non-journaled helpers
     // -----------------------------------------------------------------------
 
-    async fn update_progress(
-        &self,
-        run_id: Uuid,
-        result: &embeddings::BatchResult,
-        progress: &EmbeddingProgress,
-    ) {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let items = result.embedded as i32;
+    async fn update_progress(&self, run_id: Uuid, items: i32, progress: &EmbeddingProgress) {
         let json = serde_json::to_value(progress).unwrap_or_default();
         if let Err(e) = self
             .state
