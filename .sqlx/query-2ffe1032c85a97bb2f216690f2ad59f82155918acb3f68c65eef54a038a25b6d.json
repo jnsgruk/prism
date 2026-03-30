@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT c.id, c.title, c.status, c.model_name, c.container_status,\n                           c.total_tool_calls, c.total_estimated_cost_usd,\n                           c.query_status, c.created_at, c.last_activity_at,\n                           (SELECT COUNT(*) FROM reasoning.conversation_messages m\n                            WHERE m.conversation_id = c.id) AS \"message_count!\",\n                           (SELECT COUNT(*) FROM reasoning.conversation_artifacts a\n                            WHERE a.conversation_id = c.id) AS \"artifact_count!\"\n                    FROM reasoning.conversations c\n                    WHERE c.user_id = $1\n                    ORDER BY c.last_activity_at DESC\n                    LIMIT $2 OFFSET $3\n                    ",
+  "query": "\n                    SELECT c.id, c.title, c.status, c.model_name, c.container_status,\n                           c.total_tool_calls, c.total_estimated_cost_usd,\n                           c.total_prompt_tokens, c.total_completion_tokens,\n                           c.query_status, c.created_at, c.last_activity_at,\n                           (SELECT COUNT(*) FROM reasoning.conversation_messages m\n                            WHERE m.conversation_id = c.id) AS \"message_count!\",\n                           (SELECT COUNT(*) FROM reasoning.conversation_artifacts a\n                            WHERE a.conversation_id = c.id) AS \"artifact_count!\"\n                    FROM reasoning.conversations c\n                    WHERE c.user_id = $1\n                    ORDER BY c.last_activity_at DESC\n                    LIMIT $2 OFFSET $3\n                    ",
   "describe": {
     "columns": [
       {
@@ -40,26 +40,36 @@
       },
       {
         "ordinal": 7,
+        "name": "total_prompt_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_completion_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
         "name": "query_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "last_activity_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "message_count!",
         "type_info": "Int8"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "artifact_count!",
         "type_info": "Int8"
       }
@@ -82,9 +92,11 @@
       false,
       false,
       false,
+      false,
+      false,
       null,
       null
     ]
   },
-  "hash": "219f157efc4e5a8fdd921ccbcd442e53a378e904c679ed47c9ba3685177c9352"
+  "hash": "2ffe1032c85a97bb2f216690f2ad59f82155918acb3f68c65eef54a038a25b6d"
 }
