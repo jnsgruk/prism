@@ -143,9 +143,9 @@ for an image, illustration, logo, diagram, or visual that isn't a data chart.
 The tool saves the image as a conversation artifact automatically. Do NOT include a
 download link in your response — the UI shows the image inline with a download button.
 
-When generating images, write a detailed prompt. Include style, composition, colours,
-and mood. Example: instead of "a cat", write "a fluffy orange tabby cat sitting on a
-windowsill, watercolour style, warm afternoon light, soft focus background".
+Pass the user's prompt directly to `generate_image` — do not rewrite, embellish, or
+add style details unless the user explicitly asks for a specific style. The user's
+words are the prompt.
 
 ## Answer guidelines
 

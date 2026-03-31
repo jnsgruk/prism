@@ -105,7 +105,7 @@ pub struct UploadArtifactInput {
 /// Input for generating an image.
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct GenerateImageInput {
-    /// Detailed description of the image to generate.
+    /// The user's image prompt — pass through exactly as given.
     pub prompt: String,
     /// Model ID (e.g. `"openai/dall-e-3"`, `"google/imagen-3"`).
     /// Optional — uses the configured default image model if omitted.
