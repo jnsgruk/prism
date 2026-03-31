@@ -29,6 +29,11 @@ pub async fn run_event_loop(
     let mut tool_calls = 0i32;
     let mut registry = StepRegistry::new();
     let mut event_mapper = ps_agent::event_mapper::EventMapper::new();
+    // Track whether we've seen any work events. The SSE subscription may
+    // deliver a `SessionIdle` immediately (the session is idle *before* the
+    // question has been picked up). We must ignore that initial idle and
+    // only treat it as terminal once work has actually started.
+    let mut seen_work = false;
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -49,9 +54,16 @@ pub async fn run_event_loop(
             event,
             ps_agent::opencode_sdk::types::event::Event::SessionIdle { .. }
         ) {
-            info!("session idle, finishing");
-            break;
+            if seen_work {
+                info!("session idle, finishing");
+                break;
+            }
+            // Ignore pre-work idle events — the question hasn't been picked
+            // up yet.
+            continue;
         }
+
+        seen_work = true;
 
         // Intercept artifact uploads.
         artifact::handle_artifact_upload(repos, conversation_id, &event).await;
