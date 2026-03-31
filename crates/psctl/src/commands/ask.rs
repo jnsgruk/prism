@@ -82,13 +82,9 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
                 }
             }
 
-            ask_question_response::Event::ConversationCreated(_) => {
-                // Handled by the frontend; CLI ignores this event.
-            }
-
-            ask_question_response::Event::Thinking(_) => {
-                // Thinking text is not shown in CLI to keep output clean.
-            }
+            ask_question_response::Event::ConversationCreated(_)
+            | ask_question_response::Event::Thinking(_)
+            | ask_question_response::Event::TokenUsage(_) => {}
 
             ask_question_response::Event::PartialAnswer(a) => {
                 // PartialAnswer sends accumulated text, so we just track the latest.
@@ -124,7 +120,6 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
                 }
                 return Ok(());
             }
-            ask_question_response::Event::TokenUsage(_) => {}
         }
     }
 

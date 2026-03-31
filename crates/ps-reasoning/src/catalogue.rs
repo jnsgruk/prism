@@ -89,6 +89,10 @@ async fn fetch_google_models(
                 .supported_generation_methods
                 .iter()
                 .any(|s| s == "embedContent");
+            let has_generate_images = m
+                .supported_generation_methods
+                .iter()
+                .any(|s| s == "generateImages");
 
             let mut capabilities = Vec::new();
             if has_generate {
@@ -100,6 +104,9 @@ async fn fetch_google_models(
             }
             if has_embed {
                 capabilities.push("embeddings".into());
+            }
+            if has_generate_images {
+                capabilities.push("image_generation".into());
             }
 
             all_models.push(AiModel {
@@ -144,6 +151,16 @@ struct OpenRouterModel {
     context_length: Option<i32>,
     #[serde(default)]
     pricing: Option<OpenRouterPricing>,
+    #[serde(default)]
+    architecture: Option<OpenRouterArchitecture>,
+}
+
+#[derive(serde::Deserialize)]
+struct OpenRouterArchitecture {
+    #[serde(default)]
+    modality: Option<String>,
+    #[serde(default)]
+    output_modalities: Vec<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -187,11 +204,32 @@ async fn fetch_openrouter_models(
                 (inp, out)
             });
 
-            // Most OpenRouter chat models support completion + tool_use
             let capabilities = if m.id.contains("embed") {
                 vec!["embeddings".into()]
             } else {
-                vec!["completion".into(), "tool_use".into()]
+                let (has_text_output, has_image_output) = match &m.architecture {
+                    Some(arch) => {
+                        let img = arch.output_modalities.iter().any(|o| o == "image")
+                            || arch
+                                .modality
+                                .as_deref()
+                                .is_some_and(|o| o.contains("->image"));
+                        let txt = arch.output_modalities.iter().any(|o| o == "text")
+                            || arch.modality.as_deref().is_none_or(|o| o.contains("text"));
+                        (txt, img)
+                    }
+                    None => (true, false),
+                };
+
+                let mut caps = Vec::new();
+                if has_text_output {
+                    caps.push("completion".into());
+                    caps.push("tool_use".into());
+                }
+                if has_image_output {
+                    caps.push("image_generation".into());
+                }
+                caps
             };
 
             AiModel {
