@@ -78,6 +78,12 @@ const TASK_TYPES = [
     description: "Vector generation for similarity",
     capability: "embeddings",
   },
+  {
+    key: "imageGeneration",
+    label: "Image Generation",
+    description: "Default model for generate_image tool",
+    capability: "image_generation",
+  },
 ] as const;
 
 export const AiSettingsTab = (): React.ReactElement => {

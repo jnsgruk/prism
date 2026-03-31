@@ -63,7 +63,11 @@ export const QueryInput = ({
           handleInput();
         }}
         onKeyDown={handleKeyDown}
-        placeholder="Ask a question about your engineering data..."
+        placeholder={
+          selectedModel?.startsWith("image:")
+            ? "Describe an image..."
+            : "Ask a question about your engineering data..."
+        }
         className="w-full resize-none bg-transparent px-4 pt-3 pb-12 text-sm outline-none placeholder:text-muted-foreground"
         rows={1}
         disabled={disabled}

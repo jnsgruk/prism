@@ -333,8 +333,16 @@ export const useAskQuestion = (): {
       });
 
       try {
+        // Parse image model prefix: "image:provider/model" → imageModel field.
+        let effectiveModelOverride = modelOverride;
+        let imageModel: string | undefined;
+        if (modelOverride?.startsWith("image:")) {
+          imageModel = modelOverride.slice(6);
+          effectiveModelOverride = undefined; // Use default chat model for reasoning.
+        }
+
         const stream = client.askQuestion(
-          { question, conversationId, modelOverride },
+          { question, conversationId, modelOverride: effectiveModelOverride, imageModel },
           { signal: abort.signal },
         );
         await processStream(stream, abort, question, conversationId);

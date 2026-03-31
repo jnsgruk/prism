@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronsUpDown, Sparkles } from "lucide-react";
+import { ChevronsUpDown, ImageIcon, Sparkles } from "lucide-react";
 
 import {
   Command,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -63,9 +64,29 @@ const formatContext = (n: number): string => {
 };
 
 /**
- * Build the "provider/model_id" override string the backend expects.
+ * Build the override string the backend expects.
+ * Chat models: "provider/model_id"
+ * Image models: "image:provider/model_id"
  */
-const toOverrideId = (model: AiModelInfo): string => `${aiProviderKey(model.provider)}/${model.id}`;
+const toOverrideId = (model: AiModelInfo, isImage: boolean): string => {
+  const base = `${aiProviderKey(model.provider)}/${model.id}`;
+  return isImage ? `image:${base}` : base;
+};
+
+/** Check if a model is image-generation only (no completion capability). */
+const isImageOnly = (model: AiModelInfo): boolean =>
+  model.capabilities.includes("image_generation") && !model.capabilities.includes("completion");
+
+/** Parse the selected value to determine if it's an image model. */
+export const parseModelSelection = (
+  value: string | undefined,
+): { isImageModel: boolean; imageModel?: string; chatModelOverride?: string } => {
+  if (!value) return { isImageModel: false };
+  if (value.startsWith("image:")) {
+    return { isImageModel: true, imageModel: value.slice(6) };
+  }
+  return { isImageModel: false, chatModelOverride: value };
+};
 
 export const ModelSelector = ({
   value,
@@ -77,16 +98,31 @@ export const ModelSelector = ({
   disabled?: boolean;
 }): React.ReactElement => {
   const [open, setOpen] = useState(false);
-  const { data: modelsResponse } = useAiModels(undefined, "tool_use");
+
+  // Fetch all models (no capability filter) — we group them client-side.
+  const { data: allModelsResponse } = useAiModels(undefined, undefined);
   const { data: settings } = useAiSettings();
 
-  const models = modelsResponse?.models ?? [];
-  const selected = value ? models.find((m) => toOverrideId(m) === value) : undefined;
+  const allModels = allModelsResponse?.models ?? [];
 
-  // Resolve the admin-configured default model's display name and provider.
+  // Split into chat models (have tool_use) and image-only models.
+  const chatModels = allModels.filter(
+    (m) => m.capabilities.includes("tool_use") && !isImageOnly(m),
+  );
+  const imageModels = allModels.filter((m) => isImageOnly(m));
+
+  // Find the selected model.
+  const isImage = value?.startsWith("image:");
+  const lookupId = isImage ? value?.slice(6) : value;
+  const selectedPool = isImage ? imageModels : chatModels;
+  const selected = lookupId
+    ? selectedPool.find((m) => toOverrideId(m, false) === lookupId)
+    : undefined;
+
+  // Resolve the admin-configured default model.
   const defaultModelId = settings?.agentic?.model;
   const defaultProvider = settings?.agentic?.provider;
-  const defaultModel = defaultModelId ? models.find((m) => m.id === defaultModelId) : undefined;
+  const defaultModel = defaultModelId ? chatModels.find((m) => m.id === defaultModelId) : undefined;
   const defaultLabel = defaultModel?.displayName ?? defaultModelId ?? "Default model";
 
   const activeProvider = selected?.provider ?? defaultModel?.provider ?? defaultProvider;
@@ -102,11 +138,15 @@ export const ModelSelector = ({
           />
         }
       >
-        {activeProvider != null && (
-          <ProviderIcon
-            provider={activeProvider}
-            className="size-4 shrink-0 text-muted-foreground"
-          />
+        {isImage ? (
+          <ImageIcon className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          activeProvider != null && (
+            <ProviderIcon
+              provider={activeProvider}
+              className="size-4 shrink-0 text-muted-foreground"
+            />
+          )
         )}
         <span className="min-w-0 truncate">{selected ? selected.displayName : defaultLabel}</span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -116,53 +156,91 @@ export const ModelSelector = ({
           <CommandInput placeholder="Search models..." />
           <CommandList>
             <CommandEmpty>
-              {models.length === 0
+              {allModels.length === 0
                 ? "No models available. Check AI provider settings."
                 : "No matching models."}
             </CommandEmpty>
-            <CommandItem
-              value="__default__"
-              data-checked={!value ? "true" : undefined}
-              onSelect={() => {
-                onSelect(undefined);
-                setOpen(false);
-              }}
-            >
-              {defaultProvider != null && (
-                <ProviderIcon
-                  provider={defaultProvider}
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
-              )}
-              <span className="text-sm">{defaultLabel} (default)</span>
-            </CommandItem>
-            {models.map((m) => {
-              const overrideId = toOverrideId(m);
-              return (
-                <CommandItem
-                  key={overrideId}
-                  value={`${m.id} ${m.displayName}`}
-                  data-checked={overrideId === value ? "true" : undefined}
-                  onSelect={() => {
-                    onSelect(overrideId);
-                    setOpen(false);
-                  }}
-                >
+
+            {/* Default model */}
+            <CommandGroup>
+              <CommandItem
+                value="__default__"
+                data-checked={!value ? "true" : undefined}
+                onSelect={() => {
+                  onSelect(undefined);
+                  setOpen(false);
+                }}
+              >
+                {defaultProvider != null && (
                   <ProviderIcon
-                    provider={m.provider}
+                    provider={defaultProvider}
                     className="size-4 shrink-0 text-muted-foreground"
                   />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm">{m.displayName || m.id}</span>
-                    {m.contextLength > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {aiProviderLabel(m.provider)} · {formatContext(m.contextLength)} context
+                )}
+                <span className="text-sm">{defaultLabel} (default)</span>
+              </CommandItem>
+            </CommandGroup>
+
+            {/* Chat models */}
+            {chatModels.length > 0 && (
+              <CommandGroup heading="Chat Models">
+                {chatModels.map((m) => {
+                  const overrideId = toOverrideId(m, false);
+                  return (
+                    <CommandItem
+                      key={overrideId}
+                      value={`${m.id} ${m.displayName}`}
+                      data-checked={overrideId === value ? "true" : undefined}
+                      onSelect={() => {
+                        onSelect(overrideId);
+                        setOpen(false);
+                      }}
+                    >
+                      <ProviderIcon
+                        provider={m.provider}
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{m.displayName || m.id}</span>
+                        {m.contextLength > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {aiProviderLabel(m.provider)} · {formatContext(m.contextLength)} context
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                </CommandItem>
-              );
-            })}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+
+            {/* Image generation models */}
+            {imageModels.length > 0 && (
+              <CommandGroup heading="Image Generation">
+                {imageModels.map((m) => {
+                  const overrideId = toOverrideId(m, true);
+                  return (
+                    <CommandItem
+                      key={overrideId}
+                      value={`${m.id} ${m.displayName} image`}
+                      data-checked={overrideId === value ? "true" : undefined}
+                      onSelect={() => {
+                        onSelect(overrideId);
+                        setOpen(false);
+                      }}
+                    >
+                      <ImageIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{m.displayName || m.id}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {aiProviderLabel(m.provider)}
+                        </span>
+                      </span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

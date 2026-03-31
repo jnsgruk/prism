@@ -6,7 +6,10 @@ import type { ArtifactInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { AnswerContent } from "./answer-content";
 import { ArtifactList } from "./artifact-list";
 import { EvidencePanel } from "./evidence-panel";
+import { InlineImage } from "./inline-image";
 import { ThinkingSteps } from "./thinking-steps";
+
+const isImageArtifact = (a: ArtifactInfo): boolean => a.contentType?.startsWith("image/") ?? false;
 
 export const AgentResponse = ({
   state,
@@ -27,6 +30,9 @@ export const AgentResponse = ({
   const isEchoedQuestion = question && answer.trim() === question.trim();
   const displayAnswer = isEchoedQuestion ? "" : answer;
 
+  const imageArtifacts = artifacts.filter(isImageArtifact);
+  const otherArtifacts = artifacts.filter((a) => !isImageArtifact(a));
+
   return (
     <div className="flex gap-3">
       <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
@@ -43,9 +49,13 @@ export const AgentResponse = ({
           </Badge>
         )}
 
+        {imageArtifacts.map((a) => (
+          <InlineImage key={a.id} artifact={a} />
+        ))}
+
         {displayAnswer && <AnswerContent content={displayAnswer} />}
 
-        {artifacts.length > 0 && <ArtifactList artifacts={artifacts} />}
+        {otherArtifacts.length > 0 && <ArtifactList artifacts={otherArtifacts} />}
 
         {state.status === "completed" && supportingData && (
           <EvidencePanel supportingData={supportingData} />
