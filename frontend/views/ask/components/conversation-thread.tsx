@@ -11,6 +11,7 @@ import { AgentResponse } from "./agent-response";
 import { ArtifactList } from "./artifact-list";
 import { ContainerStatus } from "./container-status";
 import { EvidencePanel } from "./evidence-panel";
+import { InlineImage } from "./inline-image";
 import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
@@ -68,8 +69,16 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
   }
 };
 
-const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): React.ReactElement => {
+const HistoricalAssistantMessage = ({
+  msg,
+  artifacts = [],
+}: {
+  msg: ConversationMessage;
+  artifacts?: ConversationArtifact[];
+}): React.ReactElement => {
   const steps = parseReasoningTrace(msg.reasoningTraceJson);
+  const imageArtifacts = artifacts.filter((a) => a.contentType?.startsWith("image/"));
+  const otherArtifacts = artifacts.filter((a) => !a.contentType?.startsWith("image/"));
 
   return (
     <div className="flex gap-3">
@@ -78,7 +87,11 @@ const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): Reac
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
+        {imageArtifacts.map((a) => (
+          <InlineImage key={a.id} artifact={a} />
+        ))}
         <AnswerContent content={msg.content} />
+        {otherArtifacts.length > 0 && <ArtifactList artifacts={otherArtifacts} />}
         {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
       </div>
     </div>
@@ -122,18 +135,22 @@ export const ConversationThread = ({
 
   return (
     <div className="space-y-6">
-      {displayMessages.map((msg) => (
-        <div key={msg.id}>
-          {msg.role === "user" ? (
-            <UserMessage content={msg.content} />
-          ) : (
-            <HistoricalAssistantMessage msg={msg} />
-          )}
-        </div>
-      ))}
+      {displayMessages.map((msg) => {
+        const msgArtifacts = conversationArtifacts.filter((a) => a.messageId === msg.id);
+        return (
+          <div key={msg.id}>
+            {msg.role === "user" ? (
+              <UserMessage content={msg.content} />
+            ) : (
+              <HistoricalAssistantMessage msg={msg} artifacts={msgArtifacts} />
+            )}
+          </div>
+        );
+      })}
 
-      {conversationArtifacts.length > 0 && state.status === "idle" && (
-        <ArtifactList artifacts={conversationArtifacts} />
+      {/* Show unlinked artifacts (created before the message_id backfill) at the bottom. */}
+      {state.status === "idle" && conversationArtifacts.filter((a) => !a.messageId).length > 0 && (
+        <ArtifactList artifacts={conversationArtifacts.filter((a) => !a.messageId)} />
       )}
 
       {state.status !== "idle" && state.status !== "error" && (

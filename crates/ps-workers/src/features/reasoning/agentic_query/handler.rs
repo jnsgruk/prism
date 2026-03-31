@@ -229,7 +229,7 @@ async fn finalize_success(
             "tool_call_count": tool_calls,
             "steps": trace_steps,
         });
-        repos
+        let msg = repos
             .reasoning
             .create_message(&CreateMessageParams {
                 conversation_id: conv_id,
@@ -242,6 +242,12 @@ async fn finalize_success(
             })
             .await
             .map_err(terminal_err("failed to store message"))?;
+        // Link any artifacts created during streaming to this message so
+        // they render inline when the conversation is reloaded.
+        let _ = repos
+            .reasoning
+            .link_artifacts_to_message(conv_id, msg.id)
+            .await;
     });
 
     let tc = query_result.tool_calls;

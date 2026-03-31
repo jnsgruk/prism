@@ -569,6 +569,28 @@ impl ReasoningRepo {
         Ok(rows)
     }
 
+    /// Link all unlinked artifacts in a conversation to the given message.
+    /// Called after storing the assistant message so that artifacts created
+    /// during streaming can be associated with the correct turn.
+    pub async fn link_artifacts_to_message(
+        &self,
+        conversation_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<u64, Error> {
+        let result: sqlx::postgres::PgQueryResult = sqlx::query!(
+            r#"
+            UPDATE reasoning.conversation_artifacts
+            SET message_id = $2
+            WHERE conversation_id = $1 AND message_id IS NULL
+            "#,
+            conversation_id,
+            message_id,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /// Get a single artifact by ID (for download URL generation).
     pub async fn get_artifact(&self, id: Uuid) -> Result<Option<ConversationArtifact>, Error> {
         let row = sqlx::query_as!(
