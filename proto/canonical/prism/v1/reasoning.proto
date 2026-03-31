@@ -97,6 +97,8 @@ message AiSettings {
   optional double budget_cap_usd = 5;
   // Map of provider name to whether an API key is stored (e.g. {"google": true}).
   map<string, bool> provider_secret_status = 6;
+  // Default model for image generation via the generate_image MCP tool.
+  optional AiTaskConfig image_generation = 7;
 }
 
 message GetAiSettingsRequest {}
@@ -111,6 +113,8 @@ message UpdateAiSettingsRequest {
   optional AiTaskConfig agentic = 3;
   optional AiTaskConfig embeddings = 4;
   optional double budget_cap_usd = 5;
+  // Default model for image generation.
+  optional AiTaskConfig image_generation = 6;
 }
 
 message UpdateAiSettingsResponse {
@@ -365,6 +369,9 @@ message AskQuestionRequest {
   // If set, overrides the admin-configured agentic model for this query.
   // Format: "provider/model_id" (e.g. "google/gemini-2.5-flash").
   optional string model_override = 3;
+  // When set, the agent should use this model for image generation.
+  // Format: "provider/model_id" (e.g. "google/imagen-3").
+  optional string image_model = 4;
 }
 
 message ResumeStreamRequest {

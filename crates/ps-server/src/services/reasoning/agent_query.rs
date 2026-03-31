@@ -36,7 +36,7 @@ pub async fn ask_question(
 
     // Resolve model name and provider keys once — used for both conversation
     // creation and the Restate trigger.
-    let (model_name, provider_keys) = {
+    let (model_name, provider_keys, default_image_model) = {
         let router = svc.router.read().await;
         let config = router.config();
         let model = match req.model_override.as_deref() {
@@ -48,7 +48,11 @@ pub async fn ask_question(
             ),
         };
         let keys = router.provider_env_vars();
-        (model, keys)
+        let img_model = config
+            .image_generation
+            .as_ref()
+            .map(|tc| format!("{}/{}", tc.provider.as_str(), tc.model));
+        (model, keys, img_model)
     };
 
     // Create or resume conversation.
@@ -103,6 +107,9 @@ pub async fn ask_question(
         .await
         .map_err(db_err)?;
 
+    // Per-query image_model takes priority over admin default.
+    let effective_image_model = req.image_model.or(default_image_model);
+
     let trigger_request = serde_json::json!({
         "conversation_id": conversation_id.to_string(),
         "user_id": ctx.user_id.to_string(),
@@ -110,6 +117,7 @@ pub async fn ask_question(
         "model": model_name,
         "small_model": model_name,
         "provider_keys": provider_keys,
+        "image_model": effective_image_model,
     });
 
     let restate_url = svc.restate_url.clone();

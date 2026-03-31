@@ -25,7 +25,7 @@ pub async fn handle_artifact_upload(
         return;
     };
 
-    if tool != "prism_upload_artifact" {
+    if tool != "prism_upload_artifact" && tool != "prism_generate_image" {
         return;
     }
 

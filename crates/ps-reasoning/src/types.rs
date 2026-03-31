@@ -13,6 +13,9 @@ pub struct AiTaskConfig {
 pub struct AiConfig {
     pub tasks: AiTaskRouting,
     pub budget_cap_usd: Option<f64>,
+    /// Default model for image generation via the `generate_image` MCP tool.
+    #[serde(default)]
+    pub image_generation: Option<AiTaskConfig>,
 }
 
 /// Per-task provider/model routing.
@@ -41,6 +44,7 @@ impl Default for AiConfig {
         Self {
             tasks: AiTaskRouting::default(),
             budget_cap_usd: Some(5.0),
+            image_generation: None,
         }
     }
 }

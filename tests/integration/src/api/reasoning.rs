@@ -55,6 +55,7 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
 
     // Update enrichment config
     let mut req = Request::new(UpdateAiSettingsRequest {
+        image_generation: None,
         enrichment: Some(AiTaskConfig {
             provider: AiProvider::Google.into(),
             model: "gemini-2.0-flash".into(),
@@ -664,6 +665,7 @@ define_api_test!(ask_question_triggers_and_polls, |server| async move {
     // Call AskQuestion RPC with the existing conversation ID.
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
         question: "How many teams?".into(),
         conversation_id: Some(conv.id.to_string()),
         model_override: None,
@@ -728,6 +730,7 @@ define_api_test!(ask_question_streams_final_answer, |server| async move {
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
         question: "What is the meaning of life?".into(),
         conversation_id: Some(conv.id.to_string()),
         model_override: None,
@@ -785,6 +788,7 @@ define_api_test!(ask_question_streams_error, |server| async move {
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
         question: "Will this fail?".into(),
         conversation_id: Some(conv.id.to_string()),
         model_override: None,
@@ -815,6 +819,7 @@ define_api_test!(ask_question_validates_empty_question, |server| async move {
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
         question: "   ".into(),
         conversation_id: None,
         model_override: None,
@@ -833,6 +838,7 @@ define_api_test!(ask_question_validates_long_question, |server| async move {
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
         question: "x".repeat(4001),
         conversation_id: None,
         model_override: None,
@@ -851,6 +857,7 @@ define_api_test!(ask_question_requires_auth, |server| async move {
 
     let err = client
         .ask_question(AskQuestionRequest {
+            image_model: None,
             question: "Hello".into(),
             conversation_id: None,
             model_override: None,

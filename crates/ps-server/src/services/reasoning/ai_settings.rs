@@ -49,6 +49,11 @@ pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Stat
                     config.tasks.embeddings = tc;
                 }
             }
+            "ai.tasks.image_generation" => {
+                if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                    config.image_generation = Some(tc);
+                }
+            }
             "ai.budget_cap_usd" => {
                 if let Some(cap) = s.value.as_f64() {
                     config.budget_cap_usd = Some(cap);
@@ -88,6 +93,7 @@ pub async fn build_ai_settings(svc: &ReasoningServiceImpl) -> Result<AiSettings,
         embeddings: Some(task_config_to_proto(&config.tasks.embeddings)),
         budget_cap_usd: config.budget_cap_usd,
         provider_secret_status,
+        image_generation: config.image_generation.as_ref().map(task_config_to_proto),
     })
 }
 
@@ -256,6 +262,19 @@ pub async fn update_ai_settings(
         svc.repos
             .config
             .set_global_setting("ai.tasks.embeddings", &value)
+            .await
+            .map_err(db_err)?;
+    }
+    if let Some(tc) = &req.image_generation
+        && let Some(config) = proto_to_task_config(tc)
+    {
+        let value = serde_json::to_value(&config).map_err(|e| {
+            error!(error = %e, "failed to serialize task config");
+            Status::internal("internal error")
+        })?;
+        svc.repos
+            .config
+            .set_global_setting("ai.tasks.image_generation", &value)
             .await
             .map_err(db_err)?;
     }

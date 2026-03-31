@@ -19,4 +19,7 @@ pub struct AgenticQueryRequest {
     pub model: String,
     pub small_model: String,
     pub provider_keys: Vec<(String, String)>,
+    /// When set, the agent should use this model for image generation.
+    #[serde(default)]
+    pub image_model: Option<String>,
 }

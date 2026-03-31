@@ -12,6 +12,7 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
         question: question.to_string(),
         conversation_id: None,
         model_override: None,
+        image_model: None,
     };
 
     let resp = clients.reasoning.ask_question(req).await?;

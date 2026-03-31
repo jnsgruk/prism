@@ -98,6 +98,7 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
             model: request.model.clone(),
             small_model: request.small_model.clone(),
             provider_keys: request.provider_keys.clone(),
+            default_image_model: request.image_model.clone(),
         };
 
         let pod_ip = start_pod(&ctx, repos, &cm, conv_id, pod_overrides).await?;

@@ -50,6 +50,8 @@ pub struct PodOverrides {
     pub model: String,
     pub small_model: String,
     pub provider_keys: Vec<(String, String)>,
+    /// Default image generation model, injected as `DEFAULT_IMAGE_MODEL` env var.
+    pub default_image_model: Option<String>,
 }
 
 /// Status of an agent Pod.
@@ -110,6 +112,11 @@ impl ContainerManager {
         config.small_model = overrides.small_model.clone();
         if !overrides.provider_keys.is_empty() {
             config.provider_keys = overrides.provider_keys.clone();
+        }
+        if let Some(ref img_model) = overrides.default_image_model {
+            config
+                .provider_keys
+                .push(("DEFAULT_IMAGE_MODEL".to_string(), img_model.clone()));
         }
         // Ensure workspace PVC exists for this conversation.
         let pvc_name = self.ensure_pvc(session_id).await?;
