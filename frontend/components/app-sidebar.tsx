@@ -78,7 +78,6 @@ const RecentChats = (): React.ReactElement => {
           {recent.map((conv) => (
             <SidebarMenuItem key={conv.id}>
               <SidebarMenuButton
-                size="sm"
                 render={<Link to={`/ask/${conv.id}`} />}
                 isActive={pathname === `/ask/${conv.id}`}
                 tooltip={conv.title || "Untitled"}
@@ -90,7 +89,6 @@ const RecentChats = (): React.ReactElement => {
           ))}
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="sm"
               render={<Link to="/ask/history" />}
               isActive={pathname === "/ask/history"}
               tooltip="History"
