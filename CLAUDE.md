@@ -36,6 +36,7 @@ bun test                                  # Run frontend tests via vitest (run f
 - Use `--no-gpg-sign` when committing autonomously
 - Always commit in logical chunks along the way. Don't wait to be prompted.
 - **`.sqlx/` changes go in a separate commit** with message `chore: update sqlx query cache` — never mix query cache updates with code changes.
+- **`plans/` changes go in a separate commit** with message `docs: update plan <N> <short description>` — never mix plan doc updates with code changes.
 
 ## Code Structure
 
