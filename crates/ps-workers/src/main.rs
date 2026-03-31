@@ -212,7 +212,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::spawn(async move {
         register_with_restate(&restate_admin_url, &self_url).await;
-        bootstrap_reaper(&restate_ingress_url).await;
+        bootstrap_reaper(&restate_ingress_url, &restate_admin_url).await;
     });
 
     // Wait for either server to exit
@@ -274,15 +274,60 @@ async fn register_with_restate(admin_url: &str, self_url: &str) {
 
 /// Ensure the agent pod reaper loop is running.
 ///
-/// The reaper is a Restate **object** keyed by `"singleton"`, so Restate
-/// serializes all invocations for that key. Sending a duplicate bootstrap
-/// just queues behind the active run rather than forking the chain.
-async fn bootstrap_reaper(ingress_url: &str) {
+/// Queries the Restate admin API for existing invocations before sending a
+/// new one. Without this check, every pod restart would queue a new bootstrap
+/// invocation — each of which self-schedules its own chain, causing geometric
+/// growth of reaper invocations.
+async fn bootstrap_reaper(ingress_url: &str, admin_url: &str) {
     use ps_workers::features::reasoning::agent_reaper::REAPER_KEY;
 
     let client = reqwest::Client::new();
-    let send_url = format!("{ingress_url}/AgentPodReaperHandler/{REAPER_KEY}/reap/send");
 
+    // Check if there are already active invocations for the reaper via Restate SQL API.
+    let query_url = format!("{admin_url}/query");
+    let sql = serde_json::json!({
+        "query": "SELECT COUNT(*) AS cnt FROM sys_invocation \
+                  WHERE target_service_name = 'AgentPodReaperHandler' \
+                  AND status IN ('scheduled', 'running', 'suspended', 'ready', 'backing-off')"
+    });
+    match client
+        .post(&query_url)
+        .header("Accept", "application/json")
+        .json(&sql)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let active_count = body
+                    .get("rows")
+                    .and_then(|r| r.as_array())
+                    .and_then(|rows| rows.first())
+                    .and_then(|row| row.get("cnt"))
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(0);
+
+                if active_count > 0 {
+                    info!(
+                        active_count,
+                        "reaper already has active invocations, skipping bootstrap"
+                    );
+                    return;
+                }
+            }
+        }
+        Ok(resp) => {
+            warn!(
+                status = %resp.status(),
+                "could not query reaper invocations, will bootstrap anyway"
+            );
+        }
+        Err(e) => {
+            warn!(error = %e, "could not reach Restate admin to check reaper, will bootstrap anyway");
+        }
+    }
+
+    let send_url = format!("{ingress_url}/AgentPodReaperHandler/{REAPER_KEY}/reap/send");
     match client.post(&send_url).send().await {
         Ok(resp) if resp.status().is_success() => {
             info!("bootstrapped agent pod reaper loop");
