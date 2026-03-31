@@ -1,5 +1,6 @@
 mod convert;
 mod format;
+pub mod generate_image;
 mod inputs;
 
 use rmcp::{
@@ -22,7 +23,7 @@ use format::{
     format_contribution, format_person_insights, format_similar_item, format_team_insights,
 };
 use inputs::{
-    CompareTeamsInput, GetPersonProfileInput, ListPeopleInput, ListTeamsInput,
+    CompareTeamsInput, GenerateImageInput, GetPersonProfileInput, ListPeopleInput, ListTeamsInput,
     QueryContributionsInput, QueryEnrichmentsInput, QueryTeamMetricsInput, SearchByTextInput,
     SearchSimilarInput, UploadArtifactInput,
 };
@@ -32,6 +33,7 @@ use inputs::{
 pub struct PrismTools {
     client: PrismClient,
     artifacts: ArtifactStore,
+    http: reqwest::Client,
     tool_router: ToolRouter<Self>,
 }
 
@@ -43,9 +45,14 @@ impl std::fmt::Debug for PrismTools {
 
 impl PrismTools {
     pub fn new(client: PrismClient, artifacts: ArtifactStore) -> Self {
+        let http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .unwrap_or_default();
         Self {
             client,
             artifacts,
+            http,
             tool_router: Self::tool_router(),
         }
     }
@@ -366,6 +373,24 @@ impl PrismTools {
         serde_json::to_string_pretty(&people).map_err(|e| format!("serialization error: {e}"))
     }
 
+    /// Generate an image using an AI image generation model.
+    /// The image is saved as a conversation artifact and automatically displayed in the chat.
+    #[rmcp::tool(name = "generate_image")]
+    async fn generate_image(
+        &self,
+        Parameters(input): Parameters<GenerateImageInput>,
+    ) -> Result<String, String> {
+        generate_image::generate_and_upload(
+            &self.http,
+            &self.artifacts,
+            &input.prompt,
+            input.model.as_deref(),
+            input.provider.as_deref(),
+            input.aspect_ratio.as_deref(),
+        )
+        .await
+    }
+
     /// Upload a file from /workspace as a conversation artifact to S3.
     /// Returns the artifact key and confirmation.
     #[rmcp::tool(name = "upload_artifact")]
@@ -508,13 +533,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tool_router_registers_all_11_tools() {
+    fn tool_router_registers_all_12_tools() {
         let router = PrismTools::tool_router();
         let tools = router.list_all();
         assert_eq!(
             tools.len(),
-            11,
-            "Expected 11 MCP tools, got {}",
+            12,
+            "Expected 12 MCP tools, got {}",
             tools.len()
         );
 
@@ -522,6 +547,7 @@ mod tests {
         assert!(names.contains(&"query_team_metrics"));
         assert!(names.contains(&"query_contributions"));
         assert!(names.contains(&"compare_teams"));
+        assert!(names.contains(&"generate_image"));
         assert!(names.contains(&"get_person_profile"));
         assert!(names.contains(&"search_similar"));
         assert!(names.contains(&"search_by_text"));
