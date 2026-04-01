@@ -32,12 +32,47 @@ pub async fn run_agentic_query_core(
 
     let client = ps_agent::ContainerManager::opencode_client(pod_ip)?;
 
-    let opencode_session_id =
+    let mut opencode_session_id =
         resolve_or_create_session(repos, &client, conversation_id, &conv, question).await?;
 
     // Check if the question was already sent to this session (Restate replay
     // scenario). If so, skip sending to avoid confusing OpenCode.
-    let already_sent = was_question_already_sent(&client, &opencode_session_id, question).await;
+    let already_sent = match check_session_state(&client, &opencode_session_id, question).await {
+        SessionState::QuestionAlreadySent => true,
+        SessionState::Ready => false,
+        SessionState::Dead => {
+            // Session no longer exists (e.g., OpenCode container restarted).
+            // Clear the stale session and create a fresh one.
+            warn!("OpenCode session is dead, creating a new one");
+            repos
+                .reasoning
+                .update_container_status(
+                    conversation_id,
+                    conv.container_pod_name.as_deref(),
+                    "active",
+                    None,
+                )
+                .await
+                .map_err(|e| format!("failed to clear stale session: {e}"))?;
+            opencode_session_id = client
+                .create_session_with_title(question)
+                .await
+                .map_err(|e| format!("failed to create new session: {e}"))?
+                .id;
+            repos
+                .reasoning
+                .update_container_status(
+                    conversation_id,
+                    conv.container_pod_name.as_deref(),
+                    "active",
+                    Some(&opencode_session_id),
+                )
+                .await
+                .map_err(|e| format!("failed to store new session: {e}"))?;
+            info!(session_id = %opencode_session_id, "created replacement session");
+            false
+        }
+    };
 
     // Subscribe to events before sending the question.
     info!("subscribing to OpenCode events");
@@ -115,32 +150,56 @@ pub async fn run_agentic_query_core(
     })
 }
 
-/// Check whether the question was already sent to the `OpenCode` session.
+/// Result of checking an `OpenCode` session's state before sending a question.
+enum SessionState {
+    /// The question has already been sent (Restate replay). Skip resending.
+    QuestionAlreadySent,
+    /// The session is healthy and ready for a new question.
+    Ready,
+    /// The session no longer exists (e.g., container restart). Must recreate.
+    Dead,
+}
+
+/// Check the `OpenCode` session state to decide how to proceed.
 ///
 /// On Restate replay, the handler re-executes the non-journaled SSE streaming
 /// logic. Resending a question that was already processed can produce errors
-/// (e.g., `NotFoundError` from `OpenCode`). This check prevents the duplicate
-/// send by inspecting the session's message history.
-async fn was_question_already_sent(
+/// (e.g., `NotFoundError` from `OpenCode`). This check inspects the session's
+/// message history to determine the right action.
+async fn check_session_state(
     client: &ps_agent::opencode_sdk::Client,
     session_id: &str,
     question: &str,
-) -> bool {
+) -> SessionState {
     let messages = match client.messages().list(session_id).await {
         Ok(msgs) => msgs,
         Err(e) => {
-            warn!(error = %e, "failed to list OpenCode messages, assuming not sent");
-            return false;
+            let err_str = e.to_string();
+            // A 404 means the session no longer exists — the OpenCode
+            // container likely restarted. Return Dead so the caller
+            // creates a fresh session instead of looping forever.
+            if err_str.contains("404") {
+                warn!(error = %e, "OpenCode session is dead (404)");
+                return SessionState::Dead;
+            }
+            warn!(error = %e, "failed to list OpenCode messages, assuming ready");
+            return SessionState::Ready;
         }
     };
 
     // Look for a user message that matches the question text.
-    messages.iter().any(|m| {
+    let found = messages.iter().any(|m| {
         m.role() == "user"
             && m.parts.iter().any(|p| {
                 matches!(p, ps_agent::opencode_sdk::types::message::Part::Text { text, .. } if text.trim() == question.trim())
             })
-    })
+    });
+
+    if found {
+        SessionState::QuestionAlreadySent
+    } else {
+        SessionState::Ready
+    }
 }
 
 /// Resolve an existing `OpenCode` session or create a new one.
