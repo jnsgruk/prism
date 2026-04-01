@@ -1,12 +1,14 @@
 mod artifact;
 mod event_loop;
 mod event_mapping;
+mod resume;
 mod session;
 mod step_registry;
+mod trace;
 
 use ps_proto::canonical::prism::v1::{
     AgentConversationCreated, AgentError, AgentFinalAnswer, AskQuestionRequest,
-    AskQuestionResponse, ResumeStreamRequest, ResumeStreamResponse, ask_question_response,
+    AskQuestionResponse, ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
@@ -24,6 +26,8 @@ const PREPARE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120)
 
 pub type AskQuestionStream =
     tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
+
+pub use resume::resume_stream;
 
 #[allow(clippy::too_many_lines)]
 pub async fn ask_question(
@@ -170,36 +174,32 @@ pub async fn ask_question(
         )
         .await;
 
-        match result {
-            Ok(()) => {}
-            Err(e) => {
-                error!(conversation_id = %cid_str, error = %e, "query stream failed");
-                // Store persistent error message and mark failed.
-                let _ = repos
-                    .reasoning
-                    .create_message(&ps_core::repo::reasoning::CreateMessageParams {
-                        conversation_id,
-                        role: "error",
-                        content: &e.to_string(),
-                        reasoning_trace: None,
-                        supporting_data: None,
-                        prompt_tokens: 0,
-                        completion_tokens: 0,
-                    })
-                    .await;
-                let _ = repos
-                    .reasoning
-                    .update_query_status(conversation_id, "failed")
-                    .await;
-                let _ = tx
-                    .send(Ok(AskQuestionResponse {
-                        event: Some(ask_question_response::Event::Error(AgentError {
-                            message: e.to_string(),
-                            retryable: true,
-                        })),
-                    }))
-                    .await;
-            }
+        if let Err(e) = result {
+            error!(conversation_id = %cid_str, error = %e, "query stream failed");
+            let _ = repos
+                .reasoning
+                .create_message(&ps_core::repo::reasoning::CreateMessageParams {
+                    conversation_id,
+                    role: "error",
+                    content: &e.to_string(),
+                    reasoning_trace: None,
+                    supporting_data: None,
+                    prompt_tokens: 0,
+                    completion_tokens: 0,
+                })
+                .await;
+            let _ = repos
+                .reasoning
+                .update_query_status(conversation_id, "failed")
+                .await;
+            let _ = tx
+                .send(Ok(AskQuestionResponse {
+                    event: Some(ask_question_response::Event::Error(AgentError {
+                        message: e.to_string(),
+                        retryable: true,
+                    })),
+                }))
+                .await;
         }
     });
 
@@ -221,7 +221,6 @@ async fn run_query_stream(
     let conversation_id: Uuid = cid_str.parse()?;
 
     // Phase 1: Call Restate prepare_query synchronously.
-    // While waiting, poll DB for container_status events to forward to client.
     let pod_ip = prepare_and_poll(
         repos,
         http_client,
@@ -250,7 +249,6 @@ async fn run_query_stream(
         session::resolve_or_create_session(repos, &client, conversation_id, &conv, question)
             .await?;
 
-    // Subscribe to SSE before sending the question.
     info!("subscribing to OpenCode events");
     let mut subscription = client.subscribe().await?;
     info!("SSE subscription established");
@@ -265,7 +263,6 @@ async fn run_query_stream(
     )
     .await?;
 
-    // Compute remaining time for SSE streaming (total budget minus what prepare used).
     let sse_timeout = STREAM_TIMEOUT
         .checked_sub(PREPARE_TIMEOUT)
         .unwrap_or(std::time::Duration::from_secs(180));
@@ -274,21 +271,31 @@ async fn run_query_stream(
         event_loop::run_event_loop(repos, &mut subscription, conversation_id, sse_timeout, tx)
             .await;
 
-    // Phase 3: Finalize — store assistant message, update totals, emit final_answer.
+    // Phase 3: Finalize.
+    finalize_query(repos, conversation_id, cid_str, &loop_result, tx).await
+}
+
+/// Store assistant message, update totals, emit `final_answer`, and clean up.
+async fn finalize_query(
+    repos: &ps_core::repo::Repos,
+    conversation_id: Uuid,
+    cid_str: &str,
+    loop_result: &event_loop::EventLoopResult,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let answer = &loop_result.answer_text;
     let tool_calls = loop_result.tool_calls;
     let input_tok = loop_result.total_input as i32;
     let output_tok = loop_result.total_output as i32;
 
-    // Derive reasoning trace from all DB events.
     let all_events = repos
         .reasoning
         .get_all_events(conversation_id)
         .await
         .unwrap_or_default();
-    let trace_steps = derive_trace_from_events(&all_events);
+    let trace_steps = trace::derive_trace_from_events(&all_events);
 
-    let trace = serde_json::json!({
+    let trace_json = serde_json::json!({
         "tool_call_count": tool_calls,
         "steps": trace_steps,
     });
@@ -298,7 +305,7 @@ async fn run_query_stream(
             conversation_id,
             role: "assistant",
             content: answer,
-            reasoning_trace: Some(&trace),
+            reasoning_trace: Some(&trace_json),
             supporting_data: None,
             prompt_tokens: input_tok,
             completion_tokens: output_tok,
@@ -315,7 +322,6 @@ async fn run_query_stream(
         .update_conversation_totals(conversation_id, tool_calls, input_tok, output_tok, 0.0)
         .await?;
 
-    // Send final_answer event to client.
     let _ = tx
         .send(Ok(AskQuestionResponse {
             event: Some(ask_question_response::Event::FinalAnswer(
@@ -336,7 +342,6 @@ async fn run_query_stream(
         .update_query_status(conversation_id, "completed")
         .await?;
 
-    // Clean up ephemeral events.
     let _ = repos.reasoning.delete_events(conversation_id).await;
 
     info!(conversation_id = %cid_str, "query complete");
@@ -357,7 +362,6 @@ async fn prepare_and_poll(
     let url = format!("{restate_url}/AgenticQueryHandler/{cid_str}/prepare_query");
     let body = serde_json::to_string(trigger_request)?;
 
-    // Start the prepare call and poll for events concurrently.
     let prepare_fut = async {
         let resp = http_client
             .post(&url)
@@ -396,14 +400,13 @@ async fn prepare_and_poll(
             if let Ok(events) = repos.reasoning.poll_events(conversation_id, cursor).await {
                 for event in events {
                     cursor = event.id;
-                    if let Some(response) = event_mapping::map_db_event_to_proto(&event) {
-                        // Only forward container_status events during prepare.
-                        if matches!(
+                    if let Some(response) = event_mapping::map_db_event_to_proto(&event)
+                        && matches!(
                             response.event,
                             Some(ask_question_response::Event::ContainerStatus(_))
-                        ) {
-                            let _ = tx.send(Ok(response)).await;
-                        }
+                        )
+                    {
+                        let _ = tx.send(Ok(response)).await;
                     }
                 }
             }
@@ -413,273 +416,5 @@ async fn prepare_and_poll(
     tokio::select! {
         result = prepare_fut => result,
         () = poll_fut => Err("event poll loop ended unexpectedly".into()),
-    }
-}
-
-/// Derive the reasoning trace from conversation events.
-fn derive_trace_from_events(
-    events: &[ps_core::repo::reasoning::ConversationEvent],
-) -> Vec<serde_json::Value> {
-    use std::collections::BTreeMap;
-
-    let mut steps: BTreeMap<i32, serde_json::Value> = BTreeMap::new();
-
-    for event in events {
-        let Some(step_seq) = event.step_seq else {
-            continue;
-        };
-        let Some(ref step_id) = event.step_id else {
-            continue;
-        };
-
-        match event.event_type.as_str() {
-            "thinking" => {
-                let text = event
-                    .payload
-                    .get("text")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let part_index = event
-                    .payload
-                    .get("part_index")
-                    .and_then(serde_json::Value::as_i64)
-                    .unwrap_or(0);
-                steps.insert(
-                    step_seq,
-                    serde_json::json!({
-                        "kind": "reasoning",
-                        "text": text,
-                        "part_index": part_index,
-                        "step_id": step_id,
-                    }),
-                );
-            }
-            "tool_call_started" => {
-                let tool_name = event
-                    .payload
-                    .get("tool_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let call_id = event
-                    .payload
-                    .get("call_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let args = event
-                    .payload
-                    .get("arguments_json")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("{}");
-                steps
-                    .entry(step_seq)
-                    .and_modify(|step| {
-                        if args != "{}"
-                            && let Some(obj) = step.as_object_mut()
-                        {
-                            obj.insert("arguments".into(), serde_json::json!(args));
-                        }
-                    })
-                    .or_insert_with(|| {
-                        serde_json::json!({
-                            "kind": "tool",
-                            "tool_name": tool_name,
-                            "call_id": call_id,
-                            "arguments": args,
-                            "step_id": step_id,
-                        })
-                    });
-            }
-            "tool_call_completed" => {
-                if let Some(step) = steps.get_mut(&step_seq)
-                    && let Some(obj) = step.as_object_mut()
-                {
-                    obj.insert(
-                        "result_summary".into(),
-                        event
-                            .payload
-                            .get("result_summary")
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
-                    obj.insert(
-                        "duration_ms".into(),
-                        event
-                            .payload
-                            .get("duration_ms")
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
-                    obj.insert(
-                        "success".into(),
-                        event
-                            .payload
-                            .get("success")
-                            .cloned()
-                            .unwrap_or(serde_json::Value::Bool(true)),
-                    );
-                }
-            }
-            _ => {}
-        }
-    }
-
-    steps.into_values().collect()
-}
-
-// ---------------------------------------------------------------------------
-// resume_stream — unchanged, continues polling DB for events.
-// ---------------------------------------------------------------------------
-
-pub type ResumeStreamStream =
-    tokio_stream::wrappers::ReceiverStream<Result<ResumeStreamResponse, Status>>;
-
-pub async fn resume_stream(
-    svc: &ReasoningServiceImpl,
-    request: Request<ResumeStreamRequest>,
-) -> Result<Response<ResumeStreamStream>, Status> {
-    let ctx = require_auth(&request)?;
-    let req = request.into_inner();
-
-    let conv_id = req
-        .conversation_id
-        .parse::<Uuid>()
-        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
-
-    // Verify conversation exists and belongs to this user.
-    let conv = svc
-        .repos
-        .reasoning
-        .get_conversation(conv_id)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| Status::not_found("conversation not found"))?;
-
-    if conv.user_id != ctx.user_id {
-        return Err(Status::not_found("conversation not found"));
-    }
-
-    let (tx, rx) = tokio::sync::mpsc::channel(64);
-
-    // If query is already terminal, close immediately.
-    if matches!(
-        conv.query_status.as_str(),
-        "completed" | "failed" | "cancelled" | "idle"
-    ) {
-        drop(tx);
-        return Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
-            rx,
-        )));
-    }
-
-    // Start the shared poll loop from the requested cursor.
-    let repos = svc.repos.clone();
-    let cursor = req.last_event_id;
-
-    tokio::spawn(async move {
-        stream_resume_events(repos, conv_id, cursor, tx).await;
-    });
-
-    Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
-        rx,
-    )))
-}
-
-/// Poll loop for `ResumeStream` — reads events from DB and streams to client.
-async fn stream_resume_events(
-    repos: ps_core::repo::Repos,
-    conv_id: Uuid,
-    initial_cursor: i64,
-    tx: tokio::sync::mpsc::Sender<Result<ResumeStreamResponse, Status>>,
-) {
-    use ps_proto::canonical::prism::v1::resume_stream_response;
-
-    let mut cursor = initial_cursor;
-    let deadline = tokio::time::Instant::now() + STREAM_TIMEOUT;
-
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            let _ = tx
-                .send(Ok(ResumeStreamResponse {
-                    event: Some(resume_stream_response::Event::Error(AgentError {
-                        message: "Stream timed out".into(),
-                        retryable: true,
-                    })),
-                }))
-                .await;
-            return;
-        }
-
-        match repos.reasoning.poll_events(conv_id, cursor).await {
-            Ok(events) => {
-                for event in events {
-                    cursor = event.id;
-                    let proto_event = event_mapping::map_db_event_to_resume_proto(&event);
-                    if let Some(response) = proto_event {
-                        let is_terminal = matches!(
-                            response.event,
-                            Some(
-                                resume_stream_response::Event::FinalAnswer(_)
-                                    | resume_stream_response::Event::Error(_)
-                            )
-                        );
-                        if tx.send(Ok(response)).await.is_err() {
-                            return;
-                        }
-                        if is_terminal {
-                            return;
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                error!(error = %e, "failed to poll conversation events");
-                let _ = tx
-                    .send(Ok(ResumeStreamResponse {
-                        event: Some(resume_stream_response::Event::Error(AgentError {
-                            message: "Internal error polling events".into(),
-                            retryable: true,
-                        })),
-                    }))
-                    .await;
-                return;
-            }
-        }
-
-        // Check if query reached a terminal status without us seeing the event.
-        if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await {
-            match conv.query_status.as_str() {
-                "cancelled" | "failed" => return,
-                "completed" => {
-                    let answer = repos
-                        .reasoning
-                        .list_messages(conv_id)
-                        .await
-                        .ok()
-                        .and_then(|msgs| {
-                            msgs.into_iter()
-                                .rev()
-                                .find(|m| m.role == "assistant")
-                                .map(|m| m.content)
-                        })
-                        .unwrap_or_default();
-                    let _ = tx
-                        .send(Ok(ResumeStreamResponse {
-                            event: Some(resume_stream_response::Event::FinalAnswer(
-                                AgentFinalAnswer {
-                                    answer,
-                                    conversation_id: conv_id.to_string(),
-                                    tool_call_count: conv.total_tool_calls,
-                                    ..Default::default()
-                                },
-                            )),
-                        }))
-                        .await;
-                    return;
-                }
-                _ => {}
-            }
-        }
-
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 }
