@@ -9,6 +9,7 @@ import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
 import { IngestionActions, IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
+import { PipelineGraph } from "@/views/ingestion/components/pipeline-graph";
 import { SourceList } from "@/views/ingestion/components/source-list";
 import {
   useIngestionStatus,
@@ -107,6 +108,8 @@ const IngestionPage = (): React.ReactElement => {
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
+        <PipelineGraph onAction={triggerBurst} />
+
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
