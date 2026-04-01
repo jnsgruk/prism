@@ -18,11 +18,17 @@ pub struct EventLoopResult {
 ///
 /// Returns when the session becomes idle, the stream closes, or the timeout
 /// elapses.
+///
+/// When `is_replay` is `true`, the question was already sent in a previous
+/// invocation (Restate replay scenario). In this case, the first `SessionIdle`
+/// event is treated as terminal because the session already finished
+/// processing — there is no upcoming work to wait for.
 pub async fn run_event_loop(
     repos: &Repos,
     subscription: &mut ps_agent::opencode_sdk::sse::SseSubscription,
     conversation_id: Uuid,
     timeout: std::time::Duration,
+    is_replay: bool,
 ) -> EventLoopResult {
     let deadline = tokio::time::Instant::now() + timeout;
     let mut answer_text = String::new();
@@ -33,7 +39,11 @@ pub async fn run_event_loop(
     // deliver a `SessionIdle` immediately (the session is idle *before* the
     // question has been picked up). We must ignore that initial idle and
     // only treat it as terminal once work has actually started.
-    let mut seen_work = false;
+    //
+    // Exception: on replay, the session already finished processing. Treat
+    // the first idle as terminal to avoid waiting for work that will never
+    // arrive.
+    let mut seen_work = is_replay;
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());

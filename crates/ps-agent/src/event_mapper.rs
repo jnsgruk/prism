@@ -37,10 +37,7 @@ impl EventMapper {
         match event {
             Event::MessagePartUpdated { properties } => self.map_message_part(properties),
             Event::SessionError { properties } => {
-                let msg = properties
-                    .error
-                    .as_ref()
-                    .map_or("Unknown error".to_string(), |e| format!("{e:?}"));
+                let msg = format_assistant_error(properties.error.as_ref());
                 Some(agent_event(ask_question_response::Event::Error(
                     AgentError {
                         message: msg,
@@ -209,6 +206,28 @@ pub fn container_status_event(status: &str, message: &str) -> AskQuestionRespons
 /// Wrap an event variant into the proto response.
 fn agent_event(event: ask_question_response::Event) -> AskQuestionResponse {
     AskQuestionResponse { event: Some(event) }
+}
+
+/// Extract a human-readable message from an `AssistantError`.
+///
+/// `AssistantError::Api` has a proper `Display` impl. `AssistantError::Unknown`
+/// is a raw `serde_json::Value` — we try to pull a message from common fields
+/// (`data.message`, `message`, `name`) before falling back to compact JSON.
+fn format_assistant_error(err: Option<&opencode_sdk::types::event::AssistantError>) -> String {
+    use opencode_sdk::types::event::AssistantError;
+    match err {
+        None => "Unknown error".to_string(),
+        Some(AssistantError::Api(api_err)) => api_err.to_string(),
+        Some(AssistantError::Unknown(val)) => {
+            // Try common error shapes: { data: { message } }, { message }, { name }.
+            val.get("data")
+                .and_then(|d| d.get("message"))
+                .and_then(|m| m.as_str())
+                .or_else(|| val.get("message").and_then(|m| m.as_str()))
+                .or_else(|| val.get("name").and_then(|n| n.as_str()))
+                .map_or_else(|| val.to_string(), String::from)
+        }
+    }
 }
 
 /// Truncate output for display, preserving the first `max_len` characters.
@@ -476,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn session_error_maps_to_agent_error() {
+    fn session_error_none_shows_unknown() {
         let mut mapper = EventMapper::new();
         let event = Event::SessionError {
             properties: opencode_sdk::types::event::SessionErrorProps {
@@ -488,7 +507,61 @@ mod tests {
         let result = mapper.map_event(&event).unwrap();
         match result.event.unwrap() {
             ask_question_response::Event::Error(e) => {
+                assert_eq!(e.message, "Unknown error");
                 assert!(!e.retryable);
+            }
+            other => panic!("Expected Error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn session_error_api_uses_display() {
+        use opencode_sdk::types::error::APIError;
+        use opencode_sdk::types::event::AssistantError;
+
+        let mut mapper = EventMapper::new();
+        let event = Event::SessionError {
+            properties: opencode_sdk::types::event::SessionErrorProps {
+                session_id: Some("s1".to_string()),
+                error: Some(AssistantError::Api(APIError {
+                    message: "rate limit exceeded".to_string(),
+                    status_code: Some(429),
+                    is_retryable: true,
+                    response_headers: None,
+                    response_body: None,
+                    metadata: None,
+                })),
+                extra: serde_json::Value::Null,
+            },
+        };
+        let result = mapper.map_event(&event).unwrap();
+        match result.event.unwrap() {
+            ask_question_response::Event::Error(e) => {
+                assert_eq!(e.message, "rate limit exceeded (status: 429)");
+            }
+            other => panic!("Expected Error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn session_error_unknown_extracts_message() {
+        use opencode_sdk::types::event::AssistantError;
+
+        let mut mapper = EventMapper::new();
+        let event = Event::SessionError {
+            properties: opencode_sdk::types::event::SessionErrorProps {
+                session_id: Some("s1".to_string()),
+                error: Some(AssistantError::Unknown(serde_json::json!({
+                    "data": {"message": "NotFoundError"},
+                    "name": "UnknownError",
+                }))),
+                extra: serde_json::Value::Null,
+            },
+        };
+        let result = mapper.map_event(&event).unwrap();
+        match result.event.unwrap() {
+            ask_question_response::Event::Error(e) => {
+                assert_eq!(e.message, "NotFoundError");
             }
             other => panic!("Expected Error, got {other:?}"),
         }
