@@ -78,12 +78,6 @@ pub async fn run_event_loop(
                 tx,
             )
             .await;
-
-            // If client disconnected, stop streaming.
-            if tx.is_closed() {
-                info!("client disconnected, stopping event loop");
-                break;
-            }
         }
     }
 
