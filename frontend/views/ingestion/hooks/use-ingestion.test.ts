@@ -6,7 +6,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CancelHandlerRunResponseSchema,
+  CancelPipelineResponseSchema,
   CancelRunResponseSchema,
+  GetPipelineStatusResponseSchema,
   GetStatusResponseSchema,
   HandlersService,
   HandlerRunSchema,
@@ -16,6 +18,7 @@ import {
   SourceStatusSchema,
   TriggerBackfillResponseSchema,
   TriggerHandlerResponseSchema,
+  TriggerPipelineResponseSchema,
   TriggerRunResponseSchema,
   TriggerTeamSyncResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
@@ -64,6 +67,9 @@ vi.mock("@ps/api/transport", () => ({
       triggerHandler: () => create(TriggerHandlerResponseSchema, {}),
       cancelHandlerRun: () => create(CancelHandlerRunResponseSchema, {}),
       triggerTeamSync: () => create(TriggerTeamSyncResponseSchema, {}),
+      getPipelineStatus: () => create(GetPipelineStatusResponseSchema, {}),
+      triggerPipeline: () => create(TriggerPipelineResponseSchema, { pipelineId: "pipe-1" }),
+      cancelPipeline: () => create(CancelPipelineResponseSchema, {}),
     });
   }),
 }));
