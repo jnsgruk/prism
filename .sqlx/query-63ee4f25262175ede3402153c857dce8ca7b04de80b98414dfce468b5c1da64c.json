@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE reasoning.conversations\n            SET query_status = 'failed', last_activity_at = now()\n            WHERE query_status IN ('running', 'pending')\n              AND last_activity_at < now() - make_interval(mins => $1)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "63ee4f25262175ede3402153c857dce8ca7b04de80b98414dfce468b5c1da64c"
+}
