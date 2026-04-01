@@ -214,6 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         register_with_restate(&restate_admin_url, &self_url).await;
         bootstrap_reaper(&restate_ingress_url, &restate_admin_url).await;
+        bootstrap_watchdog(&restate_ingress_url, &restate_admin_url).await;
     });
 
     // Wait for either server to exit
@@ -340,6 +341,74 @@ async fn bootstrap_reaper(ingress_url: &str, admin_url: &str) {
         }
         Err(e) => {
             error!(error = %e, "failed to send reaper bootstrap invocation");
+        }
+    }
+}
+
+/// Ensure the query watchdog loop is running.
+///
+/// Same duplicate-prevention pattern as `bootstrap_reaper`: query Restate
+/// admin for existing invocations before sending a new one.
+async fn bootstrap_watchdog(ingress_url: &str, admin_url: &str) {
+    use ps_workers::features::reasoning::query_watchdog::WATCHDOG_KEY;
+
+    let client = reqwest::Client::new();
+
+    let query_url = format!("{admin_url}/query");
+    let sql = serde_json::json!({
+        "query": "SELECT COUNT(*) AS cnt FROM sys_invocation \
+                  WHERE target_service_name = 'QueryWatchdogHandler' \
+                  AND status IN ('scheduled', 'running', 'suspended', 'ready', 'backing-off')"
+    });
+    match client
+        .post(&query_url)
+        .header("Accept", "application/json")
+        .json(&sql)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let active_count = body
+                    .get("rows")
+                    .and_then(|r| r.as_array())
+                    .and_then(|rows| rows.first())
+                    .and_then(|row| row.get("cnt"))
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(0);
+
+                if active_count > 0 {
+                    info!(
+                        active_count,
+                        "query watchdog already has active invocations, skipping bootstrap"
+                    );
+                    return;
+                }
+            }
+        }
+        Ok(resp) => {
+            warn!(
+                status = %resp.status(),
+                "could not query watchdog invocations, will bootstrap anyway"
+            );
+        }
+        Err(e) => {
+            warn!(error = %e, "could not reach Restate admin to check watchdog, will bootstrap anyway");
+        }
+    }
+
+    let send_url = format!("{ingress_url}/QueryWatchdogHandler/{WATCHDOG_KEY}/check/send");
+    match client.post(&send_url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            info!("bootstrapped query watchdog loop");
+        }
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            error!(%status, body, "failed to bootstrap query watchdog");
+        }
+        Err(e) => {
+            error!(error = %e, "failed to send watchdog bootstrap invocation");
         }
     }
 }

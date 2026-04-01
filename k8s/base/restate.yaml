@@ -38,7 +38,7 @@ spec:
             - name: RESTATE_DEFAULT_NUM_PARTITIONS
               value: "4"
             - name: RESTATE_WORKER__INVOKER__ABORT_TIMEOUT
-              value: "5min"
+              value: "2min"
           volumeMounts:
             - name: restate-data
               mountPath: /restate-data

@@ -4,6 +4,7 @@ pub mod embedding;
 pub mod enrichment;
 pub mod insights;
 pub mod model_catalogue;
+pub mod query_watchdog;
 
 use std::sync::Arc;
 
@@ -24,6 +25,7 @@ pub fn bind(
     use enrichment::{EnrichmentHandler, EnrichmentHandlerImpl};
     use insights::{InsightsHandler, InsightsHandlerImpl};
     use model_catalogue::{ModelCatalogueHandler, ModelCatalogueHandlerImpl};
+    use query_watchdog::{QueryWatchdogHandler, QueryWatchdogHandlerImpl};
 
     let enrichment = EnrichmentHandlerImpl {
         state: state.clone(),
@@ -45,6 +47,9 @@ pub fn bind(
     let agentic_query = AgenticQueryHandlerImpl {
         state: state.clone(),
     };
+    let query_watchdog = QueryWatchdogHandlerImpl {
+        state: state.clone(),
+    };
 
     endpoint
         .bind(enrichment.serve())
@@ -53,4 +58,5 @@ pub fn bind(
         .bind(model_catalogue.serve())
         .bind(agent_reaper.serve())
         .bind(agentic_query.serve())
+        .bind(query_watchdog.serve())
 }
