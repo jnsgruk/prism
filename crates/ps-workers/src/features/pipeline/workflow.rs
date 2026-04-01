@@ -13,7 +13,7 @@ use crate::features::reasoning::embedding::EmbeddingHandlerClient;
 use crate::features::reasoning::enrichment::EnrichmentHandlerClient;
 use crate::features::reasoning::insights::InsightsHandlerClient;
 use crate::infra::SharedState;
-use crate::infra::run_lifecycle::terminal_err;
+use crate::infra::run_lifecycle::{journaled, journaled_value, terminal_err};
 
 use super::stages::{
     HandlerResult, StageStatus, build_initial_stages, derive_pipeline_status,
@@ -65,50 +65,33 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
         // 1. Create pipeline record in DB (journaled)
         let repos = self.state.repos.clone();
         let invocation_id = ctx.invocation_id().to_string();
-        ctx.run(move || {
-            let repos = repos.clone();
-            let invocation_id = invocation_id.clone();
-            async move {
-                repos
-                    .activity
-                    .create_pipeline(pipeline_id, Some(&invocation_id))
-                    .await
-                    .map_err(terminal_err("failed to create pipeline record"))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("create_pipeline")
-        .await?;
+        journaled!(ctx, "create_pipeline", [repos, invocation_id], {
+            repos
+                .activity
+                .create_pipeline(pipeline_id, Some(&invocation_id))
+                .await
+                .map_err(terminal_err("failed to create pipeline record"))?;
+        });
 
         // 2. Load all enabled sources (journaled)
         let repos = self.state.repos.clone();
-        let sources: Vec<SourceInfo> = ctx
-            .run(move || {
-                let repos = repos.clone();
-                async move {
-                    let configs = repos
-                        .config
-                        .list_sources()
-                        .await
-                        .map_err(terminal_err("failed to load sources"))?;
-                    Ok(Json::from(
-                        configs
-                            .into_iter()
-                            .filter(|c| c.enabled)
-                            .map(|c| {
-                                let source_type_str = c.source_type.to_string();
-                                SourceInfo {
-                                    name: c.name,
-                                    source_type: source_type_str,
-                                }
-                            })
-                            .collect::<Vec<_>>(),
-                    ))
-                }
-            })
-            .name("load_sources")
-            .await?
-            .into_inner();
+        let sources: Vec<SourceInfo> = journaled_value!(ctx, "load_sources", [repos], {
+            repos
+                .config
+                .list_sources()
+                .await
+                .map_err(terminal_err("failed to load sources"))?
+                .into_iter()
+                .filter(|c| c.enabled)
+                .map(|c| {
+                    let source_type_str = c.source_type.to_string();
+                    SourceInfo {
+                        name: c.name,
+                        source_type: source_type_str,
+                    }
+                })
+                .collect::<Vec<_>>()
+        });
 
         let has_github = sources.iter().any(|s| s.source_type == "github");
         let has_discourse = sources
@@ -300,21 +283,13 @@ impl IngestionPipelineWorkflowImpl {
         let repos = self.state.repos.clone();
         let stage = current_stage.to_string();
         let stages_clone = stages.clone();
-        ctx.run(move || {
-            let repos = repos.clone();
-            let stage = stage.clone();
-            let stages_clone = stages_clone.clone();
-            async move {
-                repos
-                    .activity
-                    .update_pipeline_stage(pipeline_id, &stage, &stages_clone)
-                    .await
-                    .map_err(terminal_err("failed to persist stage update"))?;
-                Ok(Json::from(()))
-            }
-        })
-        .name("update_stage")
-        .await?;
+        journaled!(ctx, "update_stage", [repos, stage, stages_clone], {
+            repos
+                .activity
+                .update_pipeline_stage(pipeline_id, &stage, &stages_clone)
+                .await
+                .map_err(terminal_err("failed to persist stage update"))?;
+        });
         Ok(())
     }
 
@@ -466,12 +441,11 @@ impl IngestionPipelineWorkflowImpl {
         let status_owned = status.to_string();
         let stages_clone = stages.clone();
         let error_owned = error.map(str::to_string);
-        ctx.run(move || {
-            let repos = repos.clone();
-            let status_owned = status_owned.clone();
-            let stages_clone = stages_clone.clone();
-            let error_owned = error_owned.clone();
-            async move {
+        journaled!(
+            ctx,
+            "finalize_pipeline",
+            [repos, status_owned, stages_clone, error_owned],
+            {
                 repos
                     .activity
                     .complete_pipeline(
@@ -482,11 +456,8 @@ impl IngestionPipelineWorkflowImpl {
                     )
                     .await
                     .map_err(terminal_err("failed to finalize pipeline"))?;
-                Ok(Json::from(()))
             }
-        })
-        .name("finalize_pipeline")
-        .await?;
+        );
 
         info!(pipeline_id = %pipeline_id, status = status, "pipeline completed");
 
