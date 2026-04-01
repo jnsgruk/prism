@@ -442,14 +442,17 @@ impl ReasoningRepo {
     }
 
     /// Atomically claim a conversation for query execution.
-    /// Returns `true` if the claim succeeded (status was `idle`),
+    /// Returns `true` if the claim succeeded (status was not active),
     /// `false` if another request already claimed it.
+    ///
+    /// Any terminal state (`idle`, `completed`, `failed`) is claimable.
+    /// Only `pending` and `running` block new queries.
     pub async fn try_claim_query(&self, conversation_id: Uuid) -> Result<bool, Error> {
         let result: sqlx::postgres::PgQueryResult = sqlx::query!(
             r#"
             UPDATE reasoning.conversations
             SET query_status = 'pending', last_activity_at = now()
-            WHERE id = $1 AND query_status = 'idle'
+            WHERE id = $1 AND query_status NOT IN ('pending', 'running')
             "#,
             conversation_id,
         )
