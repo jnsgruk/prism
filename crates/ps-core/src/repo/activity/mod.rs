@@ -1,5 +1,6 @@
 mod contributions;
 mod invocations;
+mod pipelines;
 mod runs;
 mod status;
 mod watermarks;

@@ -613,3 +613,133 @@ define_repo_test!(reset_all_clears_everything, |repos, _pool| async move {
             .is_none()
     );
 });
+
+// ---------------------------------------------------------------------------
+// Pipelines
+// ---------------------------------------------------------------------------
+
+define_repo_test!(create_pipeline_and_retrieve, |repos, _pool| async move {
+    let id = Uuid::now_v7();
+    let pipeline = repos
+        .activity
+        .create_pipeline(id, Some("inv-123"))
+        .await
+        .unwrap();
+
+    assert_eq!(pipeline.id, id);
+    assert_eq!(pipeline.status, "running");
+    assert!(pipeline.current_stage.is_none());
+    assert!(pipeline.completed_at.is_none());
+    assert_eq!(pipeline.current_invocation_id.as_deref(), Some("inv-123"));
+    assert_eq!(pipeline.stages, serde_json::json!({}));
+
+    let latest = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
+    assert_eq!(latest.id, id);
+    assert_eq!(latest.status, "running");
+});
+
+define_repo_test!(update_pipeline_stage_advances, |repos, _pool| async move {
+    let id = Uuid::now_v7();
+    repos.activity.create_pipeline(id, None).await.unwrap();
+
+    let stages = serde_json::json!({
+        "team_sync": { "status": "completed" },
+        "ingestion": { "status": "running" }
+    });
+    repos
+        .activity
+        .update_pipeline_stage(id, "ingestion", &stages)
+        .await
+        .unwrap();
+
+    let pipeline = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
+    assert_eq!(pipeline.current_stage.as_deref(), Some("ingestion"));
+    assert_eq!(pipeline.stages["team_sync"]["status"], "completed");
+    assert_eq!(pipeline.stages["ingestion"]["status"], "running");
+});
+
+define_repo_test!(complete_pipeline_sets_status, |repos, _pool| async move {
+    let id = Uuid::now_v7();
+    repos
+        .activity
+        .create_pipeline(id, Some("inv-456"))
+        .await
+        .unwrap();
+
+    let stages = serde_json::json!({
+        "ingestion": { "status": "completed" },
+        "metrics": { "status": "completed" }
+    });
+    repos
+        .activity
+        .complete_pipeline(id, "completed", &stages, None)
+        .await
+        .unwrap();
+
+    let pipeline = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
+    assert_eq!(pipeline.status, "completed");
+    assert!(pipeline.completed_at.is_some());
+    assert!(pipeline.current_invocation_id.is_none());
+    assert!(pipeline.error.is_none());
+
+    // Test failed status with error
+    let id2 = Uuid::now_v7();
+    repos.activity.create_pipeline(id2, None).await.unwrap();
+
+    repos
+        .activity
+        .complete_pipeline(
+            id2,
+            "failed",
+            &serde_json::json!({}),
+            Some("all handlers failed"),
+        )
+        .await
+        .unwrap();
+
+    let pipeline = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
+    assert_eq!(pipeline.status, "failed");
+    assert_eq!(pipeline.error.as_deref(), Some("all handlers failed"));
+});
+
+define_repo_test!(list_recent_pipelines_ordered, |repos, _pool| async move {
+    // Create 3 pipelines
+    for _ in 0..3 {
+        let id = Uuid::now_v7();
+        repos.activity.create_pipeline(id, None).await.unwrap();
+        repos
+            .activity
+            .complete_pipeline(id, "completed", &serde_json::json!({}), None)
+            .await
+            .unwrap();
+    }
+
+    let recent = repos.activity.list_recent_pipelines(10).await.unwrap();
+    assert_eq!(recent.len(), 3);
+
+    // Verify ordering: most recent first
+    for pair in recent.windows(2) {
+        assert!(pair[0].started_at >= pair[1].started_at);
+    }
+
+    // Verify limit
+    let limited = repos.activity.list_recent_pipelines(2).await.unwrap();
+    assert_eq!(limited.len(), 2);
+});
+
+define_repo_test!(has_active_pipeline_check, |repos, _pool| async move {
+    assert!(!repos.activity.has_active_pipeline().await.unwrap());
+
+    let id = Uuid::now_v7();
+    repos.activity.create_pipeline(id, None).await.unwrap();
+
+    assert!(repos.activity.has_active_pipeline().await.unwrap());
+
+    repos
+        .activity
+        .complete_pipeline(id, "completed", &serde_json::json!({}), None)
+        .await
+        .unwrap();
+
+    assert!(!repos.activity.has_active_pipeline().await.unwrap());
+});
