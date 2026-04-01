@@ -13,7 +13,9 @@ use crate::features::reasoning::embedding::EmbeddingHandlerClient;
 use crate::features::reasoning::enrichment::EnrichmentHandlerClient;
 use crate::features::reasoning::insights::InsightsHandlerClient;
 use crate::infra::SharedState;
-use crate::infra::run_lifecycle::{journaled, journaled_value, terminal_err};
+use crate::infra::run_lifecycle::{
+    complete_run, create_run, fail_run, journaled, journaled_value, terminal_err,
+};
 
 use super::stages::{
     HandlerResult, StageStatus, build_initial_stages, derive_pipeline_status,
@@ -60,7 +62,24 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
             .parse()
             .map_err(terminal_err("invalid pipeline ID"))?;
 
-        info!(pipeline_id = %pipeline_id, "starting pipeline");
+        // Create a run record so the pipeline appears in handler runs UI
+        let run_id = create_run!(
+            ctx,
+            self.state.repos,
+            "_pipeline",
+            "IngestionPipelineWorkflow",
+            "run"
+        )?;
+
+        let span = tracing::info_span!(
+            "handler",
+            handler = "IngestionPipelineWorkflow",
+            run_id = %run_id,
+            pipeline_id = %pipeline_id,
+        );
+        let _guard = span.enter();
+
+        info!("starting pipeline");
 
         // 1. Create pipeline record in DB (journaled)
         let repos = self.state.repos.clone();
@@ -115,7 +134,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 .await?;
             if self.is_cancelled(&ctx).await {
                 return self
-                    .finalize_cancelled(pipeline_id, &mut stages, &ctx)
+                    .finalize_cancelled(pipeline_id, run_id, &mut stages, &ctx)
                     .await;
             }
         }
@@ -129,6 +148,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
             return self
                 .finalize(
                     pipeline_id,
+                    run_id,
                     &mut stages,
                     &ctx,
                     "failed",
@@ -138,7 +158,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
         }
         if self.is_cancelled(&ctx).await {
             return self
-                .finalize_cancelled(pipeline_id, &mut stages, &ctx)
+                .finalize_cancelled(pipeline_id, run_id, &mut stages, &ctx)
                 .await;
         }
 
@@ -161,8 +181,15 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
             _ => None,
         };
 
-        self.finalize(pipeline_id, &mut stages, &ctx, status, error_msg.as_deref())
-            .await
+        self.finalize(
+            pipeline_id,
+            run_id,
+            &mut stages,
+            &ctx,
+            status,
+            error_msg.as_deref(),
+        )
+        .await
     }
 
     async fn get_status(
@@ -429,6 +456,7 @@ impl IngestionPipelineWorkflowImpl {
     async fn finalize(
         &self,
         pipeline_id: Uuid,
+        run_id: Uuid,
         stages: &mut serde_json::Value,
         ctx: &WorkflowContext<'_>,
         status: &str,
@@ -459,7 +487,18 @@ impl IngestionPipelineWorkflowImpl {
             }
         );
 
-        info!(pipeline_id = %pipeline_id, status = status, "pipeline completed");
+        // Complete or fail the handler run record
+        match status {
+            "failed" => {
+                let err_msg = error.unwrap_or("pipeline failed");
+                fail_run!(ctx, self.state.repos, run_id, "_pipeline", err_msg);
+            }
+            _ => {
+                complete_run!(ctx, self.state.repos, run_id, "_pipeline", 0i32);
+            }
+        }
+
+        info!(status = status, "pipeline completed");
 
         Ok(Json(PipelineResult {
             pipeline_id: pipeline_id.to_string(),
@@ -471,11 +510,12 @@ impl IngestionPipelineWorkflowImpl {
     async fn finalize_cancelled(
         &self,
         pipeline_id: Uuid,
+        run_id: Uuid,
         stages: &mut serde_json::Value,
         ctx: &WorkflowContext<'_>,
     ) -> Result<Json<PipelineResult>, TerminalError> {
         mark_remaining_cancelled(stages);
-        self.finalize(pipeline_id, stages, ctx, "cancelled", None)
+        self.finalize(pipeline_id, run_id, stages, ctx, "cancelled", None)
             .await
     }
 }
