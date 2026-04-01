@@ -1,7 +1,6 @@
 use restate_sdk::prelude::TerminalError;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use time::OffsetDateTime;
 
 /// Status of a pipeline stage or handler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,14 +101,13 @@ pub fn build_initial_stages(
 }
 
 /// Update a stage to "running" in the stages JSONB.
+///
+/// NOTE: No timestamps here — `OffsetDateTime::now_utc()` is non-deterministic
+/// and causes Restate error 570 on journal replay. Timestamps are added in the
+/// DB persist layer instead (inside journaled blocks).
 pub fn mark_stage_running(stages: &mut serde_json::Value, stage_name: &str) {
     if let Some(stage) = stages.get_mut(stage_name) {
         stage["status"] = json!("running");
-        stage["started_at"] = json!(
-            OffsetDateTime::now_utc()
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_default()
-        );
     }
 }
 
@@ -123,11 +121,6 @@ pub fn mark_stage_complete(
 
     if let Some(stage) = stages.get_mut(stage_name) {
         stage["status"] = json!(overall.as_str());
-        stage["completed_at"] = json!(
-            OffsetDateTime::now_utc()
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_default()
-        );
 
         let handler_json: Vec<serde_json::Value> = results
             .iter()
@@ -447,7 +440,8 @@ mod tests {
         });
         mark_stage_running(&mut stages, "ingestion");
         assert_eq!(stages["ingestion"]["status"], "running");
-        assert!(stages["ingestion"]["started_at"].is_string());
+        // No started_at — timestamps are non-deterministic and break Restate replay
+        assert!(stages["ingestion"].get("started_at").is_none());
     }
 
     #[test]
@@ -472,7 +466,8 @@ mod tests {
         mark_stage_complete(&mut stages, "ingestion", &results);
 
         assert_eq!(stages["ingestion"]["status"], "completed");
-        assert!(stages["ingestion"]["completed_at"].is_string());
+        // No completed_at — timestamps are non-deterministic and break Restate replay
+        assert!(stages["ingestion"].get("completed_at").is_none());
         let handlers = stages["ingestion"]["handlers"].as_array().unwrap();
         assert_eq!(handlers.len(), 2);
         assert_eq!(handlers[0]["items"], 142);

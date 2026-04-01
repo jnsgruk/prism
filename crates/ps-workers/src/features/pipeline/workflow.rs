@@ -1,3 +1,6 @@
+use std::pin::Pin;
+
+use futures::future::join_all;
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -235,7 +238,11 @@ impl IngestionPipelineWorkflowImpl {
         Ok(())
     }
 
-    /// Run ingestion for all sources. Returns `true` if all handlers failed.
+    /// Run ingestion for all sources concurrently. Returns `true` if all handlers failed.
+    ///
+    /// All handlers are dispatched at once so each creates its own run record
+    /// immediately — source rows show "collecting" in the UI, consistent with
+    /// how individual triggers work.
     async fn run_ingestion(
         &self,
         pipeline_id: Uuid,
@@ -243,38 +250,47 @@ impl IngestionPipelineWorkflowImpl {
         sources: &[SourceInfo],
         ctx: &WorkflowContext<'_>,
     ) -> Result<bool, TerminalError> {
+        type CallFut<'a> = Pin<Box<dyn Future<Output = Result<(), TerminalError>> + Send + 'a>>;
+
         mark_stage_running(stages, "ingestion");
         self.update_state(ctx, pipeline_id, "ingestion", stages)
             .await?;
 
-        let mut results = Vec::new();
+        let mut calls: Vec<CallFut<'_>> = Vec::new();
+        let mut names: Vec<String> = Vec::new();
+
         for source in sources {
-            let result = match source.source_type.as_str() {
-                "github" => {
+            let call: CallFut<'_> = match source.source_type.as_str() {
+                "github" => Box::pin(
                     ctx.object_client::<GithubIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
-                        .call()
-                        .await
-                }
-                "jira" => {
+                        .call(),
+                ),
+                "jira" => Box::pin(
                     ctx.object_client::<JiraIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
-                        .call()
-                        .await
-                }
-                p if p.starts_with("discourse") => {
+                        .call(),
+                ),
+                p if p.starts_with("discourse") => Box::pin(
                     ctx.object_client::<DiscourseIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
-                        .call()
-                        .await
-                }
+                        .call(),
+                ),
                 _ => {
                     warn!(source_type = %source.source_type, "unknown platform, skipping");
                     continue;
                 }
             };
-            results.push(call_result(source.name.clone(), &result));
+            calls.push(call);
+            names.push(source.name.clone());
         }
+
+        let outcomes = join_all(calls).await;
+        let results: Vec<_> = names
+            .into_iter()
+            .zip(outcomes.iter())
+            .map(|(name, result)| call_result(name, result))
+            .collect();
 
         mark_stage_complete(stages, "ingestion", &results);
         self.update_state(ctx, pipeline_id, "ingestion", stages)
