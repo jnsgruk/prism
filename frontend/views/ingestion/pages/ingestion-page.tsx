@@ -16,6 +16,7 @@ import {
   useListRuns,
   useTriggerRun,
 } from "@/views/ingestion/hooks/use-ingestion";
+import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
 
 const POLL_INTERVAL_BURST = 1_000;
 const POLL_INTERVAL_ACTIVE = 2_000;
@@ -33,6 +34,8 @@ const IngestionPage = (): React.ReactElement => {
   }, []);
 
   const isBursting = burstUntil > Date.now();
+  const { current: currentPipeline } = useCurrentPipeline();
+  const pipelineRunning = currentPipeline?.status === "running";
 
   const { data: sources, isLoading: sourcesLoading } = useIngestionStatus({
     refetchInterval: (query) => {
@@ -41,7 +44,7 @@ const IngestionPage = (): React.ReactElement => {
       const hasActive = data?.some(
         (s) => s.state === SourceState.COLLECTING || s.state === SourceState.WAITING,
       );
-      return hasActive ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
+      return hasActive || pipelineRunning ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
     },
   });
 
