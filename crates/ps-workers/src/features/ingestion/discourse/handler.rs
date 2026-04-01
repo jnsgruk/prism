@@ -3,11 +3,9 @@ use ps_core::models::RateLimitInfo;
 use restate_sdk::prelude::*;
 use tracing::info;
 
-use crate::features::identity_resolution::handler::IdentityResolutionHandlerClient;
 use crate::features::ingestion::lib::{
     IngestionSpec, ProgressTracker, execute_ingestion, load_ingestion_source_config,
 };
-use crate::features::metrics::handler::MetricsComputeHandlerClient;
 use crate::infra::SharedState;
 
 pub struct DiscourseIngestionHandlerImpl {
@@ -49,14 +47,7 @@ impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
             &config,
             None,
             &mut tracker,
-            |ctx| {
-                ctx.service_client::<MetricsComputeHandlerClient>()
-                    .compute_current_periods()
-                    .send();
-                ctx.service_client::<IdentityResolutionHandlerClient>()
-                    .resolve_identities()
-                    .send();
-            },
+            |_ctx| {},
         )
         .await
     }
@@ -81,14 +72,7 @@ impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
             &config,
             Some(since_date),
             &mut tracker,
-            |ctx| {
-                ctx.service_client::<MetricsComputeHandlerClient>()
-                    .compute_current_periods()
-                    .send();
-                ctx.service_client::<IdentityResolutionHandlerClient>()
-                    .resolve_identities()
-                    .send();
-            },
+            |_ctx| {},
         )
         .await
     }

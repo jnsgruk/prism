@@ -195,6 +195,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let endpoint = ps_workers::features::identity_resolution::bind(endpoint, &state);
         let endpoint = ps_workers::features::metrics::bind(endpoint, &state);
         let endpoint = ps_workers::features::reasoning::bind(endpoint, &state, ai_router);
+        let endpoint = ps_workers::features::pipeline::bind(endpoint, &state);
 
         HttpServer::new(endpoint.build())
             .listen_and_serve(restate_addr)

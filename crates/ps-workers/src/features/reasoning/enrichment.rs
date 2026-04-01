@@ -12,8 +12,6 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use super::embedding::EmbeddingHandlerClient;
-use super::insights::InsightsHandlerClient;
 use crate::infra::SharedState;
 use crate::infra::run_lifecycle::{
     complete_run, create_run, fail_run, journaled_value, terminal_err,
@@ -264,19 +262,8 @@ impl EnrichmentHandlerImpl {
                 "complete"
             );
 
-            // Trigger downstream handlers after successful enrichment.
-            if total_processed > 0 {
-                ctx.service_client::<InsightsHandlerClient>()
-                    .compute_current_periods()
-                    .send();
-                debug!("triggered InsightsHandler after enrichment cycle");
-
-                // Trigger embedding handler (fire-and-forget)
-                ctx.service_client::<EmbeddingHandlerClient>()
-                    .run_cycle()
-                    .send();
-                debug!("triggered EmbeddingHandler after enrichment cycle");
-            }
+            // Downstream handlers (insights, embedding) are now triggered by the
+            // pipeline workflow rather than directly from here.
         }
 
         Ok(())

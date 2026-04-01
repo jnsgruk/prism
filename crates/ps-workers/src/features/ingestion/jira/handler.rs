@@ -6,7 +6,6 @@ use tracing::info;
 use crate::features::ingestion::lib::{
     IngestionSpec, ProgressTracker, execute_ingestion, load_ingestion_source_config,
 };
-use crate::features::metrics::handler::MetricsComputeHandlerClient;
 use crate::infra::SharedState;
 
 pub struct JiraIngestionHandlerImpl {
@@ -48,11 +47,7 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
             &config,
             None,
             &mut tracker,
-            |ctx| {
-                ctx.service_client::<MetricsComputeHandlerClient>()
-                    .compute_current_periods()
-                    .send();
-            },
+            |_ctx| {},
         )
         .await
     }
@@ -77,11 +72,7 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
             &config,
             Some(since_date),
             &mut tracker,
-            |ctx| {
-                ctx.service_client::<MetricsComputeHandlerClient>()
-                    .compute_current_periods()
-                    .send();
-            },
+            |_ctx| {},
         )
         .await
     }
