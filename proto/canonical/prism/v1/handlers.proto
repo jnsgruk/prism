@@ -30,6 +30,13 @@ service HandlersService {
   rpc TriggerHandler(TriggerHandlerRequest) returns (TriggerHandlerResponse);
   // CancelHandlerRun cancels an active run by its Restate invocation ID.
   rpc CancelHandlerRun(CancelHandlerRunRequest) returns (CancelHandlerRunResponse);
+
+  // GetPipelineStatus returns the current/most recent pipeline and recent history.
+  rpc GetPipelineStatus(GetPipelineStatusRequest) returns (GetPipelineStatusResponse);
+  // TriggerPipeline starts a full pipeline run (team sync → ingestion → processing).
+  rpc TriggerPipeline(TriggerPipelineRequest) returns (TriggerPipelineResponse);
+  // CancelPipeline cooperatively cancels a running pipeline after the current stage.
+  rpc CancelPipeline(CancelPipelineRequest) returns (CancelPipelineResponse);
 }
 
 // SourceState represents the current operational state of an ingestion source.
@@ -178,3 +185,42 @@ message CancelHandlerRunRequest {
 }
 
 message CancelHandlerRunResponse {}
+
+// ---------------------------------------------------------------------------
+// Pipeline orchestration
+// ---------------------------------------------------------------------------
+
+message GetPipelineStatusRequest {}
+
+message GetPipelineStatusResponse {
+  // The most recent pipeline (running or just completed). Absent if none exist.
+  optional PipelineInfo current = 1;
+  // Recent completed pipelines, ordered by started_at DESC.
+  repeated PipelineInfo recent = 2;
+}
+
+// PipelineInfo describes a single pipeline run.
+message PipelineInfo {
+  string id = 1;
+  string status = 2;
+  string current_stage = 3;
+  google.protobuf.Timestamp started_at = 4;
+  optional google.protobuf.Timestamp completed_at = 5;
+  // Structured stage progress as JSON (matches activity.pipelines.stages JSONB).
+  string stages_json = 6;
+  optional string error = 7;
+}
+
+message TriggerPipelineRequest {}
+
+message TriggerPipelineResponse {
+  // Pipeline ID (also used as the Restate workflow ID).
+  string pipeline_id = 1;
+}
+
+message CancelPipelineRequest {
+  // Pipeline ID to cancel.
+  string pipeline_id = 1;
+}
+
+message CancelPipelineResponse {}

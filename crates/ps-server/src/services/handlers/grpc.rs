@@ -2,10 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use ps_proto::canonical::prism::v1::handlers_service_server::HandlersService;
 use ps_proto::canonical::prism::v1::{
-    ActiveRun, CancelHandlerRunRequest, CancelHandlerRunResponse, CancelRunRequest,
-    CancelRunResponse, GetStatusRequest, GetStatusResponse, HandlerRun, ListHandlersRequest,
-    ListHandlersResponse, ListRunsRequest, ListRunsResponse, SourceStatus, TriggerBackfillRequest,
-    TriggerBackfillResponse, TriggerHandlerRequest, TriggerHandlerResponse, TriggerRunRequest,
+    ActiveRun, CancelHandlerRunRequest, CancelHandlerRunResponse, CancelPipelineRequest,
+    CancelPipelineResponse, CancelRunRequest, CancelRunResponse, GetPipelineStatusRequest,
+    GetPipelineStatusResponse, GetStatusRequest, GetStatusResponse, HandlerRun,
+    ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse, PipelineInfo,
+    SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest,
+    TriggerHandlerResponse, TriggerPipelineRequest, TriggerPipelineResponse, TriggerRunRequest,
     TriggerRunResponse, TriggerTeamSyncRequest, TriggerTeamSyncResponse,
 };
 use tonic::{Request, Response, Status};
@@ -18,6 +20,18 @@ use super::{
 use crate::services::common::{
     db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp,
 };
+
+fn pipeline_to_proto(p: &ps_core::models::Pipeline) -> PipelineInfo {
+    PipelineInfo {
+        id: p.id.to_string(),
+        status: p.status.clone(),
+        current_stage: p.current_stage.clone().unwrap_or_default(),
+        started_at: Some(to_timestamp(p.started_at)),
+        completed_at: p.completed_at.map(to_timestamp),
+        stages_json: p.stages.to_string(),
+        error: p.error.clone(),
+    }
+}
 
 #[tonic::async_trait]
 impl HandlersService for HandlersServiceImpl {
@@ -612,5 +626,125 @@ impl HandlersService for HandlersServiceImpl {
         );
 
         Ok(Response::new(CancelHandlerRunResponse {}))
+    }
+
+    async fn get_pipeline_status(
+        &self,
+        request: Request<GetPipelineStatusRequest>,
+    ) -> Result<Response<GetPipelineStatusResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let latest = self
+            .repos
+            .activity
+            .get_latest_pipeline()
+            .await
+            .map_err(db_err)?;
+
+        let (current, recent) = match latest {
+            Some(ref p) if p.status == "running" => {
+                // Current is the running pipeline; recent excludes it
+                let all = self
+                    .repos
+                    .activity
+                    .list_recent_pipelines(11)
+                    .await
+                    .map_err(db_err)?;
+                let recent: Vec<_> = all.into_iter().filter(|r| r.id != p.id).take(10).collect();
+                (
+                    Some(pipeline_to_proto(p)),
+                    recent.iter().map(pipeline_to_proto).collect(),
+                )
+            }
+            _ => {
+                let all = self
+                    .repos
+                    .activity
+                    .list_recent_pipelines(10)
+                    .await
+                    .map_err(db_err)?;
+                (None, all.iter().map(pipeline_to_proto).collect())
+            }
+        };
+
+        Ok(Response::new(GetPipelineStatusResponse { current, recent }))
+    }
+
+    async fn trigger_pipeline(
+        &self,
+        request: Request<TriggerPipelineRequest>,
+    ) -> Result<Response<TriggerPipelineResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        // Guard: no concurrent pipelines
+        let active = self
+            .repos
+            .activity
+            .has_active_pipeline()
+            .await
+            .map_err(db_err)?;
+        if active {
+            return Err(Status::already_exists("a pipeline is already running"));
+        }
+
+        // Generate a pipeline ID (used as the Restate workflow ID)
+        let pipeline_id = uuid::Uuid::now_v7();
+
+        // Send to Restate workflow: IngestionPipelineWorkflow/{pipeline_id}/run/send
+        let url = format!(
+            "{}/IngestionPipelineWorkflow/{pipeline_id}/run/send",
+            self.restate_url,
+        );
+
+        let _invocation_id = self.send_to_restate(&url, None).await?;
+
+        info!(%pipeline_id, "triggered pipeline via Restate");
+
+        Ok(Response::new(TriggerPipelineResponse {
+            pipeline_id: pipeline_id.to_string(),
+        }))
+    }
+
+    async fn cancel_pipeline(
+        &self,
+        request: Request<CancelPipelineRequest>,
+    ) -> Result<Response<CancelPipelineResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+
+        if req.pipeline_id.is_empty() {
+            return Err(Status::invalid_argument("pipeline_id is required"));
+        }
+
+        let pipeline_id: uuid::Uuid = req
+            .pipeline_id
+            .parse()
+            .map_err(|_| Status::invalid_argument("invalid pipeline_id"))?;
+
+        // Verify pipeline exists and is running
+        let pipeline = self
+            .repos
+            .activity
+            .get_latest_pipeline()
+            .await
+            .map_err(db_err)?
+            .filter(|p| p.id == pipeline_id && p.status == "running")
+            .ok_or_else(|| Status::not_found("no running pipeline with that ID"))?;
+
+        // Cooperative cancel: call the workflow's cancel() shared handler
+        let url = format!(
+            "{}/IngestionPipelineWorkflow/{pipeline_id}/cancel/send",
+            self.restate_url,
+        );
+        let _ = self.send_to_restate(&url, None).await;
+
+        // Also kill the Restate invocation if we have an invocation ID
+        if let Some(ref inv_id) = pipeline.current_invocation_id {
+            self.cancel_restate_invocation("_pipeline", inv_id).await;
+        }
+
+        info!(%pipeline_id, "cancelled pipeline");
+
+        Ok(Response::new(CancelPipelineResponse {}))
     }
 }

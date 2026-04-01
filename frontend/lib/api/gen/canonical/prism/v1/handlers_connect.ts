@@ -10,8 +10,12 @@
 import {
   CancelHandlerRunRequest,
   CancelHandlerRunResponse,
+  CancelPipelineRequest,
+  CancelPipelineResponse,
   CancelRunRequest,
   CancelRunResponse,
+  GetPipelineStatusRequest,
+  GetPipelineStatusResponse,
   GetStatusRequest,
   GetStatusResponse,
   ListHandlersRequest,
@@ -22,6 +26,8 @@ import {
   TriggerBackfillResponse,
   TriggerHandlerRequest,
   TriggerHandlerResponse,
+  TriggerPipelineRequest,
+  TriggerPipelineResponse,
   TriggerRunRequest,
   TriggerRunResponse,
   TriggerTeamSyncRequest,
@@ -135,6 +141,39 @@ export const HandlersService = {
       name: "CancelHandlerRun",
       I: CancelHandlerRunRequest,
       O: CancelHandlerRunResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetPipelineStatus returns the current/most recent pipeline and recent history.
+     *
+     * @generated from rpc canonical.prism.v1.HandlersService.GetPipelineStatus
+     */
+    getPipelineStatus: {
+      name: "GetPipelineStatus",
+      I: GetPipelineStatusRequest,
+      O: GetPipelineStatusResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * TriggerPipeline starts a full pipeline run (team sync → ingestion → processing).
+     *
+     * @generated from rpc canonical.prism.v1.HandlersService.TriggerPipeline
+     */
+    triggerPipeline: {
+      name: "TriggerPipeline",
+      I: TriggerPipelineRequest,
+      O: TriggerPipelineResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CancelPipeline cooperatively cancels a running pipeline after the current stage.
+     *
+     * @generated from rpc canonical.prism.v1.HandlersService.CancelPipeline
+     */
+    cancelPipeline: {
+      name: "CancelPipeline",
+      I: CancelPipelineRequest,
+      O: CancelPipelineResponse,
       kind: MethodKind.Unary,
     },
   },

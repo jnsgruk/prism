@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file canonical/prism/v1/handlers.proto.
  */
 export const file_canonical_prism_v1_handlers: GenFile /*@__PURE__*/ = fileDesc(
-  "CiFjYW5vbmljYWwvcHJpc20vdjEvaGFuZGxlcnMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKzAwoMU291cmNlU3RhdHVzEgwKBG5hbWUYASABKAkSMQoLc291cmNlX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SLgoFc3RhdGUYAyABKA4yHy5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkwKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIzLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5EhUKDXByb2dyZXNzX2pzb24YCCABKAkaNAoSUmF0ZUxpbWl0SW5mb0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCCwoJX2xhc3RfcnVuQgsKCV9uZXh0X3J1biLrAgoKSGFuZGxlclJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESLQoGc3RhdHVzGAUgASgOMh0uY2Fub25pY2FsLnByaXNtLnYxLlJ1blN0YXR1cxIXCg9pdGVtc19jb2xsZWN0ZWQYBiABKAUSGgoNZXJyb3JfbWVzc2FnZRgHIAEoCUgBiAEBEiAKGHJhdGVfbGltaXRfd2FpdHNfc2Vjb25kcxgIIAEoBRIUCgxoYW5kbGVyX25hbWUYCSABKAkSFgoOaGFuZGxlcl9tZXRob2QYCiABKAlCDwoNX2NvbXBsZXRlZF9hdEIQCg5fZXJyb3JfbWVzc2FnZSISChBHZXRTdGF0dXNSZXF1ZXN0IkYKEUdldFN0YXR1c1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdHVzIn8KD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBEhYKDmluZ2VzdGlvbl9vbmx5GAMgASgIQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIkAKEExpc3RSdW5zUmVzcG9uc2USLAoEcnVucxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuIigKEVRyaWdnZXJSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhQKElRyaWdnZXJSdW5SZXNwb25zZSJBChZUcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJEhIKCnNpbmNlX2RhdGUYAiABKAkiGQoXVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2UiJwoQQ2FuY2VsUnVuUmVxdWVzdBITCgtzb3VyY2VfbmFtZRgBIAEoCSITChFDYW5jZWxSdW5SZXNwb25zZSItChZUcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhkKF1RyaWdnZXJUZWFtU3luY1Jlc3BvbnNlInUKCUFjdGl2ZVJ1bhIOCgZydW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEhAKA2tleRgDIAEoCUgAiAEBEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgYKBF9rZXkingEKC0hhbmRsZXJJbmZvEgwKBG5hbWUYASABKAkSDwoHbWV0aG9kcxgCIAMoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIUCgxyZXF1aXJlc19rZXkYBCABKAgSNgoKYWN0aXZlX3J1bhgFIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5BY3RpdmVSdW5IAIgBAUINCgtfYWN0aXZlX3J1biIVChNMaXN0SGFuZGxlcnNSZXF1ZXN0IkkKFExpc3RIYW5kbGVyc1Jlc3BvbnNlEjEKCGhhbmRsZXJzGAEgAygLMh8uY2Fub25pY2FsLnByaXNtLnYxLkhhbmRsZXJJbmZvImwKFVRyaWdnZXJIYW5kbGVyUmVxdWVzdBIUCgxoYW5kbGVyX25hbWUYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA2tleRgDIAEoCRIUCgdwYXlsb2FkGAQgASgJSACIAQFCCgoIX3BheWxvYWQiLwoWVHJpZ2dlckhhbmRsZXJSZXNwb25zZRIVCg1pbnZvY2F0aW9uX2lkGAEgASgJIikKF0NhbmNlbEhhbmRsZXJSdW5SZXF1ZXN0Eg4KBnJ1bl9pZBgBIAEoCSIaChhDYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UqkQEKC1NvdXJjZVN0YXRlEhwKGFNPVVJDRV9TVEFURV9VTlNQRUNJRklFRBAAEhUKEVNPVVJDRV9TVEFURV9JRExFEAESGwoXU09VUkNFX1NUQVRFX0NPTExFQ1RJTkcQAhIYChRTT1VSQ0VfU1RBVEVfV0FJVElORxADEhYKElNPVVJDRV9TVEFURV9FUlJPUhAEMowHCg9IYW5kbGVyc1NlcnZpY2USWAoJR2V0U3RhdHVzEiQuY2Fub25pY2FsLnByaXNtLnYxLkdldFN0YXR1c1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuR2V0U3RhdHVzUmVzcG9uc2USVQoITGlzdFJ1bnMSIy5jYW5vbmljYWwucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GiQuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RSdW5zUmVzcG9uc2USWwoKVHJpZ2dlclJ1bhIlLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVxdWVzdBomLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USagoPVHJpZ2dlckJhY2tmaWxsEiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2USWAoJQ2FuY2VsUnVuEiQuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFJ1blJlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsUnVuUmVzcG9uc2USagoPVHJpZ2dlclRlYW1TeW5jEiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJUZWFtU3luY1JlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2USYQoMTGlzdEhhbmRsZXJzEicuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RIYW5kbGVyc1JlcXVlc3QaKC5jYW5vbmljYWwucHJpc20udjEuTGlzdEhhbmRsZXJzUmVzcG9uc2USZwoOVHJpZ2dlckhhbmRsZXISKS5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJIYW5kbGVyUmVzcG9uc2USbQoQQ2FuY2VsSGFuZGxlclJ1bhIrLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxIYW5kbGVyUnVuUmVxdWVzdBosLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2ViBnByb3RvMw",
+  "CiFjYW5vbmljYWwvcHJpc20vdjEvaGFuZGxlcnMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKzAwoMU291cmNlU3RhdHVzEgwKBG5hbWUYASABKAkSMQoLc291cmNlX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SLgoFc3RhdGUYAyABKA4yHy5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkwKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIzLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5EhUKDXByb2dyZXNzX2pzb24YCCABKAkaNAoSUmF0ZUxpbWl0SW5mb0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCCwoJX2xhc3RfcnVuQgsKCV9uZXh0X3J1biLrAgoKSGFuZGxlclJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESLQoGc3RhdHVzGAUgASgOMh0uY2Fub25pY2FsLnByaXNtLnYxLlJ1blN0YXR1cxIXCg9pdGVtc19jb2xsZWN0ZWQYBiABKAUSGgoNZXJyb3JfbWVzc2FnZRgHIAEoCUgBiAEBEiAKGHJhdGVfbGltaXRfd2FpdHNfc2Vjb25kcxgIIAEoBRIUCgxoYW5kbGVyX25hbWUYCSABKAkSFgoOaGFuZGxlcl9tZXRob2QYCiABKAlCDwoNX2NvbXBsZXRlZF9hdEIQCg5fZXJyb3JfbWVzc2FnZSISChBHZXRTdGF0dXNSZXF1ZXN0IkYKEUdldFN0YXR1c1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdHVzIn8KD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBEhYKDmluZ2VzdGlvbl9vbmx5GAMgASgIQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIkAKEExpc3RSdW5zUmVzcG9uc2USLAoEcnVucxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuIigKEVRyaWdnZXJSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhQKElRyaWdnZXJSdW5SZXNwb25zZSJBChZUcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJEhIKCnNpbmNlX2RhdGUYAiABKAkiGQoXVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2UiJwoQQ2FuY2VsUnVuUmVxdWVzdBITCgtzb3VyY2VfbmFtZRgBIAEoCSITChFDYW5jZWxSdW5SZXNwb25zZSItChZUcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhkKF1RyaWdnZXJUZWFtU3luY1Jlc3BvbnNlInUKCUFjdGl2ZVJ1bhIOCgZydW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEhAKA2tleRgDIAEoCUgAiAEBEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgYKBF9rZXkingEKC0hhbmRsZXJJbmZvEgwKBG5hbWUYASABKAkSDwoHbWV0aG9kcxgCIAMoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIUCgxyZXF1aXJlc19rZXkYBCABKAgSNgoKYWN0aXZlX3J1bhgFIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5BY3RpdmVSdW5IAIgBAUINCgtfYWN0aXZlX3J1biIVChNMaXN0SGFuZGxlcnNSZXF1ZXN0IkkKFExpc3RIYW5kbGVyc1Jlc3BvbnNlEjEKCGhhbmRsZXJzGAEgAygLMh8uY2Fub25pY2FsLnByaXNtLnYxLkhhbmRsZXJJbmZvImwKFVRyaWdnZXJIYW5kbGVyUmVxdWVzdBIUCgxoYW5kbGVyX25hbWUYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA2tleRgDIAEoCRIUCgdwYXlsb2FkGAQgASgJSACIAQFCCgoIX3BheWxvYWQiLwoWVHJpZ2dlckhhbmRsZXJSZXNwb25zZRIVCg1pbnZvY2F0aW9uX2lkGAEgASgJIikKF0NhbmNlbEhhbmRsZXJSdW5SZXF1ZXN0Eg4KBnJ1bl9pZBgBIAEoCSIaChhDYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UiGgoYR2V0UGlwZWxpbmVTdGF0dXNSZXF1ZXN0IpEBChlHZXRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlEjYKB2N1cnJlbnQYASABKAsyIC5jYW5vbmljYWwucHJpc20udjEuUGlwZWxpbmVJbmZvSACIAQESMAoGcmVjZW50GAIgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLlBpcGVsaW5lSW5mb0IKCghfY3VycmVudCLsAQoMUGlwZWxpbmVJbmZvEgoKAmlkGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIVCg1jdXJyZW50X3N0YWdlGAMgASgJEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjUKDGNvbXBsZXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARITCgtzdGFnZXNfanNvbhgGIAEoCRISCgVlcnJvchgHIAEoCUgBiAEBQg8KDV9jb21wbGV0ZWRfYXRCCAoGX2Vycm9yIhgKFlRyaWdnZXJQaXBlbGluZVJlcXVlc3QiLgoXVHJpZ2dlclBpcGVsaW5lUmVzcG9uc2USEwoLcGlwZWxpbmVfaWQYASABKAkiLAoVQ2FuY2VsUGlwZWxpbmVSZXF1ZXN0EhMKC3BpcGVsaW5lX2lkGAEgASgJIhgKFkNhbmNlbFBpcGVsaW5lUmVzcG9uc2UqkQEKC1NvdXJjZVN0YXRlEhwKGFNPVVJDRV9TVEFURV9VTlNQRUNJRklFRBAAEhUKEVNPVVJDRV9TVEFURV9JRExFEAESGwoXU09VUkNFX1NUQVRFX0NPTExFQ1RJTkcQAhIYChRTT1VSQ0VfU1RBVEVfV0FJVElORxADEhYKElNPVVJDRV9TVEFURV9FUlJPUhAEMtMJCg9IYW5kbGVyc1NlcnZpY2USWAoJR2V0U3RhdHVzEiQuY2Fub25pY2FsLnByaXNtLnYxLkdldFN0YXR1c1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuR2V0U3RhdHVzUmVzcG9uc2USVQoITGlzdFJ1bnMSIy5jYW5vbmljYWwucHJpc20udjEuTGlzdFJ1bnNSZXF1ZXN0GiQuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RSdW5zUmVzcG9uc2USWwoKVHJpZ2dlclJ1bhIlLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVxdWVzdBomLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUnVuUmVzcG9uc2USagoPVHJpZ2dlckJhY2tmaWxsEiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2USWAoJQ2FuY2VsUnVuEiQuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFJ1blJlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsUnVuUmVzcG9uc2USagoPVHJpZ2dlclRlYW1TeW5jEiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJUZWFtU3luY1JlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclRlYW1TeW5jUmVzcG9uc2USYQoMTGlzdEhhbmRsZXJzEicuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RIYW5kbGVyc1JlcXVlc3QaKC5jYW5vbmljYWwucHJpc20udjEuTGlzdEhhbmRsZXJzUmVzcG9uc2USZwoOVHJpZ2dlckhhbmRsZXISKS5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlckhhbmRsZXJSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJIYW5kbGVyUmVzcG9uc2USbQoQQ2FuY2VsSGFuZGxlclJ1bhIrLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxIYW5kbGVyUnVuUmVxdWVzdBosLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UScAoRR2V0UGlwZWxpbmVTdGF0dXMSLC5jYW5vbmljYWwucHJpc20udjEuR2V0UGlwZWxpbmVTdGF0dXNSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLkdldFBpcGVsaW5lU3RhdHVzUmVzcG9uc2USagoPVHJpZ2dlclBpcGVsaW5lEiouY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJQaXBlbGluZVJlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclBpcGVsaW5lUmVzcG9uc2USZwoOQ2FuY2VsUGlwZWxpbmUSKS5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsUGlwZWxpbmVSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFBpcGVsaW5lUmVzcG9uc2ViBnByb3RvMw",
   [file_canonical_prism_v1_common, file_google_protobuf_timestamp],
 );
 
@@ -594,6 +594,159 @@ export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse
   messageDesc(file_canonical_prism_v1_handlers, 21);
 
 /**
+ * @generated from message canonical.prism.v1.GetPipelineStatusRequest
+ */
+export type GetPipelineStatusRequest = Message<"canonical.prism.v1.GetPipelineStatusRequest"> & {};
+
+/**
+ * Describes the message canonical.prism.v1.GetPipelineStatusRequest.
+ * Use `create(GetPipelineStatusRequestSchema)` to create a new message.
+ */
+export const GetPipelineStatusRequestSchema: GenMessage<GetPipelineStatusRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 22);
+
+/**
+ * @generated from message canonical.prism.v1.GetPipelineStatusResponse
+ */
+export type GetPipelineStatusResponse = Message<"canonical.prism.v1.GetPipelineStatusResponse"> & {
+  /**
+   * The most recent pipeline (running or just completed). Absent if none exist.
+   *
+   * @generated from field: optional canonical.prism.v1.PipelineInfo current = 1;
+   */
+  current?: PipelineInfo;
+
+  /**
+   * Recent completed pipelines, ordered by started_at DESC.
+   *
+   * @generated from field: repeated canonical.prism.v1.PipelineInfo recent = 2;
+   */
+  recent: PipelineInfo[];
+};
+
+/**
+ * Describes the message canonical.prism.v1.GetPipelineStatusResponse.
+ * Use `create(GetPipelineStatusResponseSchema)` to create a new message.
+ */
+export const GetPipelineStatusResponseSchema: GenMessage<GetPipelineStatusResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 23);
+
+/**
+ * PipelineInfo describes a single pipeline run.
+ *
+ * @generated from message canonical.prism.v1.PipelineInfo
+ */
+export type PipelineInfo = Message<"canonical.prism.v1.PipelineInfo"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string current_stage = 3;
+   */
+  currentStage: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 4;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: optional google.protobuf.Timestamp completed_at = 5;
+   */
+  completedAt?: Timestamp;
+
+  /**
+   * Structured stage progress as JSON (matches activity.pipelines.stages JSONB).
+   *
+   * @generated from field: string stages_json = 6;
+   */
+  stagesJson: string;
+
+  /**
+   * @generated from field: optional string error = 7;
+   */
+  error?: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.PipelineInfo.
+ * Use `create(PipelineInfoSchema)` to create a new message.
+ */
+export const PipelineInfoSchema: GenMessage<PipelineInfo> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  24,
+);
+
+/**
+ * @generated from message canonical.prism.v1.TriggerPipelineRequest
+ */
+export type TriggerPipelineRequest = Message<"canonical.prism.v1.TriggerPipelineRequest"> & {};
+
+/**
+ * Describes the message canonical.prism.v1.TriggerPipelineRequest.
+ * Use `create(TriggerPipelineRequestSchema)` to create a new message.
+ */
+export const TriggerPipelineRequestSchema: GenMessage<TriggerPipelineRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 25);
+
+/**
+ * @generated from message canonical.prism.v1.TriggerPipelineResponse
+ */
+export type TriggerPipelineResponse = Message<"canonical.prism.v1.TriggerPipelineResponse"> & {
+  /**
+   * Pipeline ID (also used as the Restate workflow ID).
+   *
+   * @generated from field: string pipeline_id = 1;
+   */
+  pipelineId: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.TriggerPipelineResponse.
+ * Use `create(TriggerPipelineResponseSchema)` to create a new message.
+ */
+export const TriggerPipelineResponseSchema: GenMessage<TriggerPipelineResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 26);
+
+/**
+ * @generated from message canonical.prism.v1.CancelPipelineRequest
+ */
+export type CancelPipelineRequest = Message<"canonical.prism.v1.CancelPipelineRequest"> & {
+  /**
+   * Pipeline ID to cancel.
+   *
+   * @generated from field: string pipeline_id = 1;
+   */
+  pipelineId: string;
+};
+
+/**
+ * Describes the message canonical.prism.v1.CancelPipelineRequest.
+ * Use `create(CancelPipelineRequestSchema)` to create a new message.
+ */
+export const CancelPipelineRequestSchema: GenMessage<CancelPipelineRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 27);
+
+/**
+ * @generated from message canonical.prism.v1.CancelPipelineResponse
+ */
+export type CancelPipelineResponse = Message<"canonical.prism.v1.CancelPipelineResponse"> & {};
+
+/**
+ * Describes the message canonical.prism.v1.CancelPipelineResponse.
+ * Use `create(CancelPipelineResponseSchema)` to create a new message.
+ */
+export const CancelPipelineResponseSchema: GenMessage<CancelPipelineResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_handlers, 28);
+
+/**
  * SourceState represents the current operational state of an ingestion source.
  *
  * @generated from enum canonical.prism.v1.SourceState
@@ -737,5 +890,35 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof CancelHandlerRunRequestSchema;
     output: typeof CancelHandlerRunResponseSchema;
+  };
+  /**
+   * GetPipelineStatus returns the current/most recent pipeline and recent history.
+   *
+   * @generated from rpc canonical.prism.v1.HandlersService.GetPipelineStatus
+   */
+  getPipelineStatus: {
+    methodKind: "unary";
+    input: typeof GetPipelineStatusRequestSchema;
+    output: typeof GetPipelineStatusResponseSchema;
+  };
+  /**
+   * TriggerPipeline starts a full pipeline run (team sync → ingestion → processing).
+   *
+   * @generated from rpc canonical.prism.v1.HandlersService.TriggerPipeline
+   */
+  triggerPipeline: {
+    methodKind: "unary";
+    input: typeof TriggerPipelineRequestSchema;
+    output: typeof TriggerPipelineResponseSchema;
+  };
+  /**
+   * CancelPipeline cooperatively cancels a running pipeline after the current stage.
+   *
+   * @generated from rpc canonical.prism.v1.HandlersService.CancelPipeline
+   */
+  cancelPipeline: {
+    methodKind: "unary";
+    input: typeof CancelPipelineRequestSchema;
+    output: typeof CancelPipelineResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_handlers, 0);
