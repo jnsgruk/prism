@@ -29,13 +29,10 @@ pub type AskQuestionStream =
 
 pub use resume::resume_stream;
 
-#[allow(clippy::too_many_lines)]
 pub async fn ask_question(
     svc: &ReasoningServiceImpl,
     request: Request<AskQuestionRequest>,
 ) -> Result<Response<AskQuestionStream>, Status> {
-    use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
-
     let ctx = require_auth(&request)?;
     let req = request.into_inner();
 
@@ -49,83 +46,8 @@ pub async fn ask_question(
         ));
     }
 
-    // Resolve model name and provider keys once.
-    let (model_name, provider_keys, default_image_model) = {
-        let router = svc.router.read().await;
-        let config = router.config();
-        let model = match req.model_override.as_deref() {
-            Some(ovr) if !ovr.is_empty() && ovr.contains('/') => ovr.to_owned(),
-            _ => format!(
-                "{}/{}",
-                config.tasks.agentic.provider.as_str(),
-                config.tasks.agentic.model
-            ),
-        };
-        let keys = router.provider_env_vars();
-        let img_model = config
-            .image_generation
-            .as_ref()
-            .map(|tc| format!("{}/{}", tc.provider.as_str(), tc.model));
-        (model, keys, img_model)
-    };
-
-    // Create or resume conversation.
-    let existing_conv = if let Some(ref id) = req.conversation_id {
-        let conv_id = id
-            .parse::<Uuid>()
-            .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
-        svc.repos
-            .reasoning
-            .get_conversation(conv_id)
-            .await
-            .map_err(db_err)?
-    } else {
-        None
-    };
-
-    let conversation_id = if let Some(ref conv) = existing_conv {
-        conv.id
-    } else {
-        let conv = svc
-            .repos
-            .reasoning
-            .create_conversation(&CreateConversationParams {
-                user_id: ctx.user_id,
-                title: Some(&req.question.chars().take(100).collect::<String>()),
-                model_name: &model_name,
-            })
-            .await
-            .map_err(db_err)?;
-        conv.id
-    };
-
-    // Store the user message.
-    svc.repos
-        .reasoning
-        .create_message(&CreateMessageParams {
-            conversation_id,
-            role: "user",
-            content: &req.question,
-            reasoning_trace: None,
-            supporting_data: None,
-            prompt_tokens: 0,
-            completion_tokens: 0,
-        })
-        .await
-        .map_err(db_err)?;
-
-    // Atomic concurrency guard — reject if another query is already running.
-    let claimed = svc
-        .repos
-        .reasoning
-        .try_claim_query(conversation_id)
-        .await
-        .map_err(db_err)?;
-    if !claimed {
-        return Err(Status::already_exists(
-            "a query is already running for this conversation",
-        ));
-    }
+    let (model_name, provider_keys, default_image_model) = resolve_model_config(svc, &req).await;
+    let conversation_id = setup_conversation(svc, ctx.user_id, &req, &model_name).await?;
 
     // Per-query image_model takes priority over admin default.
     let effective_image_model = req.image_model.or(default_image_model);
@@ -163,7 +85,7 @@ pub async fn ask_question(
 
     // Spawn the streaming task.
     tokio::spawn(async move {
-        let result = run_query_stream(
+        if let Err(e) = run_query_stream(
             &repos,
             &http_client,
             &restate_url,
@@ -172,40 +94,142 @@ pub async fn ask_question(
             &question,
             &tx,
         )
-        .await;
-
-        if let Err(e) = result {
-            error!(conversation_id = %cid_str, error = %e, "query stream failed");
-            let _ = repos
-                .reasoning
-                .create_message(&ps_core::repo::reasoning::CreateMessageParams {
-                    conversation_id,
-                    role: "error",
-                    content: &e.to_string(),
-                    reasoning_trace: None,
-                    supporting_data: None,
-                    prompt_tokens: 0,
-                    completion_tokens: 0,
-                })
-                .await;
-            let _ = repos
-                .reasoning
-                .update_query_status(conversation_id, "failed")
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(ask_question_response::Event::Error(AgentError {
-                        message: e.to_string(),
-                        retryable: true,
-                    })),
-                }))
-                .await;
+        .await
+        {
+            handle_stream_failure(&repos, conversation_id, &cid_str, &e, &tx).await;
         }
     });
 
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
         rx,
     )))
+}
+
+/// Resolve the model name, provider API keys, and default image model from
+/// the AI router config.
+async fn resolve_model_config(
+    svc: &ReasoningServiceImpl,
+    req: &AskQuestionRequest,
+) -> (String, Vec<(String, String)>, Option<String>) {
+    let router = svc.router.read().await;
+    let config = router.config();
+    let model = match req.model_override.as_deref() {
+        Some(ovr) if !ovr.is_empty() && ovr.contains('/') => ovr.to_owned(),
+        _ => format!(
+            "{}/{}",
+            config.tasks.agentic.provider.as_str(),
+            config.tasks.agentic.model
+        ),
+    };
+    let keys = router.provider_env_vars();
+    let img_model = config
+        .image_generation
+        .as_ref()
+        .map(|tc| format!("{}/{}", tc.provider.as_str(), tc.model));
+    (model, keys, img_model)
+}
+
+/// Create or resume a conversation, store the user message, and claim it
+/// for query execution via atomic CAS.
+async fn setup_conversation(
+    svc: &ReasoningServiceImpl,
+    user_id: Uuid,
+    req: &AskQuestionRequest,
+    model_name: &str,
+) -> Result<Uuid, Status> {
+    use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
+
+    let existing_conv = if let Some(ref id) = req.conversation_id {
+        let conv_id = id
+            .parse::<Uuid>()
+            .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+        svc.repos
+            .reasoning
+            .get_conversation(conv_id)
+            .await
+            .map_err(db_err)?
+    } else {
+        None
+    };
+
+    let conversation_id = if let Some(ref conv) = existing_conv {
+        conv.id
+    } else {
+        svc.repos
+            .reasoning
+            .create_conversation(&CreateConversationParams {
+                user_id,
+                title: Some(&req.question.chars().take(100).collect::<String>()),
+                model_name,
+            })
+            .await
+            .map_err(db_err)?
+            .id
+    };
+
+    svc.repos
+        .reasoning
+        .create_message(&CreateMessageParams {
+            conversation_id,
+            role: "user",
+            content: &req.question,
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+        })
+        .await
+        .map_err(db_err)?;
+
+    let claimed = svc
+        .repos
+        .reasoning
+        .try_claim_query(conversation_id)
+        .await
+        .map_err(db_err)?;
+    if !claimed {
+        return Err(Status::already_exists(
+            "a query is already running for this conversation",
+        ));
+    }
+
+    Ok(conversation_id)
+}
+
+/// Store a persistent error message, mark the query as failed, and send an
+/// error event to the client stream.
+async fn handle_stream_failure(
+    repos: &ps_core::repo::Repos,
+    conversation_id: Uuid,
+    cid_str: &str,
+    err: &Box<dyn std::error::Error + Send + Sync>,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
+) {
+    error!(conversation_id = %cid_str, error = %err, "query stream failed");
+    let _ = repos
+        .reasoning
+        .create_message(&ps_core::repo::reasoning::CreateMessageParams {
+            conversation_id,
+            role: "error",
+            content: &err.to_string(),
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+        })
+        .await;
+    let _ = repos
+        .reasoning
+        .update_query_status(conversation_id, "failed")
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::Error(AgentError {
+                message: err.to_string(),
+                retryable: true,
+            })),
+        }))
+        .await;
 }
 
 /// The core streaming pipeline: prepare pod → connect SSE → stream → finalize.
