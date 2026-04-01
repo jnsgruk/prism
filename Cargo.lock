@@ -3454,6 +3454,7 @@ dependencies = [
  "http-body",
  "object_store",
  "prost-types 0.13.5",
+ "ps-agent",
  "ps-core",
  "ps-metrics",
  "ps-proto",

@@ -30,9 +30,6 @@ pub fn pvc_name_for_session(session_id: &str) -> String {
     format!("prism-ws-{}", &session_id[..8.min(session_id.len())])
 }
 
-/// Port exposed by the `OpenCode` server inside each agent container.
-pub const OPENCODE_PORT: u16 = 4096;
-
 /// How long a container can be idle before being reaped.
 const IDLE_TIMEOUT: Duration = Duration::from_secs(30 * 60); // 30 minutes
 
@@ -419,7 +416,7 @@ impl ContainerManager {
         pod_ip: &str,
     ) -> Result<opencode_sdk::Client, opencode_sdk::OpencodeError> {
         opencode_sdk::ClientBuilder::new()
-            .base_url(format!("http://{pod_ip}:{OPENCODE_PORT}"))
+            .base_url(format!("http://{pod_ip}:{}", crate::OPENCODE_PORT))
             .directory("/home/agent")
             .timeout_secs(120)
             .build()
