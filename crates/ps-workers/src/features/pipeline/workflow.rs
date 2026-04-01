@@ -1,5 +1,4 @@
 use restate_sdk::prelude::*;
-use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -18,26 +17,13 @@ use crate::infra::run_lifecycle::{
 };
 
 use super::stages::{
-    HandlerResult, StageStatus, build_initial_stages, derive_pipeline_status,
-    mark_remaining_cancelled, mark_stage_complete, mark_stage_running,
+    PipelineResult, PipelineStatus, SourceInfo, StageStatus, build_handler_list,
+    build_initial_stages, call_result, derive_pipeline_status, mark_remaining_cancelled,
+    mark_stage_complete, mark_stage_running,
 };
 
 pub struct IngestionPipelineWorkflowImpl {
     pub state: SharedState,
-}
-
-/// Result returned from the pipeline workflow.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PipelineResult {
-    pub pipeline_id: String,
-    pub status: String,
-}
-
-/// Status response for `get_status`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PipelineStatus {
-    pub current_stage: Option<String>,
-    pub stages: serde_json::Value,
 }
 
 #[restate_sdk::workflow]
@@ -518,58 +504,4 @@ impl IngestionPipelineWorkflowImpl {
         self.finalize(pipeline_id, run_id, stages, ctx, "cancelled", None)
             .await
     }
-}
-
-/// Convert a handler call result into a `HandlerResult`.
-fn call_result(name: String, result: &Result<(), TerminalError>) -> HandlerResult {
-    HandlerResult {
-        name,
-        status: if result.is_ok() {
-            StageStatus::Completed
-        } else {
-            StageStatus::Failed
-        },
-        items: None,
-        error: result.as_ref().err().map(ToString::to_string),
-    }
-}
-
-/// Lightweight source info that can be journaled.
-/// `source_type` is the `Platform::to_string()` value (e.g. `"github"`, `"discourse_ubuntu"`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct SourceInfo {
-    name: String,
-    source_type: String,
-}
-
-/// Build the handler name list for initial stages JSONB.
-fn build_handler_list(
-    sources: &[SourceInfo],
-    has_github: bool,
-    has_discourse: bool,
-) -> Vec<(&'static str, Vec<String>)> {
-    let mut list = Vec::new();
-
-    if has_github {
-        let github_names: Vec<String> = sources
-            .iter()
-            .filter(|s| s.source_type == "github")
-            .map(|s| format!("{} Team Sync", s.name))
-            .collect();
-        list.push(("team_sync", github_names));
-    }
-
-    let ingestion_names: Vec<String> = sources.iter().map(|s| s.name.clone()).collect();
-    list.push(("ingestion", ingestion_names));
-
-    list.push(("metrics", vec!["Metrics".into()]));
-    list.push(("enrichment", vec!["Enrichment".into()]));
-    list.push(("embedding", vec!["Embedding".into()]));
-    list.push(("insights", vec!["Insights".into()]));
-
-    if has_discourse {
-        list.push(("identity_resolution", vec!["Identity Resolution".into()]));
-    }
-
-    list
 }

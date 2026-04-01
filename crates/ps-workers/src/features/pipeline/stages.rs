@@ -1,3 +1,4 @@
+use restate_sdk::prelude::TerminalError;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use time::OffsetDateTime;
@@ -222,6 +223,74 @@ pub fn derive_pipeline_status(stages: &serde_json::Value) -> &'static str {
     } else {
         "completed"
     }
+}
+
+/// Result returned from the pipeline workflow.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineResult {
+    pub pipeline_id: String,
+    pub status: String,
+}
+
+/// Status response for `get_status`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineStatus {
+    pub current_stage: Option<String>,
+    pub stages: serde_json::Value,
+}
+
+/// Lightweight source info that can be journaled.
+/// `source_type` is the `Platform::to_string()` value (e.g. `"github"`, `"discourse_ubuntu"`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceInfo {
+    pub name: String,
+    pub source_type: String,
+}
+
+/// Convert a handler call result into a `HandlerResult`.
+pub fn call_result(name: String, result: &Result<(), TerminalError>) -> HandlerResult {
+    HandlerResult {
+        name,
+        status: if result.is_ok() {
+            StageStatus::Completed
+        } else {
+            StageStatus::Failed
+        },
+        items: None,
+        error: result.as_ref().err().map(ToString::to_string),
+    }
+}
+
+/// Build the handler name list for initial stages JSONB.
+pub fn build_handler_list(
+    sources: &[SourceInfo],
+    has_github: bool,
+    has_discourse: bool,
+) -> Vec<(&'static str, Vec<String>)> {
+    let mut list = Vec::new();
+
+    if has_github {
+        let github_names: Vec<String> = sources
+            .iter()
+            .filter(|s| s.source_type == "github")
+            .map(|s| format!("{} Team Sync", s.name))
+            .collect();
+        list.push(("team_sync", github_names));
+    }
+
+    let ingestion_names: Vec<String> = sources.iter().map(|s| s.name.clone()).collect();
+    list.push(("ingestion", ingestion_names));
+
+    list.push(("metrics", vec!["Metrics".into()]));
+    list.push(("enrichment", vec!["Enrichment".into()]));
+    list.push(("embedding", vec!["Embedding".into()]));
+    list.push(("insights", vec!["Insights".into()]));
+
+    if has_discourse {
+        list.push(("identity_resolution", vec!["Identity Resolution".into()]));
+    }
+
+    list
 }
 
 #[cfg(test)]
