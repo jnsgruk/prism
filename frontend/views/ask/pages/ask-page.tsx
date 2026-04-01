@@ -146,6 +146,7 @@ const AskPage = (): React.ReactElement => {
                     messages={messages}
                     state={state}
                     conversationArtifacts={conversationArtifacts}
+                    onRetry={handleAsk}
                   />
                 </div>
               )}

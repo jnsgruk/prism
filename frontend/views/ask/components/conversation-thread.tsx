@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import type {
@@ -98,14 +98,59 @@ const HistoricalAssistantMessage = ({
   );
 };
 
+/** Inline error message rendered for `role = "error"` messages in history
+ *  and for live error states. Includes a retry button when `onRetry` is provided. */
+const InlineError = ({
+  content,
+  onRetry,
+}: {
+  content: string;
+  onRetry?: () => void;
+}): React.ReactElement => (
+  <div className="flex gap-3">
+    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+      <AlertCircle className="size-3.5" />
+    </div>
+    <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+      <p className="text-sm text-muted-foreground">{content}</p>
+      {onRetry && (
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={onRetry}>
+          <RefreshCw className="size-3.5" />
+          Retry
+        </Button>
+      )}
+    </div>
+  </div>
+);
+
+/**
+ * Deduplicate consecutive user messages with identical content. When a user
+ * retries a failed question, the backend stores a new user message for each
+ * attempt. This collapses those runs into a single message so the thread
+ * stays clean.
+ */
+const deduplicateMessages = (msgs: ConversationMessage[]): ConversationMessage[] => {
+  const result: ConversationMessage[] = [];
+  for (const msg of msgs) {
+    const prev = result.at(-1);
+    if (prev && msg.role === "user" && prev.role === "user" && msg.content === prev.content) {
+      continue; // Skip duplicate.
+    }
+    result.push(msg);
+  }
+  return result;
+};
+
 export const ConversationThread = ({
   messages,
   state,
   conversationArtifacts = [],
+  onRetry,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
   conversationArtifacts?: ConversationArtifact[];
+  onRetry?: (question: string) => void;
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -118,34 +163,43 @@ export const ConversationThread = ({
   // all assistant messages after the user's question to prevent duplication —
   // AgentResponse has richer data (live steps, thinking text, token usage).
   const isAgentActive = state.status === "streaming" || state.status === "completed";
-  const displayMessages = ((): ConversationMessage[] => {
-    if (!isAgentActive) return messages;
+  const displayMessages = useMemo((): ConversationMessage[] => {
+    const deduped = deduplicateMessages(messages);
+    if (!isAgentActive) return deduped;
 
     // Find the current question in messages and cut off everything after it,
     // so the server's copy of the current turn doesn't duplicate AgentResponse.
     // If the question isn't in messages yet (optimistic submit), show everything.
     const question = state.question;
     const cutoffIdx = question
-      ? messages.findLastIndex((m) => m.role === "user" && m.content === question)
+      ? deduped.findLastIndex((m) => m.role === "user" && m.content === question)
       : -1;
 
-    if (cutoffIdx === -1) return messages;
-    return messages.filter((_, i) => i <= cutoffIdx);
-  })();
+    if (cutoffIdx === -1) return deduped;
+    return deduped.filter((_, i) => i <= cutoffIdx);
+  }, [messages, isAgentActive, state]);
 
   return (
     <div className="space-y-6">
-      {displayMessages.map((msg) => {
+      {displayMessages.map((msg, idx) => {
         const msgArtifacts = conversationArtifacts.filter((a) => a.messageId === msg.id);
-        return (
-          <div key={msg.id}>
-            {msg.role === "user" ? (
-              <UserMessage content={msg.content} />
-            ) : (
-              <HistoricalAssistantMessage msg={msg} artifacts={msgArtifacts} />
-            )}
-          </div>
-        );
+        const retryHandler = onRetry
+          ? (): void => {
+              const prev = displayMessages.slice(0, idx).findLast((m) => m.role === "user");
+              if (prev) onRetry(prev.content);
+            }
+          : undefined;
+
+        let content: React.ReactNode;
+        if (msg.role === "user") {
+          content = <UserMessage content={msg.content} />;
+        } else if (msg.role === "error") {
+          content = <InlineError content={msg.content} onRetry={retryHandler} />;
+        } else {
+          content = <HistoricalAssistantMessage msg={msg} artifacts={msgArtifacts} />;
+        }
+
+        return <div key={msg.id}>{content}</div>;
       })}
 
       {/* Show unlinked artifacts (created before the message_id backfill) at the bottom. */}
@@ -175,11 +229,26 @@ export const ConversationThread = ({
         />
       )}
 
+      {/* Live error — rendered inline with retry. The error is also persisted
+          as a role="error" message by the backend, so on reload it appears
+          in the history above. */}
       {state.status === "error" && (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" />
-          <AlertDescription>{state.message}</AlertDescription>
-        </Alert>
+        <InlineError
+          content={state.message}
+          onRetry={
+            onRetry
+              ? () => {
+                  // Find the question that triggered this error: either from
+                  // the live state or from the last user message in history.
+                  const question =
+                    state.message && messages.length > 0
+                      ? messages.findLast((m) => m.role === "user")?.content
+                      : undefined;
+                  if (question) onRetry(question);
+                }
+              : undefined
+          }
+        />
       )}
 
       <div ref={bottomRef} />

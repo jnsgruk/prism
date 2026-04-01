@@ -296,7 +296,9 @@ async fn finalize_success(
     Ok(())
 }
 
-/// Write an error event and mark the query as failed.
+/// Write an error event, store a persistent error message, and mark the query
+/// as failed. The error message uses `role = "error"` so the frontend can
+/// render it inline in the conversation thread.
 async fn finalize_failure(
     ctx: &ObjectContext<'_>,
     repos: &Repos,
@@ -317,6 +319,20 @@ async fn finalize_failure(
             )
             .await
             .map_err(terminal_err("failed to write error event"))?;
+        // Store a persistent error message so it appears in conversation
+        // history when the page is reloaded.
+        let _ = repos
+            .reasoning
+            .create_message(&CreateMessageParams {
+                conversation_id: conv_id,
+                role: "error",
+                content: &err_msg,
+                reasoning_trace: None,
+                supporting_data: None,
+                prompt_tokens: 0,
+                completion_tokens: 0,
+            })
+            .await;
         repos
             .reasoning
             .update_query_status(conv_id, "failed")
