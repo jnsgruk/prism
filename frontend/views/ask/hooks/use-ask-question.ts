@@ -355,6 +355,13 @@ export const useAskQuestion = (): {
           });
         }
       }
+      // If the stream ended without a terminal event (finalAnswer or error),
+      // reset to idle so the stored conversation data is displayed.
+      setMeta((prev) =>
+        prev.status === "streaming" || prev.status === "container_starting"
+          ? { status: "idle" }
+          : prev,
+      );
     },
     [processStream],
   );
@@ -389,6 +396,14 @@ export const useAskQuestion = (): {
           });
         }
       }
+      // If the stream ended without a terminal event (e.g., the query was
+      // already completed when we connected), reset to idle so the stored
+      // conversation data is displayed instead of a stuck spinner.
+      setMeta((prev) =>
+        prev.status === "streaming" || prev.status === "container_starting"
+          ? { status: "idle" }
+          : prev,
+      );
     },
     [processStream],
   );
