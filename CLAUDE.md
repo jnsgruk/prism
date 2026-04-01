@@ -95,7 +95,7 @@ crates/
 └── psctl/            # Lightweight CLI client (depends only on ps-proto)
 ```
 
-**Dependency flow:** `psctl → ps-proto` | `ps-server → ps-core, ps-proto, ps-metrics` | `ps-workers → ps-core, ps-proto, ps-metrics` | `ps-metrics → ps-core`
+**Dependency flow:** `psctl → ps-proto` | `ps-server → ps-core, ps-proto, ps-metrics, ps-agent` | `ps-workers → ps-core, ps-proto, ps-metrics, ps-agent (kube)` | `ps-metrics → ps-core`
 
 ### Repository Layer (`ps-core/src/repo/`)
 
@@ -352,8 +352,12 @@ All long-running background work **must** run as Restate handlers — never as s
 | `EnrichmentHandler` | Service | — | AI enrichment pipeline |
 | `IdentityResolutionHandler` | Service | — | Discourse identity resolution |
 | `ModelCatalogueHandler` | Service | — | AI model catalogue refresh |
+| `AgenticQueryHandler` | Object | conversation_id | Agent pod lifecycle (`prepare_query`) |
+| `QueryWatchdogHandler` | Object | `singleton` | Reset stuck conversations every 60s |
 
-**Objects** are per-source (keyed by source type name, e.g. `"github"`). **Services** are singletons.
+**Objects** are per-source (keyed by source type name, e.g. `"github"`) or per-conversation (agentic query). **Services** are singletons. The watchdog uses a fixed `singleton` key for exclusive serialized execution.
+
+**Agentic query architecture**: `prepare_query` in Restate handles only durable pod lifecycle (<90s). SSE streaming from OpenCode is done directly by ps-server (in `ask_question`), eliminating Restate's journal/timeout issues with long-running non-journaled work.
 
 #### SharedState
 
