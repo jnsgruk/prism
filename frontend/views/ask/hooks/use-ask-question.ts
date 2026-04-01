@@ -110,7 +110,7 @@ export const useAskQuestion = (): {
   ask: (question: string, conversationId?: string, modelOverride?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
-  resume: (conversationId: string) => Promise<void>;
+  resume: (conversationId: string, question?: string) => Promise<void>;
 } => {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [meta, setMeta] = useState<StreamMeta>({ status: "idle" });
@@ -320,6 +320,7 @@ export const useAskQuestion = (): {
 
   const ask = useCallback(
     async (question: string, conversationId?: string, modelOverride?: string) => {
+      abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
       setEvents([]);
@@ -367,7 +368,9 @@ export const useAskQuestion = (): {
   );
 
   const resume = useCallback(
-    async (conversationId: string) => {
+    async (conversationId: string, question?: string) => {
+      const q = question ?? "";
+      abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
       setEvents([]);
@@ -375,7 +378,7 @@ export const useAskQuestion = (): {
 
       setMeta({
         status: "streaming",
-        question: "",
+        question: q,
         conversationId,
         partialAnswer: "",
         artifacts: [],
@@ -386,7 +389,7 @@ export const useAskQuestion = (): {
           { conversationId, lastEventId: BigInt(0) },
           { signal: abort.signal },
         );
-        await processStream(stream, abort, "", conversationId);
+        await processStream(stream, abort, q, conversationId);
       } catch (err) {
         if (!abort.signal.aborted) {
           setMeta({
@@ -404,8 +407,11 @@ export const useAskQuestion = (): {
           ? { status: "idle" }
           : prev,
       );
+      // Refresh conversation data so any response completed while we were
+      // away is shown from the database rather than stale cache.
+      queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
     },
-    [processStream],
+    [processStream, queryClient],
   );
 
   const cancel = useCallback(() => {
@@ -415,6 +421,7 @@ export const useAskQuestion = (): {
   }, []);
 
   const reset = useCallback(() => {
+    abortRef.current?.abort();
     setMeta({ status: "idle" });
     setEvents([]);
   }, []);

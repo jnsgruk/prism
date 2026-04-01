@@ -67,9 +67,10 @@ const AskPage = (): React.ReactElement => {
       !hasResumed.current
     ) {
       hasResumed.current = true;
-      resume(conversationId);
+      const lastQuestion = messages.findLast((m) => m.role === "user")?.content;
+      resume(conversationId, lastQuestion);
     }
-  }, [conversationId, queryStatus, state.status, resume]);
+  }, [conversationId, queryStatus, state.status, resume, messages]);
 
   // Reset the resume guard when conversation changes.
   useEffect(() => {

@@ -207,7 +207,7 @@ export const ConversationThread = ({
         <ArtifactList artifacts={conversationArtifacts.filter((a) => !a.messageId)} />
       )}
 
-      {state.status !== "idle" && state.status !== "error" && (
+      {state.status !== "idle" && state.status !== "error" && state.question && (
         <>
           {/* Show the user's question optimistically — it may not be in messages yet. */}
           {!messages.some((m) => m.role === "user" && m.content === state.question) && (
