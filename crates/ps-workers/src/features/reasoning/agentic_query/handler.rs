@@ -1,12 +1,9 @@
 use ps_core::repo::Repos;
-use ps_core::repo::reasoning::CreateMessageParams;
 use restate_sdk::prelude::*;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
-use super::AgenticQueryRequest;
-use super::SharedState;
-use super::query_core::{self, QueryResult};
+use super::{AgenticQueryRequest, PrepareQueryResponse, SharedState};
 use crate::infra::run_lifecycle::{journaled, terminal_err};
 
 pub struct AgenticQueryHandlerImpl {
@@ -15,8 +12,13 @@ pub struct AgenticQueryHandlerImpl {
 
 #[restate_sdk::object]
 pub trait AgenticQueryHandler {
-    /// Run an agentic query for a conversation.
-    async fn run_query(request: Json<AgenticQueryRequest>) -> Result<(), TerminalError>;
+    /// Prepare an agent pod for a conversation and return its IP.
+    ///
+    /// This is a fast operation (<90s) that handles only the durable pod
+    /// lifecycle. SSE streaming is done by ps-server after this returns.
+    async fn prepare_query(
+        request: Json<AgenticQueryRequest>,
+    ) -> Result<Json<PrepareQueryResponse>, TerminalError>;
 
     /// Cancel a running query.
     async fn cancel() -> Result<(), TerminalError>;
@@ -32,11 +34,11 @@ pub trait AgenticQueryHandler {
 // ---------------------------------------------------------------------------
 
 impl AgenticQueryHandler for AgenticQueryHandlerImpl {
-    async fn run_query(
+    async fn prepare_query(
         &self,
         ctx: ObjectContext<'_>,
         Json(request): Json<AgenticQueryRequest>,
-    ) -> Result<(), TerminalError> {
+    ) -> Result<Json<PrepareQueryResponse>, TerminalError> {
         let conv_id: Uuid = request
             .conversation_id
             .parse()
@@ -53,7 +55,7 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
         );
         let _guard = span.enter();
 
-        info!("starting agentic query");
+        info!("preparing agent pod");
 
         let repos = &self.state.repos;
 
@@ -103,28 +105,8 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
 
         let pod_ip = start_pod(&ctx, repos, &cm, conv_id, pod_overrides).await?;
 
-        // Run the core query logic (SSE streaming — not journaled).
-        let result = query_core::run_agentic_query_core(
-            repos,
-            &self.state.http_client,
-            conv_id,
-            &pod_ip,
-            &request.question,
-        )
-        .await;
-
-        // Update pod activity to prevent premature reaping.
-        if let Err(e) = cm.update_activity(&conv_id.to_string()).await {
-            warn!(error = %e, "failed to update pod activity");
-        }
-
-        match result {
-            Ok(query_result) => finalize_success(&ctx, repos, conv_id, query_result).await?,
-            Err(e) => finalize_failure(&ctx, repos, conv_id, e).await?,
-        }
-
-        info!("agentic query complete");
-        Ok(())
+        info!(%pod_ip, "agent pod ready");
+        Ok(Json(PrepareQueryResponse { pod_ip }))
     }
 
     async fn cancel(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
@@ -209,135 +191,4 @@ async fn start_pod(
     });
 
     Ok(pod_ip)
-}
-
-/// Store message, update totals, write final event, and clean up.
-async fn finalize_success(
-    ctx: &ObjectContext<'_>,
-    repos: &Repos,
-    conv_id: Uuid,
-    query_result: QueryResult,
-) -> Result<(), TerminalError> {
-    let answer = query_result.answer_text.clone();
-    let tool_calls = query_result.tool_calls;
-    let trace_steps = query_result.trace_steps;
-    let input_tok = query_result.input_tokens as i32;
-    let output_tok = query_result.output_tokens as i32;
-
-    journaled!(ctx, "store_message", [repos, answer, trace_steps], {
-        let trace = serde_json::json!({
-            "tool_call_count": tool_calls,
-            "steps": trace_steps,
-        });
-        let msg = repos
-            .reasoning
-            .create_message(&CreateMessageParams {
-                conversation_id: conv_id,
-                role: "assistant",
-                content: &answer,
-                reasoning_trace: Some(&trace),
-                supporting_data: None,
-                prompt_tokens: input_tok,
-                completion_tokens: output_tok,
-            })
-            .await
-            .map_err(terminal_err("failed to store message"))?;
-        // Link any artifacts created during streaming to this message so
-        // they render inline when the conversation is reloaded.
-        let _ = repos
-            .reasoning
-            .link_artifacts_to_message(conv_id, msg.id)
-            .await;
-    });
-
-    let tc = query_result.tool_calls;
-    let pt = query_result.input_tokens as i32;
-    let ct = query_result.output_tokens as i32;
-    journaled!(ctx, "update_totals", [repos], {
-        repos
-            .reasoning
-            .update_conversation_totals(conv_id, tc, pt, ct, 0.0)
-            .await
-            .map_err(terminal_err("failed to update totals"))?;
-    });
-
-    let answer = query_result.answer_text;
-    let fa_input = query_result.input_tokens;
-    let fa_output = query_result.output_tokens;
-    journaled!(ctx, "finalize", [repos, answer], {
-        repos
-            .reasoning
-            .append_event(
-                conv_id,
-                "final_answer",
-                &serde_json::json!({
-                    "answer": answer,
-                    "conversation_id": conv_id.to_string(),
-                    "tool_call_count": tc,
-                    "prompt_tokens": fa_input,
-                    "completion_tokens": fa_output,
-                }),
-                None,
-                None,
-            )
-            .await
-            .map_err(terminal_err("failed to write final event"))?;
-        repos
-            .reasoning
-            .update_query_status(conv_id, "completed")
-            .await
-            .map_err(terminal_err("failed to update status"))?;
-    });
-
-    journaled!(ctx, "cleanup_events", [repos], {
-        let _ = repos.reasoning.delete_events(conv_id).await;
-    });
-
-    Ok(())
-}
-
-/// Write an error event, store a persistent error message, and mark the query
-/// as failed. The error message uses `role = "error"` so the frontend can
-/// render it inline in the conversation thread.
-async fn finalize_failure(
-    ctx: &ObjectContext<'_>,
-    repos: &Repos,
-    conv_id: Uuid,
-    err: Box<dyn std::error::Error + Send + Sync>,
-) -> Result<(), TerminalError> {
-    error!(error = %err, "agentic query failed");
-    let err_msg = err.to_string();
-    journaled!(ctx, "fail", [repos, err_msg], {
-        repos
-            .reasoning
-            .append_event(
-                conv_id,
-                "error",
-                &serde_json::json!({"message": err_msg, "retryable": false}),
-                None,
-                None,
-            )
-            .await
-            .map_err(terminal_err("failed to write error event"))?;
-        // Store a persistent error message so it appears in conversation
-        // history when the page is reloaded.
-        let _ = repos
-            .reasoning
-            .create_message(&CreateMessageParams {
-                conversation_id: conv_id,
-                role: "error",
-                content: &err_msg,
-                reasoning_trace: None,
-                supporting_data: None,
-                prompt_tokens: 0,
-                completion_tokens: 0,
-            })
-            .await;
-        repos
-            .reasoning
-            .update_query_status(conv_id, "failed")
-            .await
-            .map_err(terminal_err("failed to update status"))?;
-    });
-    Ok(())
 }

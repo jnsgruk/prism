@@ -8,9 +8,8 @@ mod trace;
 use crate::infra::SharedState;
 
 pub use handler::{AgenticQueryHandler, AgenticQueryHandlerImpl};
-pub use query_core::{QueryResult, run_agentic_query_core};
 
-/// Request payload for `run_query`.
+/// Request payload for `prepare_query`.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgenticQueryRequest {
     pub conversation_id: String,
@@ -22,4 +21,10 @@ pub struct AgenticQueryRequest {
     /// When set, the agent should use this model for image generation.
     #[serde(default)]
     pub image_model: Option<String>,
+}
+
+/// Response from `prepare_query` — the pod is ready and reachable at this IP.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PrepareQueryResponse {
+    pub pod_ip: String,
 }

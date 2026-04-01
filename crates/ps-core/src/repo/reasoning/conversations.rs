@@ -441,6 +441,46 @@ impl ReasoningRepo {
         Ok(())
     }
 
+    /// Atomically claim a conversation for query execution.
+    /// Returns `true` if the claim succeeded (status was `idle`),
+    /// `false` if another request already claimed it.
+    pub async fn try_claim_query(&self, conversation_id: Uuid) -> Result<bool, Error> {
+        let result: sqlx::postgres::PgQueryResult = sqlx::query!(
+            r#"
+            UPDATE reasoning.conversations
+            SET query_status = 'pending', last_activity_at = now()
+            WHERE id = $1 AND query_status = 'idle'
+            "#,
+            conversation_id,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Reset conversations stuck in `running`/`pending` for longer than the
+    /// threshold. Returns the IDs of conversations that were reset.
+    pub async fn reset_stale_queries(&self, stale_minutes: i32) -> Result<Vec<Uuid>, Error> {
+        #[allow(dead_code)]
+        struct IdRow {
+            id: Uuid,
+        }
+        let rows: Vec<IdRow> = sqlx::query_as!(
+            IdRow,
+            r#"
+            UPDATE reasoning.conversations
+            SET query_status = 'failed', last_activity_at = now()
+            WHERE query_status IN ('running', 'pending')
+              AND last_activity_at < now() - make_interval(mins => $1)
+            RETURNING id
+            "#,
+            stale_minutes,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows.into_iter().map(|r| r.id).collect())
+    }
+
     /// Update the query lifecycle status on a conversation.
     pub async fn update_query_status(
         &self,
