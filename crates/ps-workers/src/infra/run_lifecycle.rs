@@ -13,9 +13,9 @@
 macro_rules! create_run {
     ($ctx:expr, $repos:expr, $source:expr, $handler:expr, $method:expr) => {{
         let repos = $repos.clone();
-        let source = $source.to_string();
-        let handler = $handler.to_string();
-        let method = $method.to_string();
+        let source = ::ps_core::models::SourceName::new($source);
+        let handler = ::ps_core::models::HandlerName::new($handler);
+        let method = ::ps_core::models::HandlerMethod::new($method);
         $ctx.run(move || {
             let repos = repos.clone();
             let source = source.clone();

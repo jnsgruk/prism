@@ -1,8 +1,30 @@
 use crate::define_repo_test;
 use ps_core::ingestion::ContributionInput;
-use ps_core::models::{ContributionState, ContributionType, IngestionStatus, Platform};
+use ps_core::models::{
+    ContributionState, ContributionType, HandlerMethod, HandlerName, IngestionStatus, Platform,
+    SourceName,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+/// Helper to create a run with typed newtypes from string literals.
+async fn test_create_run(
+    activity: &ps_core::repo::ActivityRepo,
+    id: Uuid,
+    source: &str,
+    handler: &str,
+    method: &str,
+) {
+    activity
+        .create_run(
+            id,
+            &SourceName::new(source),
+            &HandlerName::new(handler),
+            &HandlerMethod::new(method),
+        )
+        .await
+        .unwrap();
+}
 
 /// Build a minimal ContributionInput for testing.
 fn make_contribution(
@@ -138,11 +160,14 @@ define_repo_test!(
 
 define_repo_test!(create_run_and_complete, |repos, _pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     let run = repos.activity.get_run(run_id).await.unwrap().unwrap();
     assert_eq!(run.status, IngestionStatus::Running);
@@ -158,11 +183,14 @@ define_repo_test!(create_run_and_complete, |repos, _pool| async move {
 
 define_repo_test!(fail_run_records_error, |repos, _pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "jira", "JiraIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "jira",
+        "JiraIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     repos
         .activity
@@ -177,11 +205,14 @@ define_repo_test!(fail_run_records_error, |repos, _pool| async move {
 
 define_repo_test!(complete_run_with_warnings, |repos, _pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     let metadata = serde_json::json!({"failed_repos": ["canonical/broken"]});
     repos
@@ -200,21 +231,30 @@ define_repo_test!(list_runs_by_source, |repos, _pool| async move {
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
     let id3 = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(id1, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(id2, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(id3, "jira", "JiraIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        id1,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        id2,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        id3,
+        "jira",
+        "JiraIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     let gh_runs = repos
         .activity
@@ -235,36 +275,30 @@ define_repo_test!(list_runs_by_source, |repos, _pool| async move {
 });
 
 define_repo_test!(list_runs_ingestion_only, |repos, _pool| async move {
-    repos
-        .activity
-        .create_run(
-            Uuid::now_v7(),
-            "github",
-            "GithubIngestionHandler",
-            "run_ingestion",
-        )
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(
-            Uuid::now_v7(),
-            "github",
-            "GithubTeamSyncHandler",
-            "sync_teams",
-        )
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(
-            Uuid::now_v7(),
-            "metrics",
-            "MetricsComputeHandler",
-            "compute_current_periods",
-        )
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        Uuid::now_v7(),
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        Uuid::now_v7(),
+        "github",
+        "GithubTeamSyncHandler",
+        "sync_teams",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        Uuid::now_v7(),
+        "metrics",
+        "MetricsComputeHandler",
+        "compute_current_periods",
+    )
+    .await;
 
     let ingestion = repos.activity.list_runs(None, None, true).await.unwrap();
     assert_eq!(ingestion.len(), 1);
@@ -275,11 +309,14 @@ define_repo_test!(list_runs_ingestion_only, |repos, _pool| async move {
 
 define_repo_test!(cancel_run_by_id, |repos, _pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     repos.activity.cancel_run_by_id(run_id).await.unwrap();
 
@@ -290,16 +327,22 @@ define_repo_test!(cancel_run_by_id, |repos, _pool| async move {
 define_repo_test!(get_active_handler_runs, |repos, _pool| async move {
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(id1, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(id2, "jira", "JiraIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        id1,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        id2,
+        "jira",
+        "JiraIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
     repos.activity.complete_run(id2, 5).await.unwrap();
 
     let active = repos.activity.get_active_handler_runs().await.unwrap();
@@ -309,11 +352,14 @@ define_repo_test!(get_active_handler_runs, |repos, _pool| async move {
 
 define_repo_test!(update_run_progress, |repos, _pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     repos
         .activity
@@ -327,11 +373,14 @@ define_repo_test!(update_run_progress, |repos, _pool| async move {
 
 define_repo_test!(update_run_progress_detail, |repos, pool| async move {
     let run_id = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(run_id, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
 
     let progress = serde_json::json!({"prs": 10, "reviews": 5});
     repos
@@ -484,11 +533,14 @@ define_repo_test!(
 
         // Create a completed run
         let run_id = Uuid::now_v7();
-        repos
-            .activity
-            .create_run(run_id, "GH", "GithubIngestionHandler", "run_ingestion")
-            .await
-            .unwrap();
+        test_create_run(
+            &repos.activity,
+            run_id,
+            "GH",
+            "GithubIngestionHandler",
+            "run_ingestion",
+        )
+        .await;
         repos.activity.complete_run(run_id, 50).await.unwrap();
 
         let statuses = repos.activity.get_source_statuses().await.unwrap();
@@ -511,11 +563,14 @@ define_repo_test!(
             .unwrap();
 
         let run_id = Uuid::now_v7();
-        repos
-            .activity
-            .create_run(run_id, "GH", "GithubIngestionHandler", "run_ingestion")
-            .await
-            .unwrap();
+        test_create_run(
+            &repos.activity,
+            run_id,
+            "GH",
+            "GithubIngestionHandler",
+            "run_ingestion",
+        )
+        .await;
         repos
             .activity
             .update_run_progress(run_id, 10)
@@ -536,16 +591,22 @@ define_repo_test!(
 define_repo_test!(cancel_active_runs, |repos, _pool| async move {
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
-    repos
-        .activity
-        .create_run(id1, "github", "GithubIngestionHandler", "run_ingestion")
-        .await
-        .unwrap();
-    repos
-        .activity
-        .create_run(id2, "github", "GithubIngestionHandler", "backfill")
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        id1,
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    test_create_run(
+        &repos.activity,
+        id2,
+        "github",
+        "GithubIngestionHandler",
+        "backfill",
+    )
+    .await;
 
     repos.activity.cancel_active_runs("github").await.unwrap();
 
@@ -568,16 +629,14 @@ define_repo_test!(reset_all_clears_everything, |repos, _pool| async move {
         .upsert_watermark("github", "2025-01-01", 1)
         .await
         .unwrap();
-    repos
-        .activity
-        .create_run(
-            Uuid::now_v7(),
-            "github",
-            "GithubIngestionHandler",
-            "run_ingestion",
-        )
-        .await
-        .unwrap();
+    test_create_run(
+        &repos.activity,
+        Uuid::now_v7(),
+        "github",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
     repos
         .activity
         .set_cached_etag("github", "url", "etag")

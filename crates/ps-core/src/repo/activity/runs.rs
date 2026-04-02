@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::models::{HandlerMethod, HandlerName, SourceName};
 use uuid::Uuid;
 
 use super::{ActivityRepo, IngestionRunRow};
@@ -8,9 +9,9 @@ impl ActivityRepo {
     pub async fn create_run(
         &self,
         id: Uuid,
-        source_name: &str,
-        handler_name: &str,
-        handler_method: &str,
+        source_name: &SourceName,
+        handler_name: &HandlerName,
+        handler_method: &HandlerMethod,
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -18,9 +19,9 @@ impl ActivityRepo {
             VALUES ($1, $2, now(), 'running', $3, $4)
             "#,
             id,
-            source_name,
-            handler_name,
-            handler_method,
+            source_name.as_str(),
+            handler_name.as_str(),
+            handler_method.as_str(),
         )
         .execute(&self.pool)
         .await
