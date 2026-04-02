@@ -96,7 +96,7 @@ pub async fn ask_question(
         )
         .await
         {
-            handle_stream_failure(&repos, conversation_id, &cid_str, &e, &tx).await;
+            handle_stream_failure(&repos, conversation_id, &cid_str, &*e, &tx).await;
         }
     });
 
@@ -202,7 +202,7 @@ async fn handle_stream_failure(
     repos: &ps_core::repo::Repos,
     conversation_id: Uuid,
     cid_str: &str,
-    err: &Box<dyn std::error::Error + Send + Sync>,
+    err: &(dyn std::error::Error + Send + Sync),
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) {
     error!(conversation_id = %cid_str, error = %err, "query stream failed");
