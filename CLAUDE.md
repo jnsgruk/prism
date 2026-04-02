@@ -45,7 +45,7 @@ Code is organised **feature-first, layer-second**. See `plans/18-code-structure.
 ### Key rules
 
 - **Frontend:** feature UI lives in `views/<feature>/` with `components/`, `hooks/`, `pages/` subdirs. Routes are defined in `app.tsx` with lazy imports. Shared components stay in `components/`. Shared hooks stay in `lib/hooks/`. The signal to lift is a concrete second consumer.
-- **Rust services:** new features go in `src/features/<name>/` with handler, service, repository, types files. `ps-core` remains the shared domain layer (models, repo, auth, crypto).
+- **Rust services:** features live under `src/features/<name>/` with handler, service, repository, types files. Do not introduce new layer-first `services/` buckets in service crates. `ps-core` remains the shared domain layer (models, repo, auth, crypto).
 - **Three-tier escalation:** feature-local → service/app-local → shared crate/package. Only lift when a concrete second consumer exists.
 - **No `utils/` or `helpers/` directories.** Give utilities a proper home.
 - **Tests colocated** with source files. No `__tests__/` directories. Rust uses inline `#[cfg(test)]`.
@@ -81,7 +81,7 @@ crates/
 │       ├── crypto.rs # AES-256-GCM encryption for source credentials
 │       └── backup.rs # Export/import logic
 ├── ps-proto/         # Generated Rust code from proto definitions (pedantic lints disabled)
-├── ps-server/        # API server binary (tonic + tonic-web), services, auth interceptor
+├── ps-server/        # API server binary (tonic + tonic-web), feature modules + auth interceptor
 ├── ps-workers/       # Restate worker binary
 │   └── src/
 │       ├── infra/    # Service plumbing: SharedState, journaling macros, retry, registry, secrets
@@ -108,6 +108,8 @@ All database access is centralized in the repository layer. Each repo maps to on
 | `OrgRepo`      | `org`      | People, teams, platform identities, repositories       |
 | `ActivityRepo` | `activity` | Contributions, watermarks, ingestion runs, ETag cache  |
 | `MetricsRepo`  | `metrics`  | Pre-computed team/individual snapshots, contribution queries |
+| `ReasoningRepo`| `reasoning`| Enrichments, embeddings, conversations, model/catalogue state |
+| `InsightsRepo` | `reasoning`| Read-only insight queries and aggregation views         |
 
 The `Repos` struct bundles all repos and is constructed once from a `PgPool`, then cloned into each service and the ingestion handler.
 
@@ -115,7 +117,7 @@ The `Repos` struct bundles all repos and is constructed once from a `PgPool`, th
 
 1. **All `sqlx::query!` calls must live in `ps-core/src/repo/`** — services, ingestion sources, and other crates must never contain direct SQL. They access data exclusively through repo methods.
 2. **Services are thin gRPC adapters** — they receive `Repos`, delegate to repo methods, and map between domain types and proto types. Business logic that doesn't need proto types belongs in `ps-core`.
-3. **One repo per schema** — each repo owns queries for its schema. Cross-schema joins are permitted only as read-only queries within the repo that is the primary consumer of the result (e.g., `ActivityRepo::get_source_statuses` joins `config` + `activity`).
+3. **One repo per schema** — each repo owns queries for its schema. Cross-schema joins are permitted only as read-only queries within the repo that is the primary consumer of the result.
 4. **No `PgPool` in services or sources** — services and ingestion sources receive `Repos`, never a raw pool. Only `main.rs` (server/ingestion binaries) and the repo layer itself should touch `PgPool`.
 
 ### Database Schemas (Bounded Contexts)
@@ -128,6 +130,8 @@ The `Repos` struct bundles all repos and is constructed once from a `PgPool`, th
 | `metrics`   | Pre-computed team/individual snapshots                             |
 | `auth`      | Users, sessions                                                    |
 | `reasoning` | AI enrichments, embeddings, insights (Phase 3+)                    |
+
+`InsightsRepo` is intentionally a read-model over `reasoning` data for query ergonomics; it does not imply an `insights` schema.
 
 ### Frontend
 
