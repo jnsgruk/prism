@@ -202,7 +202,7 @@ pub(super) async fn handle_assign_person_to_team(
 
     repos
         .org
-        .assign_person_to_team(person_id, team_id)
+        .assign_person_to_team(person_id.into(), team_id.into())
         .await
         .map_err(db_err)?;
 
@@ -223,7 +223,7 @@ pub(super) async fn handle_remove_person_from_team(
 
     repos
         .org
-        .remove_person_from_team(person_id, team_id)
+        .remove_person_from_team(person_id.into(), team_id.into())
         .await
         .map_err(db_err)?;
 

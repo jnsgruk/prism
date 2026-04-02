@@ -27,11 +27,11 @@ impl fmt::Display for TeamType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
-    pub id: Uuid,
+    pub id: super::TeamId,
     pub name: String,
     pub org_name: String,
-    pub parent_team_id: Option<Uuid>,
-    pub lead_id: Option<Uuid>,
+    pub parent_team_id: Option<super::TeamId>,
+    pub lead_id: Option<super::PersonId>,
     pub team_type: TeamType,
     pub created_at: OffsetDateTime,
 }
@@ -43,6 +43,6 @@ pub struct Repository {
     pub github_repo: String,
     pub default_branch: Option<String>,
     pub primary_language: Option<String>,
-    pub team_id: Option<Uuid>,
+    pub team_id: Option<super::TeamId>,
     pub created_at: OffsetDateTime,
 }

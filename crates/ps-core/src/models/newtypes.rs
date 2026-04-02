@@ -59,6 +59,63 @@ macro_rules! impl_string_newtype {
     };
 }
 
+/// Generate a newtype wrapper around `Uuid` with standard trait impls.
+///
+/// The newtype does NOT implement sqlx `Type`/`Encode`/`Decode` — use
+/// `.into_inner()` when passing to `sqlx::query!` and `Self::new()` when
+/// reading from query results.
+macro_rules! impl_uuid_newtype {
+    ($name:ident, $doc:expr) => {
+        #[doc = $doc]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        #[serde(transparent)]
+        pub struct $name(uuid::Uuid);
+
+        impl $name {
+            pub fn new(id: uuid::Uuid) -> Self {
+                Self(id)
+            }
+
+            pub fn into_inner(self) -> uuid::Uuid {
+                self.0
+            }
+
+            pub fn as_uuid(&self) -> &uuid::Uuid {
+                &self.0
+            }
+
+            /// Generate a new V7 (time-ordered) ID.
+            pub fn now_v7() -> Self {
+                Self(uuid::Uuid::now_v7())
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        impl From<uuid::Uuid> for $name {
+            fn from(id: uuid::Uuid) -> Self {
+                Self(id)
+            }
+        }
+
+        impl From<$name> for uuid::Uuid {
+            fn from(id: $name) -> Self {
+                id.0
+            }
+        }
+    };
+}
+
+impl_uuid_newtype!(
+    PersonId,
+    "A typed ID for a person in the `org.people` table."
+);
+impl_uuid_newtype!(TeamId, "A typed ID for a team in the `org.teams` table.");
+
 // ---------------------------------------------------------------------------
 // GitHubRepoCoord
 // ---------------------------------------------------------------------------

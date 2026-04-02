@@ -99,7 +99,7 @@ async fn seed_team_with_contributions(
 
     repos
         .org
-        .assign_person_to_team(person, team.id)
+        .assign_person_to_team(person.into(), team.id.into())
         .await
         .unwrap();
 

@@ -66,7 +66,7 @@ async fn seed_team(
 
     repos
         .org
-        .assign_person_to_team(person, team.id)
+        .assign_person_to_team(person.into(), team.id.into())
         .await
         .unwrap();
 
@@ -250,7 +250,7 @@ define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
     }
     repos
         .org
-        .assign_person_to_team(alice, team.id)
+        .assign_person_to_team(alice.into(), team.id.into())
         .await
         .unwrap();
 
@@ -278,7 +278,11 @@ define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
             .await
             .unwrap();
     }
-    repos.org.assign_person_to_team(bob, team.id).await.unwrap();
+    repos
+        .org
+        .assign_person_to_team(bob.into(), team.id.into())
+        .await
+        .unwrap();
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();

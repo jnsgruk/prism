@@ -173,17 +173,21 @@ define_repo_test!(
 
         repos
             .org
-            .assign_person_to_team(alice, team.id)
+            .assign_person_to_team(alice.into(), team.id.into())
             .await
             .unwrap();
-        repos.org.assign_person_to_team(bob, team.id).await.unwrap();
+        repos
+            .org
+            .assign_person_to_team(bob.into(), team.id.into())
+            .await
+            .unwrap();
 
-        let members = repos.org.get_team_members(team.id).await.unwrap();
+        let members = repos.org.get_team_members(team.id.into()).await.unwrap();
         assert_eq!(members.len(), 2);
 
         // Deactivate bob
         repos.org.deactivate_person(bob).await.unwrap();
-        let members = repos.org.get_team_members(team.id).await.unwrap();
+        let members = repos.org.get_team_members(team.id.into()).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].name, "Alice");
     }
@@ -207,21 +211,21 @@ define_repo_test!(
 
         repos
             .org
-            .assign_person_to_team(alice, team_a.id)
+            .assign_person_to_team(alice.into(), team_a.id.into())
             .await
             .unwrap();
-        let members_a = repos.org.get_team_members(team_a.id).await.unwrap();
+        let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
         assert_eq!(members_a.len(), 1);
 
         // Move to team B
         repos
             .org
-            .assign_person_to_team(alice, team_b.id)
+            .assign_person_to_team(alice.into(), team_b.id.into())
             .await
             .unwrap();
-        let members_a = repos.org.get_team_members(team_a.id).await.unwrap();
+        let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
         assert_eq!(members_a.len(), 0);
-        let members_b = repos.org.get_team_members(team_b.id).await.unwrap();
+        let members_b = repos.org.get_team_members(team_b.id.into()).await.unwrap();
         assert_eq!(members_b.len(), 1);
     }
 );
@@ -238,7 +242,7 @@ define_repo_test!(list_unassigned_people, |repos, pool| async move {
 
     repos
         .org
-        .assign_person_to_team(alice, team.id)
+        .assign_person_to_team(alice.into(), team.id.into())
         .await
         .unwrap();
 

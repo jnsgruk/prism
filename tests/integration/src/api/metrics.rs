@@ -88,7 +88,7 @@ async fn seed_team(
 
     repos
         .org
-        .assign_person_to_team(person_id, team.id)
+        .assign_person_to_team(person_id.into(), team.id.into())
         .await
         .unwrap();
 
@@ -477,7 +477,7 @@ define_api_test!(
 
         repos
             .org
-            .assign_person_to_team(person_id, team.id)
+            .assign_person_to_team(person_id.into(), team.id.into())
             .await
             .unwrap();
 

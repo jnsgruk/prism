@@ -1,11 +1,12 @@
 use crate::Error;
+use crate::models::{PersonId, TeamId};
 use uuid::Uuid;
 
 use super::{OrgRepo, PersonRow};
 
 impl OrgRepo {
     /// Get active members of a team.
-    pub async fn get_team_members(&self, team_id: Uuid) -> Result<Vec<PersonRow>, Error> {
+    pub async fn get_team_members(&self, team_id: TeamId) -> Result<Vec<PersonRow>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT p.id, p.name, p.email, p.level, p.active,
@@ -18,7 +19,7 @@ impl OrgRepo {
               AND p.active = true
             ORDER BY p.name
             "#,
-            team_id,
+            team_id.into_inner(),
         )
         .fetch_all(&self.pool)
         .await
@@ -43,8 +44,14 @@ impl OrgRepo {
     /// The start date defaults to the person's earliest contribution date so that
     /// historical metrics include their work. Falls back to `CURRENT_DATE` if the
     /// person has no contributions yet.
-    pub async fn assign_person_to_team(&self, person_id: Uuid, team_id: Uuid) -> Result<(), Error> {
+    pub async fn assign_person_to_team(
+        &self,
+        person_id: PersonId,
+        team_id: TeamId,
+    ) -> Result<(), Error> {
         let mut tx = self.pool.begin().await.map_err(Error::from)?;
+        let pid = person_id.into_inner();
+        let tid = team_id.into_inner();
 
         // End all current active memberships for this person.
         sqlx::query!(
@@ -53,7 +60,7 @@ impl OrgRepo {
             SET end_date = CURRENT_DATE
             WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
             "#,
-            person_id,
+            pid,
         )
         .execute(&mut *tx)
         .await
@@ -73,8 +80,8 @@ impl OrgRepo {
             )
             "#,
             membership_id,
-            person_id,
-            team_id,
+            pid,
+            tid,
         )
         .execute(&mut *tx)
         .await
@@ -88,8 +95,8 @@ impl OrgRepo {
     /// Remove a person from a specific team (end the membership).
     pub async fn remove_person_from_team(
         &self,
-        person_id: Uuid,
-        team_id: Uuid,
+        person_id: PersonId,
+        team_id: TeamId,
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -98,8 +105,8 @@ impl OrgRepo {
             WHERE person_id = $1 AND team_id = $2
               AND (end_date IS NULL OR end_date > CURRENT_DATE)
             "#,
-            person_id,
-            team_id,
+            person_id.into_inner(),
+            team_id.into_inner(),
         )
         .execute(&self.pool)
         .await

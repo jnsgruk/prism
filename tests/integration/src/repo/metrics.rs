@@ -307,7 +307,7 @@ define_repo_test!(
         // Now assign — start_date will be 2025-01-10 (earliest contribution).
         repos
             .org
-            .assign_person_to_team(alice, team.id)
+            .assign_person_to_team(alice.into(), team.id.into())
             .await
             .unwrap();
 

@@ -53,7 +53,11 @@ pub(super) async fn handle_get_team(
         .map_err(db_err)?
         .ok_or_else(|| Status::not_found("team not found"))?;
 
-    let member_people = repos.org.get_team_members(team_id).await.map_err(db_err)?;
+    let member_people = repos
+        .org
+        .get_team_members(team_id.into())
+        .await
+        .map_err(db_err)?;
 
     let person_ids: Vec<Uuid> = member_people.iter().map(|r| r.id).collect();
     let identities = repos
