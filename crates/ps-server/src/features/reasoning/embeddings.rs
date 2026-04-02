@@ -6,9 +6,9 @@ use tonic::{Request, Response, Status};
 use tracing::error;
 use uuid::Uuid;
 
-use super::super::common::{db_err, proto_to_platform_str, require_auth, to_timestamp};
 use super::ReasoningServiceImpl;
 use super::convert::similar_to_proto;
+use crate::common::{db_err, proto_to_platform_str, require_auth, to_timestamp};
 
 pub async fn find_similar(
     svc: &ReasoningServiceImpl,

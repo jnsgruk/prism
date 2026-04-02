@@ -17,9 +17,7 @@ use super::{
     HANDLER_DEFS, HandlersServiceImpl, derive_state, handler_for_platform, known_handlers,
     validate_restate_identifier,
 };
-use crate::services::common::{
-    db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp,
-};
+use crate::common::{db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp};
 
 fn pipeline_to_proto(p: &ps_core::models::Pipeline) -> PipelineInfo {
     PipelineInfo {

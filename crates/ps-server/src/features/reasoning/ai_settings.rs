@@ -11,11 +11,11 @@ use tonic::{Request, Response, Status};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::super::common::{
+use super::ReasoningServiceImpl;
+use crate::common::{
     ai_provider_to_proto, db_err, proto_to_ai_provider, proto_to_ai_provider_str, require_auth,
     to_timestamp,
 };
-use super::ReasoningServiceImpl;
 
 /// Load AI config from `global_settings`, falling back to defaults.
 pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Status> {

@@ -1,9 +1,9 @@
 use ps_proto::canonical::prism::v1::{GetCostSummaryRequest, GetCostSummaryResponse};
 use tonic::{Request, Response, Status};
 
-use super::super::common::{ai_provider_to_proto, db_err, require_auth};
 use super::ReasoningServiceImpl;
 use super::ai_settings::load_ai_config;
+use crate::common::{ai_provider_to_proto, db_err, require_auth};
 
 pub async fn get_cost_summary(
     svc: &ReasoningServiceImpl,

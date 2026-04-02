@@ -18,7 +18,7 @@ use tonic::{Request, Response, Status, Streaming};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::common::{db_err, require_auth, to_timestamp};
+use crate::common::{db_err, require_auth, to_timestamp};
 
 /// Maximum backup upload size (100 MB). Prevents unbounded memory allocation
 /// on the public preview/restore endpoints.

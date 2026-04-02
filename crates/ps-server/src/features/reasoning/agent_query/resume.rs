@@ -5,10 +5,10 @@ use tonic::{Request, Response, Status};
 use tracing::error;
 use uuid::Uuid;
 
-use super::super::super::common::{db_err, require_auth};
 use super::super::ReasoningServiceImpl;
 use super::STREAM_TIMEOUT;
 use super::event_mapping;
+use crate::common::{db_err, require_auth};
 
 pub type ResumeStreamStream =
     tokio_stream::wrappers::ReceiverStream<Result<ResumeStreamResponse, Status>>;

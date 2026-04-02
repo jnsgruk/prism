@@ -9,8 +9,8 @@ use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-use super::super::common::{db_err, require_auth, to_timestamp};
 use super::ReasoningServiceImpl;
+use crate::common::{db_err, require_auth, to_timestamp};
 
 pub async fn list_conversations(
     svc: &ReasoningServiceImpl,

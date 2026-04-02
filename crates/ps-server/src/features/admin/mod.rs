@@ -16,7 +16,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use super::common::{backup_err, db_err, require_admin, require_auth, to_timestamp};
+use crate::common::{backup_err, db_err, require_admin, require_auth, to_timestamp};
 
 pub struct AdminServiceImpl {
     repos: Repos,

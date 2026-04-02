@@ -2,7 +2,7 @@ use ps_proto::canonical::prism::v1::{
     Enrichment as ProtoEnrichment, SimilarItem as ProtoSimilarItem,
 };
 
-use super::super::common::{
+use crate::common::{
     contribution_state_str_to_proto, enrichment_type_to_proto, platform_to_proto, to_timestamp,
 };
 

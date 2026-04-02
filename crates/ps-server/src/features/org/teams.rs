@@ -14,7 +14,7 @@ use uuid::Uuid;
 use super::conversions::{
     build_people, build_team_tree, github_team_to_proto, proto_to_team_type, team_to_proto,
 };
-use crate::services::common::db_err;
+use crate::common::db_err;
 
 pub(super) async fn handle_list_teams(
     repos: &Repos,

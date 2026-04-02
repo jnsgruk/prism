@@ -21,7 +21,7 @@ use ps_proto::canonical::prism::v1::{
 };
 use tonic::{Request, Response, Status};
 
-use super::common::require_auth;
+use crate::common::require_auth;
 
 pub struct OrgServiceImpl {
     repos: Repos,

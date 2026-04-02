@@ -1,4 +1,4 @@
-mod grpc;
+mod handler;
 
 use ps_core::repo::Repos;
 use ps_core::repo::metrics::{ContributionDetailRow, ContributionFullRow};
@@ -10,7 +10,7 @@ use time::Date;
 use time::macros::format_description;
 use tonic::Status;
 
-use super::common::{
+use crate::common::{
     contribution_state_to_proto, contribution_type_to_proto, platform_to_proto, to_timestamp,
 };
 

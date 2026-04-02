@@ -2,87 +2,19 @@ use std::collections::HashMap;
 
 use base64::Engine;
 use ps_core::crypto;
-use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::config_service_server::ConfigService;
 use ps_proto::canonical::prism::v1::{
     CreateSourceRequest, CreateSourceResponse, DeleteSourceRequest, DeleteSourceResponse,
     GetSourceRequest, GetSourceResponse, ListSourcesRequest, ListSourcesResponse, SetSecretRequest,
-    SetSecretResponse, SourceConfig, TestConnectionRequest, TestConnectionResponse,
-    UpdateSourceRequest, UpdateSourceResponse,
+    SetSecretResponse, TestConnectionRequest, TestConnectionResponse, UpdateSourceRequest,
+    UpdateSourceResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
 use uuid::Uuid;
-use zeroize::Zeroizing;
 
-use super::common::{
-    db_err, platform_to_proto, prost_struct_to_serde_json, proto_to_platform_str, require_auth,
-    serde_json_to_prost_struct, to_timestamp,
-};
-
-pub struct ConfigServiceImpl {
-    repos: Repos,
-    secret_key: Zeroizing<[u8; 32]>,
-    http_client: reqwest::Client,
-}
-
-impl ConfigServiceImpl {
-    pub fn new(repos: Repos, secret_key: Zeroizing<[u8; 32]>) -> Self {
-        Self {
-            repos,
-            secret_key,
-            http_client: reqwest::Client::new(),
-        }
-    }
-}
-
-/// Build a `SourceConfig` proto from a DB row + secret status map.
-fn build_source_proto(
-    source: &ps_core::models::SourceConfig,
-    secret_status: HashMap<String, bool>,
-) -> SourceConfig {
-    let settings_struct = serde_json_to_prost_struct(&source.settings);
-    let (source_type, platform_instance) = platform_to_proto(&source.source_type.to_string());
-
-    SourceConfig {
-        id: source.id.to_string(),
-        source_type,
-        name: source.name.clone(),
-        enabled: source.enabled,
-        settings: Some(settings_struct),
-        secret_status,
-        schedule_cron: source.schedule_cron.clone(),
-        created_at: Some(to_timestamp(source.created_at)),
-        updated_at: Some(to_timestamp(source.updated_at)),
-        platform_instance,
-    }
-}
-
-/// Derive a URL-safe slug from a source name for use as a platform suffix.
-///
-/// "Canonical Discourse" → "canonical-discourse", "Ubuntu" → "ubuntu"
-fn slugify_source_name(name: &str) -> String {
-    name.to_lowercase()
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
-        .collect::<String>()
-        .split('-')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
-}
-
-async fn fetch_secret_status(
-    repos: &Repos,
-    source_id: ps_core::models::SourceId,
-) -> Result<HashMap<String, bool>, Status> {
-    let keys = repos
-        .config
-        .list_secret_keys(source_id.into_inner())
-        .await
-        .map_err(db_err)?;
-    Ok(keys.into_iter().map(|k| (k, true)).collect())
-}
+use super::{ConfigServiceImpl, build_source_proto, fetch_secret_status, slugify_source_name};
+use crate::common::{db_err, prost_struct_to_serde_json, proto_to_platform_str, require_auth};
 
 #[tonic::async_trait]
 impl ConfigService for ConfigServiceImpl {

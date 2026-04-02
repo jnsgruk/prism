@@ -8,11 +8,11 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use super::super::common::{
-    db_err, enrichment_type_to_proto, proto_to_enrichment_type, require_auth, to_timestamp,
-};
 use super::ReasoningServiceImpl;
 use super::convert::enrichment_to_proto;
+use crate::common::{
+    db_err, enrichment_type_to_proto, proto_to_enrichment_type, require_auth, to_timestamp,
+};
 
 pub async fn get_enrichments(
     svc: &ReasoningServiceImpl,

@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
-use super::common::{db_err, insight_period_to_str, require_auth};
+use crate::common::{db_err, insight_period_to_str, require_auth};
 
 pub struct InsightsServiceImpl {
     repos: Repos,

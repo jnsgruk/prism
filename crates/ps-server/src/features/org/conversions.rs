@@ -8,7 +8,7 @@ use ps_proto::canonical::prism::v1::{
 use tonic::Status;
 use uuid::Uuid;
 
-use crate::services::common::platform_to_proto;
+use crate::common::platform_to_proto;
 
 /// Build `Person` proto messages from person rows + their platform identities.
 pub(super) fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -> Vec<Person> {

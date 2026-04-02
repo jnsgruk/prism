@@ -10,7 +10,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::conversions::build_people;
-use crate::services::common::db_err;
+use crate::common::db_err;
 
 pub(super) async fn handle_list_people(
     repos: &Repos,
@@ -21,7 +21,7 @@ pub(super) async fn handle_list_people(
     pagination: ps_proto::canonical::prism::v1::PaginationRequest,
     sort_msg: ps_proto::canonical::prism::v1::SortOrder,
 ) -> Result<Response<ListPeopleResponse>, Status> {
-    let filter = crate::services::common::person_filter_to_str(filter);
+    let filter = crate::common::person_filter_to_str(filter);
     let team_id: Option<Uuid> = team_id
         .map(|id| id.parse::<Uuid>())
         .transpose()

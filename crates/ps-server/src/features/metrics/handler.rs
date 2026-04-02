@@ -21,7 +21,7 @@ use super::{
     MetricsServiceImpl, contribution_detail_to_proto, contribution_full_to_proto, format_date,
     parse_date, parse_period_type, period_type_to_proto, snapshot_to_proto,
 };
-use crate::services::common::{
+use crate::common::{
     db_err, platform_to_proto, proto_to_contribution_state_str, proto_to_contribution_type_str,
     proto_to_platform_str, require_auth,
 };

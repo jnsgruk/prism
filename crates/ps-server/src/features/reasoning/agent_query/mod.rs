@@ -14,8 +14,8 @@ use tonic::{Request, Response, Status};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::super::common::{db_err, require_auth};
 use super::ReasoningServiceImpl;
+use crate::common::{db_err, require_auth};
 
 /// Maximum time the gRPC stream stays open (client-facing).
 const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
