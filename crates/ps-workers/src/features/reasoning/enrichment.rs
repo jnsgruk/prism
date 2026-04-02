@@ -60,6 +60,90 @@ struct TypeProgress {
     errors: usize,
 }
 
+/// Mutable state accumulated across enrichment batches.
+struct CycleState {
+    total_processed: i32,
+    total_errors: usize,
+    first_error: Option<String>,
+    rd_stats: TypeProgress,
+    se_stats: TypeProgress,
+    si_stats: TypeProgress,
+    to_stats: TypeProgress,
+    progress: EnrichmentProgress,
+    iteration: u32,
+    cleanup_counter: u32,
+}
+
+impl CycleState {
+    fn new() -> Self {
+        Self {
+            total_processed: 0,
+            total_errors: 0,
+            first_error: None,
+            rd_stats: TypeProgress {
+                processed: 0,
+                errors: 0,
+            },
+            se_stats: TypeProgress {
+                processed: 0,
+                errors: 0,
+            },
+            si_stats: TypeProgress {
+                processed: 0,
+                errors: 0,
+            },
+            to_stats: TypeProgress {
+                processed: 0,
+                errors: 0,
+            },
+            progress: EnrichmentProgress {
+                phase: "starting".into(),
+                review_depth: None,
+                sentiment: None,
+                significance: None,
+                topic: None,
+                status_message: "Starting enrichment cycle".into(),
+            },
+            iteration: 0,
+            cleanup_counter: 0,
+        }
+    }
+
+    fn aggregate_batch(&mut self, batch: &enrichment::BatchResult) {
+        if self.first_error.is_none() {
+            self.first_error.clone_from(&batch.first_error);
+        }
+
+        #[allow(clippy::cast_possible_wrap)]
+        {
+            self.total_processed += batch.processed as i32;
+        }
+        self.total_errors += batch.errors;
+
+        let stats = match batch.enrichment_type {
+            EnrichmentType::ReviewDepth => &mut self.rd_stats,
+            EnrichmentType::Sentiment => &mut self.se_stats,
+            EnrichmentType::Significance => &mut self.si_stats,
+            EnrichmentType::Topic => &mut self.to_stats,
+        };
+        stats.processed += batch.processed;
+        stats.errors += batch.errors;
+    }
+
+    fn update_progress_after_batch(&mut self, results: &[enrichment::BatchResult]) {
+        self.progress.review_depth = Some(self.rd_stats.clone());
+        self.progress.sentiment = Some(self.se_stats.clone());
+        self.progress.significance = Some(self.si_stats.clone());
+        self.progress.topic = Some(self.to_stats.clone());
+        self.progress.status_message = format!(
+            "Batch complete: {} processed, {} errors ({} total)",
+            results.iter().map(|r| r.processed).sum::<usize>(),
+            results.iter().map(|r| r.errors).sum::<usize>(),
+            self.total_processed,
+        );
+    }
+}
+
 impl EnrichmentHandlerImpl {
     /// Run a full enrichment cycle with Restate-native journaling.
     ///
@@ -70,11 +154,9 @@ impl EnrichmentHandlerImpl {
     /// Journaling strategy:
     /// - `ctx.run()`: run creation, queue lookups (DB reads), cost logging, cleanup
     /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
-    #[allow(clippy::too_many_lines)]
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
-        // Step 1: Create run record (journaled — retries reuse the same run_id)
         let run_id = create_run!(
             ctx,
             self.state.repos,
@@ -85,66 +167,23 @@ impl EnrichmentHandlerImpl {
 
         let span = tracing::info_span!("handler", handler = "EnrichmentHandler", run_id = %run_id);
         let _guard = span.enter();
-
         info!("starting enrichment cycle");
 
-        let mut total_processed = 0i32;
-        let mut total_errors = 0usize;
-        let mut first_error: Option<String> = None;
-        let mut rd_stats = TypeProgress {
-            processed: 0,
-            errors: 0,
-        };
-        let mut se_stats = TypeProgress {
-            processed: 0,
-            errors: 0,
-        };
-        let mut si_stats = TypeProgress {
-            processed: 0,
-            errors: 0,
-        };
-        let mut to_stats = TypeProgress {
-            processed: 0,
-            errors: 0,
-        };
-        let mut progress = EnrichmentProgress {
-            phase: "starting".into(),
-            review_depth: None,
-            sentiment: None,
-            significance: None,
-            topic: None,
-            status_message: "Starting enrichment cycle".into(),
-        };
-
-        let mut iteration = 0u32;
-        let mut cleanup_counter = 0u32;
+        let mut s = CycleState::new();
 
         loop {
-            // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
             if self.is_budget_exceeded().await {
                 break;
             }
 
-            // Step 2: Fetch one batch per enrichment type (journaled DB reads, fast)
-            let all_types = EnrichmentType::all();
-            let mut batches = Vec::with_capacity(all_types.len());
-            let mut any_non_empty = false;
-            for enrichment_type in all_types {
-                let contributions = self.find_queued(ctx, *enrichment_type, iteration).await?;
-                if !contributions.is_empty() {
-                    any_non_empty = true;
-                }
-                batches.push((*enrichment_type, contributions));
-            }
-
-            if !any_non_empty {
+            let batches = self.fetch_all_type_batches(ctx, s.iteration).await?;
+            if batches.iter().all(|(_, c)| c.is_empty()) {
                 debug!("no more contributions to enrich across any type");
                 break;
             }
 
-            // Update progress before AI calls
-            progress.phase = "processing".into();
-            progress.status_message = format!(
+            s.progress.phase = "processing".into();
+            s.progress.status_message = format!(
                 "Processing batches: {}",
                 batches
                     .iter()
@@ -153,117 +192,112 @@ impl EnrichmentHandlerImpl {
                     .collect::<Vec<_>>()
                     .join(", ")
             );
-            self.update_progress(run_id, total_processed, &progress)
+            self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
 
-            // Step 3: Process ALL types concurrently (AI calls NOT journaled)
-            let router = self.router.read().await;
-            let repo = &self.state.repos.reasoning;
-            let futures: Vec<_> = batches
-                .iter()
-                .filter(|(_, contributions)| !contributions.is_empty())
-                .map(|(etype, contributions)| {
-                    enrichment::process_queued_enrichment_batch(
-                        &router,
-                        repo,
-                        *etype,
-                        contributions,
-                    )
-                })
-                .collect();
-            let results: Vec<enrichment::BatchResult> = futures::future::join_all(futures).await;
-            drop(router);
+            let results = self.process_batches(&batches).await;
 
-            // Enqueue enriched contributions for embedding (per-batch, not accumulated)
             let batch_ids: Vec<Uuid> = batches
                 .iter()
                 .flat_map(|(_, contributions)| contributions.iter().map(|c| c.contribution_id))
                 .collect();
             self.enqueue_embeddings(ctx, &batch_ids).await;
 
-            // Step 4: Aggregate results and log costs (journaled DB writes)
             for batch in &results {
-                if first_error.is_none() {
-                    first_error.clone_from(&batch.first_error);
-                }
-
-                #[allow(clippy::cast_possible_wrap)]
-                {
-                    total_processed += batch.processed as i32;
-                }
-                total_errors += batch.errors;
-
-                // Update per-type cumulative stats
-                let stats = match batch.enrichment_type {
-                    EnrichmentType::ReviewDepth => &mut rd_stats,
-                    EnrichmentType::Sentiment => &mut se_stats,
-                    EnrichmentType::Significance => &mut si_stats,
-                    EnrichmentType::Topic => &mut to_stats,
-                };
-                stats.processed += batch.processed;
-                stats.errors += batch.errors;
-
-                self.log_cost(ctx, batch.enrichment_type, iteration, batch)
+                s.aggregate_batch(batch);
+                self.log_cost(ctx, batch.enrichment_type, s.iteration, batch)
                     .await;
             }
 
-            // Update progress with cumulative per-type stats
-            progress.review_depth = Some(rd_stats.clone());
-            progress.sentiment = Some(se_stats.clone());
-            progress.significance = Some(si_stats.clone());
-            progress.topic = Some(to_stats.clone());
-            progress.status_message = format!(
-                "Batch complete: {} processed, {} errors ({total_processed} total)",
-                results.iter().map(|r| r.processed).sum::<usize>(),
-                results.iter().map(|r| r.errors).sum::<usize>(),
-            );
-            self.update_progress(run_id, total_processed, &progress)
+            s.update_progress_after_batch(&results);
+            self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
 
-            // Clean up fully enriched entries between batches to free queue slots
-            self.delete_fully_enriched(ctx, cleanup_counter).await;
-            cleanup_counter += 1;
-            iteration += 1;
+            self.delete_fully_enriched(ctx, s.cleanup_counter).await;
+            s.cleanup_counter += 1;
+            s.iteration += 1;
         }
 
-        // Step 5: Final cleanup of any remaining fully enriched entries
-        self.delete_fully_enriched(ctx, cleanup_counter).await;
-
-        // Step 6: Complete or fail the run (journaled)
-        progress.phase = "complete".into();
-        progress.status_message =
-            format!("Enrichment complete: {total_processed} processed, {total_errors} errors");
-        self.update_progress(run_id, total_processed, &progress)
+        self.delete_fully_enriched(ctx, s.cleanup_counter).await;
+        self.finalize_run(ctx, run_id, &mut s, start.elapsed())
             .await;
 
-        if total_errors > 0 && total_processed == 0 {
-            let msg = if let Some(ref err) = first_error {
-                format!("processed 0, errors {total_errors}: {err}")
+        Ok(())
+    }
+
+    /// Fetch one batch of queued contributions per enrichment type.
+    async fn fetch_all_type_batches(
+        &self,
+        ctx: &Context<'_>,
+        iteration: u32,
+    ) -> Result<Vec<(EnrichmentType, Vec<QueuedContribution>)>, TerminalError> {
+        let all_types = EnrichmentType::all();
+        let mut batches = Vec::with_capacity(all_types.len());
+        for enrichment_type in all_types {
+            let contributions = self.find_queued(ctx, *enrichment_type, iteration).await?;
+            batches.push((*enrichment_type, contributions));
+        }
+        Ok(batches)
+    }
+
+    /// Process all non-empty batches concurrently (AI calls NOT journaled).
+    async fn process_batches(
+        &self,
+        batches: &[(EnrichmentType, Vec<QueuedContribution>)],
+    ) -> Vec<enrichment::BatchResult> {
+        let router = self.router.read().await;
+        let repo = &self.state.repos.reasoning;
+        let futures: Vec<_> = batches
+            .iter()
+            .filter(|(_, contributions)| !contributions.is_empty())
+            .map(|(etype, contributions)| {
+                enrichment::process_queued_enrichment_batch(&router, repo, *etype, contributions)
+            })
+            .collect();
+        let results = futures::future::join_all(futures).await;
+        drop(router);
+        results
+    }
+
+    /// Complete or fail the run based on accumulated stats.
+    async fn finalize_run(
+        &self,
+        ctx: &Context<'_>,
+        run_id: Uuid,
+        s: &mut CycleState,
+        elapsed: std::time::Duration,
+    ) {
+        s.progress.phase = "complete".into();
+        s.progress.status_message = format!(
+            "Enrichment complete: {} processed, {} errors",
+            s.total_processed, s.total_errors,
+        );
+        self.update_progress(run_id, s.total_processed, &s.progress)
+            .await;
+
+        if s.total_errors > 0 && s.total_processed == 0 {
+            let msg = if let Some(ref err) = s.first_error {
+                format!("processed 0, errors {}: {err}", s.total_errors)
             } else {
-                format!("processed 0, errors {total_errors}")
+                format!("processed 0, errors {}", s.total_errors)
             };
             fail_run!(ctx, self.state.repos, run_id, "_enrichment", &msg);
-            warn!(errors = total_errors, "enrichment cycle failed");
+            warn!(errors = s.total_errors, "enrichment cycle failed");
         } else {
             complete_run!(
                 ctx,
                 self.state.repos,
                 run_id,
                 "_enrichment",
-                total_processed
+                s.total_processed
             );
             info!(
-                processed = total_processed,
-                errors = total_errors,
-                duration_secs = start.elapsed().as_secs(),
+                processed = s.total_processed,
+                errors = s.total_errors,
+                duration_secs = elapsed.as_secs(),
                 "complete"
             );
-
-            // Downstream handlers (insights, embedding) are now triggered by the
-            // pipeline workflow rather than directly from here.
         }
-
-        Ok(())
     }
 
     /// Check whether the daily AI budget has been exceeded.

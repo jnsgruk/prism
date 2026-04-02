@@ -7,11 +7,48 @@ use tonic_health::ServingStatus;
 use tracing::{error, info, warn};
 
 #[tokio::main]
-#[allow(clippy::expect_used, clippy::too_many_lines)]
+#[allow(clippy::expect_used)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Install the rustls crypto provider before any TLS usage (kube, object_store).
-    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    init_logging();
 
+    let pool = connect_database().await?;
+    let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
+    let http_client = build_http_client();
+    let container_manager = setup_container_manager().await;
+    let artifact_store = setup_artifact_store();
+
+    let state = SharedState {
+        repos: ps_core::repo::Repos::new(pool.clone()),
+        secret_key,
+        http_client,
+        container_manager,
+        artifact_store,
+    };
+
+    let ai_router = setup_ai_router(&state).await;
+
+    let health_server = start_health_server().await?;
+    let restate_server = start_restate_server(state, ai_router);
+
+    spawn_bootstrap_tasks();
+
+    tokio::select! {
+        r = health_server => {
+            if let Err(e) = r {
+                error!("health server panicked: {e}");
+            }
+        }
+        r = restate_server => {
+            if let Err(e) = r {
+                error!("restate server panicked: {e}");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn init_logging() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -19,23 +56,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .json()
         .init();
+}
 
-    // Database connection
+#[allow(clippy::expect_used)]
+async fn connect_database() -> Result<sqlx::PgPool, Box<dyn std::error::Error>> {
+    // Install the rustls crypto provider before any TLS usage (kube, object_store).
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = sqlx::PgPool::connect(&database_url).await?;
     info!("connected to database");
+    Ok(pool)
+}
 
-    // Load encryption key
-    let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
-
-    // Shared HTTP client (60s default timeout prevents indefinite hangs)
-    let http_client = reqwest::Client::builder()
+#[allow(clippy::expect_used)]
+fn build_http_client() -> reqwest::Client {
+    reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .build()
-        .expect("failed to build HTTP client");
+        .expect("failed to build HTTP client")
+}
 
-    // Container manager — optional, requires K8s access
-    let container_manager = match kube::Client::try_default().await {
+async fn setup_container_manager() -> Option<Arc<ps_agent::ContainerManager>> {
+    match kube::Client::try_default().await {
         Ok(kube_client) => {
             let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
             let agent_image =
@@ -64,109 +107,99 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             warn!(error = %e, "K8s not available — agent containers disabled");
             None
         }
+    }
+}
+
+fn setup_artifact_store() -> Option<Arc<dyn ps_core::ArtifactStore>> {
+    let (Ok(endpoint), Ok(bucket)) = (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
+    else {
+        info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
+        return None;
     };
 
-    // Object storage — optional, configured via env vars
-    let artifact_store: Option<Arc<dyn ps_core::ArtifactStore>> =
-        if let (Ok(endpoint), Ok(bucket)) =
-            (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
-        {
-            let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
-            let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
-            match ps_core::artifact_store::S3ArtifactStore::new(
-                &endpoint,
-                &bucket,
-                &access_key,
-                &secret_key_s3,
-            ) {
-                Ok(store) => {
-                    info!(%endpoint, %bucket, "S3 artifact store configured");
-                    Some(Arc::new(store))
-                }
-                Err(e) => {
-                    warn!(error = %e, "failed to configure S3 artifact store");
-                    None
-                }
-            }
-        } else {
-            info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
+    let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
+    let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
+    match ps_core::artifact_store::S3ArtifactStore::new(
+        &endpoint,
+        &bucket,
+        &access_key,
+        &secret_key_s3,
+    ) {
+        Ok(store) => {
+            info!(%endpoint, %bucket, "S3 artifact store configured");
+            Some(Arc::new(store))
+        }
+        Err(e) => {
+            warn!(error = %e, "failed to configure S3 artifact store");
             None
-        };
-
-    // Build shared state for all handlers
-    let state = SharedState {
-        repos: ps_core::repo::Repos::new(pool.clone()),
-        secret_key,
-        http_client,
-        container_manager,
-        artifact_store,
-    };
-
-    // AI provider routing for enrichment handler
-    let ai_router = {
-        let ai_config = ps_reasoning::types::AiConfig::default();
-        let mut router = ps_reasoning::routing::TaskRouter::new(ai_config);
-
-        // Load AI config from global_settings
-        if let Ok(settings) = state.repos.config.list_global_settings("ai.").await {
-            let mut config = ps_reasoning::types::AiConfig::default();
-            for s in &settings {
-                match s.key.as_str() {
-                    "ai.tasks.enrichment" => {
-                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
-                            config.tasks.enrichment = tc;
-                        }
-                    }
-                    "ai.tasks.insights" => {
-                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
-                            config.tasks.insights = tc;
-                        }
-                    }
-                    "ai.tasks.agentic" => {
-                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
-                            config.tasks.agentic = tc;
-                        }
-                    }
-                    "ai.tasks.embeddings" => {
-                        if let Ok(tc) = serde_json::from_value(s.value.clone()) {
-                            config.tasks.embeddings = tc;
-                        }
-                    }
-                    "ai.budget_cap_usd" => {
-                        if let Some(cap) = s.value.as_f64() {
-                            config.budget_cap_usd = Some(cap);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            router.update_config(config);
         }
+    }
+}
 
-        // Load provider API keys
-        for (provider, secret_key_name) in &[
-            ("google", "google_api_key"),
-            ("openrouter", "openrouter_api_key"),
-        ] {
-            if let Ok(Some(encrypted)) = state.repos.config.get_global_secret(secret_key_name).await
-                && let Ok(decrypted) = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
-                && let Ok(api_key) = String::from_utf8(decrypted)
-            {
-                match *provider {
-                    "google" => router.set_google(&api_key),
-                    "openrouter" => router.set_openrouter(&api_key),
-                    _ => {}
+async fn setup_ai_router(
+    state: &SharedState,
+) -> Arc<tokio::sync::RwLock<ps_reasoning::routing::TaskRouter>> {
+    let ai_config = ps_reasoning::types::AiConfig::default();
+    let mut router = ps_reasoning::routing::TaskRouter::new(ai_config);
+
+    if let Ok(settings) = state.repos.config.list_global_settings("ai.").await {
+        let mut config = ps_reasoning::types::AiConfig::default();
+        for s in &settings {
+            match s.key.as_str() {
+                "ai.tasks.enrichment" => {
+                    if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                        config.tasks.enrichment = tc;
+                    }
                 }
-                info!(provider, "loaded AI provider key for enrichment handler");
+                "ai.tasks.insights" => {
+                    if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                        config.tasks.insights = tc;
+                    }
+                }
+                "ai.tasks.agentic" => {
+                    if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                        config.tasks.agentic = tc;
+                    }
+                }
+                "ai.tasks.embeddings" => {
+                    if let Ok(tc) = serde_json::from_value(s.value.clone()) {
+                        config.tasks.embeddings = tc;
+                    }
+                }
+                "ai.budget_cap_usd" => {
+                    if let Some(cap) = s.value.as_f64() {
+                        config.budget_cap_usd = Some(cap);
+                    }
+                }
+                _ => {}
             }
         }
+        router.update_config(config);
+    }
 
-        Arc::new(tokio::sync::RwLock::new(router))
-    };
+    for (provider, secret_key_name) in &[
+        ("google", "google_api_key"),
+        ("openrouter", "openrouter_api_key"),
+    ] {
+        if let Ok(Some(encrypted)) = state.repos.config.get_global_secret(secret_key_name).await
+            && let Ok(decrypted) = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
+            && let Ok(api_key) = String::from_utf8(decrypted)
+        {
+            match *provider {
+                "google" => router.set_google(&api_key),
+                "openrouter" => router.set_openrouter(&api_key),
+                _ => {}
+            }
+            info!(provider, "loaded AI provider key for enrichment handler");
+        }
+    }
 
-    // Health service for k8s probes
+    Arc::new(tokio::sync::RwLock::new(router))
+}
+
+async fn start_health_server() -> Result<tokio::task::JoinHandle<()>, Box<dyn std::error::Error>> {
     let health_port = std::env::var("PORT").unwrap_or_else(|_| "9080".into());
-    let health_addr = format!("0.0.0.0:{health_port}").parse()?;
+    let health_addr: std::net::SocketAddr = format!("0.0.0.0:{health_port}").parse()?;
 
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
@@ -174,7 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     info!(%health_addr, "starting health server");
-    let health_server = tokio::spawn(async move {
+    Ok(tokio::spawn(async move {
         if let Err(e) = Server::builder()
             .add_service(health_service)
             .serve(health_addr)
@@ -182,14 +215,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             error!("health server error: {e}");
         }
-    });
+    }))
+}
 
-    // Restate endpoint — all handlers bound via feature bind() functions
+#[allow(clippy::expect_used)]
+fn start_restate_server(
+    state: SharedState,
+    ai_router: Arc<tokio::sync::RwLock<ps_reasoning::routing::TaskRouter>>,
+) -> tokio::task::JoinHandle<()> {
     let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
-    let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}").parse()?;
+    let restate_addr: std::net::SocketAddr = format!("0.0.0.0:{restate_port}")
+        .parse()
+        .expect("invalid Restate listen address");
 
     info!(%restate_addr, "starting Restate endpoint");
-    let restate_server = tokio::spawn(async move {
+    tokio::spawn(async move {
         let endpoint = Endpoint::builder();
         let endpoint = ps_workers::features::ingestion::bind(endpoint, &state);
         let endpoint = ps_workers::features::identity_resolution::bind(endpoint, &state);
@@ -200,14 +240,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         HttpServer::new(endpoint.build())
             .listen_and_serve(restate_addr)
             .await;
-    });
+    })
+}
 
-    // Register with Restate admin (best-effort, retries on startup)
+fn spawn_bootstrap_tasks() {
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
+    let restate_port = std::env::var("PS_RESTATE_LISTEN_PORT").unwrap_or_else(|_| "9081".into());
     let self_url = std::env::var("RESTATE_SELF_URL")
         .unwrap_or_else(|_| format!("http://ps-workers:{restate_port}"));
-
     let restate_ingress_url =
         std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
 
@@ -216,22 +257,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         bootstrap_reaper(&restate_ingress_url, &restate_admin_url).await;
         bootstrap_watchdog(&restate_ingress_url, &restate_admin_url).await;
     });
-
-    // Wait for either server to exit
-    tokio::select! {
-        r = health_server => {
-            if let Err(e) = r {
-                error!("health server panicked: {e}");
-            }
-        }
-        r = restate_server => {
-            if let Err(e) = r {
-                error!("restate server panicked: {e}");
-            }
-        }
-    }
-
-    Ok(())
 }
 
 /// Register this service deployment with the Restate admin API.

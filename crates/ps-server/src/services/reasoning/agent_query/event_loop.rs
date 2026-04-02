@@ -93,7 +93,6 @@ pub async fn run_event_loop(
 
 /// Process a single mapped proto event: write it to the database, send to the
 /// gRPC stream, and update running counters.
-#[allow(clippy::too_many_lines)]
 async fn write_and_send_event(
     repos: &Repos,
     conversation_id: Uuid,
@@ -106,154 +105,211 @@ async fn write_and_send_event(
     use ask_question_response::Event;
     match evt {
         Event::ToolCallStarted(s) => {
-            let identity = registry.tool_started(&s.call_id);
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "tool_call_started",
-                    &serde_json::json!({
-                        "tool_name": s.tool_name,
-                        "arguments_json": s.arguments_json,
-                        "call_id": s.call_id,
-                    }),
-                    Some(&identity.step_id),
-                    Some(identity.step_seq),
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::ToolCallStarted(
-                        ps_proto::canonical::prism::v1::AgentToolCallStarted {
-                            tool_name: s.tool_name.clone(),
-                            arguments_json: s.arguments_json.clone(),
-                            call_id: s.call_id.clone(),
-                            step_id: identity.step_id,
-                            step_seq: identity.step_seq,
-                        },
-                    )),
-                }))
-                .await;
+            handle_tool_call_started(repos, conversation_id, s, registry, tx).await;
         }
         Event::ToolCallCompleted(c) => {
             *tool_calls += 1;
-            let identity = registry.tool_completed(&c.call_id);
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "tool_call_completed",
-                    &serde_json::json!({
-                        "tool_name": c.tool_name,
-                        "result_summary": c.result_summary,
-                        "duration_ms": c.duration_ms,
-                        "success": c.success,
-                        "call_id": c.call_id,
-                    }),
-                    Some(&identity.step_id),
-                    Some(identity.step_seq),
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::ToolCallCompleted(
-                        ps_proto::canonical::prism::v1::AgentToolCallCompleted {
-                            tool_name: c.tool_name.clone(),
-                            result_summary: c.result_summary.clone(),
-                            duration_ms: c.duration_ms,
-                            success: c.success,
-                            call_id: c.call_id.clone(),
-                            step_id: identity.step_id,
-                            step_seq: identity.step_seq,
-                        },
-                    )),
-                }))
-                .await;
+            handle_tool_call_completed(repos, conversation_id, c, registry, tx).await;
         }
         Event::PartialAnswer(a) => {
             answer_text.clone_from(&a.text);
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "partial_answer",
-                    &serde_json::json!({"text": a.text}),
-                    None,
-                    None,
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::PartialAnswer(a.clone())),
-                }))
-                .await;
+            handle_partial_answer(repos, conversation_id, a, tx).await;
         }
         Event::Thinking(t) => {
-            let identity = registry.thinking_step(t.part_index, &t.text);
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "thinking",
-                    &serde_json::json!({"text": t.text, "part_index": t.part_index}),
-                    Some(&identity.step_id),
-                    Some(identity.step_seq),
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::Thinking(
-                        ps_proto::canonical::prism::v1::AgentThinking {
-                            text: t.text.clone(),
-                            part_index: t.part_index,
-                            step_id: identity.step_id,
-                            step_seq: identity.step_seq,
-                        },
-                    )),
-                }))
-                .await;
+            handle_thinking(repos, conversation_id, t, registry, tx).await;
         }
         Event::TokenUsage(t) => {
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "token_usage",
-                    &serde_json::json!({
-                        "input_tokens": t.input_tokens,
-                        "output_tokens": t.output_tokens,
-                        "context_window": t.context_window,
-                    }),
-                    None,
-                    None,
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::TokenUsage(*t)),
-                }))
-                .await;
+            handle_token_usage(repos, conversation_id, t, tx).await;
         }
         Event::Error(e) => {
-            let _ = repos
-                .reasoning
-                .append_event(
-                    conversation_id,
-                    "error",
-                    &serde_json::json!({
-                        "message": e.message,
-                        "retryable": e.retryable,
-                    }),
-                    None,
-                    None,
-                )
-                .await;
-            let _ = tx
-                .send(Ok(AskQuestionResponse {
-                    event: Some(Event::Error(e.clone())),
-                }))
-                .await;
+            handle_error(repos, conversation_id, e, tx).await;
         }
         _ => {}
     }
+}
+
+async fn handle_tool_call_started(
+    repos: &Repos,
+    conversation_id: Uuid,
+    s: &ps_proto::canonical::prism::v1::AgentToolCallStarted,
+    registry: &mut StepRegistry,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let identity = registry.tool_started(&s.call_id);
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "tool_call_started",
+            &serde_json::json!({
+                "tool_name": s.tool_name,
+                "arguments_json": s.arguments_json,
+                "call_id": s.call_id,
+            }),
+            Some(&identity.step_id),
+            Some(identity.step_seq),
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::ToolCallStarted(
+                ps_proto::canonical::prism::v1::AgentToolCallStarted {
+                    tool_name: s.tool_name.clone(),
+                    arguments_json: s.arguments_json.clone(),
+                    call_id: s.call_id.clone(),
+                    step_id: identity.step_id,
+                    step_seq: identity.step_seq,
+                },
+            )),
+        }))
+        .await;
+}
+
+async fn handle_tool_call_completed(
+    repos: &Repos,
+    conversation_id: Uuid,
+    c: &ps_proto::canonical::prism::v1::AgentToolCallCompleted,
+    registry: &mut StepRegistry,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let identity = registry.tool_completed(&c.call_id);
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "tool_call_completed",
+            &serde_json::json!({
+                "tool_name": c.tool_name,
+                "result_summary": c.result_summary,
+                "duration_ms": c.duration_ms,
+                "success": c.success,
+                "call_id": c.call_id,
+            }),
+            Some(&identity.step_id),
+            Some(identity.step_seq),
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::ToolCallCompleted(
+                ps_proto::canonical::prism::v1::AgentToolCallCompleted {
+                    tool_name: c.tool_name.clone(),
+                    result_summary: c.result_summary.clone(),
+                    duration_ms: c.duration_ms,
+                    success: c.success,
+                    call_id: c.call_id.clone(),
+                    step_id: identity.step_id,
+                    step_seq: identity.step_seq,
+                },
+            )),
+        }))
+        .await;
+}
+
+async fn handle_partial_answer(
+    repos: &Repos,
+    conversation_id: Uuid,
+    a: &ps_proto::canonical::prism::v1::AgentPartialAnswer,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "partial_answer",
+            &serde_json::json!({"text": a.text}),
+            None,
+            None,
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::PartialAnswer(a.clone())),
+        }))
+        .await;
+}
+
+async fn handle_thinking(
+    repos: &Repos,
+    conversation_id: Uuid,
+    t: &ps_proto::canonical::prism::v1::AgentThinking,
+    registry: &mut StepRegistry,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let identity = registry.thinking_step(t.part_index, &t.text);
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "thinking",
+            &serde_json::json!({"text": t.text, "part_index": t.part_index}),
+            Some(&identity.step_id),
+            Some(identity.step_seq),
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::Thinking(
+                ps_proto::canonical::prism::v1::AgentThinking {
+                    text: t.text.clone(),
+                    part_index: t.part_index,
+                    step_id: identity.step_id,
+                    step_seq: identity.step_seq,
+                },
+            )),
+        }))
+        .await;
+}
+
+async fn handle_token_usage(
+    repos: &Repos,
+    conversation_id: Uuid,
+    t: &ps_proto::canonical::prism::v1::AgentTokenUsage,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "token_usage",
+            &serde_json::json!({
+                "input_tokens": t.input_tokens,
+                "output_tokens": t.output_tokens,
+                "context_window": t.context_window,
+            }),
+            None,
+            None,
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::TokenUsage(*t)),
+        }))
+        .await;
+}
+
+async fn handle_error(
+    repos: &Repos,
+    conversation_id: Uuid,
+    e: &ps_proto::canonical::prism::v1::AgentError,
+    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+) {
+    let _ = repos
+        .reasoning
+        .append_event(
+            conversation_id,
+            "error",
+            &serde_json::json!({
+                "message": e.message,
+                "retryable": e.retryable,
+            }),
+            None,
+            None,
+        )
+        .await;
+    let _ = tx
+        .send(Ok(AskQuestionResponse {
+            event: Some(ask_question_response::Event::Error(e.clone())),
+        }))
+        .await;
 }
