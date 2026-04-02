@@ -495,8 +495,8 @@ fn search_pr_to_contributions(
     items.push(ContributionInput {
         platform: Platform::Github,
         contribution_type: ContributionType::PullRequest,
-        platform_id: format!("{owner}/{repo}/pull/{number}"),
-        platform_username: author.to_lowercase(),
+        platform_id: format!("{owner}/{repo}/pull/{number}").into(),
+        platform_username: author.to_lowercase().into(),
         title: Some(title),
         url: Some(url.clone()),
         state: Some(pr_state),
@@ -605,8 +605,8 @@ fn search_review_to_contribution(
     Ok(ContributionInput {
         platform: Platform::Github,
         contribution_type: ContributionType::PrReview,
-        platform_id: format!("{owner}/{repo}/review/{review_id}"),
-        platform_username: reviewer.to_lowercase(),
+        platform_id: format!("{owner}/{repo}/review/{review_id}").into(),
+        platform_username: reviewer.to_lowercase().into(),
         title: Some(format!("Review on #{pr_number}")),
         url: Some(format!("{pr_url}/reviews/{review_id}")),
         state: review_state,

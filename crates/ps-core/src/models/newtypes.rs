@@ -106,3 +106,13 @@ impl_string_newtype!(
     HandlerMethod,
     "The method on a Restate handler (e.g. \"run_ingestion\")."
 );
+
+impl_string_newtype!(
+    PlatformId,
+    "The external platform's unique identifier for a contribution (e.g. GitHub PR URL, Jira ticket key)."
+);
+
+impl_string_newtype!(
+    PlatformUsername,
+    "A username on an external platform (e.g. GitHub login, Jira account name)."
+);

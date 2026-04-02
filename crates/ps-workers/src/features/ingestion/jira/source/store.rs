@@ -19,7 +19,7 @@ pub(super) async fn store_batch_impl(
     let account_ids: Vec<String> = items
         .iter()
         .filter(|i| !i.platform_username.is_empty())
-        .map(|i| i.platform_username.clone())
+        .map(|i| i.platform_username.to_string())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect();
@@ -40,7 +40,7 @@ pub(super) async fn store_batch_impl(
         let person_id = if item.platform_username.is_empty() {
             None
         } else {
-            person_map.get(&item.platform_username).copied()
+            person_map.get(item.platform_username.as_str()).copied()
         };
 
         ids.push(Uuid::now_v7());

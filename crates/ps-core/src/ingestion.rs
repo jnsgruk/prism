@@ -1,5 +1,8 @@
 use crate::Error;
-use crate::models::{ContributionState, ContributionType, Platform, RateLimitInfo, SourceConfig};
+use crate::models::{
+    ContributionState, ContributionType, Platform, PlatformId, PlatformUsername, RateLimitInfo,
+    SourceConfig,
+};
 use crate::repo::Repos;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -70,8 +73,8 @@ pub struct ContributionMetadata {
 pub struct ContributionInput {
     pub platform: Platform,
     pub contribution_type: ContributionType,
-    pub platform_id: String,
-    pub platform_username: String,
+    pub platform_id: PlatformId,
+    pub platform_username: PlatformUsername,
     pub title: Option<String>,
     pub url: Option<String>,
     pub state: Option<ContributionState>,
@@ -214,7 +217,7 @@ pub trait Source: Send + Sync {
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct ContributionKey {
     pub platform: Platform,
-    pub platform_id: String,
+    pub platform_id: PlatformId,
 }
 
 impl ContributionInput {

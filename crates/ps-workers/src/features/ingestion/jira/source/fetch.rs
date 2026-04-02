@@ -271,8 +271,8 @@ fn convert_issue(cur: &Cursor, issue: &JiraIssue) -> Option<ContributionInput> {
     Some(ContributionInput {
         platform: Platform::Jira,
         contribution_type: ContributionType::JiraTicket,
-        platform_id: issue.key.clone(),
-        platform_username,
+        platform_id: issue.key.clone().into(),
+        platform_username: platform_username.into(),
         title: fields.summary.clone(),
         url: Some(url),
         state,

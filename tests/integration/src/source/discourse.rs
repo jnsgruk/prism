@@ -135,19 +135,19 @@ define_source_test!(fetch_batch_parses_topics, |ctx| async move {
         .iter()
         .find(|i| i.contribution_type == ContributionType::DiscourseTopic)
         .expect("topic item");
-    assert_eq!(topic_item.platform_id, "101");
+    assert_eq!(topic_item.platform_id.as_str(), "101");
     assert_eq!(topic_item.title.as_deref(), Some("Test Topic"));
     // First post content merged into topic
     assert_eq!(topic_item.content.as_deref(), Some("First post body"));
-    assert_eq!(topic_item.platform_username, "alice");
+    assert_eq!(topic_item.platform_username.as_str(), "alice");
 
     let post_item = result
         .items
         .iter()
         .find(|i| i.contribution_type == ContributionType::DiscoursePost)
         .expect("post item");
-    assert_eq!(post_item.platform_id, "1002");
-    assert_eq!(post_item.platform_username, "bob");
+    assert_eq!(post_item.platform_id.as_str(), "1002");
+    assert_eq!(post_item.platform_username.as_str(), "bob");
 });
 
 define_source_test!(fetch_batch_respects_watermark, |ctx| async move {

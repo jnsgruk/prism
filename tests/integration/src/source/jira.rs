@@ -82,9 +82,9 @@ define_source_test!(fetch_batch_parses_issues, |ctx| async move {
     assert_eq!(result.items.len(), 1);
     let item = &result.items[0];
     assert_eq!(item.contribution_type, ContributionType::JiraTicket);
-    assert_eq!(item.platform_id, "PROJ-123");
+    assert_eq!(item.platform_id.as_str(), "PROJ-123");
     assert_eq!(item.title.as_deref(), Some("Implement feature Y"));
-    assert_eq!(item.platform_username, "user-account-1");
+    assert_eq!(item.platform_username.as_str(), "user-account-1");
 });
 
 define_source_test!(fetch_batch_pagination_token_advances, |ctx| async move {

@@ -16,7 +16,7 @@ pub(super) async fn store_batch_impl(
     // Collect unique usernames for batch identity resolution.
     let usernames: Vec<String> = items
         .iter()
-        .map(|i| i.platform_username.clone())
+        .map(|i| i.platform_username.to_string())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect();

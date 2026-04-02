@@ -39,7 +39,7 @@ impl ActivityRepo {
             person_id,
             &*item.platform.as_cow(),
             item.contribution_type.as_str(),
-            item.platform_id,
+            item.platform_id.as_str(),
             item.title,
             item.url,
             item.state.map(ContributionState::as_str),

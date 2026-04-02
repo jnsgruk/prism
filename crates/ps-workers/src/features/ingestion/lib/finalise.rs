@@ -154,7 +154,7 @@ pub async fn retry_skipped_diffs(
                     if let Some(obj) = content.as_object_mut() {
                         obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
                     }
-                    let platform_id = item.platform_id.clone();
+                    let platform_id = item.platform_id.to_string();
                     updated_items.push((platform_id, content));
                 }
             }

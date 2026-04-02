@@ -232,7 +232,7 @@ async fn process_topics(
 
         if let Some(ref post_stream) = detail.post_stream {
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
-                topic_input.platform_username = first_post.username.to_lowercase();
+                topic_input.platform_username = first_post.username.to_lowercase().into();
                 topic_input.content = first_post.raw.clone();
 
                 if let Some(ref raw) = first_post.raw {
@@ -288,9 +288,9 @@ fn build_topic_input(
     ContributionInput {
         platform,
         contribution_type: ContributionType::DiscourseTopic,
-        platform_id: topic.id.to_string(),
+        platform_id: topic.id.to_string().into(),
         // Topic creator is not in the summary; will be resolved from the first post
-        platform_username: String::new(),
+        platform_username: String::new().into(),
         title: Some(topic.title.clone()),
         url: Some(url),
         state: None,
@@ -335,8 +335,8 @@ fn build_post_input(post: &Post, topic: &TopicSummary, cur: &Cursor) -> Contribu
     ContributionInput {
         platform,
         contribution_type: ContributionType::DiscoursePost,
-        platform_id: post.id.to_string(),
-        platform_username: post.username.to_lowercase(),
+        platform_id: post.id.to_string().into(),
+        platform_username: post.username.to_lowercase().into(),
         title: Some(topic.title.clone()),
         url: Some(url),
         state: None,
@@ -430,8 +430,8 @@ fn build_like_input(
     ContributionInput {
         platform,
         contribution_type: ContributionType::DiscourseLike,
-        platform_id: format!("like-{}-{}", post.id, liker.username.to_lowercase()),
-        platform_username: liker.username.to_lowercase(),
+        platform_id: format!("like-{}-{}", post.id, liker.username.to_lowercase()).into(),
+        platform_username: liker.username.to_lowercase().into(),
         title: Some(topic.title.clone()),
         url: Some(url),
         state: None,

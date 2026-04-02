@@ -120,8 +120,8 @@ define_source_test!(fetch_batch_parses_graphql_prs, |ctx| async move {
         .iter()
         .find(|i| i.contribution_type == ContributionType::PullRequest)
         .expect("PR item");
-    assert_eq!(pr.platform_id, "testorg/myrepo/pull/42");
-    assert_eq!(pr.platform_username, "alice");
+    assert_eq!(pr.platform_id.as_str(), "testorg/myrepo/pull/42");
+    assert_eq!(pr.platform_username.as_str(), "alice");
     assert_eq!(pr.title.as_deref(), Some("Add feature X"));
 
     let review = result
@@ -129,8 +129,8 @@ define_source_test!(fetch_batch_parses_graphql_prs, |ctx| async move {
         .iter()
         .find(|i| i.contribution_type == ContributionType::PrReview)
         .expect("review item");
-    assert_eq!(review.platform_id, "testorg/myrepo/review/9001");
-    assert_eq!(review.platform_username, "bob");
+    assert_eq!(review.platform_id.as_str(), "testorg/myrepo/review/9001");
+    assert_eq!(review.platform_username.as_str(), "bob");
 });
 
 define_source_test!(fetch_batch_handles_pagination, |ctx| async move {

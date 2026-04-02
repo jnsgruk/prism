@@ -25,8 +25,8 @@ pub(super) async fn store_batch_impl(
     let mut seen = std::collections::HashSet::new();
     let usernames: Vec<String> = items
         .iter()
-        .filter(|i| !i.platform_username.is_empty() && seen.insert(i.platform_username.clone()))
-        .map(|i| i.platform_username.clone())
+        .filter(|i| !i.platform_username.is_empty() && seen.insert(i.platform_username.to_string()))
+        .map(|i| i.platform_username.to_string())
         .collect();
 
     // Resolve-only: look up existing identities, never auto-create.
@@ -46,7 +46,7 @@ pub(super) async fn store_batch_impl(
         let person_id = if item.platform_username.is_empty() {
             None
         } else {
-            person_map.get(&item.platform_username).copied()
+            person_map.get(item.platform_username.as_str()).copied()
         };
 
         ids.push(Uuid::now_v7());
