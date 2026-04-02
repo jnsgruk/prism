@@ -139,10 +139,10 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                 <SidebarMenuButton
                   render={<Link to="/ask" />}
                   isActive={pathname === "/ask"}
-                  tooltip="Ask"
+                  tooltip="New Chat"
                 >
                   <Sparkles />
-                  <span>Ask</span>
+                  <span>New Chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
