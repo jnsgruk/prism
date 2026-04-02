@@ -10,12 +10,8 @@ import { toast } from "sonner";
 import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { formatRelativeTime } from "@/lib/format";
 import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
-import { useEnrichmentPipelineStatus } from "@/views/admin/hooks/use-enrichment";
-import {
-  useCancelHandlerRun,
-  useListRuns,
-  useTriggerHandler,
-} from "@/views/ingestion/hooks/use-ingestion";
+import { useEnrichmentPipelineStatus } from "@/lib/hooks/use-enrichment";
+import { useCancelHandlerRun, useListRuns, useTriggerHandler } from "@/lib/hooks/use-ingestion";
 
 // ---------------------------------------------------------------------------
 // Shared handler action hook

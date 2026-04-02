@@ -25,7 +25,7 @@ import {
   personTeamColumn,
   personIdentitiesColumn,
 } from "@/views/people/components/person-columns";
-import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
+import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
 
 const columns = [personNameColumn, personTeamColumn, personIdentitiesColumn];
 

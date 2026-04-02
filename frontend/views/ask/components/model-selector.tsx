@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { aiProviderKey, aiProviderLabel } from "@/lib/proto-display";
-import { useAiModels, useAiSettings } from "@/views/admin/hooks/use-ai-settings";
+import { useAiModels, useAiSettings } from "@/lib/hooks/use-ai-settings";
 
 /** Google Gemini icon — the official gradient sparkle. */
 const GeminiIcon = ({ className }: { className?: string }): React.ReactElement => (

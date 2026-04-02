@@ -6,7 +6,7 @@ import type { GetCostSummaryResponse } from "@ps/api/gen/canonical/prism/v1/reas
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
-import { aiKeys } from "./use-ai-settings";
+import { aiKeys } from "@/lib/hooks/use-ai-settings";
 
 const client = createClient(ReasoningService, transport);
 

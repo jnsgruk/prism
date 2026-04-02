@@ -9,7 +9,7 @@ import type {
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
-import { conversationKeys } from "./use-conversations";
+import { conversationKeys } from "@/lib/hooks/use-conversations";
 import { deriveSteps, type StreamEvent } from "@/views/ask/lib/derive-steps";
 
 const client = createClient(ReasoningService, transport);

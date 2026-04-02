@@ -21,7 +21,7 @@ import {
   useDeleteConversation,
   useListConversations,
   useRenameConversation,
-} from "@/views/ask/hooks/use-conversations";
+} from "@/lib/hooks/use-conversations";
 
 const formatRelative = (ts?: { seconds: bigint }): string => {
   if (!ts) return "";

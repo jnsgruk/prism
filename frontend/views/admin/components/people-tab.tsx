@@ -39,7 +39,7 @@ import {
 } from "@/views/admin/hooks/use-admin";
 import { flattenTeams } from "@/views/admin/lib/team-utils";
 import { PersonFilter } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { useGetTeamTree, usePaginatedPeople } from "@/views/teams/hooks/use-teams";
+import { useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
 
 type Filter = "all" | "unassigned" | "inactive";
 

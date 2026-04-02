@@ -57,7 +57,7 @@ export const useSetProviderSecret = (): UseMutationResult<
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.settings() });
       // Server auto-triggers catalogue refresh; invalidate models after a delay
-      // so the UI picks up the refreshed list
+      // so the UI picks up the refreshed list.
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: [...aiKeys.all, "models"] });
       }, 5_000);
@@ -91,7 +91,7 @@ export const useAiModels = (
   useQuery({
     queryKey: aiKeys.models(String(provider ?? ""), capability),
     queryFn: () => client.listAiModels({ provider, capability }),
-    staleTime: 5 * 60 * 1_000, // 5 minutes
+    staleTime: 5 * 60 * 1_000,
   });
 
 export const useRefreshModelCatalogue = (): UseMutationResult<
@@ -103,7 +103,7 @@ export const useRefreshModelCatalogue = (): UseMutationResult<
   return useMutation({
     mutationFn: () => client.refreshModelCatalogue({}),
     onSuccess: () => {
-      // Delay invalidation to give the Restate handler time to complete
+      // Delay invalidation to give the Restate handler time to complete.
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: [...aiKeys.all, "models"] });
       }, 3_000);

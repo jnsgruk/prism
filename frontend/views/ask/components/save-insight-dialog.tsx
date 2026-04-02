@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { useSaveInsightFromConversation } from "@/views/ask/hooks/use-conversations";
+import { useSaveInsightFromConversation } from "@/lib/hooks/use-conversations";
 
 export const SaveInsightDialog = ({
   conversationId,

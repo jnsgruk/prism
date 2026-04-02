@@ -46,7 +46,7 @@ import {
   useStorageHealth,
   useTestProvider,
   useUpdateAiSettings,
-} from "@/views/admin/hooks/use-ai-settings";
+} from "@/lib/hooks/use-ai-settings";
 
 const PROVIDERS = [
   { value: AiProvider.GOOGLE, label: "Google Gemini" },

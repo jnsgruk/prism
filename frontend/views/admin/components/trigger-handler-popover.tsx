@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import type { HandlerInfo } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { useListSources } from "@ps/hooks/use-config";
 
-import { useTriggerHandler } from "@/views/ingestion/hooks/use-ingestion";
+import { useTriggerHandler } from "@/lib/hooks/use-ingestion";
 
 const displayName = (name: string): string => name.replace("Handler", "");
 

@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   ConversationSummary,
-  GetConversationResponse,
   GetArtifactDownloadUrlResponse,
+  GetConversationResponse,
   SaveInsightFromConversationResponse,
 } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";

@@ -11,7 +11,7 @@ import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { platformLabel } from "@/lib/proto-display";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
 
-import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
+import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
 import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
 import { EditSourceDialog } from "./edit-source-dialog";
 

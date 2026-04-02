@@ -32,7 +32,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
-import { useListConversations } from "@/views/ask/hooks/use-conversations";
+import { useListConversations } from "@/lib/hooks/use-conversations";
 
 type User = {
   displayName: string;

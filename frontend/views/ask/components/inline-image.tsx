@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDownloadArtifact } from "@/views/ask/hooks/use-artifacts";
-import { useGetArtifactDownloadUrl } from "@/views/ask/hooks/use-conversations";
+import { useGetArtifactDownloadUrl } from "@/lib/hooks/use-conversations";
 
 type ArtifactDisplay = {
   id: string;

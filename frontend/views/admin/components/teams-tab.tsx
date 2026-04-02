@@ -19,7 +19,7 @@ import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
 import { flattenTeams } from "@/views/admin/lib/team-utils";
 import { TeamDetailPanel } from "@/views/teams/components/team-detail-panel";
 import { TeamTree } from "@/views/teams/components/team-tree";
-import { useGetTeamTree } from "@/views/teams/hooks/use-teams";
+import { useGetTeamTree } from "@/lib/hooks/use-org";
 
 export const TeamsTab = (): React.ReactElement => {
   const { data: tree, isLoading } = useGetTeamTree();

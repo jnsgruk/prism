@@ -3,11 +3,7 @@ import { Alert } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  useCancelHandlerRun,
-  useListHandlers,
-  useListRuns,
-} from "@/views/ingestion/hooks/use-ingestion";
+import { useCancelHandlerRun, useListHandlers, useListRuns } from "@/lib/hooks/use-ingestion";
 
 import { HandlerRunsCard } from "@/views/admin/components/handler-runs-table";
 import { HandlerSection } from "@/views/admin/components/handler-section";

@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { useUpdateTeam } from "@/views/admin/hooks/use-admin";
-import { useListPeople } from "@/views/teams/hooks/use-teams";
+import { useListPeople } from "@/lib/hooks/use-org";
 
 interface EditTeamDialogProps {
   team: Team;

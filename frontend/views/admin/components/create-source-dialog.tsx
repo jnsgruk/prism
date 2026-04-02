@@ -25,7 +25,7 @@ import { useState } from "react";
 
 import type { JsonObject } from "@bufbuild/protobuf";
 import { useCreateSource, useSetSecret } from "@ps/hooks/use-config";
-import { useTriggerTeamSync } from "@/views/ingestion/hooks/use-ingestion";
+import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
 
 import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { BufferedSecretForm } from "@/views/admin/components/secret-form";

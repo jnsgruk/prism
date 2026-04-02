@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
-import { usePaginatedPeople } from "@/views/teams/hooks/use-teams";
+import { usePaginatedPeople } from "@/lib/hooks/use-org";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 export const PersonBreadcrumb = ({

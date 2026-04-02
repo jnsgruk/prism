@@ -19,7 +19,7 @@ import {
   platformLabel,
 } from "@/lib/proto-display";
 import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { useEnrichments } from "@/views/admin/hooks/use-enrichment";
+import { useEnrichments } from "@/lib/hooks/use-enrichment";
 import { RelatedItems } from "@/views/contributions/components/related-items";
 import {
   ArrowLeft,

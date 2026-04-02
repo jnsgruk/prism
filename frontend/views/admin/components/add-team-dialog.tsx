@@ -24,7 +24,7 @@ import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { useCreateTeam } from "@/views/admin/hooks/use-admin";
-import { useListPeople } from "@/views/teams/hooks/use-teams";
+import { useListPeople } from "@/lib/hooks/use-org";
 
 const teamTypeOptions = [
   { value: String(TeamType.GROUP), label: "Group" },

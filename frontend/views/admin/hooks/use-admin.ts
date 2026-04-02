@@ -21,7 +21,7 @@ import { OrgService, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
 import { configKeys } from "@ps/hooks/use-config";
 
-import { orgKeys } from "@/views/teams/hooks/use-teams";
+import { orgKeys } from "@/lib/hooks/use-org";
 
 const adminClient = createClient(AdminService, transport);
 const orgClient = createClient(OrgService, transport);

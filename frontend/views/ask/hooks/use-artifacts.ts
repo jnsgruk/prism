@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useGetArtifactDownloadUrl } from "@/views/ask/hooks/use-conversations";
+import { useGetArtifactDownloadUrl } from "@/lib/hooks/use-conversations";
 
 export const useDownloadArtifact = (): {
   download: (artifactId: string, displayName: string) => void;
