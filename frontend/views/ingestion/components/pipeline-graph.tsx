@@ -16,11 +16,15 @@ import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
 
 /**
  * Derive handler status from live source state for in-progress stages.
- * Only maps *active* signals — COLLECTING/WAITING → "running", ERROR → "failed".
- * IDLE sources are omitted so handlers stay "pending" until the pipeline JSONB
- * is updated with real results (IDLE could mean "not started yet" or "completed").
+ *
+ * COLLECTING/WAITING → "running", ERROR → "failed".
+ * IDLE → "completed" only if the source's lastRun is after the pipeline started
+ * (proving it ran during this pipeline), otherwise left out (stays "pending").
  */
-const buildSourceStatusMap = (sources: SourceStatus[]): Map<string, string> => {
+const buildSourceStatusMap = (
+  sources: SourceStatus[],
+  pipelineStartedSeconds: bigint | undefined,
+): Map<string, string> => {
   const map = new Map<string, string>();
   for (const s of sources) {
     switch (s.state) {
@@ -32,6 +36,10 @@ const buildSourceStatusMap = (sources: SourceStatus[]): Map<string, string> => {
         map.set(s.name, "failed");
         break;
       default:
+        // IDLE: only mark completed if the source's last run finished after the pipeline started
+        if (pipelineStartedSeconds && s.lastRun && s.lastRun.seconds > pipelineStartedSeconds) {
+          map.set(s.name, "completed");
+        }
         break;
     }
   }
@@ -170,7 +178,9 @@ export const PipelineGraph = ({
   });
 
   const isRunning = current?.status === "running";
-  const sourceStatusMap = sources ? buildSourceStatusMap(sources) : undefined;
+  const sourceStatusMap = sources
+    ? buildSourceStatusMap(sources, current?.startedAt?.seconds)
+    : undefined;
 
   if (isLoading) {
     return (
