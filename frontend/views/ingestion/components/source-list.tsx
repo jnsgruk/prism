@@ -1,14 +1,11 @@
-import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
+import { isActive } from "@/views/ingestion/lib/constants";
 
 import { SourceRow } from "./source-row";
-
-const isActive = (s: SourceStatus): boolean =>
-  s.state === SourceState.COLLECTING || s.state === SourceState.WAITING;
 
 export const SourceList = ({
   sources,

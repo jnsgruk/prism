@@ -41,9 +41,11 @@ const buildSourceStatusMap = (
   return map;
 };
 
-const POLL_INTERVAL_ACTIVE = 2_000;
-const POLL_INTERVAL_IDLE = 30_000;
-const POLL_INTERVAL_BURST = 1_000;
+import {
+  POLL_INTERVAL_ACTIVE,
+  POLL_INTERVAL_BURST,
+  POLL_INTERVAL_IDLE,
+} from "@/views/ingestion/lib/constants";
 
 const StatusBadge = ({ status }: { status: string }): React.ReactElement => {
   const styles: Record<string, string> = {

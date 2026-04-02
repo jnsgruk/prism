@@ -16,11 +16,13 @@ import {
   useListRuns,
   useTriggerRun,
 } from "@/views/ingestion/hooks/use-ingestion";
+import {
+  POLL_INTERVAL_ACTIVE,
+  POLL_INTERVAL_BURST,
+  POLL_INTERVAL_IDLE,
+} from "@/views/ingestion/lib/constants";
 import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
 
-const POLL_INTERVAL_BURST = 1_000;
-const POLL_INTERVAL_ACTIVE = 2_000;
-const POLL_INTERVAL_IDLE = 30_000;
 const BURST_DURATION = 10_000;
 
 const IngestionPage = (): React.ReactElement => {

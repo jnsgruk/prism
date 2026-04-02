@@ -5,9 +5,7 @@ import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { formatRelativeTime } from "@/lib/format";
-
-const isActive = (s: SourceStatus): boolean =>
-  s.state === SourceState.COLLECTING || s.state === SourceState.WAITING;
+import { isActive } from "@/views/ingestion/lib/constants";
 
 /** Inline text summary — sits next to the card title. */
 export const IngestionSummary = ({ sources }: { sources: SourceStatus[] }): React.ReactElement => {
