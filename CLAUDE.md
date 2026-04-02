@@ -82,6 +82,18 @@ crates/
 │       └── backup.rs # Export/import logic
 ├── ps-proto/         # Generated Rust code from proto definitions (pedantic lints disabled)
 ├── ps-server/        # API server binary (tonic + tonic-web), feature modules + auth interceptor
+│   └── src/
+│       ├── interceptor.rs # Auth middleware (allow-list for public RPCs)
+│       ├── common/        # Service-level shared plumbing (auth helpers, proto conversions)
+│       └── features/      # Feature modules (feature-first layout)
+│           ├── admin/     # Tier 1: API tokens, backup, reset
+│           ├── auth/      # Tier 1: login, setup, session management
+│           ├── config/    # Tier 2: source CRUD, secrets, connection tests
+│           ├── dispatch/  # Restate dispatch: handler defs, gRPC + HTTP trigger/cancel
+│           ├── insights/  # Tier 2: team/person enrichment insights
+│           ├── metrics/   # Tier 2: snapshots, contributions, flow metrics
+│           ├── org/       # Tier 2: people, teams, identities, GitHub team mapping
+│           └── reasoning/ # Tier 3: AI settings, enrichments, embeddings, agent query
 ├── ps-workers/       # Restate worker binary
 │   └── src/
 │       ├── infra/    # Service plumbing: SharedState, journaling macros, retry, registry, secrets
