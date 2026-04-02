@@ -185,13 +185,11 @@ fn contribution_full_to_proto(r: ContributionFullRow) -> Contribution {
         person_name: r.person_name,
         person_id: r.person_id.map(|id| id.to_string()).unwrap_or_default(),
         platform,
-        contribution_type: contribution_type_to_proto(r.contribution_type.as_str()),
+        contribution_type: contribution_type_to_proto(r.contribution_type),
         platform_id: r.platform_id,
         title: r.title.unwrap_or_default(),
         url: r.url.unwrap_or_default(),
-        state: r
-            .state
-            .map_or(0, |s| contribution_state_to_proto(s.as_str())),
+        state: r.state.map_or(0, contribution_state_to_proto),
         created_at: Some(to_timestamp(r.created_at)),
         updated_at: r.updated_at.map(to_timestamp),
         closed_at: r.closed_at.map(to_timestamp),
@@ -248,13 +246,11 @@ fn contribution_detail_to_proto(r: ContributionDetailRow) -> Contribution {
         id: r.id.to_string(),
         person_name: r.person_name,
         platform,
-        contribution_type: contribution_type_to_proto(r.contribution_type.as_str()),
+        contribution_type: contribution_type_to_proto(r.contribution_type),
         platform_id: r.platform_id,
         title: r.title.unwrap_or_default(),
         url: r.url.unwrap_or_default(),
-        state: r
-            .state
-            .map_or(0, |s| contribution_state_to_proto(s.as_str())),
+        state: r.state.map_or(0, contribution_state_to_proto),
         created_at: Some(to_timestamp(r.created_at)),
         closed_at: r.closed_at.map(to_timestamp),
         additions: json_i32(&r.metrics, "additions"),

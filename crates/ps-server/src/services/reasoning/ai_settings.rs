@@ -12,7 +12,8 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use super::super::common::{
-    ai_provider_to_proto, db_err, proto_to_ai_provider_str, require_auth, to_timestamp,
+    ai_provider_to_proto, db_err, proto_to_ai_provider, proto_to_ai_provider_str, require_auth,
+    to_timestamp,
 };
 use super::ReasoningServiceImpl;
 
@@ -166,14 +167,13 @@ pub async fn load_providers_from_db_impl(svc: &ReasoningServiceImpl) {
 
 fn task_config_to_proto(tc: &AiTaskConfig) -> ProtoAiTaskConfig {
     ProtoAiTaskConfig {
-        provider: ai_provider_to_proto(tc.provider.as_str()),
+        provider: ai_provider_to_proto(tc.provider),
         model: tc.model.clone(),
     }
 }
 
 fn proto_to_task_config(p: &ProtoAiTaskConfig) -> Option<AiTaskConfig> {
-    let provider_str = proto_to_ai_provider_str(p.provider)?;
-    let provider = provider_str.parse().ok()?;
+    let provider = proto_to_ai_provider(p.provider)?;
     Some(AiTaskConfig {
         provider,
         model: p.model.clone(),
@@ -367,7 +367,7 @@ pub async fn list_ai_models(
         .into_iter()
         .map(|m| AiModelInfo {
             id: m.id,
-            provider: ai_provider_to_proto(m.provider.as_str()),
+            provider: ai_provider_to_proto(m.provider),
             display_name: m.display_name,
             description: m.description.unwrap_or_default(),
             context_length: m.context_length.unwrap_or(0),

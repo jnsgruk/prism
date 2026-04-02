@@ -74,7 +74,10 @@ pub async fn get_cost_summary(
     let model_breakdown: Vec<ps_proto::canonical::prism::v1::ModelSpend> = model_breakdown
         .into_iter()
         .map(|m| ps_proto::canonical::prism::v1::ModelSpend {
-            provider: ai_provider_to_proto(&m.provider),
+            provider: m
+                .provider
+                .parse::<ps_core::models::AiProvider>()
+                .map_or(0, ai_provider_to_proto),
             model: m.model,
             task_type: m.task_type,
             cost_usd: m.total_cost_usd,

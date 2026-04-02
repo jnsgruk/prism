@@ -145,30 +145,50 @@ pub fn proto_to_platform_str(platform: i32, instance: Option<&str>) -> Option<St
     ProtoPlatform::try_from(platform).ok()?.to_db_str(instance)
 }
 
-/// Convert a contribution type string to proto enum i32.
-pub fn contribution_type_to_proto(s: &str) -> i32 {
-    ProtoContributionType::from_db_str(s).into()
+/// Convert a `ContributionType` to proto enum i32.
+pub fn contribution_type_to_proto(ct: ps_core::models::ContributionType) -> i32 {
+    ProtoContributionType::from_db_str(ct.as_str()).into()
 }
 
-/// Convert proto contribution type i32 back to a string.
-pub fn proto_to_contribution_type_str(v: i32) -> Option<String> {
+/// Convert proto contribution type i32 back to a domain enum.
+pub fn proto_to_contribution_type(v: i32) -> Option<ps_core::models::ContributionType> {
     ProtoContributionType::try_from(v)
         .ok()?
-        .to_db_str()
-        .map(String::from)
+        .to_db_str()?
+        .parse()
+        .ok()
+}
+
+/// Convert a `ContributionState` to proto enum i32.
+pub fn contribution_state_to_proto(cs: ps_core::models::ContributionState) -> i32 {
+    ProtoContributionState::from_db_str(cs.as_str()).into()
 }
 
 /// Convert a contribution state string to proto enum i32.
-pub fn contribution_state_to_proto(s: &str) -> i32 {
+///
+/// Accepts `&str` for cases where the state comes from a DB query as a string
+/// that may not parse into a `ContributionState` (e.g. unknown states).
+pub fn contribution_state_str_to_proto(s: &str) -> i32 {
     ProtoContributionState::from_db_str(s).into()
 }
 
-/// Convert proto contribution state i32 back to a string.
-pub fn proto_to_contribution_state_str(v: i32) -> Option<String> {
+/// Convert proto contribution state i32 back to a domain enum.
+pub fn proto_to_contribution_state(v: i32) -> Option<ps_core::models::ContributionState> {
     ProtoContributionState::try_from(v)
         .ok()?
-        .to_db_str()
-        .map(String::from)
+        .to_db_str()?
+        .parse()
+        .ok()
+}
+
+/// Convert proto contribution type i32 back to a string (convenience wrapper).
+pub fn proto_to_contribution_type_str(v: i32) -> Option<String> {
+    proto_to_contribution_type(v).map(|ct| ct.to_string())
+}
+
+/// Convert proto contribution state i32 back to a string (convenience wrapper).
+pub fn proto_to_contribution_state_str(v: i32) -> Option<String> {
+    proto_to_contribution_state(v).map(|cs| cs.to_string())
 }
 
 /// Convert an `IngestionStatus` to proto `RunStatus` i32.
@@ -184,20 +204,24 @@ pub fn run_status_to_proto(status: &ps_core::models::IngestionStatus) -> i32 {
     }
 }
 
-/// Convert an AI provider string to proto enum i32.
-pub fn ai_provider_to_proto(s: &str) -> i32 {
-    match s {
-        "google" => ProtoAiProvider::Google.into(),
-        "openrouter" => ProtoAiProvider::Openrouter.into(),
-        _ => ProtoAiProvider::Unspecified.into(),
+/// Convert an `AiProvider` to proto enum i32.
+pub fn ai_provider_to_proto(provider: ps_core::models::AiProvider) -> i32 {
+    match provider {
+        ps_core::models::AiProvider::Google => ProtoAiProvider::Google.into(),
+        ps_core::models::AiProvider::OpenRouter => ProtoAiProvider::Openrouter.into(),
     }
 }
 
-/// Convert proto AI provider i32 back to a string.
+/// Convert proto AI provider i32 back to a string (convenience wrapper).
 pub fn proto_to_ai_provider_str(v: i32) -> Option<String> {
+    proto_to_ai_provider(v).map(|p| p.to_string())
+}
+
+/// Convert proto AI provider i32 back to a domain enum.
+pub fn proto_to_ai_provider(v: i32) -> Option<ps_core::models::AiProvider> {
     match ProtoAiProvider::try_from(v) {
-        Ok(ProtoAiProvider::Google) => Some("google".to_string()),
-        Ok(ProtoAiProvider::Openrouter) => Some("openrouter".to_string()),
+        Ok(ProtoAiProvider::Google) => Some(ps_core::models::AiProvider::Google),
+        Ok(ProtoAiProvider::Openrouter) => Some(ps_core::models::AiProvider::OpenRouter),
         _ => None,
     }
 }
@@ -284,60 +308,74 @@ mod tests {
 
     #[test]
     fn contribution_type_roundtrip() {
-        for (s, expected) in [
-            ("pull_request", ProtoContributionType::PullRequest),
-            ("pr_review", ProtoContributionType::PrReview),
-            ("jira_ticket", ProtoContributionType::JiraTicket),
-            ("discourse_topic", ProtoContributionType::DiscourseTopic),
-            ("discourse_post", ProtoContributionType::DiscoursePost),
-            ("discourse_like", ProtoContributionType::DiscourseLike),
+        use ps_core::models::ContributionType;
+        for (ct, expected) in [
+            (
+                ContributionType::PullRequest,
+                ProtoContributionType::PullRequest,
+            ),
+            (ContributionType::PrReview, ProtoContributionType::PrReview),
+            (
+                ContributionType::JiraTicket,
+                ProtoContributionType::JiraTicket,
+            ),
+            (
+                ContributionType::DiscourseTopic,
+                ProtoContributionType::DiscourseTopic,
+            ),
+            (
+                ContributionType::DiscoursePost,
+                ProtoContributionType::DiscoursePost,
+            ),
+            (
+                ContributionType::DiscourseLike,
+                ProtoContributionType::DiscourseLike,
+            ),
         ] {
-            let proto = contribution_type_to_proto(s);
-            assert_eq!(proto, i32::from(expected), "failed for {s}");
+            let proto = contribution_type_to_proto(ct);
+            assert_eq!(proto, i32::from(expected), "failed for {ct}");
             assert_eq!(
-                proto_to_contribution_type_str(proto),
-                Some(s.to_string()),
-                "reverse failed for {s}"
+                proto_to_contribution_type(proto),
+                Some(ct),
+                "reverse failed for {ct}"
             );
         }
     }
 
     #[test]
     fn contribution_state_roundtrip() {
-        for (s, expected) in [
-            ("open", ProtoContributionState::Open),
-            ("closed", ProtoContributionState::Closed),
-            ("merged", ProtoContributionState::Merged),
-            ("in_progress", ProtoContributionState::InProgress),
-            ("done", ProtoContributionState::Done),
-            ("APPROVED", ProtoContributionState::Approved),
+        use ps_core::models::ContributionState;
+        for (cs, expected) in [
+            (ContributionState::Open, ProtoContributionState::Open),
+            (ContributionState::Closed, ProtoContributionState::Closed),
+            (ContributionState::Merged, ProtoContributionState::Merged),
             (
-                "CHANGES_REQUESTED",
+                ContributionState::InProgress,
+                ProtoContributionState::InProgress,
+            ),
+            (
+                ContributionState::Approved,
+                ProtoContributionState::Approved,
+            ),
+            (
+                ContributionState::ChangesRequested,
                 ProtoContributionState::ChangesRequested,
             ),
         ] {
-            let proto = contribution_state_to_proto(s);
-            assert_eq!(proto, i32::from(expected), "failed for {s}");
+            let proto = contribution_state_to_proto(cs);
+            assert_eq!(proto, i32::from(expected), "failed for {cs}");
             assert_eq!(
-                proto_to_contribution_state_str(proto),
-                Some(s.to_string()),
-                "reverse failed for {s}"
+                proto_to_contribution_state(proto),
+                Some(cs),
+                "reverse failed for {cs}"
             );
         }
     }
 
     #[test]
-    fn unknown_types_return_unspecified() {
-        assert_eq!(
-            contribution_type_to_proto("bogus"),
-            i32::from(ProtoContributionType::Unspecified)
-        );
-        assert_eq!(
-            contribution_state_to_proto("bogus"),
-            i32::from(ProtoContributionState::Unspecified)
-        );
-        assert!(proto_to_contribution_type_str(999).is_none());
-        assert!(proto_to_contribution_state_str(999).is_none());
+    fn unknown_protos_return_none() {
+        assert!(proto_to_contribution_type(999).is_none());
+        assert!(proto_to_contribution_state(999).is_none());
         assert!(proto_to_platform_str(999, None).is_none());
     }
 }

@@ -3,8 +3,7 @@ use ps_proto::canonical::prism::v1::{
 };
 
 use super::super::common::{
-    contribution_state_to_proto, contribution_type_to_proto, enrichment_type_to_proto,
-    platform_to_proto, to_timestamp,
+    contribution_state_str_to_proto, enrichment_type_to_proto, platform_to_proto, to_timestamp,
 };
 
 pub fn similar_to_proto(s: ps_core::repo::reasoning::SimilarContribution) -> ProtoSimilarItem {
@@ -13,8 +12,11 @@ pub fn similar_to_proto(s: ps_core::repo::reasoning::SimilarContribution) -> Pro
         contribution_id: s.contribution_id.to_string(),
         title: s.title.unwrap_or_default(),
         platform,
-        contribution_type: contribution_type_to_proto(&s.contribution_type),
-        state: contribution_state_to_proto(s.state.as_deref().unwrap_or("")),
+        contribution_type: ps_proto::canonical::prism::v1::ContributionType::from_db_str(
+            &s.contribution_type,
+        )
+        .into(),
+        state: contribution_state_str_to_proto(s.state.as_deref().unwrap_or("")),
         platform_instance,
         author_name: s.author_name.unwrap_or_default(),
         external_url: s.external_url.unwrap_or_default(),
