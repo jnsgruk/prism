@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use futures::future::join_all;
+use futures::future::{join, join_all};
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -139,22 +139,42 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 .await;
         }
 
-        // 5. FORK: two concurrent branches after ingestion
-        // Note: we run these sequentially because both branches mutate `stages`.
-        // The identity resolution branch is independent and fast enough that
-        // sequential execution is acceptable.
-        let main_result = self.run_main_branch(pipeline_id, &mut stages, &ctx).await;
-        let identity_result = if has_discourse {
-            self.run_identity_branch(pipeline_id, &mut stages, &ctx)
-                .await
-        } else {
-            Ok(())
-        };
+        // 5. FORK: main branch + identity resolution run concurrently
+        if has_discourse {
+            mark_stage_running(&mut stages, "identity_resolution");
+            self.update_state(&ctx, pipeline_id, "identity_resolution", &stages)
+                .await?;
+        }
+
+        let (main_result, identity_result) = join(
+            self.run_main_branch(pipeline_id, &mut stages, &ctx),
+            async {
+                if has_discourse {
+                    Some(
+                        ctx.service_client::<IdentityResolutionHandlerClient>()
+                            .resolve_identities()
+                            .call()
+                            .await,
+                    )
+                } else {
+                    None
+                }
+            },
+        )
+        .await;
+
+        // Update identity_resolution stage with actual result
+        if let Some(ref result) = identity_result {
+            let handler_result = call_result("Identity Resolution".to_string(), result);
+            mark_stage_complete(&mut stages, "identity_resolution", &[handler_result]);
+            self.update_state(&ctx, pipeline_id, "identity_resolution", &stages)
+                .await?;
+        }
 
         // 6. Finalize
         let status = derive_pipeline_status(&stages);
         let error_msg = match (&main_result, &identity_result) {
-            (Err(e), _) | (_, Err(e)) => Some(e.to_string()),
+            (Err(e), _) | (_, Some(Err(e))) => Some(e.to_string()),
             _ => None,
         };
 
@@ -383,31 +403,6 @@ impl IngestionPipelineWorkflowImpl {
         .await?;
 
         Ok(())
-    }
-
-    /// Run the identity resolution branch.
-    async fn run_identity_branch(
-        &self,
-        pipeline_id: Uuid,
-        stages: &mut serde_json::Value,
-        ctx: &WorkflowContext<'_>,
-    ) -> Result<(), TerminalError> {
-        mark_stage_running(stages, "identity_resolution");
-        self.update_state(ctx, pipeline_id, "identity_resolution", stages)
-            .await?;
-
-        let result = ctx
-            .service_client::<IdentityResolutionHandlerClient>()
-            .resolve_identities()
-            .call()
-            .await;
-
-        let handler_result = call_result("Identity Resolution".to_string(), &result);
-        mark_stage_complete(stages, "identity_resolution", &[handler_result]);
-        self.update_state(ctx, pipeline_id, "identity_resolution", stages)
-            .await?;
-
-        result
     }
 
     /// Finalize the pipeline with a given status.
