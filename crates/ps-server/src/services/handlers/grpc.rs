@@ -641,6 +641,30 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
+        // Auto-heal stale pipelines stuck in "running" (e.g. from a killed invocation
+        // that never finalized). If a pipeline has been running for >2 hours, mark it cancelled.
+        if let Some(ref p) = latest
+            && p.status == "running"
+        {
+            let age = time::OffsetDateTime::now_utc() - p.started_at;
+            if age > time::Duration::hours(2) {
+                tracing::warn!(pipeline_id = %p.id, age_hours = age.whole_hours(), "auto-healing stale pipeline");
+                let _ = self
+                    .repos
+                    .activity
+                    .complete_pipeline(p.id, "cancelled", &p.stages, Some("stale: auto-cancelled"))
+                    .await;
+            }
+        }
+
+        // Re-fetch after potential auto-heal
+        let latest = self
+            .repos
+            .activity
+            .get_latest_pipeline()
+            .await
+            .map_err(db_err)?;
+
         let (current, recent) = match latest {
             Some(ref p) if p.status == "running" => {
                 // Current is the running pipeline; recent excludes it
@@ -742,6 +766,24 @@ impl HandlersService for HandlersServiceImpl {
         if let Some(ref inv_id) = pipeline.current_invocation_id {
             self.cancel_restate_invocation("_pipeline", inv_id).await;
         }
+
+        // Mark pending/running stages as cancelled in the stages JSON
+        let mut stages = pipeline.stages.clone();
+        if let Some(obj) = stages.as_object_mut() {
+            for (_name, stage) in obj.iter_mut() {
+                let status = stage.get("status").and_then(|s| s.as_str()).unwrap_or("");
+                if status == "pending" || status == "running" {
+                    stage["status"] = serde_json::json!("cancelled");
+                }
+            }
+        }
+
+        // Finalize the pipeline as cancelled in the DB so the UI resets
+        self.repos
+            .activity
+            .complete_pipeline(pipeline_id, "cancelled", &stages, None)
+            .await
+            .map_err(db_err)?;
 
         info!(%pipeline_id, "cancelled pipeline");
 
