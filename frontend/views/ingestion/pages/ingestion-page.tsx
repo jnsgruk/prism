@@ -111,7 +111,7 @@ const IngestionPage = (): React.ReactElement => {
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
-        <PipelineGraph onAction={triggerBurst} />
+        <PipelineGraph onAction={triggerBurst} sources={sources} isBursting={isBursting} />
 
         <Card>
           <CardHeader className="pb-3">

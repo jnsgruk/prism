@@ -50,7 +50,7 @@ describe("PipelineStage", () => {
   it("renders skipped stage with reduced opacity", () => {
     const stage: StageData = { status: "skipped", handlers: [] };
     const { container } = render(
-      <PipelineStage stageKey="team_sync" stage={stage} isCurrentStage={false} />,
+      <PipelineStage stageKey="embedding" stage={stage} isCurrentStage={false} />,
     );
     const stageDiv = container.firstElementChild;
     expect(stageDiv?.className).toContain("opacity-50");

@@ -4,11 +4,34 @@ import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@ps/cn";
 import { ArrowRight, GitBranch } from "lucide-react";
 
-import type { PipelineInfo } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import {
+  SourceState,
+  type PipelineInfo,
+  type SourceStatus,
+} from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
 import type { StageData, StageKey } from "@/views/ingestion/components/pipeline-stage";
 import { PipelineStage } from "@/views/ingestion/components/pipeline-stage";
 import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
+
+/** Derive handler status from live source state for in-progress stages. */
+const buildSourceStatusMap = (sources: SourceStatus[]): Map<string, string> => {
+  const map = new Map<string, string>();
+  for (const s of sources) {
+    switch (s.state) {
+      case SourceState.COLLECTING:
+      case SourceState.WAITING:
+        map.set(s.name, "running");
+        break;
+      case SourceState.ERROR:
+        map.set(s.name, "failed");
+        break;
+      default:
+        map.set(s.name, "completed");
+    }
+  }
+  return map;
+};
 
 const POLL_INTERVAL_ACTIVE = 2_000;
 const POLL_INTERVAL_IDLE = 30_000;
@@ -65,24 +88,25 @@ const IdentityBranch = ({
   />
 );
 
-const PipelineDAG = ({ pipeline }: { pipeline: PipelineInfo }): React.ReactElement => {
+const PipelineDAG = ({
+  pipeline,
+  sourceStatuses,
+}: {
+  pipeline: PipelineInfo;
+  sourceStatuses?: Map<string, string>;
+}): React.ReactElement => {
   const stages = parseStages(pipeline);
   const currentStage = pipeline.currentStage;
 
   return (
     <div className="flex flex-col gap-3 overflow-x-auto">
-      {/* Linear spine: team_sync → ingestion → fork */}
+      {/* Linear spine: ingestion → fork */}
       <div className="flex items-start gap-0.5">
-        <PipelineStage
-          stageKey="team_sync"
-          stage={stages.team_sync}
-          isCurrentStage={currentStage === "team_sync"}
-        />
-        <Arrow />
         <PipelineStage
           stageKey="ingestion"
           stage={stages.ingestion}
           isCurrentStage={currentStage === "ingestion"}
+          sourceStatuses={sourceStatuses}
         />
         <Arrow />
 
@@ -119,9 +143,21 @@ const StatusBadge = ({ status }: { status: string }): React.ReactElement => {
   );
 };
 
-export const PipelineGraph = ({ onAction }: { onAction: () => void }): React.ReactElement => {
+const POLL_INTERVAL_BURST = 1_000;
+
+export const PipelineGraph = ({
+  onAction,
+  sources,
+  isBursting,
+}: {
+  onAction: () => void;
+  sources?: SourceStatus[];
+  /** When true, poll at 1s to pick up newly-triggered pipelines quickly. */
+  isBursting?: boolean;
+}): React.ReactElement => {
   const { current, isLoading } = useCurrentPipeline({
     refetchInterval: (query) => {
+      if (isBursting) return POLL_INTERVAL_BURST;
       const pipeline = query.state.data?.current;
       if (pipeline?.status === "running") return POLL_INTERVAL_ACTIVE;
       return POLL_INTERVAL_IDLE;
@@ -129,6 +165,7 @@ export const PipelineGraph = ({ onAction }: { onAction: () => void }): React.Rea
   });
 
   const isRunning = current?.status === "running";
+  const sourceStatusMap = sources ? buildSourceStatusMap(sources) : undefined;
 
   if (isLoading) {
     return (
@@ -168,7 +205,7 @@ export const PipelineGraph = ({ onAction }: { onAction: () => void }): React.Rea
 
       {current && (
         <CardContent className="overflow-x-auto pb-4">
-          <PipelineDAG pipeline={current} />
+          <PipelineDAG pipeline={current} sourceStatuses={sourceStatusMap} />
         </CardContent>
       )}
     </Card>

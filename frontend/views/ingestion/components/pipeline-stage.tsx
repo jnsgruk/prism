@@ -21,7 +21,6 @@ export type StageData = {
 
 /** All stage keys in pipeline order. */
 export const STAGE_ORDER = [
-  "team_sync",
   "ingestion",
   "metrics",
   "enrichment",
@@ -33,7 +32,6 @@ export const STAGE_ORDER = [
 export type StageKey = (typeof STAGE_ORDER)[number];
 
 const STAGE_LABELS: Record<StageKey, string> = {
-  team_sync: "Team Sync",
   ingestion: "Ingestion",
   metrics: "Metrics",
   enrichment: "Enrichment",
@@ -89,13 +87,28 @@ export const PipelineStage = ({
   stageKey,
   stage,
   isCurrentStage,
+  sourceStatuses,
 }: {
   stageKey: StageKey;
   stage: StageData | undefined;
   isCurrentStage: boolean;
+  /** Live source statuses — used to enrich ingestion handler display while the stage is running. */
+  sourceStatuses?: Map<string, string>;
 }): React.ReactElement => {
   const status = stage?.status ?? "pending";
-  const handlers = stage?.handlers ?? [];
+  const rawHandlers = stage?.handlers ?? [];
+
+  // When the ingestion stage is running, the stages JSONB only updates after
+  // ALL handlers finish (join_all). Enrich "pending" handlers with live source
+  // statuses so completed/running sources show real-time progress.
+  const handlers =
+    stageKey === "ingestion" && status === "running" && sourceStatuses
+      ? rawHandlers.map((h) => {
+          if (h.status !== "pending") return h;
+          const derived = sourceStatuses.get(h.name);
+          return derived ? { ...h, status: derived } : h;
+        })
+      : rawHandlers;
 
   return (
     <div

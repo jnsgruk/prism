@@ -19,10 +19,6 @@ const mockPipeline = create(PipelineInfoSchema, {
   currentStage: "ingestion",
   startedAt: timestampFromDate(new Date("2026-03-31T10:00:00Z")),
   stagesJson: JSON.stringify({
-    team_sync: {
-      status: "completed",
-      handlers: [{ name: "Github Team Sync", status: "completed" }],
-    },
     ingestion: {
       status: "running",
       handlers: [

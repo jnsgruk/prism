@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::features::identity_resolution::handler::IdentityResolutionHandlerClient;
 use crate::features::ingestion::discourse::handler::DiscourseIngestionHandlerClient;
 use crate::features::ingestion::github::handler::GithubIngestionHandlerClient;
-use crate::features::ingestion::github::team_sync::GithubTeamSyncHandlerClient;
+
 use crate::features::ingestion::jira::handler::JiraIngestionHandlerClient;
 use crate::features::metrics::handler::MetricsComputeHandlerClient;
 use crate::features::reasoning::embedding::EmbeddingHandlerClient;
@@ -101,14 +101,13 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 .collect::<Vec<_>>()
         });
 
-        let has_github = sources.iter().any(|s| s.source_type == "github");
         let has_discourse = sources
             .iter()
             .any(|s| s.source_type.starts_with("discourse"));
 
         // 3. Build initial stages structure
-        let handler_names = build_handler_list(&sources, has_github, has_discourse);
-        let mut stages = build_initial_stages(has_github, has_discourse, &handler_names);
+        let handler_names = build_handler_list(&sources, has_discourse);
+        let mut stages = build_initial_stages(has_discourse, &handler_names);
 
         // Set initial K/V state
         ctx.set("stages", Json(stages.clone()));
@@ -117,18 +116,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
         self.persist_stage(&ctx, pipeline_id, "initializing", &stages)
             .await?;
 
-        // 4. STAGE: Team Sync (conditional)
-        if has_github {
-            self.run_team_sync(pipeline_id, &mut stages, &sources, &ctx)
-                .await?;
-            if self.is_cancelled(&ctx).await {
-                return self
-                    .finalize_cancelled(pipeline_id, run_id, &mut stages, &ctx)
-                    .await;
-            }
-        }
-
-        // 5. STAGE: Ingestion (fan-out)
+        // 4. STAGE: Ingestion (fan-out)
         let all_failed = self
             .run_ingestion(pipeline_id, &mut stages, &sources, &ctx)
             .await?;
@@ -151,7 +139,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 .await;
         }
 
-        // 6. FORK: two concurrent branches after ingestion
+        // 5. FORK: two concurrent branches after ingestion
         // Note: we run these sequentially because both branches mutate `stages`.
         // The identity resolution branch is independent and fast enough that
         // sequential execution is acceptable.
@@ -163,7 +151,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
             Ok(())
         };
 
-        // 7. Finalize
+        // 6. Finalize
         let status = derive_pipeline_status(&stages);
         let error_msg = match (&main_result, &identity_result) {
             (Err(e), _) | (_, Err(e)) => Some(e.to_string()),
@@ -206,38 +194,6 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
 }
 
 impl IngestionPipelineWorkflowImpl {
-    /// Run the team sync stage for all GitHub sources.
-    async fn run_team_sync(
-        &self,
-        pipeline_id: Uuid,
-        stages: &mut serde_json::Value,
-        sources: &[SourceInfo],
-        ctx: &WorkflowContext<'_>,
-    ) -> Result<(), TerminalError> {
-        mark_stage_running(stages, "team_sync");
-        self.update_state(ctx, pipeline_id, "team_sync", stages)
-            .await?;
-
-        let mut results = Vec::new();
-        for source in sources.iter().filter(|s| s.source_type == "github") {
-            let result = ctx
-                .object_client::<GithubTeamSyncHandlerClient>(&source.source_type)
-                .sync_teams()
-                .call()
-                .await;
-            results.push(call_result(format!("{} Team Sync", source.name), &result));
-        }
-
-        mark_stage_complete(stages, "team_sync", &results);
-        self.update_state(ctx, pipeline_id, "team_sync", stages)
-            .await?;
-
-        if results.iter().any(|r| r.status == StageStatus::Failed) {
-            warn!("team sync had failures, continuing with existing team data");
-        }
-        Ok(())
-    }
-
     /// Run ingestion for all sources concurrently. Returns `true` if all handlers failed.
     ///
     /// All handlers are dispatched at once so each creates its own run record

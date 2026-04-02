@@ -38,7 +38,6 @@ pub struct HandlerResult {
 
 /// Ordered list of all pipeline stages.
 pub const STAGE_NAMES: &[&str] = &[
-    "team_sync",
     "ingestion",
     "metrics",
     "enrichment",
@@ -51,14 +50,13 @@ pub const STAGE_NAMES: &[&str] = &[
 pub fn stage_branch(stage: &str) -> &'static str {
     match stage {
         "identity_resolution" => "identity",
-        "team_sync" | "ingestion" => "pre_fork",
+        "ingestion" => "pre_fork",
         _ => "main",
     }
 }
 
 /// Build the initial stages JSONB with all stages pending.
 pub fn build_initial_stages(
-    has_github: bool,
     has_discourse: bool,
     handler_names: &[(&str, Vec<String>)],
 ) -> serde_json::Value {
@@ -66,9 +64,6 @@ pub fn build_initial_stages(
 
     for &stage_name in STAGE_NAMES {
         // Skip conditional stages if not applicable
-        if stage_name == "team_sync" && !has_github {
-            continue;
-        }
         if stage_name == "identity_resolution" && !has_discourse {
             continue;
         }
@@ -139,13 +134,6 @@ pub fn mark_stage_complete(
             .collect();
 
         stage["handlers"] = json!(handler_json);
-    }
-}
-
-/// Mark a stage as skipped.
-pub fn mark_stage_skipped(stages: &mut serde_json::Value, stage_name: &str) {
-    if let Some(stage) = stages.get_mut(stage_name) {
-        stage["status"] = json!("skipped");
     }
 }
 
@@ -257,19 +245,9 @@ pub fn call_result(name: String, result: &Result<(), TerminalError>) -> HandlerR
 /// Build the handler name list for initial stages JSONB.
 pub fn build_handler_list(
     sources: &[SourceInfo],
-    has_github: bool,
     has_discourse: bool,
 ) -> Vec<(&'static str, Vec<String>)> {
     let mut list = Vec::new();
-
-    if has_github {
-        let github_names: Vec<String> = sources
-            .iter()
-            .filter(|s| s.source_type == "github")
-            .map(|s| format!("{} Team Sync", s.name))
-            .collect();
-        list.push(("team_sync", github_names));
-    }
 
     let ingestion_names: Vec<String> = sources.iter().map(|s| s.name.clone()).collect();
     list.push(("ingestion", ingestion_names));
@@ -398,7 +376,6 @@ mod tests {
     #[test]
     fn build_initial_stages_full() {
         let handler_names = vec![
-            ("team_sync", vec!["Github Team Sync".into()]),
             (
                 "ingestion",
                 vec!["Github".into(), "Jira".into(), "Discourse".into()],
@@ -409,16 +386,15 @@ mod tests {
             ("insights", vec!["Insights".into()]),
             ("identity_resolution", vec!["Identity Resolution".into()]),
         ];
-        let stages = build_initial_stages(true, true, &handler_names);
+        let stages = build_initial_stages(true, &handler_names);
 
-        assert_eq!(stages["team_sync"]["status"], "pending");
         assert_eq!(stages["ingestion"]["handlers"].as_array().unwrap().len(), 3);
         assert_eq!(stages["identity_resolution"]["branch"], "identity");
         assert_eq!(stages["metrics"]["branch"], "main");
     }
 
     #[test]
-    fn build_initial_stages_no_github_no_discourse() {
+    fn build_initial_stages_no_discourse() {
         let handler_names = vec![
             ("ingestion", vec!["Jira".into()]),
             ("metrics", vec!["Metrics".into()]),
@@ -426,9 +402,8 @@ mod tests {
             ("embedding", vec!["Embedding".into()]),
             ("insights", vec!["Insights".into()]),
         ];
-        let stages = build_initial_stages(false, false, &handler_names);
+        let stages = build_initial_stages(false, &handler_names);
 
-        assert!(stages.get("team_sync").is_none());
         assert!(stages.get("identity_resolution").is_none());
         assert_eq!(stages["ingestion"]["handlers"].as_array().unwrap().len(), 1);
     }
