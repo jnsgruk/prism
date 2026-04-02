@@ -6,6 +6,7 @@ export const stateStyles: Record<string, { color: string; label: string }> = {
   idle: { color: "bg-emerald-500", label: "Idle" },
   error: { color: "bg-destructive", label: "Error" },
   running: { color: "bg-blue-500", label: "Running" },
+  pending: { color: "bg-muted-foreground/40", label: "Pending" },
 };
 
 export const StatusDot = ({

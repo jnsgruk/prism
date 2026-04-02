@@ -14,7 +14,12 @@ import type { StageData, StageKey } from "@/views/ingestion/components/pipeline-
 import { PipelineStage } from "@/views/ingestion/components/pipeline-stage";
 import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
 
-/** Derive handler status from live source state for in-progress stages. */
+/**
+ * Derive handler status from live source state for in-progress stages.
+ * Only maps *active* signals — COLLECTING/WAITING → "running", ERROR → "failed".
+ * IDLE sources are omitted so handlers stay "pending" until the pipeline JSONB
+ * is updated with real results (IDLE could mean "not started yet" or "completed").
+ */
 const buildSourceStatusMap = (sources: SourceStatus[]): Map<string, string> => {
   const map = new Map<string, string>();
   for (const s of sources) {
@@ -27,7 +32,7 @@ const buildSourceStatusMap = (sources: SourceStatus[]): Map<string, string> => {
         map.set(s.name, "failed");
         break;
       default:
-        map.set(s.name, "completed");
+        break;
     }
   }
   return map;

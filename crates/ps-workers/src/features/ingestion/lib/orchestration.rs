@@ -78,6 +78,19 @@ pub async fn execute_ingestion(
     let run_id =
         create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?;
 
+    // Store the Restate invocation ID so reconcile_stale_runs can verify
+    // this invocation is still alive instead of cancelling it as orphaned.
+    let invocation_id = ctx.invocation_id().to_string();
+    let repos = state.repos.clone();
+    let sn = source_name.to_string();
+    journaled!(ctx, "set_invocation_id", [repos, sn, invocation_id], {
+        repos
+            .activity
+            .set_current_invocation_id(&sn, &invocation_id)
+            .await
+            .map_err(terminal_err("failed to set invocation ID"))?;
+    });
+
     let span = tracing::info_span!(
         "handler",
         handler = spec.handler_name,

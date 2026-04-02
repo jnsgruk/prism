@@ -63,8 +63,12 @@ const statusDotState = (status: string): string => {
       return "running";
     case "failed":
       return "error";
+    case "pending":
+    case "cancelled":
+    case "skipped":
+      return "pending";
     default:
-      return "idle";
+      return "pending";
   }
 };
 
