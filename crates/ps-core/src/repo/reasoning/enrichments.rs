@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::models::EnrichmentType;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -12,7 +13,7 @@ use super::ReasoningRepo;
 pub struct EnrichmentRecord {
     pub id: Uuid,
     pub contribution_id: Uuid,
-    pub enrichment_type: String,
+    pub enrichment_type: EnrichmentType,
     pub value: serde_json::Value,
     pub model_name: String,
     pub confidence: Option<f32>,
@@ -37,7 +38,7 @@ pub struct UnenrichedContribution {
 
 /// Pipeline status counters for a single enrichment type.
 pub struct EnrichmentPipelineStatus {
-    pub enrichment_type: String,
+    pub enrichment_type: EnrichmentType,
     pub total_count: i64,
 }
 
@@ -89,7 +90,7 @@ pub struct QueueContributionTypeCount {
 /// Parameters for upserting an enrichment record.
 pub struct UpsertEnrichmentParams<'a> {
     pub contribution_id: Uuid,
-    pub enrichment_type: &'a str,
+    pub enrichment_type: EnrichmentType,
     pub value: &'a serde_json::Value,
     pub model_name: &'a str,
     pub confidence: Option<f32>,
@@ -100,7 +101,7 @@ pub struct UpsertEnrichmentParams<'a> {
 /// A single enrichment result ready for bulk upsert.
 pub struct EnrichmentResult {
     pub contribution_id: Uuid,
-    pub enrichment_type: String,
+    pub enrichment_type: EnrichmentType,
     pub value: serde_json::Value,
     pub confidence: f32,
     pub input_hash: String,
@@ -134,7 +135,7 @@ impl ReasoningRepo {
             RETURNING id
             "#,
             params.contribution_id,
-            params.enrichment_type,
+            params.enrichment_type.as_str(),
             params.value,
             params.model_name,
             params.confidence,
@@ -226,16 +227,19 @@ impl ReasoningRepo {
 
         Ok(rows
             .into_iter()
-            .map(|r| EnrichmentRecord {
-                id: r.id,
-                contribution_id: r.contribution_id,
-                enrichment_type: r.enrichment_type,
-                value: r.value,
-                model_name: r.model_name,
-                confidence: r.confidence,
-                input_hash: r.input_hash,
-                input_preview: r.input_preview,
-                created_at: r.created_at,
+            .filter_map(|r| {
+                let etype = r.enrichment_type.parse::<EnrichmentType>().ok()?;
+                Some(EnrichmentRecord {
+                    id: r.id,
+                    contribution_id: r.contribution_id,
+                    enrichment_type: etype,
+                    value: r.value,
+                    model_name: r.model_name,
+                    confidence: r.confidence,
+                    input_hash: r.input_hash,
+                    input_preview: r.input_preview,
+                    created_at: r.created_at,
+                })
             })
             .collect())
     }
@@ -261,16 +265,19 @@ impl ReasoningRepo {
 
         Ok(rows
             .into_iter()
-            .map(|r| EnrichmentRecord {
-                id: r.id,
-                contribution_id: r.contribution_id,
-                enrichment_type: r.enrichment_type,
-                value: r.value,
-                model_name: r.model_name,
-                confidence: r.confidence,
-                input_hash: r.input_hash,
-                input_preview: r.input_preview,
-                created_at: r.created_at,
+            .filter_map(|r| {
+                let etype = r.enrichment_type.parse::<EnrichmentType>().ok()?;
+                Some(EnrichmentRecord {
+                    id: r.id,
+                    contribution_id: r.contribution_id,
+                    enrichment_type: etype,
+                    value: r.value,
+                    model_name: r.model_name,
+                    confidence: r.confidence,
+                    input_hash: r.input_hash,
+                    input_preview: r.input_preview,
+                    created_at: r.created_at,
+                })
             })
             .collect())
     }
@@ -282,20 +289,19 @@ impl ReasoningRepo {
     /// only PRs with >50 lines changed for `significance`).
     pub async fn find_unenriched_contributions(
         &self,
-        enrichment_type: &str,
+        enrichment_type: EnrichmentType,
         limit: i64,
     ) -> Result<Vec<UnenrichedContribution>, Error> {
         // Different enrichment types target different contribution types.
-        let (type_filter, extra_filter) = match enrichment_type {
-            "review_depth" | "sentiment" => {
-                ("pr_review", "c.content IS NOT NULL AND c.content != ''")
+        let type_filter = enrichment_type.contribution_type_filter().as_str();
+        let extra_filter = match enrichment_type {
+            EnrichmentType::ReviewDepth | EnrichmentType::Sentiment => {
+                "c.content IS NOT NULL AND c.content != ''"
             }
-            "significance" => (
-                "pull_request",
-                "(c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50",
-            ),
-            "topic" => ("discourse_topic", "TRUE"),
-            _ => return Ok(vec![]),
+            EnrichmentType::Significance => {
+                "(c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50"
+            }
+            EnrichmentType::Topic => "TRUE",
         };
 
         // Use a dynamic query string since the filter varies, but parameters
@@ -325,7 +331,7 @@ impl ReasoningRepo {
                 serde_json::Value,
             ),
         >(&query)
-        .bind(enrichment_type)
+        .bind(enrichment_type.as_str())
         .bind(type_filter)
         .bind(limit)
         .fetch_all(&self.pool)
@@ -417,9 +423,12 @@ impl ReasoningRepo {
             last_enrichment_at: totals.last_at,
             by_type: by_type
                 .into_iter()
-                .map(|r| EnrichmentPipelineStatus {
-                    enrichment_type: r.enrichment_type,
-                    total_count: r.count,
+                .filter_map(|r| {
+                    let etype = r.enrichment_type.parse::<EnrichmentType>().ok()?;
+                    Some(EnrichmentPipelineStatus {
+                        enrichment_type: etype,
+                        total_count: r.count,
+                    })
                 })
                 .collect(),
             queue_depth,
@@ -427,10 +436,13 @@ impl ReasoningRepo {
     }
 
     /// Delete all enrichments of a given type (for re-enrichment).
-    pub async fn delete_enrichments_by_type(&self, enrichment_type: &str) -> Result<u64, Error> {
+    pub async fn delete_enrichments_by_type(
+        &self,
+        enrichment_type: EnrichmentType,
+    ) -> Result<u64, Error> {
         let result = sqlx::query!(
             "DELETE FROM reasoning.enrichments WHERE enrichment_type = $1",
-            enrichment_type,
+            enrichment_type.as_str(),
         )
         .execute(&self.pool)
         .await
@@ -490,15 +502,10 @@ impl ReasoningRepo {
     /// entries that haven't been enriched yet for this type.
     pub async fn find_queued_for_enrichment(
         &self,
-        enrichment_type: &str,
+        enrichment_type: EnrichmentType,
         limit: i64,
     ) -> Result<Vec<QueuedContribution>, Error> {
-        let type_filter = match enrichment_type {
-            "review_depth" | "sentiment" => "pr_review",
-            "significance" => "pull_request",
-            "topic" => "discourse_topic",
-            _ => return Ok(vec![]),
-        };
+        let type_filter = enrichment_type.contribution_type_filter().as_str();
 
         let rows = sqlx::query!(
             r#"
@@ -517,7 +524,7 @@ impl ReasoningRepo {
             ORDER BY eq.created_at
             LIMIT $3
             "#,
-            enrichment_type,
+            enrichment_type.as_str(),
             type_filter,
             limit,
         )

@@ -9,7 +9,7 @@ use tracing::info;
 use uuid::Uuid;
 
 use super::super::common::{
-    db_err, enrichment_type_to_proto, proto_to_enrichment_type_str, require_auth, to_timestamp,
+    db_err, enrichment_type_to_proto, proto_to_enrichment_type, require_auth, to_timestamp,
 };
 use super::ReasoningServiceImpl;
 use super::convert::enrichment_to_proto;
@@ -90,7 +90,7 @@ pub async fn get_enrichment_pipeline_status(
             .by_type
             .into_iter()
             .map(|t| EnrichmentTypeCount {
-                enrichment_type: enrichment_type_to_proto(&t.enrichment_type),
+                enrichment_type: enrichment_type_to_proto(t.enrichment_type),
                 count: t.total_count,
             })
             .collect(),
@@ -104,17 +104,17 @@ pub async fn delete_enrichments_by_type(
     let _ctx = require_auth(&request)?;
     let req = request.into_inner();
 
-    let enrichment_type_str = proto_to_enrichment_type_str(req.enrichment_type)
+    let enrichment_type = proto_to_enrichment_type(req.enrichment_type)
         .ok_or_else(|| Status::invalid_argument("enrichment_type is required"))?;
 
     let deleted = svc
         .repos
         .reasoning
-        .delete_enrichments_by_type(&enrichment_type_str)
+        .delete_enrichments_by_type(enrichment_type)
         .await
         .map_err(db_err)?;
 
-    info!(enrichment_type = %enrichment_type_str, deleted, "enrichments deleted for re-enrichment");
+    info!(enrichment_type = %enrichment_type, deleted, "enrichments deleted for re-enrichment");
 
     Ok(Response::new(DeleteEnrichmentsByTypeResponse {
         #[allow(clippy::cast_possible_wrap)]

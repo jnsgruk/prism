@@ -5,61 +5,11 @@
 //! `Deserialize` (for JSONB storage), and live here rather than in `ps-core`
 //! because they are reasoning-specific.
 
-use std::fmt;
-use std::str::FromStr;
-
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// The type of enrichment, used as the `enrichment_type` column value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EnrichmentType {
-    ReviewDepth,
-    Sentiment,
-    Significance,
-    Topic,
-}
-
-impl EnrichmentType {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::ReviewDepth => "review_depth",
-            Self::Sentiment => "sentiment",
-            Self::Significance => "significance",
-            Self::Topic => "topic",
-        }
-    }
-
-    /// All enrichment types that the scheduler should process.
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::ReviewDepth,
-            Self::Sentiment,
-            Self::Significance,
-            Self::Topic,
-        ]
-    }
-}
-
-impl fmt::Display for EnrichmentType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl FromStr for EnrichmentType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "review_depth" => Ok(Self::ReviewDepth),
-            "sentiment" => Ok(Self::Sentiment),
-            "significance" => Ok(Self::Significance),
-            "topic" => Ok(Self::Topic),
-            _ => Err(format!("invalid EnrichmentType: {s}")),
-        }
-    }
-}
+// Re-export from the canonical location in ps-core.
+pub use ps_core::models::EnrichmentType;
 
 // ---------------------------------------------------------------------------
 // Review Depth (PR reviews)
@@ -168,35 +118,4 @@ pub enum TopicCategory {
     Blog,
     Meta,
     Other,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn enrichment_type_roundtrip() {
-        for variant in EnrichmentType::all() {
-            let s = variant.to_string();
-            assert_eq!(s.parse::<EnrichmentType>().unwrap(), *variant);
-        }
-    }
-
-    #[test]
-    fn enrichment_type_as_str() {
-        assert_eq!(EnrichmentType::ReviewDepth.as_str(), "review_depth");
-        assert_eq!(EnrichmentType::Sentiment.as_str(), "sentiment");
-        assert_eq!(EnrichmentType::Significance.as_str(), "significance");
-        assert_eq!(EnrichmentType::Topic.as_str(), "topic");
-    }
-
-    #[test]
-    fn enrichment_type_all_has_four() {
-        assert_eq!(EnrichmentType::all().len(), 4);
-    }
-
-    #[test]
-    fn enrichment_type_invalid_errors() {
-        assert!("unknown".parse::<EnrichmentType>().is_err());
-    }
 }

@@ -360,6 +360,74 @@ impl FromStr for PeriodType {
 }
 
 // ---------------------------------------------------------------------------
+// EnrichmentType
+// ---------------------------------------------------------------------------
+
+/// The type of AI enrichment applied to a contribution.
+///
+/// Each variant targets specific contribution types:
+/// - `ReviewDepth` / `Sentiment` → `pr_review`
+/// - `Significance` → `pull_request`
+/// - `Topic` → `discourse_topic`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnrichmentType {
+    ReviewDepth,
+    Sentiment,
+    Significance,
+    Topic,
+}
+
+impl fmt::Display for EnrichmentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl EnrichmentType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ReviewDepth => "review_depth",
+            Self::Sentiment => "sentiment",
+            Self::Significance => "significance",
+            Self::Topic => "topic",
+        }
+    }
+
+    /// All enrichment types that the scheduler should process.
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::ReviewDepth,
+            Self::Sentiment,
+            Self::Significance,
+            Self::Topic,
+        ]
+    }
+
+    /// Return the `ContributionType` this enrichment targets.
+    pub fn contribution_type_filter(self) -> ContributionType {
+        match self {
+            Self::ReviewDepth | Self::Sentiment => ContributionType::PrReview,
+            Self::Significance => ContributionType::PullRequest,
+            Self::Topic => ContributionType::DiscourseTopic,
+        }
+    }
+}
+
+impl FromStr for EnrichmentType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "review_depth" => Ok(Self::ReviewDepth),
+            "sentiment" => Ok(Self::Sentiment),
+            "significance" => Ok(Self::Significance),
+            "topic" => Ok(Self::Topic),
+            _ => Err(format!("invalid EnrichmentType: {s}")),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // sqlx TEXT round-tripping — macro to avoid repeating the boilerplate
 // ---------------------------------------------------------------------------
 
@@ -400,6 +468,7 @@ impl_sqlx_text!(ResolutionStatus, |s: &str| s.parse().ok());
 impl_sqlx_text!(Role, |s: &str| s.parse().ok());
 impl_sqlx_text!(TaskType, |s: &str| s.parse().ok());
 impl_sqlx_text!(AiProvider, |s: &str| s.parse().ok());
+impl_sqlx_text!(EnrichmentType, |s: &str| s.parse().ok());
 
 // ---------------------------------------------------------------------------
 // ResolutionStatus
@@ -767,5 +836,40 @@ mod tests {
     #[test]
     fn ai_provider_unknown_errors() {
         assert!("anthropic".parse::<AiProvider>().is_err());
+    }
+
+    // -- EnrichmentType --
+
+    #[test]
+    fn enrichment_type_roundtrip() {
+        for variant in EnrichmentType::all() {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<EnrichmentType>().unwrap(), *variant);
+        }
+    }
+
+    #[test]
+    fn enrichment_type_contribution_type_filter() {
+        assert_eq!(
+            EnrichmentType::ReviewDepth.contribution_type_filter(),
+            ContributionType::PrReview
+        );
+        assert_eq!(
+            EnrichmentType::Sentiment.contribution_type_filter(),
+            ContributionType::PrReview
+        );
+        assert_eq!(
+            EnrichmentType::Significance.contribution_type_filter(),
+            ContributionType::PullRequest
+        );
+        assert_eq!(
+            EnrichmentType::Topic.contribution_type_filter(),
+            ContributionType::DiscourseTopic
+        );
+    }
+
+    #[test]
+    fn enrichment_type_unknown_errors() {
+        assert!("unknown".parse::<EnrichmentType>().is_err());
     }
 }

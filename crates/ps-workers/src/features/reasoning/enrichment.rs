@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use ps_core::models::EnrichmentType;
 use ps_core::models::TaskType;
 use ps_core::repo::reasoning::{EmbeddingQueueEntry, QueuedContribution};
 use ps_reasoning::cost::CostTracker;
 use ps_reasoning::features::enrichment;
-use ps_reasoning::features::enrichment::types::EnrichmentType;
 use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
 use serde::Serialize;
@@ -130,9 +130,7 @@ impl EnrichmentHandlerImpl {
             let mut batches = Vec::with_capacity(all_types.len());
             let mut any_non_empty = false;
             for enrichment_type in all_types {
-                let contributions = self
-                    .find_queued(ctx, enrichment_type.as_str(), iteration)
-                    .await?;
+                let contributions = self.find_queued(ctx, *enrichment_type, iteration).await?;
                 if !contributions.is_empty() {
                     any_non_empty = true;
                 }
@@ -185,8 +183,6 @@ impl EnrichmentHandlerImpl {
 
             // Step 4: Aggregate results and log costs (journaled DB writes)
             for batch in &results {
-                let type_name = batch.enrichment_type.as_str();
-
                 if first_error.is_none() {
                     first_error.clone_from(&batch.first_error);
                 }
@@ -207,7 +203,8 @@ impl EnrichmentHandlerImpl {
                 stats.processed += batch.processed;
                 stats.errors += batch.errors;
 
-                self.log_cost(ctx, type_name, iteration, batch).await;
+                self.log_cost(ctx, batch.enrichment_type, iteration, batch)
+                    .await;
             }
 
             // Update progress with cumulative per-type stats
@@ -297,29 +294,24 @@ impl EnrichmentHandlerImpl {
     async fn find_queued(
         &self,
         ctx: &Context<'_>,
-        enrichment_type: &str,
+        enrichment_type: EnrichmentType,
         iteration: u32,
     ) -> Result<Vec<QueuedContribution>, TerminalError> {
         let repos = &self.state.repos;
-        let etype = enrichment_type.to_string();
-        Ok(journaled_value!(
-            ctx,
-            format!("find_{enrichment_type}_{iteration}"),
-            [repos, etype],
-            {
-                repos
-                    .reasoning
-                    .find_queued_for_enrichment(&etype, MAX_BATCH_SIZE)
-                    .await
-                    .map_err(terminal_err("db error"))?
-            }
-        ))
+        let step_name = format!("find_{}_{iteration}", enrichment_type.as_str());
+        Ok(journaled_value!(ctx, step_name, [repos], {
+            repos
+                .reasoning
+                .find_queued_for_enrichment(enrichment_type, MAX_BATCH_SIZE)
+                .await
+                .map_err(terminal_err("db error"))?
+        }))
     }
 
     async fn log_cost(
         &self,
         ctx: &Context<'_>,
-        enrichment_type: &str,
+        enrichment_type: EnrichmentType,
         iteration: u32,
         batch: &enrichment::BatchResult,
     ) {
@@ -361,7 +353,7 @@ impl EnrichmentHandlerImpl {
                     Ok(Json::from(()))
                 }
             })
-            .name(format!("log_cost_{enrichment_type}_{iteration}"))
+            .name(format!("log_cost_{}_{iteration}", enrichment_type.as_str()))
             .await;
 
         if let Err(e) = result {

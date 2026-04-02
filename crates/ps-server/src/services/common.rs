@@ -202,24 +202,25 @@ pub fn proto_to_ai_provider_str(v: i32) -> Option<String> {
     }
 }
 
-/// Convert an enrichment type string to proto enum i32.
-pub fn enrichment_type_to_proto(s: &str) -> i32 {
-    match s {
-        "review_depth" => ProtoEnrichmentType::ReviewDepth.into(),
-        "sentiment" => ProtoEnrichmentType::Sentiment.into(),
-        "significance" => ProtoEnrichmentType::Significance.into(),
-        "topic" => ProtoEnrichmentType::Topic.into(),
-        _ => ProtoEnrichmentType::Unspecified.into(),
+/// Convert an `EnrichmentType` to proto enum i32.
+pub fn enrichment_type_to_proto(et: ps_core::models::EnrichmentType) -> i32 {
+    match et {
+        ps_core::models::EnrichmentType::ReviewDepth => ProtoEnrichmentType::ReviewDepth.into(),
+        ps_core::models::EnrichmentType::Sentiment => ProtoEnrichmentType::Sentiment.into(),
+        ps_core::models::EnrichmentType::Significance => ProtoEnrichmentType::Significance.into(),
+        ps_core::models::EnrichmentType::Topic => ProtoEnrichmentType::Topic.into(),
     }
 }
 
-/// Convert proto enrichment type i32 back to a string.
-pub fn proto_to_enrichment_type_str(v: i32) -> Option<String> {
+/// Convert proto enrichment type i32 back to an `EnrichmentType`.
+pub fn proto_to_enrichment_type(v: i32) -> Option<ps_core::models::EnrichmentType> {
     match ProtoEnrichmentType::try_from(v) {
-        Ok(ProtoEnrichmentType::ReviewDepth) => Some("review_depth".to_string()),
-        Ok(ProtoEnrichmentType::Sentiment) => Some("sentiment".to_string()),
-        Ok(ProtoEnrichmentType::Significance) => Some("significance".to_string()),
-        Ok(ProtoEnrichmentType::Topic) => Some("topic".to_string()),
+        Ok(ProtoEnrichmentType::ReviewDepth) => Some(ps_core::models::EnrichmentType::ReviewDepth),
+        Ok(ProtoEnrichmentType::Sentiment) => Some(ps_core::models::EnrichmentType::Sentiment),
+        Ok(ProtoEnrichmentType::Significance) => {
+            Some(ps_core::models::EnrichmentType::Significance)
+        }
+        Ok(ProtoEnrichmentType::Topic) => Some(ps_core::models::EnrichmentType::Topic),
         _ => None,
     }
 }

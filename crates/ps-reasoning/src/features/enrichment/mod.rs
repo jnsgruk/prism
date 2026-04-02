@@ -264,7 +264,7 @@ pub async fn process_queued_enrichment_batch(
                 Ok((value, confidence, usage)) => ItemOutcome::Success {
                     result: EnrichmentResult {
                         contribution_id: item.contribution_id,
-                        enrichment_type: type_str.to_string(),
+                        enrichment_type,
                         value,
                         confidence,
                         input_hash: item.input_hash,
@@ -334,7 +334,7 @@ pub async fn process_queued_enrichment_batch(
             if repo
                 .upsert_enrichment(&UpsertEnrichmentParams {
                     contribution_id: r.contribution_id,
-                    enrichment_type: &r.enrichment_type,
+                    enrichment_type: r.enrichment_type,
                     value: &r.value,
                     model_name,
                     confidence: Some(r.confidence),

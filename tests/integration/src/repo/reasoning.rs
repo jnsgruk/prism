@@ -1,4 +1,5 @@
 use crate::define_repo_test;
+use ps_core::models::EnrichmentType;
 use ps_core::repo::reasoning::{
     CreateArtifactParams, CreateConversationParams, CreateMessageParams, EnrichmentResult,
     UpsertEnrichmentParams,
@@ -136,7 +137,7 @@ define_repo_test!(upsert_enrichment_and_retrieve, |repos, pool| async move {
 
     let params = UpsertEnrichmentParams {
         contribution_id: contrib_id,
-        enrichment_type: "review_depth",
+        enrichment_type: EnrichmentType::ReviewDepth,
         value: &serde_json::json!({"depth": "thorough", "categories": ["architecture"]}),
         model_name: "gemini-pro",
         confidence: Some(0.9),
@@ -153,7 +154,7 @@ define_repo_test!(upsert_enrichment_and_retrieve, |repos, pool| async move {
         .unwrap();
     assert_eq!(enrichments.len(), 1);
     assert_eq!(enrichments[0].id, id);
-    assert_eq!(enrichments[0].enrichment_type, "review_depth");
+    assert_eq!(enrichments[0].enrichment_type, EnrichmentType::ReviewDepth);
     assert!((enrichments[0].confidence.unwrap() - 0.9).abs() < 0.01);
 });
 
@@ -164,7 +165,7 @@ define_repo_test!(
 
         let params1 = UpsertEnrichmentParams {
             contribution_id: contrib_id,
-            enrichment_type: "sentiment",
+            enrichment_type: EnrichmentType::Sentiment,
             value: &serde_json::json!({"sentiment": "positive"}),
             model_name: "gemini-pro",
             confidence: Some(0.7),
@@ -175,7 +176,7 @@ define_repo_test!(
 
         let params2 = UpsertEnrichmentParams {
             contribution_id: contrib_id,
-            enrichment_type: "sentiment",
+            enrichment_type: EnrichmentType::Sentiment,
             value: &serde_json::json!({"sentiment": "neutral"}),
             model_name: "gemini-pro-2",
             confidence: Some(0.85),
@@ -202,7 +203,7 @@ define_repo_test!(bulk_upsert_enrichments, |repos, pool| async move {
     let results = vec![
         EnrichmentResult {
             contribution_id: c1,
-            enrichment_type: "review_depth".into(),
+            enrichment_type: EnrichmentType::ReviewDepth,
             value: serde_json::json!({"depth": "surface"}),
             confidence: 0.6,
             input_hash: "h1".into(),
@@ -210,7 +211,7 @@ define_repo_test!(bulk_upsert_enrichments, |repos, pool| async move {
         },
         EnrichmentResult {
             contribution_id: c2,
-            enrichment_type: "review_depth".into(),
+            enrichment_type: EnrichmentType::ReviewDepth,
             value: serde_json::json!({"depth": "thorough"}),
             confidence: 0.9,
             input_hash: "h2".into(),
@@ -254,7 +255,7 @@ define_repo_test!(
 
         let params = UpsertEnrichmentParams {
             contribution_id: c1,
-            enrichment_type: "review_depth",
+            enrichment_type: EnrichmentType::ReviewDepth,
             value: &serde_json::json!({"depth": "thorough"}),
             model_name: "model",
             confidence: None,
@@ -292,7 +293,7 @@ define_repo_test!(find_unenriched_contributions, |repos, pool| async move {
 
     let results = repos
         .reasoning
-        .find_unenriched_contributions("review_depth", 10)
+        .find_unenriched_contributions(EnrichmentType::ReviewDepth, 10)
         .await
         .unwrap();
     assert_eq!(results.len(), 1);
@@ -309,30 +310,21 @@ define_repo_test!(find_unenriched_prs_by_size, |repos, pool| async move {
 
     let results = repos
         .reasoning
-        .find_unenriched_contributions("significance", 10)
+        .find_unenriched_contributions(EnrichmentType::Significance, 10)
         .await
         .unwrap();
     assert_eq!(results.len(), 1);
 });
 
-define_repo_test!(
-    find_unenriched_unknown_type_returns_empty,
-    |repos, _pool| async move {
-        let results = repos
-            .reasoning
-            .find_unenriched_contributions("nonexistent", 10)
-            .await
-            .unwrap();
-        assert!(results.is_empty());
-    }
-);
+// The previous test for unknown enrichment type returning empty is no longer
+// needed — the EnrichmentType enum makes invalid types a compile-time error.
 
 define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
     let c1 = insert_contribution(&pool, "del-type-1").await;
 
     let params = UpsertEnrichmentParams {
         contribution_id: c1,
-        enrichment_type: "review_depth",
+        enrichment_type: EnrichmentType::ReviewDepth,
         value: &serde_json::json!({}),
         model_name: "model",
         confidence: None,
@@ -343,7 +335,7 @@ define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
 
     let params2 = UpsertEnrichmentParams {
         contribution_id: c1,
-        enrichment_type: "sentiment",
+        enrichment_type: EnrichmentType::Sentiment,
         value: &serde_json::json!({}),
         model_name: "model",
         confidence: None,
@@ -354,7 +346,7 @@ define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
 
     let deleted = repos
         .reasoning
-        .delete_enrichments_by_type("review_depth")
+        .delete_enrichments_by_type(EnrichmentType::ReviewDepth)
         .await
         .unwrap();
     assert_eq!(deleted, 1);
@@ -365,7 +357,7 @@ define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
         .await
         .unwrap();
     assert_eq!(remaining.len(), 1);
-    assert_eq!(remaining[0].enrichment_type, "sentiment");
+    assert_eq!(remaining[0].enrichment_type, EnrichmentType::Sentiment);
 });
 
 // ---------------------------------------------------------------------------

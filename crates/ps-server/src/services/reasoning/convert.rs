@@ -27,7 +27,7 @@ pub fn enrichment_to_proto(e: ps_core::repo::reasoning::EnrichmentRecord) -> Pro
     ProtoEnrichment {
         id: e.id.to_string(),
         contribution_id: e.contribution_id.to_string(),
-        enrichment_type: enrichment_type_to_proto(&e.enrichment_type),
+        enrichment_type: enrichment_type_to_proto(e.enrichment_type),
         value_json: e.value.to_string(),
         model_name: e.model_name,
         confidence: e.confidence,
