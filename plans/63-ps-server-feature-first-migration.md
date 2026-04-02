@@ -322,17 +322,17 @@ Rules:
 
 ## Implementation Checklist
 
-- [ ] Phase 0 baseline captured and green
-- [ ] `common.rs` split into `common/{auth,conversions}.rs`
-- [ ] Feature skeletons added (`features/mod.rs`)
-- [ ] Auth migrated (Tier 1)
-- [ ] Admin migrated (Tier 1)
-- [ ] Config migrated (Tier 2)
-- [ ] Insights migrated (Tier 2)
-- [ ] Org migrated (Tier 2)
-- [ ] Metrics migrated (Tier 2, `grpc.rs` → `handler.rs`)
-- [ ] Dispatch migrated (renamed from `handlers/`)
-- [ ] Reasoning migrated (Tier 3, including `agent_query/`)
-- [ ] `services/` shims removed
-- [ ] Full validation (`prek run -av`) passes
-- [ ] Docs updated (CLAUDE.md crate structure section)
+- [x] Phase 0 baseline captured and green
+- [x] `common.rs` split into `common/{auth,conversions}.rs`
+- [x] Feature skeletons added (`features/mod.rs`)
+- [x] Auth migrated (Tier 1)
+- [x] Admin migrated (Tier 1)
+- [x] Config migrated (Tier 2)
+- [x] Insights migrated (Tier 2)
+- [x] Org migrated (Tier 2)
+- [x] Metrics migrated (Tier 2, `grpc.rs` → `handler.rs`)
+- [x] Dispatch migrated (renamed from `handlers/`)
+- [x] Reasoning migrated (Tier 3, including `agent_query/`)
+- [x] `services/` shims removed
+- [x] Full validation (`prek run -av`) passes
+- [x] Docs updated (CLAUDE.md crate structure section)
