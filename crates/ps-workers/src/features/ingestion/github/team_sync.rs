@@ -188,7 +188,7 @@ impl GithubTeamSyncHandlerImpl {
         org: &str,
         team: &GitHubTeam,
         members: &[String],
-        team_repos: &[(String, String)],
+        team_repos: &[ps_core::models::GitHubRepoCoord],
     ) -> Result<(), TerminalError> {
         let repos = &self.state.repos;
         let slug = team.slug.clone();
@@ -310,7 +310,7 @@ async fn fetch_all_repos(
     client: &GitHubClient,
     org: &str,
     team_slug: &str,
-) -> Result<Vec<(String, String)>, TerminalError> {
+) -> Result<Vec<ps_core::models::GitHubRepoCoord>, TerminalError> {
     let mut repos = Vec::new();
     let mut page = 1u32;
 
@@ -325,7 +325,7 @@ async fn fetch_all_repos(
                 .items
                 .into_iter()
                 .filter(|r| !r.archived.unwrap_or(false))
-                .map(|r| (r.owner.login.clone(), r.name)),
+                .map(|r| ps_core::models::GitHubRepoCoord::new(r.owner.login.clone(), r.name)),
         );
 
         match result.next_page {

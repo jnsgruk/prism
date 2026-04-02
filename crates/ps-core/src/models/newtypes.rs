@@ -59,6 +59,39 @@ macro_rules! impl_string_newtype {
     };
 }
 
+// ---------------------------------------------------------------------------
+// GitHubRepoCoord
+// ---------------------------------------------------------------------------
+
+/// A GitHub repository coordinate (org + repo name).
+///
+/// Replaces bare `(String, String)` tuples where org and repo could be
+/// accidentally swapped.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct GitHubRepoCoord {
+    pub org: String,
+    pub repo: String,
+}
+
+impl GitHubRepoCoord {
+    pub fn new(org: impl Into<String>, repo: impl Into<String>) -> Self {
+        Self {
+            org: org.into(),
+            repo: repo.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for GitHubRepoCoord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.org, self.repo)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// String newtypes
+// ---------------------------------------------------------------------------
+
 impl_string_newtype!(
     SourceName,
     "The human-visible name of a data source (e.g. \"Ubuntu GitHub\")."

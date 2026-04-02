@@ -326,16 +326,15 @@ pub async fn advance_watermark(
     ing_ctx: &IngestionContext,
     cursor: &str,
     total_items: i32,
-    watermark_field: &str,
+    watermark_field: ps_core::models::WatermarkField,
 ) -> Result<(), TerminalError> {
     let ic = ing_ctx.clone();
     let wm = cursor.to_string();
-    let field = watermark_field.to_string();
 
-    journaled!(ctx, "advance_watermark", [ic, wm, field], {
+    journaled!(ctx, "advance_watermark", [ic, wm], {
         let src = crate::infra::registry::create_source(&ic.source_config.source_type)
             .ok_or_else(|| TerminalError::new("source unavailable"))?;
-        let watermark = extract_watermark(&wm, &field).unwrap_or_default();
+        let watermark = extract_watermark(&wm, watermark_field).unwrap_or_default();
         src.advance_watermark(&ic, &watermark, total_items)
             .await
             .map_err(terminal_err("advance failed"))?;
@@ -354,7 +353,7 @@ pub async fn fetch_store_loop(
     run_id: uuid::Uuid,
     _source_name: &str,
     initial_cursor: &str,
-    watermark_field: &str,
+    watermark_field: ps_core::models::WatermarkField,
     tracker: &mut (dyn ProgressTracker + Send),
 ) -> Result<(i32, String), TerminalError> {
     let mut cursor = initial_cursor.to_string();

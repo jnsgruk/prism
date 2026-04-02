@@ -122,7 +122,7 @@ impl OrgRepo {
     pub async fn replace_github_team_repos(
         &self,
         github_team_id: Uuid,
-        repos: &[(String, String)], // (org, repo)
+        repos: &[crate::models::GitHubRepoCoord],
     ) -> Result<(), Error> {
         let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
@@ -135,8 +135,8 @@ impl OrgRepo {
         .map_err(Error::from)?;
 
         if !repos.is_empty() {
-            let orgs: Vec<&str> = repos.iter().map(|(o, _)| o.as_str()).collect();
-            let repo_names: Vec<&str> = repos.iter().map(|(_, r)| r.as_str()).collect();
+            let orgs: Vec<&str> = repos.iter().map(|r| r.org.as_str()).collect();
+            let repo_names: Vec<&str> = repos.iter().map(|r| r.repo.as_str()).collect();
             sqlx::query!(
                 r#"
                 INSERT INTO org.github_team_repos (github_team_id, github_org, github_repo, last_synced_at)
@@ -248,7 +248,7 @@ impl OrgRepo {
     pub async fn get_mapped_github_team_repos(
         &self,
         source_id: Uuid,
-    ) -> Result<Vec<(String, String)>, Error> {
+    ) -> Result<Vec<crate::models::GitHubRepoCoord>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT DISTINCT gtr.github_org, gtr.github_repo
@@ -265,7 +265,7 @@ impl OrgRepo {
 
         Ok(rows
             .into_iter()
-            .map(|r| (r.github_org, r.github_repo))
+            .map(|r| crate::models::GitHubRepoCoord::new(r.github_org, r.github_repo))
             .collect())
     }
 

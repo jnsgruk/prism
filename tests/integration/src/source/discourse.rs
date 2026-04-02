@@ -243,7 +243,10 @@ define_source_test!(category_iteration, |ctx| async move {
 
 define_source_test!(watermark_uses_bumped_at, |_ctx| async move {
     let source = discourse_source();
-    assert_eq!(source.watermark_field(), "max_bumped_at");
+    assert_eq!(
+        source.watermark_field(),
+        ps_core::models::WatermarkField::MaxBumpedAt
+    );
 });
 
 // ---------------------------------------------------------------------------

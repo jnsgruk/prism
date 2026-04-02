@@ -121,8 +121,8 @@ impl Source for DiscourseSource {
         serde_json::to_string(&cursor).unwrap_or_default()
     }
 
-    fn watermark_field(&self) -> &'static str {
-        "max_bumped_at"
+    fn watermark_field(&self) -> ps_core::models::WatermarkField {
+        ps_core::models::WatermarkField::MaxBumpedAt
     }
 }
 

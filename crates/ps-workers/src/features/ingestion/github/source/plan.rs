@@ -59,7 +59,10 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
     } else {
         let repos: Vec<RepoTarget> = mapped_repos
             .into_iter()
-            .map(|(owner, repo)| RepoTarget { owner, repo })
+            .map(|coord| RepoTarget {
+                owner: coord.org,
+                repo: coord.repo,
+            })
             .collect();
         (repos, false)
     };

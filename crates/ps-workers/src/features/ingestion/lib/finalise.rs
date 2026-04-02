@@ -14,12 +14,13 @@ use super::orchestration::{
 };
 
 /// Extract a named field from a serialised cursor JSON string.
-///
-/// GitHub and Jira use `"max_updated_at"`, Discourse uses `"max_bumped_at"`.
-pub fn extract_watermark(cursor_json: &str, field: &str) -> Option<String> {
+pub fn extract_watermark(
+    cursor_json: &str,
+    field: ps_core::models::WatermarkField,
+) -> Option<String> {
     serde_json::from_str::<serde_json::Value>(cursor_json)
         .ok()?
-        .get(field)?
+        .get(field.as_str())?
         .as_str()
         .map(String::from)
 }
@@ -50,7 +51,7 @@ pub async fn finalise_run(
     failed_items: &[FailedItem],
     item_noun: &str,
     final_cursor: &str,
-    watermark_field: &str,
+    watermark_field: ps_core::models::WatermarkField,
 ) -> Result<(), TerminalError> {
     if failed_items.is_empty() {
         if total_items > 0 {
@@ -294,7 +295,7 @@ mod tests {
     fn extract_watermark_max_updated_at() {
         let cursor = r#"{"max_updated_at": "2025-01-15T12:00:00Z", "repo_index": 0}"#;
         assert_eq!(
-            extract_watermark(cursor, "max_updated_at"),
+            extract_watermark(cursor, ps_core::models::WatermarkField::MaxUpdatedAt),
             Some("2025-01-15T12:00:00Z".into())
         );
     }
@@ -303,7 +304,7 @@ mod tests {
     fn extract_watermark_max_bumped_at() {
         let cursor = r#"{"max_bumped_at": "2025-02-01T00:00:00Z"}"#;
         assert_eq!(
-            extract_watermark(cursor, "max_bumped_at"),
+            extract_watermark(cursor, ps_core::models::WatermarkField::MaxBumpedAt),
             Some("2025-02-01T00:00:00Z".into())
         );
     }
@@ -311,18 +312,27 @@ mod tests {
     #[test]
     fn extract_watermark_missing_field() {
         let cursor = r#"{"repo_index": 0}"#;
-        assert_eq!(extract_watermark(cursor, "max_updated_at"), None);
+        assert_eq!(
+            extract_watermark(cursor, ps_core::models::WatermarkField::MaxUpdatedAt),
+            None
+        );
     }
 
     #[test]
     fn extract_watermark_null_value() {
         let cursor = r#"{"max_updated_at": null}"#;
-        assert_eq!(extract_watermark(cursor, "max_updated_at"), None);
+        assert_eq!(
+            extract_watermark(cursor, ps_core::models::WatermarkField::MaxUpdatedAt),
+            None
+        );
     }
 
     #[test]
     fn extract_watermark_invalid_json() {
-        assert_eq!(extract_watermark("not json", "max_updated_at"), None);
+        assert_eq!(
+            extract_watermark("not json", ps_core::models::WatermarkField::MaxUpdatedAt),
+            None
+        );
     }
 
     // -- extract_failed_items --
