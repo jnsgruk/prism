@@ -18,7 +18,7 @@ cargo sqlx prepare --workspace            # Update offline query cache (.sqlx/)
 sqlx migrate add <name>                   # Create new migration in migrations/
 bun install                               # Install frontend dependencies (run from frontend/)
 bun dev                                   # Start frontend dev server (run from frontend/)
-bun test                                  # Run frontend tests via vitest (run from frontend/)
+bun run test                              # Run frontend tests via vitest (run from frontend/)
 ```
 
 ## Workflow Requirements
