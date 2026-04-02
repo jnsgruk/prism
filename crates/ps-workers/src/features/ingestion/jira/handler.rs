@@ -1,5 +1,5 @@
 use ps_core::ingestion::ContributionInput;
-use ps_core::models::{ContributionType, RateLimitInfo};
+use ps_core::models::{ContributionType, RateLimitInfo, SecretKey};
 use restate_sdk::prelude::*;
 use tracing::info;
 
@@ -14,9 +14,9 @@ pub struct JiraIngestionHandlerImpl {
 
 const JIRA_SPEC: IngestionSpec = IngestionSpec {
     handler_name: "JiraIngestionHandler",
-    token_key: Some("api_token"),
+    token_key: Some(SecretKey::ApiToken),
     token_required: true,
-    email_key: Some("email"),
+    email_key: Some(SecretKey::Email),
     api_username_key: None,
     item_noun: "project",
 };

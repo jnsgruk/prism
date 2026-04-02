@@ -1,3 +1,4 @@
+use ps_core::models::SecretKey;
 use restate_sdk::prelude::TerminalError;
 use uuid::Uuid;
 
@@ -10,12 +11,12 @@ use super::state::SharedState;
 pub async fn decrypt_required_secret(
     state: &SharedState,
     source_id: Uuid,
-    key: &str,
+    key: SecretKey,
 ) -> Result<String, TerminalError> {
     let encrypted = state
         .repos
         .config
-        .get_encrypted_secret(source_id, key)
+        .get_encrypted_secret(source_id, key.as_str())
         .await
         .map_err(terminal_err("db error"))?
         .ok_or_else(|| TerminalError::new(format!("source has no {key} configured")))?;
@@ -32,12 +33,12 @@ pub async fn decrypt_required_secret(
 pub async fn decrypt_optional_secret(
     state: &SharedState,
     source_id: Uuid,
-    key: &str,
+    key: SecretKey,
 ) -> Result<Option<String>, TerminalError> {
     let encrypted = state
         .repos
         .config
-        .get_encrypted_secret(source_id, key)
+        .get_encrypted_secret(source_id, key.as_str())
         .await
         .map_err(terminal_err("db error"))?;
 

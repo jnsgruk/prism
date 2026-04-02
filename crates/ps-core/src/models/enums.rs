@@ -360,6 +360,65 @@ impl FromStr for PeriodType {
 }
 
 // ---------------------------------------------------------------------------
+// SecretKey
+// ---------------------------------------------------------------------------
+
+/// The key name for a source secret stored in `config.source_secrets`.
+///
+/// Each variant maps to a specific secret key string used for encryption
+/// and decryption of source credentials.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SecretKey {
+    /// API token (GitHub, Jira).
+    ApiToken,
+    /// API key (Discourse, AI providers).
+    ApiKey,
+    /// Email credential (Jira Basic auth).
+    Email,
+    /// API username (Discourse).
+    ApiUsername,
+    /// Google AI provider API key.
+    GoogleApiKey,
+    /// `OpenRouter` AI provider API key.
+    OpenRouterApiKey,
+}
+
+impl fmt::Display for SecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl SecretKey {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ApiToken => "api_token",
+            Self::ApiKey => "api_key",
+            Self::Email => "email",
+            Self::ApiUsername => "api_username",
+            Self::GoogleApiKey => "google_api_key",
+            Self::OpenRouterApiKey => "openrouter_api_key",
+        }
+    }
+}
+
+impl FromStr for SecretKey {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "api_token" => Ok(Self::ApiToken),
+            "api_key" => Ok(Self::ApiKey),
+            "email" => Ok(Self::Email),
+            "api_username" => Ok(Self::ApiUsername),
+            "google_api_key" => Ok(Self::GoogleApiKey),
+            "openrouter_api_key" => Ok(Self::OpenRouterApiKey),
+            _ => Err(format!("invalid SecretKey: {s}")),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // QueryStatus
 // ---------------------------------------------------------------------------
 

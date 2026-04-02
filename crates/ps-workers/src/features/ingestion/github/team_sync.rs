@@ -41,7 +41,9 @@ impl GithubTeamSyncHandler for GithubTeamSyncHandlerImpl {
 
         info!("starting team sync");
 
-        let token = decrypt_required_secret(&self.state, config.id, "api_token").await?;
+        let token =
+            decrypt_required_secret(&self.state, config.id, ps_core::models::SecretKey::ApiToken)
+                .await?;
 
         let orgs = parse_orgs(&config);
         if orgs.is_empty() {

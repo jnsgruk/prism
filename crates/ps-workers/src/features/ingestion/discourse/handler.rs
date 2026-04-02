@@ -1,5 +1,5 @@
 use ps_core::ingestion::ContributionInput;
-use ps_core::models::RateLimitInfo;
+use ps_core::models::{RateLimitInfo, SecretKey};
 use restate_sdk::prelude::*;
 use tracing::info;
 
@@ -14,10 +14,10 @@ pub struct DiscourseIngestionHandlerImpl {
 
 const DISCOURSE_SPEC: IngestionSpec = IngestionSpec {
     handler_name: "DiscourseIngestionHandler",
-    token_key: Some("api_key"),
+    token_key: Some(SecretKey::ApiKey),
     token_required: false,
     email_key: None,
-    api_username_key: Some("api_username"),
+    api_username_key: Some(SecretKey::ApiUsername),
     item_noun: "category",
 };
 

@@ -1,5 +1,5 @@
 use ps_core::ingestion::ContributionInput;
-use ps_core::models::{ContributionType, RateLimitInfo};
+use ps_core::models::{ContributionType, RateLimitInfo, SecretKey};
 use restate_sdk::prelude::*;
 use serde::Serialize;
 use tracing::info;
@@ -15,7 +15,7 @@ pub struct GithubIngestionHandlerImpl {
 
 const GITHUB_SPEC: IngestionSpec = IngestionSpec {
     handler_name: "GithubIngestionHandler",
-    token_key: Some("api_token"),
+    token_key: Some(SecretKey::ApiToken),
     token_required: true,
     email_key: None,
     api_username_key: None,

@@ -192,8 +192,15 @@ impl IdentityResolutionHandlerImpl {
             .map_err(terminal_err("invalid source_id"))?;
 
         // Decrypt API key outside ctx.run() to avoid journaling plaintext.
-        let api_key = decrypt_optional_secret(&self.state, source_id, "api_key").await?;
-        let api_username = decrypt_optional_secret(&self.state, source_id, "api_username").await?;
+        let api_key =
+            decrypt_optional_secret(&self.state, source_id, ps_core::models::SecretKey::ApiKey)
+                .await?;
+        let api_username = decrypt_optional_secret(
+            &self.state,
+            source_id,
+            ps_core::models::SecretKey::ApiUsername,
+        )
+        .await?;
 
         let client = DiscourseClient::new(
             self.state.http_client.clone(),

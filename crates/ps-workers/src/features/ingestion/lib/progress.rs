@@ -34,15 +34,14 @@ pub trait ProgressTracker {
 /// and what to call the item type in error summaries.
 pub struct IngestionSpec {
     pub handler_name: &'static str,
-    /// Secret key name for the API token (e.g. `"api_token"`, `"api_key"`).
-    /// `None` if this source has no token.
-    pub token_key: Option<&'static str>,
+    /// Secret key for the API token. `None` if this source has no token.
+    pub token_key: Option<ps_core::models::SecretKey>,
     /// Whether the token is required (error if missing) vs optional.
     pub token_required: bool,
-    /// Secret key name for an email credential (Jira Basic auth).
-    pub email_key: Option<&'static str>,
-    /// Secret key name for an API username (Discourse).
-    pub api_username_key: Option<&'static str>,
+    /// Secret key for an email credential (Jira Basic auth).
+    pub email_key: Option<ps_core::models::SecretKey>,
+    /// Secret key for an API username (Discourse).
+    pub api_username_key: Option<ps_core::models::SecretKey>,
     /// Noun for items in error summaries (e.g. `"repo"`, `"project"`, `"category"`).
     pub item_noun: &'static str,
 }
