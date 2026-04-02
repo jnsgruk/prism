@@ -2,12 +2,10 @@ use ps_core::repo::Repos;
 use ps_core::repo::insights;
 use ps_proto::canonical::prism::v1::insights_service_server::InsightsService;
 use ps_proto::canonical::prism::v1::{
-    DepthBySignificance, EnrichmentCoverage, GetOrgInsightsRequest, GetOrgInsightsResponse,
-    GetPersonInsightsRequest, GetPersonInsightsResponse, GetTeamInsightsRequest,
-    GetTeamInsightsResponse, InsightTrend, NotableContribution, OrgDeliverySummary, OrgInsights,
+    DepthBySignificance, EnrichmentCoverage, GetPersonInsightsRequest, GetPersonInsightsResponse,
+    GetTeamInsightsRequest, GetTeamInsightsResponse, InsightTrend, NotableContribution,
     PersonInsights, ReviewQualitySummary, ReviewerDepth, ReviewerProfile, ReviewsReceivedSummary,
-    SignificanceSummary, TeamInsights, TeamReviewComparison, TopicCategoryCount,
-    TopicCategorySummary, TypeCoverage,
+    SignificanceSummary, TeamInsights, TopicCategoryCount, TopicCategorySummary, TypeCoverage,
 };
 use time::OffsetDateTime;
 use tonic::{Request, Response, Status};
@@ -353,148 +351,6 @@ impl InsightsService for InsightsServiceImpl {
                 pr_impact: Some(significance_to_proto(significance)),
                 discourse_topics: Some(topics_to_proto(topics)),
                 highlights: notable_to_proto(notable),
-            }),
-        }))
-    }
-
-    async fn get_org_insights(
-        &self,
-        request: Request<GetOrgInsightsRequest>,
-    ) -> Result<Response<GetOrgInsightsResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        let org_period_str = insight_period_to_str(req.period)
-            .ok_or_else(|| Status::invalid_argument("invalid period"))?;
-        let since = parse_period_since(&org_period_str)?;
-        let team_id: Option<Uuid> = if req.team_id.is_empty() {
-            None
-        } else {
-            Some(
-                req.team_id
-                    .parse()
-                    .map_err(|_| Status::invalid_argument("invalid team_id"))?,
-            )
-        };
-
-        // For org insights, we need a root team to scope queries.
-        // If no team_id provided, find the first root team.
-        let all_teams = self.repos.org.get_all_teams().await.map_err(db_err)?;
-
-        let root_team_id = if let Some(tid) = team_id {
-            tid
-        } else {
-            all_teams
-                .iter()
-                .find(|t| t.parent_team_id.is_none())
-                .map(|t| t.id)
-                .ok_or_else(|| Status::not_found("no teams found"))?
-        };
-
-        // Child teams of the selected root for comparison
-        let child_ids: Vec<Uuid> = all_teams
-            .iter()
-            .filter(|t| t.parent_team_id == Some(root_team_id))
-            .map(|t| t.id)
-            .collect();
-
-        let (
-            review_quality,
-            top_reviewers,
-            significance,
-            topics,
-            notable,
-            coverage,
-            depth_by_sig,
-            delivery,
-            team_comparison,
-        ) = tokio::try_join!(
-            self.repos
-                .insights
-                .get_review_quality_for_team(root_team_id, true, since),
-            self.repos
-                .insights
-                .get_top_reviewers(root_team_id, true, since, 10, 5),
-            self.repos
-                .insights
-                .get_significance_for_team(root_team_id, true, since),
-            self.repos
-                .insights
-                .get_topic_categories_for_team(root_team_id, true, since),
-            self.repos
-                .insights
-                .get_notable_contributions_for_team(root_team_id, true, since, 5),
-            self.repos
-                .insights
-                .get_coverage_for_team(root_team_id, true, since),
-            self.repos
-                .insights
-                .get_depth_by_significance_for_team(root_team_id, true, since),
-            self.repos
-                .insights
-                .get_delivery_summary(Some(root_team_id), since),
-            async {
-                if child_ids.is_empty() {
-                    Ok(vec![])
-                } else {
-                    self.repos
-                        .insights
-                        .get_team_review_comparison(&child_ids, since)
-                        .await
-                }
-            },
-        )
-        .map_err(db_err)?;
-
-        let (total, enriched, by_type) = coverage;
-
-        // Fetch previous-period snapshot for trend deltas
-        let trend = if let Ok((period_type, period_start)) =
-            parse_period_snapshot_params(&org_period_str)
-        {
-            let prev = self
-                .repos
-                .insights
-                .get_previous_snapshot(root_team_id, period_start, &period_type)
-                .await
-                .ok()
-                .flatten();
-            prev.map(|p| build_trend(&review_quality, &significance, &p))
-        } else {
-            None
-        };
-
-        Ok(Response::new(GetOrgInsightsResponse {
-            insights: Some(OrgInsights {
-                coverage: Some(coverage_to_proto(total, enriched, by_type)),
-                review_quality: Some(review_quality_to_proto(review_quality, top_reviewers)),
-                team_comparison: team_comparison
-                    .into_iter()
-                    .map(|tc| TeamReviewComparison {
-                        team_id: tc.team_id.to_string(),
-                        team_name: tc.team_name,
-                        review_count: tc.review_count,
-                        avg_depth: tc.avg_depth,
-                        rubber_stamp_pct: tc.rubber_stamp_pct,
-                        constructive_count: tc.constructive,
-                        neutral_count: tc.neutral,
-                        critical_count: tc.critical,
-                    })
-                    .collect(),
-                pr_significance: Some(significance_to_proto(significance)),
-                discourse_topics: Some(topics_to_proto(topics)),
-                org_highlights: notable_to_proto(notable),
-                delivery: Some(OrgDeliverySummary {
-                    total_prs_merged: delivery.total_prs_merged,
-                    total_reviews: delivery.total_reviews,
-                    total_jira_closed: delivery.total_jira_closed,
-                    total_discourse_topics: delivery.total_discourse_topics,
-                    total_discourse_posts: delivery.total_discourse_posts,
-                    active_contributors: delivery.active_contributors,
-                    active_teams: delivery.active_teams,
-                }),
-                depth_by_significance: Some(depth_by_sig_to_proto(depth_by_sig)),
-                trend,
             }),
         }))
     }

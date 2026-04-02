@@ -20,7 +20,6 @@ import {
   TeamType,
 } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import {
-  GetOrgInsightsResponseSchema,
   GetPersonInsightsResponseSchema,
   GetTeamInsightsResponseSchema,
   InsightsService,
@@ -107,7 +106,6 @@ vi.mock("@ps/api/transport", () => ({
     service(InsightsService, {
       getTeamInsights: () => create(GetTeamInsightsResponseSchema, {}),
       getPersonInsights: () => create(GetPersonInsightsResponseSchema, {}),
-      getOrgInsights: () => create(GetOrgInsightsResponseSchema, {}),
     });
   }),
 }));

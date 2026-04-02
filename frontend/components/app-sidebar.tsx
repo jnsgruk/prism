@@ -21,7 +21,6 @@ import {
   Activity,
   ChevronsUpDown,
   History,
-  LayoutDashboard,
   LogOut,
   MessageSquare,
   Settings,
@@ -136,16 +135,6 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
           <SidebarGroupLabel>Insights</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link to="/" />}
-                  isActive={isActive("/")}
-                  tooltip="Dashboard"
-                >
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={<Link to="/ask" />}

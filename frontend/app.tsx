@@ -1,9 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/app-shell";
 
-const DashboardPage = lazy(() => import("@/views/dashboard/pages/dashboard-page"));
 const TeamsPage = lazy(() => import("@/views/teams/pages/teams-page"));
 const AdminPage = lazy(() => import("@/views/admin/pages/admin-page"));
 const IngestionPage = lazy(() => import("@/views/ingestion/pages/ingestion-page"));
@@ -22,7 +21,7 @@ export const App = (): React.ReactElement => (
   <AppShell>
     <Suspense fallback={null}>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to="/ask" replace />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:teamId" element={<TeamsPage />} />
         <Route path="/people" element={<PeopleListPage />} />

@@ -20,9 +20,6 @@ service InsightsService {
   // including their reviewer profile and reviews received quality.
   rpc GetPersonInsights(GetPersonInsightsRequest) returns (GetPersonInsightsResponse);
 
-  // GetOrgInsights returns org-wide enrichment insights for the dashboard
-  // including cross-team review quality comparison and delivery summary.
-  rpc GetOrgInsights(GetOrgInsightsRequest) returns (GetOrgInsightsResponse);
 }
 
 // EnrichmentCoverage reports what fraction of contributions have been enriched.
@@ -208,52 +205,3 @@ message ReviewsReceivedSummary {
   double deep_review_pct = 3;
 }
 
-message GetOrgInsightsRequest {
-  // Time window for insight aggregation.
-  InsightPeriod period = 1;
-  // Optional: scope to a subtree rooted at this team. Empty for org-wide.
-  string team_id = 2;
-}
-
-message GetOrgInsightsResponse {
-  OrgInsights insights = 1;
-}
-
-// OrgInsights bundles org-wide enrichment insights for the dashboard.
-message OrgInsights {
-  EnrichmentCoverage coverage = 1;
-  ReviewQualitySummary review_quality = 2;
-  // Per-team review quality for cross-team comparison.
-  repeated TeamReviewComparison team_comparison = 3;
-  SignificanceSummary pr_significance = 4;
-  TopicCategorySummary discourse_topics = 5;
-  // Org-wide notable contributions.
-  repeated NotableContribution org_highlights = 6;
-  OrgDeliverySummary delivery = 7;
-  DepthBySignificance depth_by_significance = 8;
-  InsightTrend trend = 9;
-}
-
-// TeamReviewComparison provides review quality metrics for a single team,
-// used in the org-wide cross-team comparison view.
-message TeamReviewComparison {
-  string team_id = 1;
-  string team_name = 2;
-  int32 review_count = 3;
-  double avg_depth = 4;
-  double rubber_stamp_pct = 5;
-  int32 constructive_count = 6;
-  int32 neutral_count = 7;
-  int32 critical_count = 8;
-}
-
-// OrgDeliverySummary provides high-level delivery counts across the organisation.
-message OrgDeliverySummary {
-  int32 total_prs_merged = 1;
-  int32 total_reviews = 2;
-  int32 total_jira_closed = 3;
-  int32 total_discourse_topics = 4;
-  int32 total_discourse_posts = 5;
-  int32 active_contributors = 6;
-  int32 active_teams = 7;
-}

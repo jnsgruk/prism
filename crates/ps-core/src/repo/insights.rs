@@ -75,18 +75,6 @@ pub struct TypeCoverageRow {
     pub enriched: i32,
 }
 
-/// Per-team review comparison row.
-pub struct TeamReviewComparisonRow {
-    pub team_id: Uuid,
-    pub team_name: String,
-    pub review_count: i32,
-    pub avg_depth: f64,
-    pub rubber_stamp_pct: f64,
-    pub constructive: i32,
-    pub neutral: i32,
-    pub critical: i32,
-}
-
 /// Depth × significance cross-reference.
 pub struct DepthBySignificanceRow {
     pub avg_depth_significant: f64,
@@ -146,17 +134,6 @@ pub struct EnrichmentPeerPercentile {
     pub value: f64,
     pub percentile: f64,
     pub peer_count: i32,
-}
-
-/// Org-wide delivery summary counts.
-pub struct DeliverySummaryRow {
-    pub total_prs_merged: i32,
-    pub total_reviews: i32,
-    pub total_jira_closed: i32,
-    pub total_discourse_topics: i32,
-    pub total_discourse_posts: i32,
-    pub active_contributors: i32,
-    pub active_teams: i32,
 }
 
 impl InsightsRepo {
@@ -1051,167 +1028,6 @@ impl InsightsRepo {
             significant_review_count: row.count_significant,
             notable_review_count: row.count_notable,
             routine_review_count: row.count_routine,
-        })
-    }
-
-    // -----------------------------------------------------------------------
-    // Team comparison
-    // -----------------------------------------------------------------------
-
-    /// Side-by-side review metrics for multiple teams.
-    pub async fn get_team_review_comparison(
-        &self,
-        team_ids: &[Uuid],
-        since: OffsetDateTime,
-    ) -> Result<Vec<TeamReviewComparisonRow>, Error> {
-        let rows = sqlx::query!(
-            r#"
-            WITH RECURSIVE team_tree AS (
-                SELECT id, id AS root_id FROM org.teams WHERE id = ANY($1)
-                UNION ALL
-                SELECT ch.id, tt.root_id
-                FROM org.teams ch
-                JOIN team_tree tt ON ch.parent_team_id = tt.id
-            ),
-            review_data AS (
-                SELECT
-                    tt.root_id AS team_id,
-                    (e.value->>'score')::int AS score
-                FROM reasoning.enrichments e
-                JOIN activity.contributions c ON c.id = e.contribution_id
-                JOIN org.team_memberships tm ON tm.person_id = c.person_id
-                JOIN team_tree tt ON tm.team_id = tt.id
-                WHERE e.enrichment_type = 'review_depth'
-                  AND c.created_at >= $2
-                  AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            ),
-            sentiment_data AS (
-                SELECT
-                    tt.root_id AS team_id,
-                    e.value->>'sentiment' AS label
-                FROM reasoning.enrichments e
-                JOIN activity.contributions c ON c.id = e.contribution_id
-                JOIN org.team_memberships tm ON tm.person_id = c.person_id
-                JOIN team_tree tt ON tm.team_id = tt.id
-                WHERE e.enrichment_type = 'sentiment'
-                  AND c.created_at >= $2
-                  AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            )
-            SELECT
-                t.id AS "team_id!: Uuid",
-                t.name AS "team_name!: String",
-                COALESCE(rd.review_count, 0) AS "review_count!: i32",
-                COALESCE(rd.avg_depth, 0.0) AS "avg_depth!: f64",
-                COALESCE(rd.rubber_stamp_pct, 0.0) AS "rubber_stamp_pct!: f64",
-                COALESCE(sd.constructive, 0) AS "constructive!: i32",
-                COALESCE(sd.neutral, 0) AS "neutral!: i32",
-                COALESCE(sd.critical, 0) AS "critical!: i32"
-            FROM org.teams t
-            LEFT JOIN LATERAL (
-                SELECT
-                    COUNT(*)::int AS review_count,
-                    AVG(score)::double precision AS avg_depth,
-                    (COUNT(*) FILTER (WHERE score = 1)::double precision
-                     / NULLIF(COUNT(*)::double precision, 0) * 100.0) AS rubber_stamp_pct
-                FROM review_data rd
-                WHERE rd.team_id = t.id
-            ) rd ON true
-            LEFT JOIN LATERAL (
-                SELECT
-                    COUNT(*) FILTER (WHERE label = 'constructive')::int AS constructive,
-                    COUNT(*) FILTER (WHERE label = 'neutral')::int AS neutral,
-                    COUNT(*) FILTER (WHERE label = 'critical')::int AS critical
-                FROM sentiment_data sd
-                WHERE sd.team_id = t.id
-            ) sd ON true
-            WHERE t.id = ANY($1)
-            ORDER BY t.name
-            "#,
-            team_ids,
-            since,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(rows
-            .into_iter()
-            .map(|r| TeamReviewComparisonRow {
-                team_id: r.team_id,
-                team_name: r.team_name,
-                review_count: r.review_count,
-                avg_depth: r.avg_depth,
-                rubber_stamp_pct: r.rubber_stamp_pct,
-                constructive: r.constructive,
-                neutral: r.neutral,
-                critical: r.critical,
-            })
-            .collect())
-    }
-
-    // -----------------------------------------------------------------------
-    // Delivery summary (org-wide)
-    // -----------------------------------------------------------------------
-
-    /// Org-wide delivery counts for the dashboard.
-    pub async fn get_delivery_summary(
-        &self,
-        team_id: Option<Uuid>,
-        since: OffsetDateTime,
-    ) -> Result<DeliverySummaryRow, Error> {
-        let row = sqlx::query!(
-            r#"
-            WITH RECURSIVE team_tree AS (
-                SELECT id FROM org.teams
-                WHERE ($1::uuid IS NULL AND parent_team_id IS NULL)
-                   OR id = $1
-                UNION ALL
-                SELECT t.id FROM org.teams t
-                JOIN team_tree tt ON t.parent_team_id = tt.id
-            ),
-            scoped AS (
-                SELECT DISTINCT c.id, c.contribution_type, c.state, c.platform, c.person_id
-                FROM activity.contributions c
-                JOIN org.team_memberships tm ON tm.person_id = c.person_id
-                JOIN team_tree tt ON tm.team_id = tt.id
-                WHERE c.created_at >= $2
-                  AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-            )
-            SELECT
-                COUNT(*) FILTER (WHERE contribution_type = 'pull_request' AND state = 'merged')::int
-                    AS "prs_merged!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'pr_review')::int
-                    AS "reviews!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'jira_ticket' AND state = 'closed')::int
-                    AS "jira_closed!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'discourse_topic')::int
-                    AS "discourse_topics!: i32",
-                COUNT(*) FILTER (WHERE contribution_type = 'discourse_post')::int
-                    AS "discourse_posts!: i32",
-                COUNT(DISTINCT person_id)::int
-                    AS "active_contributors!: i32",
-                (SELECT COUNT(DISTINCT tt2.id)::int
-                 FROM team_tree tt2
-                 JOIN org.team_memberships tm2 ON tm2.team_id = tt2.id
-                 JOIN scoped s ON s.person_id = tm2.person_id)
-                    AS "active_teams!: i32"
-            FROM scoped
-            "#,
-            team_id,
-            since,
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(DeliverySummaryRow {
-            total_prs_merged: row.prs_merged,
-            total_reviews: row.reviews,
-            total_jira_closed: row.jira_closed,
-            total_discourse_topics: row.discourse_topics,
-            total_discourse_posts: row.discourse_posts,
-            active_contributors: row.active_contributors,
-            active_teams: row.active_teams,
         })
     }
 

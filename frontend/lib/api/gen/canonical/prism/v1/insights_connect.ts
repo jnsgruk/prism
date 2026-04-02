@@ -8,8 +8,6 @@
 // @ts-nocheck
 
 import {
-  GetOrgInsightsRequest,
-  GetOrgInsightsResponse,
   GetPersonInsightsRequest,
   GetPersonInsightsResponse,
   GetTeamInsightsRequest,
@@ -50,18 +48,6 @@ export const InsightsService = {
       name: "GetPersonInsights",
       I: GetPersonInsightsRequest,
       O: GetPersonInsightsResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * GetOrgInsights returns org-wide enrichment insights for the dashboard
-     * including cross-team review quality comparison and delivery summary.
-     *
-     * @generated from rpc canonical.prism.v1.InsightsService.GetOrgInsights
-     */
-    getOrgInsights: {
-      name: "GetOrgInsights",
-      I: GetOrgInsightsRequest,
-      O: GetOrgInsightsResponse,
       kind: MethodKind.Unary,
     },
   },
