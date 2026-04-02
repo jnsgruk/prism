@@ -1046,10 +1046,15 @@ define_repo_test!(query_status_transitions, |repos, pool| async move {
     assert_eq!(conv.query_status, "idle");
 
     // Transition through lifecycle.
-    for status in &["pending", "running", "completed"] {
+    use ps_core::models::QueryStatus;
+    for status in &[
+        QueryStatus::Pending,
+        QueryStatus::Running,
+        QueryStatus::Completed,
+    ] {
         repos
             .reasoning
-            .update_query_status(conv.id, status)
+            .update_query_status(conv.id, *status)
             .await
             .unwrap();
         let updated = repos
@@ -1058,7 +1063,7 @@ define_repo_test!(query_status_transitions, |repos, pool| async move {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(updated.query_status, *status);
+        assert_eq!(updated.query_status, status.as_str());
     }
 });
 
@@ -1142,12 +1147,12 @@ define_repo_test!(query_status_cancel, |repos, pool| async move {
 
     repos
         .reasoning
-        .update_query_status(conv.id, "running")
+        .update_query_status(conv.id, ps_core::models::QueryStatus::Running)
         .await
         .unwrap();
     repos
         .reasoning
-        .update_query_status(conv.id, "cancelled")
+        .update_query_status(conv.id, ps_core::models::QueryStatus::Cancelled)
         .await
         .unwrap();
 

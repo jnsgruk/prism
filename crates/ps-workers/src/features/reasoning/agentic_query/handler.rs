@@ -62,7 +62,7 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
         journaled!(ctx, "update_status_running", [repos], {
             repos
                 .reasoning
-                .update_query_status(conv_id, "running")
+                .update_query_status(conv_id, ps_core::models::QueryStatus::Running)
                 .await
                 .map_err(terminal_err("failed to update status"))?;
         });
@@ -119,7 +119,7 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
         journaled!(ctx, "update_status_cancelled", [repos], {
             repos
                 .reasoning
-                .update_query_status(conv_id, "cancelled")
+                .update_query_status(conv_id, ps_core::models::QueryStatus::Cancelled)
                 .await
                 .map_err(terminal_err("failed to update status"))?;
         });

@@ -41,10 +41,11 @@ pub async fn resume_stream(
     let (tx, rx) = tokio::sync::mpsc::channel(64);
 
     // If query is already terminal, close immediately.
-    if matches!(
-        conv.query_status.as_str(),
-        "completed" | "failed" | "cancelled" | "idle"
-    ) {
+    if conv
+        .query_status
+        .parse::<ps_core::models::QueryStatus>()
+        .is_ok_and(ps_core::models::QueryStatus::is_terminal)
+    {
         drop(tx);
         return Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
             rx,
@@ -127,9 +128,11 @@ async fn stream_resume_events(
 
         // Check if query reached a terminal status without us seeing the event.
         if let Ok(Some(conv)) = repos.reasoning.get_conversation(conv_id).await {
-            match conv.query_status.as_str() {
-                "cancelled" | "failed" => return,
-                "completed" => {
+            match conv.query_status.parse::<ps_core::models::QueryStatus>() {
+                Ok(
+                    ps_core::models::QueryStatus::Cancelled | ps_core::models::QueryStatus::Failed,
+                ) => return,
+                Ok(ps_core::models::QueryStatus::Completed) => {
                     let answer = repos
                         .reasoning
                         .list_messages(conv_id)

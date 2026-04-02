@@ -360,6 +360,64 @@ impl FromStr for PeriodType {
 }
 
 // ---------------------------------------------------------------------------
+// QueryStatus
+// ---------------------------------------------------------------------------
+
+/// The lifecycle status of an agentic query conversation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryStatus {
+    Idle,
+    Pending,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+impl fmt::Display for QueryStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl QueryStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Pending => "pending",
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+        }
+    }
+
+    /// Returns `true` if this status represents a terminal state.
+    pub fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Idle | Self::Completed | Self::Failed | Self::Cancelled
+        )
+    }
+}
+
+impl FromStr for QueryStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "idle" => Ok(Self::Idle),
+            "pending" => Ok(Self::Pending),
+            "running" => Ok(Self::Running),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("invalid QueryStatus: {s}")),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // EnrichmentType
 // ---------------------------------------------------------------------------
 
@@ -469,6 +527,7 @@ impl_sqlx_text!(Role, |s: &str| s.parse().ok());
 impl_sqlx_text!(TaskType, |s: &str| s.parse().ok());
 impl_sqlx_text!(AiProvider, |s: &str| s.parse().ok());
 impl_sqlx_text!(EnrichmentType, |s: &str| s.parse().ok());
+impl_sqlx_text!(QueryStatus, |s: &str| s.parse().ok());
 
 // ---------------------------------------------------------------------------
 // ResolutionStatus
@@ -836,6 +895,38 @@ mod tests {
     #[test]
     fn ai_provider_unknown_errors() {
         assert!("anthropic".parse::<AiProvider>().is_err());
+    }
+
+    // -- QueryStatus --
+
+    #[test]
+    fn query_status_roundtrip() {
+        for variant in [
+            QueryStatus::Idle,
+            QueryStatus::Pending,
+            QueryStatus::Running,
+            QueryStatus::Completed,
+            QueryStatus::Failed,
+            QueryStatus::Cancelled,
+        ] {
+            let s = variant.to_string();
+            assert_eq!(s.parse::<QueryStatus>().unwrap(), variant);
+        }
+    }
+
+    #[test]
+    fn query_status_is_terminal() {
+        assert!(QueryStatus::Idle.is_terminal());
+        assert!(QueryStatus::Completed.is_terminal());
+        assert!(QueryStatus::Failed.is_terminal());
+        assert!(QueryStatus::Cancelled.is_terminal());
+        assert!(!QueryStatus::Pending.is_terminal());
+        assert!(!QueryStatus::Running.is_terminal());
+    }
+
+    #[test]
+    fn query_status_unknown_errors() {
+        assert!("unknown".parse::<QueryStatus>().is_err());
     }
 
     // -- EnrichmentType --

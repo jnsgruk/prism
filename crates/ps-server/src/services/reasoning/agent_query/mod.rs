@@ -220,7 +220,7 @@ async fn handle_stream_failure(
         .await;
     let _ = repos
         .reasoning
-        .update_query_status(conversation_id, "failed")
+        .update_query_status(conversation_id, ps_core::models::QueryStatus::Failed)
         .await;
     let _ = tx
         .send(Ok(AskQuestionResponse {
@@ -363,7 +363,7 @@ async fn finalize_query(
 
     repos
         .reasoning
-        .update_query_status(conversation_id, "completed")
+        .update_query_status(conversation_id, ps_core::models::QueryStatus::Completed)
         .await?;
 
     let _ = repos.reasoning.delete_events(conversation_id).await;

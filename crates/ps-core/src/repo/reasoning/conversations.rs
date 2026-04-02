@@ -488,7 +488,7 @@ impl ReasoningRepo {
     pub async fn update_query_status(
         &self,
         conversation_id: Uuid,
-        query_status: &str,
+        query_status: crate::models::QueryStatus,
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -497,7 +497,7 @@ impl ReasoningRepo {
             WHERE id = $1
             "#,
             conversation_id,
-            query_status,
+            query_status.as_str(),
         )
         .execute(&self.pool)
         .await?;

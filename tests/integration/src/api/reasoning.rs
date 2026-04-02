@@ -625,7 +625,7 @@ define_api_test!(ask_question_rejects_concurrent_query, |server| async move {
         .unwrap();
     repos
         .reasoning
-        .update_query_status(conv.id, "running")
+        .update_query_status(conv.id, ps_core::models::QueryStatus::Running)
         .await
         .unwrap();
 
