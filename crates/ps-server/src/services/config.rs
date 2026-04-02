@@ -74,11 +74,11 @@ fn slugify_source_name(name: &str) -> String {
 
 async fn fetch_secret_status(
     repos: &Repos,
-    source_id: Uuid,
+    source_id: ps_core::models::SourceId,
 ) -> Result<HashMap<String, bool>, Status> {
     let keys = repos
         .config
-        .list_secret_keys(source_id)
+        .list_secret_keys(source_id.into_inner())
         .await
         .map_err(db_err)?;
     Ok(keys.into_iter().map(|k| (k, true)).collect())
@@ -107,7 +107,7 @@ impl ConfigService for ConfigServiceImpl {
             .iter()
             .map(|s| {
                 let secret_status: HashMap<String, bool> = all_secrets
-                    .get(&s.id)
+                    .get(s.id.as_uuid())
                     .map(|keys| keys.iter().map(|k| (k.clone(), true)).collect())
                     .unwrap_or_default();
                 build_source_proto(s, secret_status)

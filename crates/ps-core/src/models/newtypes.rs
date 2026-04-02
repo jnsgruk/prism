@@ -115,6 +115,14 @@ impl_uuid_newtype!(
     "A typed ID for a person in the `org.people` table."
 );
 impl_uuid_newtype!(TeamId, "A typed ID for a team in the `org.teams` table.");
+impl_uuid_newtype!(
+    SourceId,
+    "A typed ID for a source configuration in the `config.source_configs` table."
+);
+impl_uuid_newtype!(
+    RunId,
+    "A typed ID for an ingestion run in the `activity.ingestion_runs` table."
+);
 
 // ---------------------------------------------------------------------------
 // GitHubRepoCoord

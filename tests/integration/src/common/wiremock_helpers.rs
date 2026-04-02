@@ -39,7 +39,7 @@ impl SourceTestContext {
             .expect("create source config");
 
         let source_config = SourceConfig {
-            id: source_id,
+            id: source_id.into(),
             source_type: platform,
             name: source_name.to_string(),
             enabled: true,

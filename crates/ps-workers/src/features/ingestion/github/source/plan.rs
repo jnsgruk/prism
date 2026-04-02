@@ -22,7 +22,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
     let mapped_repos = ctx
         .repos
         .org
-        .get_mapped_github_team_repos(ctx.source_config.id)
+        .get_mapped_github_team_repos(ctx.source_config.id.into_inner())
         .await?;
 
     let (final_repos, used_fallback) = if mapped_repos.is_empty() {

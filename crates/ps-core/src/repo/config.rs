@@ -40,7 +40,7 @@ macro_rules! map_source_config {
             }
         });
         SourceConfig {
-            id: $r.id,
+            id: crate::models::SourceId::new($r.id),
             source_type,
             name: $r.name,
             enabled: $r.enabled,

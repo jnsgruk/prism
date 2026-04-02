@@ -15,7 +15,7 @@ define_repo_test!(create_source_and_get, |repos, _pool| async move {
         .await
         .unwrap();
 
-    assert_eq!(source.id, id);
+    assert_eq!(source.id.into_inner(), id);
     assert_eq!(source.source_type, Platform::Github);
     assert_eq!(source.name, "GitHub");
     assert!(source.enabled);

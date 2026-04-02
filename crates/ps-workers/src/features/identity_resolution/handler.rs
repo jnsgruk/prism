@@ -186,9 +186,10 @@ impl IdentityResolutionHandlerImpl {
             )));
         }
 
-        let source_id: Uuid = source
+        let source_id: ps_core::models::SourceId = source
             .id
-            .parse()
+            .parse::<Uuid>()
+            .map(ps_core::models::SourceId::new)
             .map_err(terminal_err("invalid source_id"))?;
 
         // Decrypt API key outside ctx.run() to avoid journaling plaintext.

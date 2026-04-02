@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use super::IngestionStatus;
+use super::{IngestionStatus, RunId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Watermark {
@@ -16,7 +15,7 @@ pub struct Watermark {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IngestionRun {
-    pub id: Uuid,
+    pub id: RunId,
     pub source_name: String,
     pub started_at: OffsetDateTime,
     pub completed_at: Option<OffsetDateTime>,

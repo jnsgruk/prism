@@ -111,7 +111,7 @@ impl GithubTeamSyncHandlerImpl {
         &self,
         ctx: &ObjectContext<'_>,
         client: &GitHubClient,
-        source_id: Uuid,
+        source_id: ps_core::models::SourceId,
         org: &str,
     ) -> Result<i32, TerminalError> {
         let all_teams = self.discover_teams(client, org).await?;
@@ -143,7 +143,7 @@ impl GithubTeamSyncHandlerImpl {
         }
 
         let removed = self
-            .remove_stale_teams(ctx, source_id, org, &synced_slugs)
+            .remove_stale_teams(ctx, source_id.into_inner(), org, &synced_slugs)
             .await?;
 
         if removed > 0 {
@@ -184,7 +184,7 @@ impl GithubTeamSyncHandlerImpl {
     async fn store_team(
         &self,
         ctx: &ObjectContext<'_>,
-        source_id: Uuid,
+        source_id: ps_core::models::SourceId,
         org: &str,
         team: &GitHubTeam,
         members: &[String],
@@ -216,7 +216,7 @@ impl GithubTeamSyncHandlerImpl {
                 let db_id = repos
                     .org
                     .upsert_github_team(
-                        source_id,
+                        source_id.into_inner(),
                         &org_owned,
                         team_id,
                         &slug,

@@ -1,6 +1,5 @@
-use ps_core::models::SecretKey;
+use ps_core::models::{SecretKey, SourceId};
 use restate_sdk::prelude::TerminalError;
-use uuid::Uuid;
 
 use super::run_lifecycle::terminal_err;
 use super::state::SharedState;
@@ -10,13 +9,13 @@ use super::state::SharedState;
 /// Called outside `ctx.run()` to avoid journaling the plaintext.
 pub async fn decrypt_required_secret(
     state: &SharedState,
-    source_id: Uuid,
+    source_id: SourceId,
     key: SecretKey,
 ) -> Result<String, TerminalError> {
     let encrypted = state
         .repos
         .config
-        .get_encrypted_secret(source_id, key.as_str())
+        .get_encrypted_secret(source_id.into_inner(), key.as_str())
         .await
         .map_err(terminal_err("db error"))?
         .ok_or_else(|| TerminalError::new(format!("source has no {key} configured")))?;
@@ -32,13 +31,13 @@ pub async fn decrypt_required_secret(
 /// Called outside `ctx.run()` to avoid journaling the plaintext.
 pub async fn decrypt_optional_secret(
     state: &SharedState,
-    source_id: Uuid,
+    source_id: SourceId,
     key: SecretKey,
 ) -> Result<Option<String>, TerminalError> {
     let encrypted = state
         .repos
         .config
-        .get_encrypted_secret(source_id, key.as_str())
+        .get_encrypted_secret(source_id.into_inner(), key.as_str())
         .await
         .map_err(terminal_err("db error"))?;
 
