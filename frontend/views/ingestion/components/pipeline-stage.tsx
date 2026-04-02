@@ -117,7 +117,8 @@ export const PipelineStage = ({
   return (
     <div
       className={cn(
-        "flex min-w-28 flex-col gap-1.5 rounded-md border px-3 py-2",
+        "flex flex-col gap-1.5 rounded-md border px-3 py-2",
+        stageKey === "ingestion" ? "min-w-28" : "w-40",
         isCurrentStage && status === "running" && "border-blue-500/50 bg-blue-500/5",
         status === "failed" && "border-destructive/50 bg-destructive/5",
         status === "completed" && "border-emerald-500/30",

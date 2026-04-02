@@ -28,20 +28,19 @@ const parseStages = (pipeline: PipelineInfo | undefined): StagesMap => {
 
 const nodeTypes: NodeTypes = { stage: StageNode };
 
-// Static node positions — ingestion centered vertically, main branch top, identity below.
+// Static node positions — ingestion at top-left, branches centered to its right.
 const NODE_POSITIONS: Record<StageKey, { x: number; y: number }> = {
-  ingestion: { x: 0, y: 80 },
-  metrics: { x: 260, y: 0 },
-  enrichment: { x: 430, y: 0 },
-  embedding: { x: 600, y: 0 },
-  insights: { x: 770, y: 0 },
-  identity_resolution: { x: 260, y: 170 },
+  ingestion: { x: 0, y: 0 },
+  metrics: { x: 210, y: 40 },
+  enrichment: { x: 410, y: 40 },
+  embedding: { x: 610, y: 40 },
+  insights: { x: 810, y: 40 },
+  identity_resolution: { x: 210, y: 120 },
 };
 
-const EDGE_COLOR = "hsl(var(--border))";
 const edgeDefaults = {
   type: "smoothstep" as const,
-  style: { stroke: EDGE_COLOR, strokeWidth: 1.5 },
+  style: { stroke: "var(--border)", strokeWidth: 1.5 },
 };
 
 const EDGES: Edge[] = [
@@ -73,7 +72,7 @@ const FitViewButton = (): React.ReactElement => {
       variant="outline"
       size="icon"
       className="absolute right-2 top-2 z-10 size-7"
-      onClick={() => fitView({ padding: 0.15, duration: 200 })}
+      onClick={() => fitView({ padding: 0.05, duration: 200 })}
     >
       <Scan className="size-3.5" />
     </Button>
@@ -115,13 +114,13 @@ const FlowInner = ({
   const edges = useMemo(() => EDGES.filter((e) => nodes.some((n) => n.id === e.target)), [nodes]);
 
   return (
-    <div className="relative h-[280px]">
+    <div className="relative h-[200px]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.05 }}
         panOnDrag
         zoomOnScroll
         minZoom={0.5}

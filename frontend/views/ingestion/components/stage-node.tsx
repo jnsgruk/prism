@@ -13,19 +13,28 @@ export type StageNodeData = {
 const handleStyle = {
   width: 7,
   height: 7,
-  background: "hsl(var(--border))",
-  border: "1.5px solid hsl(var(--border))",
+  background: "var(--border)",
+  border: "1.5px solid var(--border)",
 };
+
+/** Nodes with no incoming edges (first in a chain). */
+const NO_TARGET: Set<StageKey> = new Set(["ingestion"]);
+/** Nodes with no outgoing edges (last in a chain). */
+const NO_SOURCE: Set<StageKey> = new Set(["insights", "identity_resolution"]);
 
 export const StageNode = ({ data }: { data: StageNodeData }): React.ReactElement => (
   <div>
-    <Handle type="target" position={Position.Left} style={handleStyle} />
+    {!NO_TARGET.has(data.stageKey) && (
+      <Handle type="target" position={Position.Left} style={handleStyle} />
+    )}
     <PipelineStage
       stageKey={data.stageKey}
       stage={data.stage}
       isCurrentStage={data.isCurrentStage}
       sourceStatuses={data.sourceStatuses}
     />
-    <Handle type="source" position={Position.Right} style={handleStyle} />
+    {!NO_SOURCE.has(data.stageKey) && (
+      <Handle type="source" position={Position.Right} style={handleStyle} />
+    )}
   </div>
 );
