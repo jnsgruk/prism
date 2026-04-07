@@ -1,7 +1,8 @@
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -61,11 +62,12 @@ export const AiCostSection = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-medium">Usage</h3>
-        <p className="text-xs text-muted-foreground">AI API usage across all tasks.</p>
-      </div>
-      <div>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-medium">Usage</h3>
+          <Separator className="mt-2" />
+        </div>
+
         <ToggleGroup
           className="h-8 w-full rounded-lg bg-muted p-[3px] text-muted-foreground"
           value={[windowKey]}
@@ -84,105 +86,95 @@ export const AiCostSection = (): React.ReactElement => {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-      </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Requests" value={totalRequests.toLocaleString()} />
-        <StatCard label="Input tokens" value={formatCompact(totalInput)} />
-        <StatCard label="Output tokens" value={formatCompact(totalOutput)} />
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard label="Requests" value={totalRequests.toLocaleString()} />
+          <StatCard label="Input tokens" value={formatCompact(totalInput)} />
+          <StatCard label="Output tokens" value={formatCompact(totalOutput)} />
+        </div>
       </div>
 
       {/* By task */}
       {tasks.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">By task</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead className="text-right tabular-nums">Input tokens</TableHead>
-                    <TableHead className="text-right tabular-nums">Output tokens</TableHead>
-                    <TableHead className="text-right tabular-nums">Requests</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tasks.map((row) => (
-                    <TableRow key={row.taskType}>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-[10px] uppercase">
-                          {TASK_LABELS[row.taskType] ?? row.taskType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {Number(row.promptTokens) > 0
-                          ? Number(row.promptTokens).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {Number(row.completionTokens) > 0
-                          ? Number(row.completionTokens).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {Number(row.requestCount).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium">By task</h3>
+            <Separator className="mt-2" />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Task</TableHead>
+                <TableHead className="text-right tabular-nums">Input tokens</TableHead>
+                <TableHead className="text-right tabular-nums">Output tokens</TableHead>
+                <TableHead className="text-right tabular-nums">Requests</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tasks.map((row) => (
+                <TableRow key={row.taskType}>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {TASK_LABELS[row.taskType] ?? row.taskType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {Number(row.promptTokens) > 0 ? Number(row.promptTokens).toLocaleString() : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {Number(row.completionTokens) > 0
+                      ? Number(row.completionTokens).toLocaleString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {Number(row.requestCount).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {/* By model */}
       {models.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">By model</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead className="text-right tabular-nums">Tokens</TableHead>
-                    <TableHead className="text-right tabular-nums">Requests</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {models.map((row, i) => (
-                    <TableRow key={`${row.model}-${row.taskType}-${i}`}>
-                      <TableCell className="font-mono text-xs">{row.model}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-[10px] uppercase">
-                          {TASK_LABELS[row.taskType] ?? row.taskType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {Number(row.promptTokens) + Number(row.completionTokens) > 0
-                          ? (
-                              Number(row.promptTokens) + Number(row.completionTokens)
-                            ).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {Number(row.requestCount).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium">By model</h3>
+            <Separator className="mt-2" />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Model</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead className="text-right tabular-nums">Tokens</TableHead>
+                <TableHead className="text-right tabular-nums">Requests</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {models.map((row, i) => (
+                <TableRow key={`${row.model}-${row.taskType}-${i}`}>
+                  <TableCell className="font-mono text-xs">{row.model}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {TASK_LABELS[row.taskType] ?? row.taskType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {Number(row.promptTokens) + Number(row.completionTokens) > 0
+                      ? (Number(row.promptTokens) + Number(row.completionTokens)).toLocaleString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {Number(row.requestCount).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
