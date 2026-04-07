@@ -242,3 +242,43 @@ export const SourceRow = ({
     </>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Disabled source row — rendered from SourceConfig when no SourceStatus exists
+// ---------------------------------------------------------------------------
+
+export const DisabledSourceRow = ({
+  name,
+  sourceId,
+  onToggleEnabled,
+}: {
+  name: string;
+  sourceId: string;
+  onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
+}): React.ReactElement => (
+  <div
+    className={cn(
+      "group grid items-center gap-x-2 border-b px-4 py-2.5 text-sm opacity-50 last:border-b-0",
+      "grid-cols-[1rem_1fr_auto_auto]",
+      "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem]",
+    )}
+  >
+    <span />
+    <div className="flex min-w-0 items-center gap-2">
+      <StatusDot state="pending" animate={false} />
+      <span className="truncate font-medium">{name}</span>
+      <span className="hidden text-xs text-muted-foreground sm:inline">Disabled</span>
+    </div>
+    <div className="hidden sm:block" />
+    <span className="hidden text-right tabular-nums text-muted-foreground sm:block">—</span>
+    <div className="flex shrink-0 items-center justify-end">
+      <SourceOverflowMenu
+        sourceName={name}
+        sourceId={sourceId}
+        isActive={false}
+        enabled={false}
+        onToggleEnabled={onToggleEnabled}
+      />
+    </div>
+  </div>
+);

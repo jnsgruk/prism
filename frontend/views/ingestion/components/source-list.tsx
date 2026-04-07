@@ -7,7 +7,7 @@ import { isActive } from "@/views/ingestion/lib/constants";
 
 import { Separator } from "@/components/ui/separator";
 import { EmbeddingRow, EnrichmentRow } from "./ai-handler-row";
-import { SourceRow } from "./source-row";
+import { DisabledSourceRow, SourceRow } from "./source-row";
 
 export type SourceConfigInfo = { id: string; enabled: boolean };
 
@@ -25,16 +25,20 @@ export const SourceList = ({
   const triggerRun = useTriggerRun();
   const cancelRun = useCancelRun();
 
-  // Sort: active first, then idle, then disabled
+  // Sort enabled sources: active first, then idle
   const sortedSources = useMemo(() => {
-    const active = sources.filter(
-      (s) => isActive(s) && sourceConfigs?.get(s.name)?.enabled !== false,
-    );
-    const idle = sources.filter(
-      (s) => !isActive(s) && sourceConfigs?.get(s.name)?.enabled !== false,
-    );
-    const disabled = sources.filter((s) => sourceConfigs?.get(s.name)?.enabled === false);
-    return [...active, ...idle, ...disabled];
+    const active = sources.filter(isActive);
+    const idle = sources.filter((s) => !isActive(s));
+    return [...active, ...idle];
+  }, [sources]);
+
+  // Disabled sources: configs with enabled=false that have no SourceStatus entry
+  const disabledSources = useMemo(() => {
+    if (!sourceConfigs) return [];
+    const statusNames = new Set(sources.map((s) => s.name));
+    return [...sourceConfigs.entries()]
+      .filter(([name, cfg]) => !cfg.enabled && !statusNames.has(name))
+      .map(([name, cfg]) => ({ name, id: cfg.id }));
   }, [sources, sourceConfigs]);
 
   const handleTriggerRun = (name: string): void => {
@@ -83,6 +87,15 @@ export const SourceList = ({
           />
         );
       })}
+
+      {disabledSources.map((ds) => (
+        <DisabledSourceRow
+          key={ds.name}
+          name={ds.name}
+          sourceId={ds.id}
+          onToggleEnabled={onToggleEnabled}
+        />
+      ))}
 
       {/* AI handler rows */}
       <Separator />
