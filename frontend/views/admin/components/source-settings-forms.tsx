@@ -28,8 +28,6 @@ const GitHubSettingsForm = ({
   onChange: (settings: JsonObject) => void;
 }): React.ReactElement => {
   const orgs = toStringArray(settings.orgs);
-  const baseUrl = typeof settings.base_url === "string" ? settings.base_url : "";
-  const apiMode = typeof settings.api_mode === "string" ? settings.api_mode : "rest+graphql";
   const excludeArchived = settings.exclude_archived !== false; // default true
   const excludeRepos = toStringArray(settings.exclude_repos);
   const [orgInput, setOrgInput] = useState("");
@@ -112,35 +110,6 @@ const GitHubSettingsForm = ({
             ))}
           </div>
         )}
-      </div>
-
-      {/* Base URL */}
-      <div className="space-y-2">
-        <Label htmlFor="base-url">API Base URL</Label>
-        <Input
-          id="base-url"
-          value={baseUrl}
-          onChange={(e) => update({ base_url: e.target.value || null })}
-          placeholder="https://api.github.com"
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave blank for github.com. Set for GitHub Enterprise.
-        </p>
-      </div>
-
-      {/* API Mode */}
-      <div className="space-y-2">
-        <Label>API Mode</Label>
-        <Select value={apiMode} onValueChange={(v) => v !== null && update({ api_mode: v })}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="rest+graphql">REST + GraphQL (recommended)</SelectItem>
-            <SelectItem value="rest">REST only</SelectItem>
-            <SelectItem value="graphql">GraphQL only</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Exclude archived */}
