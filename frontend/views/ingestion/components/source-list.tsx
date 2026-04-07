@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { isActive } from "@/views/ingestion/lib/constants";
 
-import { Separator } from "@/components/ui/separator";
 import { EmbeddingRow, EnrichmentRow } from "./ai-handler-row";
 import { DisabledSourceRow, SourceRow } from "./source-row";
 
@@ -98,7 +97,6 @@ export const SourceList = ({
       ))}
 
       {/* AI handler rows */}
-      <Separator />
       <EnrichmentRow />
       <EmbeddingRow />
     </div>
