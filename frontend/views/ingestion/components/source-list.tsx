@@ -63,11 +63,10 @@ export const SourceList = ({
   return (
     <div>
       {/* Column headers — desktop only */}
-      <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem] sm:items-center sm:gap-x-2">
+      <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem] sm:items-center sm:gap-x-2">
         <span />
         <span>Source</span>
-        <span>Progress</span>
-        <span className="text-right">Items</span>
+        <span>Status</span>
         <span />
       </div>
 

@@ -17,8 +17,6 @@ export const IngestionSummary = ({
   const errorCount = sources.filter((s) => s.state === SourceState.ERROR).length;
   const hasActive = running.length > 0;
 
-  const totalItems = running.reduce((sum, s) => sum + s.itemsCollected, 0);
-
   const lastRunTs = idle.reduce<{ seconds: bigint } | undefined>((latest, s) => {
     if (!s.lastRun) return latest;
     if (!latest || s.lastRun.seconds > latest.seconds) return s.lastRun;
@@ -54,13 +52,6 @@ export const IngestionSummary = ({
               </span>
             </>
           )}
-          <span>·</span>
-          <span>
-            <span className="font-medium tabular-nums text-foreground">
-              {totalItems.toLocaleString()}
-            </span>{" "}
-            items
-          </span>
         </>
       ) : (
         <span>

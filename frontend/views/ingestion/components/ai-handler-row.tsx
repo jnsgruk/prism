@@ -120,7 +120,7 @@ export const EnrichmentRow = (): React.ReactElement => {
     : undefined;
 
   return (
-    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem]">
+    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]">
       <span />
       {/* Name + status */}
       <div className="flex min-w-0 items-center gap-2">
@@ -144,11 +144,6 @@ export const EnrichmentRow = (): React.ReactElement => {
         )}
       </div>
 
-      {/* Items */}
-      <span className="hidden text-right tabular-nums sm:block">
-        {status ? Number(status.totalEnrichments).toLocaleString() : "—"}
-      </span>
-
       {/* Actions */}
       <AiHandlerMenu actions={actions} />
     </div>
@@ -170,7 +165,7 @@ export const EmbeddingRow = (): React.ReactElement => {
   const coverage = embStatus ? Math.round(embStatus.coveragePercent) : null;
 
   return (
-    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem]">
+    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]">
       <span />
       {/* Name + status */}
       <div className="flex min-w-0 items-center gap-2">
@@ -191,11 +186,6 @@ export const EmbeddingRow = (): React.ReactElement => {
           <span className="text-xs text-muted-foreground">{lastRunLabel}</span>
         )}
       </div>
-
-      {/* Items */}
-      <span className="hidden text-right tabular-nums sm:block">
-        {embStatus ? Number(embStatus.embeddedCount).toLocaleString() : "—"}
-      </span>
 
       {/* Actions */}
       <AiHandlerMenu actions={actions} />
