@@ -39,6 +39,15 @@ spec:
               value: "4"
             - name: RESTATE_WORKER__INVOKER__ABORT_TIMEOUT
               value: "2min"
+            # How long Restate waits before re-invoking a suspended handler
+            # when completions arrive. The default (60s) causes visible stalls
+            # in the pipeline UI between stages (e.g. ingestion finishing and
+            # metrics starting) because the workflow handler suspends while
+            # awaiting join_all completions, and Restate queues the completion
+            # notifications until this timer fires. 5s is fine for a
+            # single-tenant deployment with a small handler count.
+            - name: RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT
+              value: "5s"
           volumeMounts:
             - name: restate-data
               mountPath: /restate-data
