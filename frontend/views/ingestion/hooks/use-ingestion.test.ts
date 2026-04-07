@@ -141,17 +141,6 @@ describe("ingestion hooks", () => {
     });
   });
 
-  describe("useListHandlers", () => {
-    it("fetches available handlers", async () => {
-      const { useListHandlers } = await import("./use-ingestion");
-      const { result } = renderHook(() => useListHandlers(), { wrapper: TestWrapper });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toHaveLength(1);
-      expect(result.current.data?.[0]?.name).toBe("GithubIngestionHandler");
-    });
-  });
-
   describe("useTriggerHandler", () => {
     it("triggers a handler and succeeds", async () => {
       const { useTriggerHandler } = await import("./use-ingestion");

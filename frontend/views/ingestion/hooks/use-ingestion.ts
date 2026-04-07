@@ -6,7 +6,6 @@ import type {
   CancelHandlerRunResponse,
   CancelRunResponse,
   GetStatusResponse,
-  HandlerInfo,
   HandlerRun,
   SourceStatus,
   TriggerBackfillResponse,
@@ -97,16 +96,6 @@ export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, stri
     },
   });
 };
-
-export const useListHandlers = (options?: {
-  refetchInterval?: number | false;
-}): UseQueryResult<HandlerInfo[], Error> =>
-  useQuery({
-    queryKey: handlersKeys.handlers(),
-    queryFn: () => handlersClient.listHandlers({}),
-    select: (data): HandlerInfo[] => data.handlers,
-    refetchInterval: options?.refetchInterval,
-  });
 
 export const useTriggerHandler = (): UseMutationResult<
   TriggerHandlerResponse,

@@ -3,17 +3,15 @@ import { useSearchParams } from "react-router";
 
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Cog, Key, Plug, Settings, UserCog, Users } from "lucide-react";
+import { Brain, Plug, Settings, UserCog, Users } from "lucide-react";
 
 import { AiSettingsTab } from "@/views/admin/components/ai-settings-tab";
-import { ApiTokensTab } from "@/views/admin/components/api-tokens-tab";
-import { HandlersTab } from "@/views/admin/components/handlers-tab";
 import { PeopleTab } from "@/views/admin/components/people-tab";
 import { SourcesTab } from "@/views/admin/components/sources-tab";
 import { SystemTab } from "@/views/admin/components/system-tab";
 import { TeamsTab } from "@/views/admin/components/teams-tab";
 
-const VALID_TABS = new Set(["sources", "teams", "people", "tokens", "handlers", "ai", "system"]);
+const VALID_TABS = new Set(["sources", "teams", "people", "ai", "system"]);
 const DEFAULT_TAB = "sources";
 
 const AdminPage = (): React.ReactElement => {
@@ -55,14 +53,6 @@ const AdminPage = (): React.ReactElement => {
               <UserCog className="size-4" />
               People
             </TabsTrigger>
-            <TabsTrigger value="tokens">
-              <Key className="size-4" />
-              API Tokens
-            </TabsTrigger>
-            <TabsTrigger value="handlers">
-              <Cog className="size-4" />
-              Handlers
-            </TabsTrigger>
             <TabsTrigger value="ai">
               <Brain className="size-4" />
               AI
@@ -80,12 +70,6 @@ const AdminPage = (): React.ReactElement => {
           </TabsContent>
           <TabsContent value="people">
             <PeopleTab />
-          </TabsContent>
-          <TabsContent value="tokens">
-            <ApiTokensTab />
-          </TabsContent>
-          <TabsContent value="handlers">
-            <HandlersTab />
           </TabsContent>
           <TabsContent value="ai">
             <AiSettingsTab />
