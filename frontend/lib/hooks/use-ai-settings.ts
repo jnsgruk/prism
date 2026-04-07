@@ -21,7 +21,7 @@ export const aiKeys = {
   settings: () => [...aiKeys.all, "settings"] as const,
   models: (provider: string, capability: string) =>
     [...aiKeys.all, "models", provider, capability] as const,
-  cost: (days: number) => [...aiKeys.all, "cost", days] as const,
+  usage: (days: number) => [...aiKeys.all, "usage", days] as const,
   storageHealth: () => [...aiKeys.all, "storage-health"] as const,
 };
 

@@ -3,7 +3,7 @@ mod conversations;
 mod embeddings;
 mod enrichments;
 
-pub use api_usage::{ApiUsageRecord, DailySpend, ModelSpend, TaskSpend};
+pub use api_usage::{ApiUsageRecord, ModelUsage, TaskUsage};
 pub use conversations::{
     Conversation, ConversationArtifact, ConversationEvent, ConversationMessage,
     ConversationSummary, CreateArtifactParams, CreateConversationParams, CreateMessageParams,
@@ -21,8 +21,7 @@ pub use enrichments::{
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 
-/// Repository for the `reasoning` schema: API usage tracking, cost management,
-/// and AI enrichments.
+/// Repository for the `reasoning` schema: API usage tracking and AI enrichments.
 #[derive(Clone)]
 pub struct ReasoningRepo {
     pool: PgPool,

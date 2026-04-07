@@ -704,6 +704,7 @@ pub enum TaskType {
     Enrichment,
     Agentic,
     Embeddings,
+    ImageGeneration,
 }
 
 impl fmt::Display for TaskType {
@@ -718,6 +719,7 @@ impl TaskType {
             Self::Enrichment => "enrichment",
             Self::Agentic => "agentic",
             Self::Embeddings => "embeddings",
+            Self::ImageGeneration => "image_generation",
         }
     }
 }
@@ -729,6 +731,7 @@ impl FromStr for TaskType {
             "enrichment" => Ok(Self::Enrichment),
             "agentic" => Ok(Self::Agentic),
             "embeddings" => Ok(Self::Embeddings),
+            "image_generation" => Ok(Self::ImageGeneration),
             _ => Err(format!("invalid TaskType: {s}")),
         }
     }
@@ -947,6 +950,7 @@ mod tests {
             TaskType::Enrichment,
             TaskType::Agentic,
             TaskType::Embeddings,
+            TaskType::ImageGeneration,
         ] {
             let s = variant.to_string();
             assert_eq!(s.parse::<TaskType>().unwrap(), variant);

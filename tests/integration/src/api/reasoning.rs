@@ -3,11 +3,10 @@ use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceCl
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, AskQuestionRequest, DeleteEnrichmentsByTypeRequest,
     FindSimilarRequest, GetAiSettingsRequest, GetArtifactDownloadUrlRequest,
-    GetConversationRequest, GetCostSummaryRequest, GetEmbeddingStatusRequest,
-    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
-    ListAiModelsRequest, ListConversationsRequest, RefreshModelCatalogueRequest,
-    SaveInsightFromConversationRequest, SetProviderSecretRequest, UpdateAiSettingsRequest,
-    ask_question_response,
+    GetConversationRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
+    GetEnrichmentsRequest, GetStorageHealthRequest, GetUsageSummaryRequest, ListAiModelsRequest,
+    ListConversationsRequest, RefreshModelCatalogueRequest, SaveInsightFromConversationRequest,
+    SetProviderSecretRequest, UpdateAiSettingsRequest, ask_question_response,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -309,27 +308,26 @@ async fn get_enrichments_empty() {
 }
 
 // ---------------------------------------------------------------------------
-// GetCostSummary — empty
+// GetUsageSummary — empty
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn get_cost_summary_empty() {
+async fn get_usage_summary_empty() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
-    let mut req = Request::new(GetCostSummaryRequest { days: 7 });
+    let mut req = Request::new(GetUsageSummaryRequest { days: 7 });
     auth(&mut req, &token);
 
     let resp = client
-        .get_cost_summary(req)
+        .get_usage_summary(req)
         .await
-        .expect("get_cost_summary")
+        .expect("get_usage_summary")
         .into_inner();
 
-    assert_eq!(resp.today_spend_usd, 0.0);
     assert!(resp.task_breakdown.is_empty());
     assert!(resp.model_breakdown.is_empty());
 

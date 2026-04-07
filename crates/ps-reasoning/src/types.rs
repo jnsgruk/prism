@@ -30,7 +30,7 @@ impl AiTaskRouting {
     pub fn get(&self, task: TaskType) -> &AiTaskConfig {
         match task {
             TaskType::Enrichment => &self.enrichment,
-            TaskType::Agentic => &self.agentic,
+            TaskType::Agentic | TaskType::ImageGeneration => &self.agentic,
             TaskType::Embeddings => &self.embeddings,
         }
     }

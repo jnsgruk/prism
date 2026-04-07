@@ -62,74 +62,48 @@ async fn insert_typed_contribution(
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn log_api_usage_and_get_daily_spend() {
+async fn log_api_usage_and_query_by_task() {
     let ctx = RepoTestContext::new().await;
     let repos = &ctx.repos;
-    let _pool = &ctx.pool;
 
     repos
         .reasoning
-        .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500, 0.05)
+        .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500)
         .await
         .unwrap();
     repos
         .reasoning
-        .log_api_usage("google", "gemini-pro", "enrichment", 2000, 1000, 0.10)
+        .log_api_usage("google", "gemini-pro", "agentic", 500, 200)
         .await
         .unwrap();
 
-    let today = OffsetDateTime::now_utc().date();
-    let spend = repos.reasoning.get_daily_spend(today).await.unwrap();
-    assert!((spend - 0.15).abs() < 0.001);
+    let since = OffsetDateTime::now_utc() - time::Duration::hours(1);
+    let until = OffsetDateTime::now_utc() + time::Duration::hours(1);
 
-    ctx.teardown().await;
-}
-
-#[tokio::test]
-async fn get_daily_spend_by_task() {
-    let ctx = RepoTestContext::new().await;
-    let repos = &ctx.repos;
-    let _pool = &ctx.pool;
-
-    repos
-        .reasoning
-        .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500, 0.05)
-        .await
-        .unwrap();
-    repos
-        .reasoning
-        .log_api_usage("google", "gemini-pro", "insights", 500, 200, 0.02)
-        .await
-        .unwrap();
-
-    let today = OffsetDateTime::now_utc().date();
     let breakdown = repos
         .reasoning
-        .get_daily_spend_by_task(today)
+        .get_usage_by_task(since, until)
         .await
         .unwrap();
     assert_eq!(breakdown.len(), 2);
-    // Ordered by cost DESC
-    assert_eq!(breakdown[0].task_type, "enrichment");
     assert_eq!(breakdown[0].request_count, 1);
 
     ctx.teardown().await;
 }
 
 #[tokio::test]
-async fn get_spend_summary() {
+async fn get_usage_by_model() {
     let ctx = RepoTestContext::new().await;
     let repos = &ctx.repos;
-    let _pool = &ctx.pool;
 
     repos
         .reasoning
-        .log_api_usage("google", "gemini-pro", "enrichment", 100, 50, 0.01)
+        .log_api_usage("google", "gemini-pro", "enrichment", 100, 50)
         .await
         .unwrap();
     repos
         .reasoning
-        .log_api_usage("google", "gemini-2.5-pro", "insights", 200, 100, 0.03)
+        .log_api_usage("google", "gemini-2.5-pro", "agentic", 200, 100)
         .await
         .unwrap();
 
@@ -138,7 +112,7 @@ async fn get_spend_summary() {
 
     let summary = repos
         .reasoning
-        .get_spend_summary(since, until)
+        .get_usage_by_model(since, until)
         .await
         .unwrap();
     assert_eq!(summary.len(), 2);
@@ -752,14 +726,14 @@ async fn conversation_update_totals() {
     // First turn.
     repos
         .reasoning
-        .update_conversation_totals(conv.id, 5, 1000, 500, 0.03)
+        .update_conversation_totals(conv.id, 5, 1000, 500)
         .await
         .unwrap();
 
     // Second turn.
     repos
         .reasoning
-        .update_conversation_totals(conv.id, 3, 800, 400, 0.02)
+        .update_conversation_totals(conv.id, 3, 800, 400)
         .await
         .unwrap();
 
@@ -772,7 +746,6 @@ async fn conversation_update_totals() {
     assert_eq!(fetched.total_tool_calls, 8);
     assert_eq!(fetched.total_prompt_tokens, 1800);
     assert_eq!(fetched.total_completion_tokens, 900);
-    assert!((fetched.total_estimated_cost_usd - 0.05).abs() < 0.001);
 
     ctx.teardown().await;
 }

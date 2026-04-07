@@ -31,7 +31,7 @@ vi.mock("@ps/api/transport", () => ({
       refreshModelCatalogue: () => create(RefreshModelCatalogueResponseSchema, {}),
       // Provide stubs for any other methods the service might expect
       getEnrichmentPipelineStatus: () => ({}),
-      getCostSummary: () => ({}),
+      getUsageSummary: () => ({}),
     });
   }),
 }));

@@ -20,7 +20,7 @@ const mockConversations = [
     modelName: "claude-sonnet",
     containerStatus: "running",
     totalToolCalls: 5,
-    totalEstimatedCostUsd: 0.03,
+
     messageCount: 4,
     artifactCount: 1,
   }),
@@ -31,7 +31,7 @@ const mockConversations = [
     modelName: "claude-sonnet",
     containerStatus: "stopped",
     totalToolCalls: 3,
-    totalEstimatedCostUsd: 0.02,
+
     messageCount: 2,
     artifactCount: 0,
   }),
@@ -74,7 +74,7 @@ vi.mock("@ps/api/transport", () => ({
       setProviderSecret: () => ({}),
       testProvider: () => ({}),
       getStorageHealth: () => ({}),
-      getCostSummary: () => ({}),
+      getUsageSummary: () => ({}),
       listAiModels: () => ({}),
       refreshModelCatalogue: () => ({}),
       getEnrichments: () => ({}),

@@ -1,13 +1,13 @@
-use ps_proto::canonical::prism::v1::{GetCostSummaryRequest, GetCostSummaryResponse};
+use ps_proto::canonical::prism::v1::{GetUsageSummaryRequest, GetUsageSummaryResponse};
 use tonic::{Request, Response, Status};
 
 use super::ReasoningServiceImpl;
-use crate::common::{ai_provider_to_proto, db_err, require_auth};
+use crate::common::{db_err, require_auth};
 
-pub async fn get_cost_summary(
+pub async fn get_usage_summary(
     svc: &ReasoningServiceImpl,
-    request: Request<GetCostSummaryRequest>,
-) -> Result<Response<GetCostSummaryResponse>, Status> {
+    request: Request<GetUsageSummaryRequest>,
+) -> Result<Response<GetUsageSummaryResponse>, Status> {
     let _ctx = require_auth(&request)?;
     let req = request.into_inner();
 
@@ -15,79 +15,49 @@ pub async fn get_cost_summary(
 
     let today = time::OffsetDateTime::now_utc().date();
     let since = today - time::Duration::days(i64::from(days) - 1);
+    let since_dt = since.midnight().assume_utc();
+    let until_dt = (today + time::Duration::days(1)).midnight().assume_utc();
 
-    let (today_spend, daily_series, task_breakdown, model_breakdown) = tokio::try_join!(
+    let (task_breakdown, model_breakdown) = tokio::try_join!(
         async {
             svc.repos
                 .reasoning
-                .get_daily_spend(today)
+                .get_usage_by_task(since_dt, until_dt)
                 .await
                 .map_err(db_err)
         },
         async {
             svc.repos
                 .reasoning
-                .get_daily_spend_series(since, today)
-                .await
-                .map_err(db_err)
-        },
-        async {
-            svc.repos
-                .reasoning
-                .get_daily_spend_by_task(today)
-                .await
-                .map_err(db_err)
-        },
-        async {
-            let since_dt = since.midnight().assume_utc();
-            let until_dt = (today + time::Duration::days(1)).midnight().assume_utc();
-            svc.repos
-                .reasoning
-                .get_spend_summary(since_dt, until_dt)
+                .get_usage_by_model(since_dt, until_dt)
                 .await
                 .map_err(db_err)
         },
     )?;
 
-    let daily_spend: Vec<ps_proto::canonical::prism::v1::DailySpend> = daily_series
+    let task_breakdown = task_breakdown
         .into_iter()
-        .map(|d| ps_proto::canonical::prism::v1::DailySpend {
-            date: d.date.to_string(),
-            cost_usd: d.total_cost_usd,
-            request_count: d.request_count,
-        })
-        .collect();
-
-    let task_breakdown: Vec<ps_proto::canonical::prism::v1::TaskSpend> = task_breakdown
-        .into_iter()
-        .map(|t| ps_proto::canonical::prism::v1::TaskSpend {
+        .map(|t| ps_proto::canonical::prism::v1::TaskUsage {
             task_type: t.task_type,
-            cost_usd: t.total_cost_usd,
             prompt_tokens: t.total_prompt_tokens,
             completion_tokens: t.total_completion_tokens,
             request_count: t.request_count,
         })
         .collect();
 
-    let model_breakdown: Vec<ps_proto::canonical::prism::v1::ModelSpend> = model_breakdown
+    let model_breakdown = model_breakdown
         .into_iter()
-        .map(|m| ps_proto::canonical::prism::v1::ModelSpend {
-            provider: m
-                .provider
-                .parse::<ps_core::models::AiProvider>()
-                .map_or(0, ai_provider_to_proto),
+        .map(|m| ps_proto::canonical::prism::v1::ModelUsage {
+            provider: m.provider,
             model: m.model,
             task_type: m.task_type,
-            cost_usd: m.total_cost_usd,
             prompt_tokens: m.total_prompt_tokens,
             completion_tokens: m.total_completion_tokens,
             request_count: m.request_count,
         })
         .collect();
 
-    Ok(Response::new(GetCostSummaryResponse {
-        today_spend_usd: today_spend,
-        daily_spend,
+    Ok(Response::new(GetUsageSummaryResponse {
         task_breakdown,
         model_breakdown,
     }))

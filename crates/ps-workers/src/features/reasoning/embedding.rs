@@ -115,7 +115,7 @@ impl EmbeddingHandlerImpl {
             };
 
             // Step 5: Log cost (journaled)
-            self.log_cost(ctx, &model_name, iteration, &result).await;
+            self.log_usage(ctx, &model_name, iteration, &result).await;
 
             // Step 6: Clean up queue (journaled)
             self.cleanup_queue(ctx, iteration).await;
@@ -193,7 +193,7 @@ impl EmbeddingHandlerImpl {
         }))
     }
 
-    async fn log_cost(
+    async fn log_usage(
         &self,
         ctx: &Context<'_>,
         model_name: &str,
@@ -210,20 +210,11 @@ impl EmbeddingHandlerImpl {
         let provider = task_config.provider;
         drop(router);
 
-        let usage = ps_reasoning::rig::completion::Usage {
-            input_tokens: result.total_tokens,
-            output_tokens: 0,
-            total_tokens: result.total_tokens,
-            cached_input_tokens: 0,
-        };
-        let cost = ps_reasoning::cost::estimate_cost(provider, model_name, &usage);
-        #[allow(clippy::cast_possible_truncation)]
-        let cost_f32 = cost as f32;
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let tokens = result.total_tokens as i32;
         let model_name = model_name.to_string();
 
-        let step = format!("log_cost_{iteration}");
+        let step = format!("log_usage_{iteration}");
         let log_result = ctx
             .run(|| {
                 let repos = repos.clone();
@@ -231,7 +222,7 @@ impl EmbeddingHandlerImpl {
                 async move {
                     repos
                         .reasoning
-                        .log_api_usage(provider.as_str(), &model, "embedding", tokens, 0, cost_f32)
+                        .log_api_usage(provider.as_str(), &model, "embeddings", tokens, 0)
                         .await
                         .map_err(terminal_err("db error"))?;
                     Ok(Json::from(()))
@@ -241,7 +232,7 @@ impl EmbeddingHandlerImpl {
             .await;
 
         if let Err(e) = log_result {
-            debug!(error = %e, "failed to log embedding cost");
+            debug!(error = %e, "failed to log embedding usage");
         }
     }
 

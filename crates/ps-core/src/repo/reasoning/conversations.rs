@@ -21,7 +21,6 @@ pub struct Conversation {
     pub total_tool_calls: i32,
     pub total_prompt_tokens: i32,
     pub total_completion_tokens: i32,
-    pub total_estimated_cost_usd: f32,
     pub query_status: String,
     pub created_at: OffsetDateTime,
     pub last_activity_at: OffsetDateTime,
@@ -46,7 +45,6 @@ pub struct ConversationSummary {
     pub model_name: String,
     pub container_status: String,
     pub total_tool_calls: i32,
-    pub total_estimated_cost_usd: f32,
     pub total_prompt_tokens: i32,
     pub total_completion_tokens: i32,
     pub query_status: String,
@@ -127,7 +125,7 @@ impl ReasoningRepo {
             RETURNING id, user_id, title, status, model_name,
                       container_pod_name, container_status, opencode_session_id,
                       total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                      total_estimated_cost_usd, query_status, created_at, last_activity_at
+                      query_status, created_at, last_activity_at
             "#,
             params.user_id,
             params.title,
@@ -146,7 +144,7 @@ impl ReasoningRepo {
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                   total_estimated_cost_usd, query_status, created_at, last_activity_at
+                   query_status, created_at, last_activity_at
             FROM reasoning.conversations
             WHERE id = $1
             "#,
@@ -181,7 +179,7 @@ impl ReasoningRepo {
                     ConversationSummary,
                     r#"
                     SELECT c.id, c.title, c.status, c.model_name, c.container_status,
-                           c.total_tool_calls, c.total_estimated_cost_usd,
+                           c.total_tool_calls,
                            c.total_prompt_tokens, c.total_completion_tokens,
                            c.query_status, c.created_at, c.last_activity_at,
                            (SELECT COUNT(*) FROM reasoning.conversation_messages m
@@ -249,7 +247,6 @@ impl ReasoningRepo {
         tool_calls: i32,
         prompt_tokens: i32,
         completion_tokens: i32,
-        estimated_cost_usd: f32,
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -257,7 +254,6 @@ impl ReasoningRepo {
             SET total_tool_calls = total_tool_calls + $2,
                 total_prompt_tokens = total_prompt_tokens + $3,
                 total_completion_tokens = total_completion_tokens + $4,
-                total_estimated_cost_usd = total_estimated_cost_usd + $5,
                 last_activity_at = now()
             WHERE id = $1
             "#,
@@ -265,7 +261,6 @@ impl ReasoningRepo {
             tool_calls,
             prompt_tokens,
             completion_tokens,
-            estimated_cost_usd,
         )
         .execute(&self.pool)
         .await?;
@@ -671,7 +666,7 @@ impl ReasoningRepo {
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
-                   total_estimated_cost_usd, query_status, created_at, last_activity_at
+                   query_status, created_at, last_activity_at
             FROM reasoning.conversations
             ORDER BY created_at
             "#,
@@ -694,7 +689,6 @@ impl ReasoningRepo {
                     "total_tool_calls": c.total_tool_calls,
                     "total_prompt_tokens": c.total_prompt_tokens,
                     "total_completion_tokens": c.total_completion_tokens,
-                    "total_estimated_cost_usd": c.total_estimated_cost_usd,
                     "query_status": c.query_status,
                     "created_at": c.created_at.to_string(),
                     "last_activity_at": c.last_activity_at.to_string(),

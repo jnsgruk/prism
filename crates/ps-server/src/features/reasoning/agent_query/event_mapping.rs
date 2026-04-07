@@ -120,7 +120,6 @@ fn map_final_answer(payload: &serde_json::Value) -> ask_question_response::Event
         supporting_data_json: String::new(),
         prompt_tokens: json_i32(payload, "prompt_tokens"),
         completion_tokens: json_i32(payload, "completion_tokens"),
-        estimated_cost_usd: 0.0,
         tool_call_count: json_i32(payload, "tool_call_count"),
         duration_ms: 0,
         artifacts: vec![],

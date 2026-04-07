@@ -25,7 +25,8 @@ pub async fn handle_artifact_upload(
         return;
     };
 
-    if tool != "prism_upload_artifact" && tool != "prism_generate_image" {
+    let is_image_gen = tool == "prism_generate_image";
+    if tool != "prism_upload_artifact" && !is_image_gen {
         return;
     }
 
@@ -76,6 +77,17 @@ pub async fn handle_artifact_upload(
                     None,
                 )
                 .await;
+
+            // Log image generation as a usage record so it appears in the
+            // admin usage dashboard (request count — no token data for images).
+            if is_image_gen
+                && let Err(e) = repos
+                    .reasoning
+                    .log_api_usage("google", "image-generation", "image_generation", 0, 0)
+                    .await
+            {
+                warn!(error = %e, "failed to log image generation usage");
+            }
         }
         Err(e) => {
             warn!(error = %e, "failed to register artifact in DB");

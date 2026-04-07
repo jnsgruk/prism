@@ -67,6 +67,7 @@ pub async fn ask_question(
     let http_client = svc.http_client.clone();
     let repos = svc.repos.clone();
     let question = req.question.clone();
+    let model_for_usage = model_name.clone();
 
     let (tx, rx) = tokio::sync::mpsc::channel(64);
 
@@ -92,6 +93,7 @@ pub async fn ask_question(
             &cid_str,
             &trigger_request,
             &question,
+            &model_for_usage,
             &tx,
         )
         .await
@@ -233,6 +235,7 @@ async fn handle_stream_failure(
 }
 
 /// The core streaming pipeline: prepare pod → connect SSE → stream → finalize.
+#[allow(clippy::too_many_arguments)]
 async fn run_query_stream(
     repos: &ps_core::repo::Repos,
     http_client: &reqwest::Client,
@@ -240,6 +243,7 @@ async fn run_query_stream(
     cid_str: &str,
     trigger_request: &serde_json::Value,
     question: &str,
+    model_name: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let conversation_id: Uuid = cid_str.parse()?;
@@ -296,7 +300,15 @@ async fn run_query_stream(
             .await;
 
     // Phase 3: Finalize.
-    finalize_query(repos, conversation_id, cid_str, &loop_result, tx).await
+    finalize_query(
+        repos,
+        conversation_id,
+        cid_str,
+        model_name,
+        &loop_result,
+        tx,
+    )
+    .await
 }
 
 /// Store assistant message, update totals, emit `final_answer`, and clean up.
@@ -304,6 +316,7 @@ async fn finalize_query(
     repos: &ps_core::repo::Repos,
     conversation_id: Uuid,
     cid_str: &str,
+    model_name: &str,
     loop_result: &event_loop::EventLoopResult,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -343,8 +356,19 @@ async fn finalize_query(
 
     repos
         .reasoning
-        .update_conversation_totals(conversation_id, tool_calls, input_tok, output_tok, 0.0)
+        .update_conversation_totals(conversation_id, tool_calls, input_tok, output_tok)
         .await?;
+
+    // Log usage for the admin dashboard. Extract provider from "provider/model" format.
+    let provider = model_name.split('/').next().unwrap_or("google");
+    let model_id = model_name.split('/').nth(1).unwrap_or(model_name);
+    if let Err(e) = repos
+        .reasoning
+        .log_api_usage(provider, model_id, "agentic", input_tok, output_tok)
+        .await
+    {
+        tracing::warn!(error = %e, "failed to log agentic usage");
+    }
 
     let _ = tx
         .send(Ok(AskQuestionResponse {

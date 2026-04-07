@@ -15,17 +15,17 @@ use ps_proto::canonical::prism::v1::{
     DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, FindSimilarRequest,
     FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
     GetArtifactDownloadUrlRequest, GetArtifactDownloadUrlResponse, GetConversationRequest,
-    GetConversationResponse, GetCostSummaryRequest, GetCostSummaryResponse,
-    GetEmbeddingStatusRequest, GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
-    GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
-    GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
-    GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest, ListAiModelsResponse,
-    ListConversationsRequest, ListConversationsResponse, RefreshModelCatalogueRequest,
-    RefreshModelCatalogueResponse, RenameConversationRequest, RenameConversationResponse,
-    ResumeStreamRequest, ResumeStreamResponse, SaveInsightFromConversationRequest,
-    SaveInsightFromConversationResponse, SearchByTextRequest, SearchByTextResponse,
-    SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest, TestProviderResponse,
-    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    GetConversationResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
+    GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
+    GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
+    GetStorageHealthResponse, GetUsageSummaryRequest, GetUsageSummaryResponse, ListAiModelsRequest,
+    ListAiModelsResponse, ListConversationsRequest, ListConversationsResponse,
+    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, RenameConversationRequest,
+    RenameConversationResponse, ResumeStreamRequest, ResumeStreamResponse,
+    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
+    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
+    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -122,11 +122,11 @@ impl ReasoningService for ReasoningServiceImpl {
         ai_settings::get_storage_health(self, request).await
     }
 
-    async fn get_cost_summary(
+    async fn get_usage_summary(
         &self,
-        request: Request<GetCostSummaryRequest>,
-    ) -> Result<Response<GetCostSummaryResponse>, Status> {
-        cost::get_cost_summary(self, request).await
+        request: Request<GetUsageSummaryRequest>,
+    ) -> Result<Response<GetUsageSummaryResponse>, Status> {
+        cost::get_usage_summary(self, request).await
     }
 
     async fn get_enrichments(

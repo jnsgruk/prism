@@ -11,7 +11,7 @@ pub mod types;
 use std::fmt::Write as _;
 
 use futures::stream::{self, StreamExt};
-use ps_core::models::{AiProvider, TaskType};
+use ps_core::models::TaskType;
 use ps_core::repo::ReasoningRepo;
 use ps_core::repo::reasoning::{EnrichmentResult, QueuedContribution, UpsertEnrichmentParams};
 use rig::completion::Usage;
@@ -19,7 +19,6 @@ use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::cost::CostTracker;
 use crate::routing::TaskRouter;
 
 use self::extract::extract_enrichment;
@@ -370,28 +369,6 @@ pub async fn process_queued_enrichment_batch(
         errors,
         total_usage,
         first_error,
-    }
-}
-
-/// Log the API cost of an enrichment batch.
-///
-/// This is designed to be called inside `ctx.run()` by the Restate handler,
-/// keeping DB writes journaled and idempotent on replay.
-pub async fn log_enrichment_cost(
-    cost_tracker: &CostTracker,
-    provider: AiProvider,
-    model_name: &str,
-    batch: &BatchResult,
-) {
-    if batch.total_usage.input_tokens > 0 || batch.total_usage.output_tokens > 0 {
-        cost_tracker
-            .log_usage(
-                provider,
-                model_name,
-                TaskType::Enrichment,
-                &batch.total_usage,
-            )
-            .await;
     }
 }
 

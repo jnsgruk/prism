@@ -200,7 +200,7 @@ impl EnrichmentHandlerImpl {
 
             for batch in &results {
                 s.aggregate_batch(batch);
-                self.log_cost(ctx, batch.enrichment_type, s.iteration, batch)
+                self.log_usage(ctx, batch.enrichment_type, s.iteration, batch)
                     .await;
             }
 
@@ -316,7 +316,7 @@ impl EnrichmentHandlerImpl {
         }))
     }
 
-    async fn log_cost(
+    async fn log_usage(
         &self,
         ctx: &Context<'_>,
         enrichment_type: EnrichmentType,
@@ -333,13 +333,10 @@ impl EnrichmentHandlerImpl {
         let model = task_config.model.clone();
         drop(router);
 
-        let cost = ps_reasoning::cost::estimate_cost(provider, &model, &batch.total_usage);
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let input_tokens = batch.total_usage.input_tokens as i32;
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let output_tokens = batch.total_usage.output_tokens as i32;
-        #[allow(clippy::cast_possible_truncation)]
-        let cost_f32 = cost as f32;
 
         let result = ctx
             .run(|| {
@@ -354,18 +351,20 @@ impl EnrichmentHandlerImpl {
                             "enrichment",
                             input_tokens,
                             output_tokens,
-                            cost_f32,
                         )
                         .await
                         .map_err(terminal_err("db error"))?;
                     Ok(Json::from(()))
                 }
             })
-            .name(format!("log_cost_{}_{iteration}", enrichment_type.as_str()))
+            .name(format!(
+                "log_usage_{}_{iteration}",
+                enrichment_type.as_str()
+            ))
             .await;
 
         if let Err(e) = result {
-            debug!(error = %e, "failed to log enrichment cost");
+            debug!(error = %e, "failed to log enrichment usage");
         }
     }
 

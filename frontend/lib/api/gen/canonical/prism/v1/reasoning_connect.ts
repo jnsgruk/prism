@@ -1,4 +1,4 @@
-// AI reasoning pipeline: provider configuration, model catalogue, cost
+// AI reasoning pipeline: provider configuration, model catalogue, usage
 // tracking, enrichment lifecycle, and semantic similarity search via
 // vector embeddings.
 
@@ -22,8 +22,6 @@ import {
   GetArtifactDownloadUrlResponse,
   GetConversationRequest,
   GetConversationResponse,
-  GetCostSummaryRequest,
-  GetCostSummaryResponse,
   GetEmbeddingStatusRequest,
   GetEmbeddingStatusResponse,
   GetEnrichmentPipelineStatusRequest,
@@ -34,6 +32,8 @@ import {
   GetEnrichmentsResponse,
   GetStorageHealthRequest,
   GetStorageHealthResponse,
+  GetUsageSummaryRequest,
+  GetUsageSummaryResponse,
   ListAiModelsRequest,
   ListAiModelsResponse,
   ListConversationsRequest,
@@ -124,14 +124,14 @@ export const ReasoningService = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetCostSummary returns AI spend broken down by day, task, and model.
+     * GetUsageSummary returns AI token/request usage broken down by task and model.
      *
-     * @generated from rpc canonical.prism.v1.ReasoningService.GetCostSummary
+     * @generated from rpc canonical.prism.v1.ReasoningService.GetUsageSummary
      */
-    getCostSummary: {
-      name: "GetCostSummary",
-      I: GetCostSummaryRequest,
-      O: GetCostSummaryResponse,
+    getUsageSummary: {
+      name: "GetUsageSummary",
+      I: GetUsageSummaryRequest,
+      O: GetUsageSummaryResponse,
       kind: MethodKind.Unary,
     },
     /**

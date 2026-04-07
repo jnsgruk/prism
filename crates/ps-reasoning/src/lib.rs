@@ -1,5 +1,4 @@
 pub mod catalogue;
-pub mod cost;
 pub mod features;
 pub mod routing;
 pub mod types;
