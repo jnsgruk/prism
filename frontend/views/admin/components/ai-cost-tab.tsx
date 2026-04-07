@@ -67,7 +67,7 @@ export const AiCostSection = (): React.ReactElement => {
       </div>
       <div>
         <ToggleGroup
-          className="h-7 rounded-lg bg-muted p-[3px] text-muted-foreground"
+          className="h-8 w-full rounded-lg bg-muted p-[3px] text-muted-foreground"
           value={[windowKey]}
           onValueChange={(values) => {
             const selected = values[0];
@@ -78,7 +78,7 @@ export const AiCostSection = (): React.ReactElement => {
             <ToggleGroupItem
               key={w.key}
               value={w.key}
-              className="h-[calc(100%-1px)] rounded-md bg-transparent px-2 py-0.5 text-xs font-medium text-foreground/60 hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+              className="h-[calc(100%-1px)] flex-1 rounded-md bg-transparent px-3 py-0.5 text-sm font-medium text-foreground/60 hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
             >
               {w.label}
             </ToggleGroupItem>
