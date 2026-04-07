@@ -47,12 +47,13 @@ export const SourceOverflowMenu = ({
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom">
-          {isActive ? (
+          {isActive && (
             <DropdownMenuItem onClick={() => onCancelRun?.(sourceName)}>
               <Square className="size-3.5" />
               Cancel
             </DropdownMenuItem>
-          ) : (
+          )}
+          {!isActive && enabled && (
             <>
               <DropdownMenuItem onClick={() => onTriggerRun?.(sourceName)}>
                 <Play className="size-3.5" />
@@ -85,12 +86,14 @@ export const SourceOverflowMenu = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <BackfillDialog
-        sourceName={sourceName}
-        open={showBackfill}
-        onOpenChange={setShowBackfill}
-        onAction={onAction}
-      />
+      {enabled && (
+        <BackfillDialog
+          sourceName={sourceName}
+          open={showBackfill}
+          onOpenChange={setShowBackfill}
+          onAction={onAction}
+        />
+      )}
     </>
   );
 };
