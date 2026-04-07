@@ -99,7 +99,7 @@ export const AiCostSection = (): React.ReactElement => {
       {tasks.length > 0 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium">By task</h3>
+            <h4 className="text-xs font-medium text-muted-foreground">By task</h4>
             <Separator className="mt-2" />
           </div>
           <Table>
@@ -141,7 +141,7 @@ export const AiCostSection = (): React.ReactElement => {
       {models.length > 0 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium">By model</h3>
+            <h4 className="text-xs font-medium text-muted-foreground">By model</h4>
             <Separator className="mt-2" />
           </div>
           <Table>

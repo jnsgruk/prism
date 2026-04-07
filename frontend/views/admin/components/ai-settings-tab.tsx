@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Key, Loader2, Plug, Settings2 } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
@@ -33,7 +34,11 @@ export const AiSettingsTab = (): React.ReactElement => {
     <div className="space-y-6 pt-4">
       <p className="text-sm text-muted-foreground">Configure AI providers and model routing.</p>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-medium">Provider</h3>
+          <Separator className="mt-2" />
+        </div>
         <div className="flex items-center justify-between rounded-lg border px-4 py-3">
           <div className="flex items-center gap-3">
             <div>
@@ -92,8 +97,6 @@ export const AiSettingsTab = (): React.ReactElement => {
       </div>
 
       <AiProviderDialog open={showDialog} onOpenChange={setShowDialog} />
-
-      <Separator />
 
       <AiCostSection />
     </div>
