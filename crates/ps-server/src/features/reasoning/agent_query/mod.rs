@@ -305,22 +305,62 @@ async fn run_query_stream(
         conversation_id,
         cid_str,
         model_name,
+        question,
         &loop_result,
         tx,
     )
     .await
 }
 
+/// Check whether the agent produced a usable answer.
+///
+/// Returns the answer as-is when valid, or a user-facing explanation when
+/// the answer is empty or is just the question echoed back (a known failure
+/// mode when the model hits its step limit mid-work).
+fn validate_answer(raw: &str, question: &str, tool_calls: i32) -> String {
+    let trimmed = raw.trim();
+    let is_empty = trimmed.is_empty();
+    let is_echo =
+        !trimmed.is_empty() && trimmed.len() <= question.len() + 20 && question.contains(trimmed);
+
+    if !is_empty && !is_echo {
+        return raw.to_string();
+    }
+
+    if tool_calls > 0 {
+        tracing::warn!(
+            tool_calls,
+            answer_len = trimmed.len(),
+            is_echo,
+            "agent completed tool calls but produced no usable answer — likely hit step limit"
+        );
+        format!(
+            "I ran out of steps before I could finish answering. \
+             I completed {tool_calls} tool calls gathering data but wasn't \
+             able to synthesize a response. Please try again — I'll pick up \
+             where I left off, or you can ask a simpler question."
+        )
+    } else {
+        tracing::warn!("agent produced empty answer with no tool calls");
+        "I wasn't able to produce an answer. Please try again.".to_string()
+    }
+}
+
 /// Store assistant message, update totals, emit `final_answer`, and clean up.
+///
+/// Detects degenerate outcomes where the agent ran out of steps or failed to
+/// produce a real answer, and surfaces a clear error to the user.
+#[allow(clippy::too_many_arguments)]
 async fn finalize_query(
     repos: &ps_core::repo::Repos,
     conversation_id: Uuid,
     cid_str: &str,
     model_name: &str,
+    question: &str,
     loop_result: &event_loop::EventLoopResult,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let answer = &loop_result.answer_text;
+    let answer = validate_answer(&loop_result.answer_text, question, loop_result.tool_calls);
     let tool_calls = loop_result.tool_calls;
     let input_tok = loop_result.total_input as i32;
     let output_tok = loop_result.total_output as i32;
@@ -341,7 +381,7 @@ async fn finalize_query(
         .create_message(&ps_core::repo::reasoning::CreateMessageParams {
             conversation_id,
             role: "assistant",
-            content: answer,
+            content: &answer,
             reasoning_trace: Some(&trace_json),
             supporting_data: None,
             prompt_tokens: input_tok,

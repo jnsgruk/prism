@@ -29,7 +29,7 @@
       "mode": "primary",
       "description": "Engineering insights assistant with access to Prism data and repository analysis tools",
       "temperature": 0.3,
-      "max_steps": 30
+      "max_steps": 75
     }
   }
 }
