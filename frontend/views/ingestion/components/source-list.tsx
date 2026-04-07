@@ -24,21 +24,24 @@ export const SourceList = ({
   const triggerRun = useTriggerRun();
   const cancelRun = useCancelRun();
 
-  // Sort enabled sources: active first, then idle
-  const sortedSources = useMemo(() => {
-    const active = sources.filter(isActive);
-    const idle = sources.filter((s) => !isActive(s));
-    return [...active, ...idle];
-  }, [sources]);
+  const isDisabled = (name: string): boolean => sourceConfigs?.get(name)?.enabled === false;
 
-  // Disabled sources: configs with enabled=false that have no SourceStatus entry
+  // Enabled sources only: active first, then idle
+  const sortedSources = useMemo(() => {
+    const enabled = sources.filter((s) => !isDisabled(s.name));
+    const active = enabled.filter(isActive);
+    const idle = enabled.filter((s) => !isActive(s));
+    return [...active, ...idle];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sources, sourceConfigs]);
+
+  // Disabled sources: from configs (may or may not have a SourceStatus entry)
   const disabledSources = useMemo(() => {
     if (!sourceConfigs) return [];
-    const statusNames = new Set(sources.map((s) => s.name));
     return [...sourceConfigs.entries()]
-      .filter(([name, cfg]) => !cfg.enabled && !statusNames.has(name))
+      .filter(([, cfg]) => !cfg.enabled)
       .map(([name, cfg]) => ({ name, id: cfg.id }));
-  }, [sources, sourceConfigs]);
+  }, [sourceConfigs]);
 
   const handleTriggerRun = (name: string): void => {
     triggerRun.mutate(name, {
