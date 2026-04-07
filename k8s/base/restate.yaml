@@ -30,13 +30,15 @@ spec:
     spec:
       containers:
         - name: restate
-          image: docker.io/restatedev/restate:1.3
+          image: docker.io/restatedev/restate:1.5
           ports:
             - containerPort: 8080
             - containerPort: 9070
           env:
             - name: RESTATE_DEFAULT_NUM_PARTITIONS
               value: "4"
+            - name: RESTATE_DEFAULT_JOURNAL_RETENTION
+              value: "7d"
             - name: RESTATE_WORKER__INVOKER__ABORT_TIMEOUT
               value: "2min"
             # How long Restate waits before re-invoking a suspended handler
