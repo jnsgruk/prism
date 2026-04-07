@@ -1,13 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@ps/cn";
-import { GitBranch } from "lucide-react";
 
-import { SourceState, type SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { PipelineDAGFlow } from "@/views/ingestion/components/pipeline-dag-flow";
 import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
+
+import {
+  POLL_INTERVAL_ACTIVE,
+  POLL_INTERVAL_BURST,
+  POLL_INTERVAL_IDLE,
+} from "@/views/ingestion/lib/constants";
 
 /**
  * Derive handler status from live source state for in-progress stages.
@@ -41,12 +44,6 @@ const buildSourceStatusMap = (
   return map;
 };
 
-import {
-  POLL_INTERVAL_ACTIVE,
-  POLL_INTERVAL_BURST,
-  POLL_INTERVAL_IDLE,
-} from "@/views/ingestion/lib/constants";
-
 const StatusBadge = ({ status }: { status: string }): React.ReactElement => {
   const styles: Record<string, string> = {
     running: "bg-blue-500/10 text-blue-600",
@@ -67,71 +64,51 @@ const StatusBadge = ({ status }: { status: string }): React.ReactElement => {
   );
 };
 
-export const PipelineGraph = ({
-  onAction,
-  sources,
-  isBursting,
-}: {
-  onAction: () => void;
-  sources?: SourceStatus[];
-  /** When true, poll at 1s to pick up newly-triggered pipelines quickly. */
+export { StatusBadge };
+
+export const usePipelineState = (options?: {
   isBursting?: boolean;
-}): React.ReactElement => {
+}): {
+  current: ReturnType<typeof useCurrentPipeline>["current"];
+  isLoading: boolean;
+  isRunning: boolean;
+} => {
   const { current, isLoading } = useCurrentPipeline({
     refetchInterval: (query) => {
-      if (isBursting) return POLL_INTERVAL_BURST;
+      if (options?.isBursting) return POLL_INTERVAL_BURST;
       const pipeline = query.state.data?.current;
       if (pipeline?.status === "running") return POLL_INTERVAL_ACTIVE;
       return POLL_INTERVAL_IDLE;
     },
   });
 
-  const isRunning = current?.status === "running";
+  return { current, isLoading, isRunning: current?.status === "running" };
+};
+
+export const PipelineDAG = ({
+  sources,
+  isBursting,
+}: {
+  sources?: SourceStatus[];
+  isBursting?: boolean;
+}): React.ReactElement => {
+  const { current, isLoading } = usePipelineState({ isBursting });
+
   const sourceStatusMap = sources
     ? buildSourceStatusMap(sources, current?.startedAt?.seconds)
     : undefined;
 
   if (isLoading) {
+    return <Skeleton className="h-[200px] w-full" />;
+  }
+
+  if (!current) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <GitBranch className="size-4" />
-            Pipeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[280px] w-full" />
-        </CardContent>
-      </Card>
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        No pipeline runs yet. Click Run Pipeline to start.
+      </p>
     );
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <GitBranch className="size-4" />
-              Pipeline
-            </CardTitle>
-            {current && <StatusBadge status={current.status} />}
-            {current?.startedAt && (
-              <span className="text-xs text-muted-foreground">
-                {formatRelativeTime(current.startedAt)}
-              </span>
-            )}
-          </div>
-          <PipelineActions pipelineId={current?.id} isRunning={isRunning} onAction={onAction} />
-        </div>
-      </CardHeader>
-
-      {current && (
-        <CardContent className="pb-4">
-          <PipelineDAGFlow pipeline={current} sourceStatuses={sourceStatusMap} />
-        </CardContent>
-      )}
-    </Card>
-  );
+  return <PipelineDAGFlow pipeline={current} sourceStatuses={sourceStatusMap} />;
 };

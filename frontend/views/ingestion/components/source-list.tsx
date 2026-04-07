@@ -5,24 +5,37 @@ import { toast } from "sonner";
 import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { isActive } from "@/views/ingestion/lib/constants";
 
+import { Separator } from "@/components/ui/separator";
+import { EmbeddingRow, EnrichmentRow } from "./ai-handler-row";
 import { SourceRow } from "./source-row";
+
+export type SourceConfigInfo = { id: string; enabled: boolean };
 
 export const SourceList = ({
   sources,
+  sourceConfigs,
   onAction,
+  onToggleEnabled,
 }: {
   sources: SourceStatus[];
+  sourceConfigs?: Map<string, SourceConfigInfo>;
   onAction: () => void;
+  onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
 }): React.ReactElement => {
   const triggerRun = useTriggerRun();
   const cancelRun = useCancelRun();
 
-  // Sort: active first (by start time), then idle (by last run, most recent first)
+  // Sort: active first, then idle, then disabled
   const sortedSources = useMemo(() => {
-    const active = sources.filter(isActive);
-    const idle = sources.filter((s) => !isActive(s));
-    return [...active, ...idle];
-  }, [sources]);
+    const active = sources.filter(
+      (s) => isActive(s) && sourceConfigs?.get(s.name)?.enabled !== false,
+    );
+    const idle = sources.filter(
+      (s) => !isActive(s) && sourceConfigs?.get(s.name)?.enabled !== false,
+    );
+    const disabled = sources.filter((s) => sourceConfigs?.get(s.name)?.enabled === false);
+    return [...active, ...idle, ...disabled];
+  }, [sources, sourceConfigs]);
 
   const handleTriggerRun = (name: string): void => {
     triggerRun.mutate(name, {
@@ -47,24 +60,34 @@ export const SourceList = ({
   return (
     <div>
       {/* Column headers — desktop only */}
-      <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_7rem] sm:items-center sm:gap-x-2">
+      <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem] sm:items-center sm:gap-x-2">
         <span />
         <span>Source</span>
         <span>Progress</span>
         <span className="text-right">Items</span>
-        <span className="text-right">Actions</span>
+        <span />
       </div>
 
-      {sortedSources.map((source) => (
-        <SourceRow
-          key={source.name}
-          source={source}
-          onTriggerRun={handleTriggerRun}
-          onCancelRun={handleCancelRun}
-          onAction={onAction}
-          isPending={triggerRun.isPending || cancelRun.isPending}
-        />
-      ))}
+      {sortedSources.map((source) => {
+        const config = sourceConfigs?.get(source.name);
+        return (
+          <SourceRow
+            key={source.name}
+            source={source}
+            sourceId={config?.id}
+            enabled={config?.enabled ?? true}
+            onTriggerRun={handleTriggerRun}
+            onCancelRun={handleCancelRun}
+            onToggleEnabled={onToggleEnabled}
+            onAction={onAction}
+          />
+        );
+      })}
+
+      {/* AI handler rows */}
+      <Separator />
+      <EnrichmentRow />
+      <EmbeddingRow />
     </div>
   );
 };

@@ -1,10 +1,7 @@
 import { DOT_SEP, Stat } from "@/components/inline-stat";
-import { CancelButton, RunButton } from "@/components/run-cancel-buttons";
 import { StatusDot, stateStyles } from "@/components/status-dot";
-import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronRight, GitPullRequest, MessageSquare, RotateCcw, UserX } from "lucide-react";
+import { ChevronRight, GitPullRequest, MessageSquare, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
@@ -15,7 +12,7 @@ import { cn } from "@ps/cn";
 import { formatRelativeTime } from "@/lib/format";
 import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
 import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
-import { BackfillDialog } from "./backfill-dialog";
+import { SourceOverflowMenu } from "./source-overflow-menu";
 
 // ---------------------------------------------------------------------------
 // State helpers
@@ -136,23 +133,26 @@ const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElemen
 
 export const SourceRow = ({
   source,
+  sourceId,
+  enabled = true,
   onTriggerRun,
   onCancelRun,
+  onToggleEnabled,
   onAction,
-  isPending,
 }: {
   source: SourceStatus;
+  sourceId?: string;
+  enabled?: boolean;
   onTriggerRun?: (name: string) => void;
   onCancelRun?: (name: string) => void;
+  onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
   onAction?: () => void;
-  isPending?: boolean;
 }): React.ReactElement => {
   const [expanded, setExpanded] = useState(false);
-  const [showBackfill, setShowBackfill] = useState(false);
 
-  const stateKey = stateFromEnum(source.state);
-  const stateLabel = stateStyles[stateKey]?.label ?? "Idle";
-  const isActive = stateKey === "collecting" || stateKey === "waiting";
+  const stateKey = enabled ? stateFromEnum(source.state) : "disabled";
+  const stateLabel = enabled ? (stateStyles[stateKey]?.label ?? "Idle") : "Disabled";
+  const isActive = enabled && (stateKey === "collecting" || stateKey === "waiting");
 
   const progress = useMemo((): NormalisedProgress | null => {
     if (!isActive) return null;
@@ -168,7 +168,6 @@ export const SourceRow = ({
 
   const hasDetail = !!detail;
   const relativeTime = source.lastRun ? formatRelativeTime(source.lastRun) : "Never";
-  const pending = !!isPending;
 
   return (
     <>
@@ -176,8 +175,9 @@ export const SourceRow = ({
         <div
           className={cn(
             "group grid items-center gap-x-2 border-b px-4 py-2.5 text-sm last:border-b-0",
-            "grid-cols-[1rem_1fr_auto_auto_auto]",
-            "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_7rem]",
+            "grid-cols-[1rem_1fr_auto_auto]",
+            "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem]",
+            !enabled && "opacity-50",
           )}
         >
           {/* Expand chevron */}
@@ -196,16 +196,15 @@ export const SourceRow = ({
 
           {/* Name + status */}
           <div className="flex min-w-0 items-center gap-2">
-            <StatusDot state={stateKey} animate={isActive} />
+            <StatusDot state={enabled ? stateKey : "pending"} animate={isActive} />
             <span className="truncate font-medium">{source.name}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">{stateLabel}</span>
           </div>
 
           {/* Progress or last run */}
           <div className="hidden min-w-0 sm:block">
-            {isActive && progress ? (
-              <InlineProgress progress={progress} />
-            ) : (
+            {isActive && progress && <InlineProgress progress={progress} />}
+            {!isActive && enabled && (
               <span className="text-xs text-muted-foreground">{relativeTime}</span>
             )}
           </div>
@@ -215,32 +214,18 @@ export const SourceRow = ({
             {source.itemsCollected.toLocaleString()}
           </span>
 
-          {/* Actions */}
-          <div className="flex shrink-0 items-center justify-end gap-1">
-            {isActive ? (
-              <CancelButton onClick={() => onCancelRun?.(source.name)} isPending={pending} />
-            ) : (
-              <>
-                <RunButton onClick={() => onTriggerRun?.(source.name)} isPending={pending} />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-1.5"
-                          onClick={() => setShowBackfill(true)}
-                        />
-                      }
-                    >
-                      <RotateCcw className="size-3.5" />
-                    </TooltipTrigger>
-                    <TooltipContent>Backfill</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
+          {/* Overflow menu */}
+          <div className="flex shrink-0 items-center justify-end">
+            <SourceOverflowMenu
+              sourceName={source.name}
+              sourceId={sourceId}
+              isActive={isActive}
+              enabled={enabled}
+              onTriggerRun={onTriggerRun}
+              onCancelRun={onCancelRun}
+              onToggleEnabled={onToggleEnabled}
+              onAction={onAction}
+            />
           </div>
         </div>
 
@@ -254,13 +239,6 @@ export const SourceRow = ({
           <InlineProgress progress={progress} />
         </div>
       )}
-
-      <BackfillDialog
-        sourceName={source.name}
-        open={showBackfill}
-        onOpenChange={setShowBackfill}
-        onAction={onAction}
-      />
     </>
   );
 };

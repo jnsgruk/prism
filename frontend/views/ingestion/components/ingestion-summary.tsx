@@ -1,6 +1,3 @@
-import { Button } from "@/components/ui/button";
-import { Loader2, Play } from "lucide-react";
-
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
@@ -8,7 +5,13 @@ import { formatRelativeTime } from "@/lib/format";
 import { isActive } from "@/views/ingestion/lib/constants";
 
 /** Inline text summary — sits next to the card title. */
-export const IngestionSummary = ({ sources }: { sources: SourceStatus[] }): React.ReactElement => {
+export const IngestionSummary = ({
+  sources,
+  disabledCount = 0,
+}: {
+  sources: SourceStatus[];
+  disabledCount?: number;
+}): React.ReactElement => {
   const running = sources.filter(isActive);
   const idle = sources.filter((s) => !isActive(s));
   const errorCount = sources.filter((s) => s.state === SourceState.ERROR).length;
@@ -42,6 +45,15 @@ export const IngestionSummary = ({ sources }: { sources: SourceStatus[] }): Reac
               </span>
             </>
           )}
+          {disabledCount > 0 && (
+            <>
+              <span>·</span>
+              <span>
+                <span className="font-medium tabular-nums text-foreground">{disabledCount}</span>{" "}
+                disabled
+              </span>
+            </>
+          )}
           <span>·</span>
           <span>
             <span className="font-medium tabular-nums text-foreground">
@@ -51,32 +63,11 @@ export const IngestionSummary = ({ sources }: { sources: SourceStatus[] }): Reac
           </span>
         </>
       ) : (
-        <span>All idle{lastRunTs && <> · Last run {formatRelativeTime(lastRunTs)}</>}</span>
+        <span>
+          {disabledCount > 0 ? `${idle.length} idle · ${disabledCount} disabled` : "All idle"}
+          {lastRunTs && <> · Last run {formatRelativeTime(lastRunTs)}</>}
+        </span>
       )}
     </div>
-  );
-};
-
-/** Run All button — sits at the right of the card header. */
-export const IngestionActions = ({
-  sources,
-  onRunAll,
-  isPending,
-}: {
-  sources: SourceStatus[];
-  onRunAll: () => void;
-  isPending: boolean;
-}): React.ReactElement => {
-  const allActive = sources.every(isActive);
-
-  return (
-    <Button variant="outline" size="sm" onClick={onRunAll} disabled={isPending || allActive}>
-      {isPending ? (
-        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-      ) : (
-        <Play className="mr-1.5 size-3.5" />
-      )}
-      Run All
-    </Button>
   );
 };

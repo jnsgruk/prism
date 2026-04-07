@@ -1,27 +1,30 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Database, Loader2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Activity, ChevronRight, GitBranch, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { useListSources, useUpdateSource } from "@/lib/hooks/use-config";
 
-import { AiPipelineStatus } from "@/views/ingestion/components/ai-pipeline-status";
+import { formatRelativeTime } from "@/lib/format";
 import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
-import { IngestionActions, IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
-import { PipelineGraph } from "@/views/ingestion/components/pipeline-graph";
-import { SourceList } from "@/views/ingestion/components/source-list";
+import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
+import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
 import {
-  useIngestionStatus,
-  useListRuns,
-  useTriggerRun,
-} from "@/views/ingestion/hooks/use-ingestion";
+  PipelineDAG,
+  StatusBadge,
+  usePipelineState,
+} from "@/views/ingestion/components/pipeline-graph";
+import { SourceList, type SourceConfigInfo } from "@/views/ingestion/components/source-list";
+import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
 import {
   POLL_INTERVAL_ACTIVE,
   POLL_INTERVAL_BURST,
   POLL_INTERVAL_IDLE,
 } from "@/views/ingestion/lib/constants";
-import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
+import { cn } from "@ps/cn";
 
 const BURST_DURATION = 10_000;
 
@@ -36,8 +39,14 @@ const IngestionPage = (): React.ReactElement => {
   }, []);
 
   const isBursting = burstUntil > Date.now();
-  const { current: currentPipeline } = useCurrentPipeline();
-  const pipelineRunning = currentPipeline?.status === "running";
+
+  const { current: currentPipeline, isRunning: pipelineRunning } = usePipelineState({
+    isBursting,
+  });
+
+  // DAG auto-expands when running, collapsed when idle
+  const [dagOpen, setDagOpen] = useState(false);
+  const dagExpanded = pipelineRunning || dagOpen;
 
   const { data: sources, isLoading: sourcesLoading } = useIngestionStatus({
     refetchInterval: (query) => {
@@ -50,23 +59,41 @@ const IngestionPage = (): React.ReactElement => {
     },
   });
 
-  const triggerRun = useTriggerRun();
+  // Fetch source configs for enabled/disabled state
+  const { data: sourceConfigs } = useListSources();
+  const updateSource = useUpdateSource();
 
-  const handleRunAll = useCallback(() => {
-    if (!sources) return;
-    const idle = sources.filter(
-      (s) => s.state !== SourceState.COLLECTING && s.state !== SourceState.WAITING,
-    );
-    if (idle.length === 0) {
-      toast.info("All sources are already running");
-      return;
+  const sourceConfigMap = useMemo(() => {
+    if (!sourceConfigs) return undefined;
+    const map = new Map<string, SourceConfigInfo>();
+    for (const cfg of sourceConfigs) {
+      map.set(cfg.name, { id: cfg.id, enabled: cfg.enabled });
     }
-    for (const s of idle) {
-      triggerRun.mutate(s.name);
+    return map;
+  }, [sourceConfigs]);
+
+  const disabledCount = useMemo(() => {
+    if (!sourceConfigMap) return 0;
+    let count = 0;
+    for (const v of sourceConfigMap.values()) {
+      if (!v.enabled) count++;
     }
-    toast.success(`Triggered ${idle.length} source${idle.length > 1 ? "s" : ""}`);
-    triggerBurst();
-  }, [sources, triggerRun, triggerBurst]);
+    return count;
+  }, [sourceConfigMap]);
+
+  const handleToggleEnabled = useCallback(
+    (sourceId: string, enabled: boolean) => {
+      updateSource.mutate(
+        { sourceId, enabled },
+        {
+          onSuccess: () => toast.success(enabled ? "Source enabled" : "Source disabled"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Failed to update source"),
+        },
+      );
+    },
+    [updateSource],
+  );
 
   const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
 
@@ -113,32 +140,61 @@ const IngestionPage = (): React.ReactElement => {
     <>
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
-        <PipelineGraph onAction={triggerBurst} sources={sources} isBursting={isBursting} />
-
+        {/* Unified Pipeline Card */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Database className="size-4" />
-                  Ingestion Pipeline
-                </CardTitle>
-                <IngestionSummary sources={sources} />
+          <Collapsible open={dagExpanded} onOpenChange={setDagOpen}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <GitBranch className="size-4" />
+                    Pipeline
+                  </CardTitle>
+                  {currentPipeline && <StatusBadge status={currentPipeline.status} />}
+                  {currentPipeline?.startedAt && (
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeTime(currentPipeline.startedAt)}
+                    </span>
+                  )}
+                  <IngestionSummary sources={sources} disabledCount={disabledCount} />
+                  {/* DAG toggle — only when not running (auto-expanded when running) */}
+                  {!pipelineRunning && currentPipeline && (
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <ChevronRight
+                        className={cn("size-3.5 transition-transform", dagExpanded && "rotate-90")}
+                      />
+                      <span className="hidden sm:inline">{dagExpanded ? "Hide" : "Show"}</span>
+                    </CollapsibleTrigger>
+                  )}
+                </div>
+                <PipelineActions
+                  pipelineId={currentPipeline?.id}
+                  isRunning={pipelineRunning}
+                  onAction={triggerBurst}
+                />
               </div>
-              <IngestionActions
-                sources={sources}
-                onRunAll={handleRunAll}
-                isPending={triggerRun.isPending}
-              />
-            </div>
-          </CardHeader>
+            </CardHeader>
+
+            {/* Collapsible DAG */}
+            <CollapsibleContent>
+              <CardContent className="pb-4">
+                <PipelineDAG sources={sources} isBursting={isBursting} />
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Source list + AI handlers */}
           <CardContent className="px-0 pb-0">
-            <SourceList sources={sources} onAction={triggerBurst} />
+            <SourceList
+              sources={sources}
+              sourceConfigs={sourceConfigMap}
+              onAction={triggerBurst}
+              onToggleEnabled={handleToggleEnabled}
+            />
           </CardContent>
         </Card>
 
-        <AiPipelineStatus />
-
+        {/* Run History */}
         {runsLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />

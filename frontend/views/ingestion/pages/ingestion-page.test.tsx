@@ -5,6 +5,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  GetPipelineStatusResponseSchema,
   GetStatusResponseSchema,
   HandlersService,
   HandlerRunSchema,
@@ -16,6 +17,12 @@ import {
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
+  ConfigService,
+  ListSourcesResponseSchema,
+  SourceConfigSchema,
+} from "@ps/api/gen/canonical/prism/v1/config_pb";
+import {
+  GetEmbeddingStatusResponseSchema,
   GetEnrichmentPipelineStatusResponseSchema,
   ReasoningService,
 } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
@@ -35,6 +42,21 @@ const mockSources = [
     state: SourceState.ERROR,
     lastRun: timestampFromDate(new Date("2026-03-11T08:30:00Z")),
     itemsCollected: 0,
+  }),
+];
+
+const mockSourceConfigs = [
+  create(SourceConfigSchema, {
+    id: "src-1",
+    name: "github-main",
+    sourceType: Platform.GITHUB,
+    enabled: true,
+  }),
+  create(SourceConfigSchema, {
+    id: "src-2",
+    name: "jira-project",
+    sourceType: Platform.JIRA,
+    enabled: true,
   }),
 ];
 
@@ -71,6 +93,10 @@ vi.mock("@ps/api/transport", () => ({
       listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
       triggerRun: () => create(TriggerRunResponseSchema, {}),
       triggerBackfill: () => create(TriggerBackfillResponseSchema, {}),
+      getPipelineStatus: () => create(GetPipelineStatusResponseSchema, {}),
+    });
+    service(ConfigService, {
+      listSources: () => create(ListSourcesResponseSchema, { sources: mockSourceConfigs }),
     });
     service(ReasoningService, {
       getEnrichmentPipelineStatus: () =>
@@ -78,6 +104,12 @@ vi.mock("@ps/api/transport", () => ({
           pendingCount: 0n,
           totalEnrichments: 100n,
           byType: [],
+        }),
+      getEmbeddingStatus: () =>
+        create(GetEmbeddingStatusResponseSchema, {
+          embeddedCount: 120n,
+          queuedCount: 380n,
+          coveragePercent: 24.0,
         }),
     });
   }),
@@ -105,20 +137,19 @@ describe("IngestionPage", () => {
     expect(screen.getAllByText("Error").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders summary strip", async () => {
+  it("renders pipeline controls in card header", async () => {
     await renderPage();
 
-    // Summary should show idle count and Run All button
-    expect(screen.getByRole("button", { name: /Run All/i })).toBeInTheDocument();
+    // Pipeline Run button is the primary control (no more "Run All")
+    expect(screen.getByRole("button", { name: /Run Pipeline/i })).toBeInTheDocument();
   });
 
-  it("renders Run and Backfill controls for each source", async () => {
+  it("renders AI handler rows in the source list", async () => {
     await renderPage();
 
-    // Each idle source gets a Run button (text is hidden on mobile but button exists)
-    const runButtons = screen.getAllByRole("button", { name: /Run/i });
-    // At least 2 for sources + 1 for Run All + possibly 1 for enrichment
-    expect(runButtons.length).toBeGreaterThanOrEqual(3);
+    // Enrichments and Embeddings are now rows in the same card
+    expect(screen.getByText("Enrichments")).toBeInTheDocument();
+    expect(screen.getByText("Embeddings")).toBeInTheDocument();
   });
 
   it("renders run history panel with status pills", async () => {
@@ -128,7 +159,7 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Collapsed header shows status counts (number and label are split across elements)
+    // Collapsed header shows status counts
     expect(screen.getByText((_, el) => el?.textContent === "1 completed")).toBeInTheDocument();
     expect(screen.getByText((_, el) => el?.textContent === "1 failed")).toBeInTheDocument();
   });
@@ -140,7 +171,6 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Expand the collapsible run history
     screen.getByText("Run History").click();
 
     await waitFor(() => {
