@@ -5,7 +5,10 @@
 /// 2. Otherwise → start a shared pgvector Docker container via testcontainers
 /// 3. If both fail → skip the test with a warning
 ///
-/// Each test gets its own uniquely-named database with migrations applied.
+/// When `PS_TEST_TEMPLATE` is set (by the nextest setup script), the test
+/// database is created with `TEMPLATE <name>` — a near-instant filesystem
+/// copy of a pre-migrated database. Otherwise, migrations are run from
+/// scratch (slower, but works without nextest).
 #[macro_export]
 macro_rules! setup_test_db {
     () => {{
@@ -22,13 +25,18 @@ macro_rules! setup_test_db {
             }
         };
 
-        // Create a unique database for this test
+        // Create a unique database for this test.
         let test_db = format!("ps_test_{}", uuid::Uuid::now_v7().simple());
         let admin_pool = sqlx::PgPool::connect(&database_url)
             .await
             .expect("connect to admin database");
 
-        sqlx::query(&format!("CREATE DATABASE \"{test_db}\""))
+        let template = std::env::var("PS_TEST_TEMPLATE").ok();
+        let create_sql = match &template {
+            Some(tmpl) => format!("CREATE DATABASE \"{test_db}\" TEMPLATE \"{tmpl}\""),
+            None => format!("CREATE DATABASE \"{test_db}\""),
+        };
+        sqlx::query(&create_sql)
             .execute(&admin_pool)
             .await
             .expect("create test database");
@@ -43,10 +51,14 @@ macro_rules! setup_test_db {
             .await
             .expect("connect to test database");
 
-        sqlx::migrate!("../../migrations")
-            .run(&pool)
-            .await
-            .expect("run migrations");
+        // Only run migrations if we didn't use a template (template already
+        // has them applied).
+        if template.is_none() {
+            sqlx::migrate!("../../migrations")
+                .run(&pool)
+                .await
+                .expect("run migrations");
+        }
 
         (pool, test_db, database_url)
     }};

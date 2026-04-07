@@ -1,0 +1,22 @@
+experimental = ["setup-scripts"]
+
+[store]
+dir = "target/nextest"
+
+# Setup script: start a pgvector container and prepare a pre-migrated template
+# DB. The binary uses Docker CLI directly so the container outlives the script.
+[scripts.setup.db]
+command = "target/debug/setup-test-db"
+
+[profile.default]
+# Per-test timeout — fail fast instead of hanging.
+slow-timeout = { period = "30s", terminate-after = 2 }
+# Show which tests are slow.
+status-level = "slow"
+# Show failures immediately, not at the end.
+failure-output = "immediate"
+
+# Wire the db setup script to integration tests.
+[[profile.default.scripts]]
+filter = "package(ps-integration)"
+setup = "db"

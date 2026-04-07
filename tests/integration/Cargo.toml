@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[[bin]]
+name = "setup-test-db"
+path = "src/bin/setup-test-db.rs"
+
 [lints.clippy]
 # Tests use expect/unwrap freely
 expect_used = "allow"
