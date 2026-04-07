@@ -702,7 +702,6 @@ impl FromStr for Role {
 #[serde(rename_all = "snake_case")]
 pub enum TaskType {
     Enrichment,
-    Insights,
     Agentic,
     Embeddings,
 }
@@ -717,7 +716,6 @@ impl TaskType {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Enrichment => "enrichment",
-            Self::Insights => "insights",
             Self::Agentic => "agentic",
             Self::Embeddings => "embeddings",
         }
@@ -729,7 +727,6 @@ impl FromStr for TaskType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "enrichment" => Ok(Self::Enrichment),
-            "insights" => Ok(Self::Insights),
             "agentic" => Ok(Self::Agentic),
             "embeddings" => Ok(Self::Embeddings),
             _ => Err(format!("invalid TaskType: {s}")),
@@ -948,7 +945,6 @@ mod tests {
     fn task_type_roundtrip() {
         for variant in [
             TaskType::Enrichment,
-            TaskType::Insights,
             TaskType::Agentic,
             TaskType::Embeddings,
         ] {

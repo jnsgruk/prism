@@ -43,7 +43,6 @@ async fn get_ai_settings_defaults() {
     let settings = resp.settings.expect("settings present");
     // Default settings should have provider configs
     assert!(settings.enrichment.is_some());
-    assert!(settings.insights.is_some());
     // No provider keys set initially
     assert!(!settings.provider_secret_status["google"]);
 
@@ -69,7 +68,6 @@ async fn update_ai_settings_round_trip() {
             provider: AiProvider::Google.into(),
             model: "gemini-2.0-flash".into(),
         }),
-        insights: None,
         agentic: None,
         embeddings: None,
     });

@@ -35,11 +35,6 @@ pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Stat
                     config.tasks.enrichment = tc;
                 }
             }
-            "ai.tasks.insights" => {
-                if let Ok(tc) = serde_json::from_value(s.value.clone()) {
-                    config.tasks.insights = tc;
-                }
-            }
             "ai.tasks.agentic" => {
                 if let Ok(tc) = serde_json::from_value(s.value.clone()) {
                     config.tasks.agentic = tc;
@@ -80,7 +75,6 @@ pub async fn build_ai_settings(svc: &ReasoningServiceImpl) -> Result<AiSettings,
 
     Ok(AiSettings {
         enrichment: Some(task_config_to_proto(&config.tasks.enrichment)),
-        insights: Some(task_config_to_proto(&config.tasks.insights)),
         agentic: Some(task_config_to_proto(&config.tasks.agentic)),
         embeddings: Some(task_config_to_proto(&config.tasks.embeddings)),
         provider_secret_status,
@@ -202,19 +196,6 @@ pub async fn update_ai_settings(
         svc.repos
             .config
             .set_global_setting("ai.tasks.enrichment", &value)
-            .await
-            .map_err(db_err)?;
-    }
-    if let Some(tc) = &req.insights
-        && let Some(config) = proto_to_task_config(tc)
-    {
-        let value = serde_json::to_value(&config).map_err(|e| {
-            error!(error = %e, "failed to serialize task config");
-            Status::internal("internal error")
-        })?;
-        svc.repos
-            .config
-            .set_global_setting("ai.tasks.insights", &value)
             .await
             .map_err(db_err)?;
     }

@@ -87,8 +87,7 @@ message AiTaskConfig {
 message AiSettings {
   // Model used for contribution enrichment (review depth, sentiment, etc.).
   AiTaskConfig enrichment = 1;
-  // Model used for insight generation.
-  AiTaskConfig insights = 2;
+  reserved 2; // was insights
   // Model used for agentic reasoning tasks.
   AiTaskConfig agentic = 3;
   // Model used for generating vector embeddings.
@@ -108,7 +107,7 @@ message GetAiSettingsResponse {
 
 message UpdateAiSettingsRequest {
   optional AiTaskConfig enrichment = 1;
-  optional AiTaskConfig insights = 2;
+  reserved 2; // was insights
   optional AiTaskConfig agentic = 3;
   optional AiTaskConfig embeddings = 4;
   reserved 5; // was budget_cap_usd

@@ -94,7 +94,7 @@ enum RunStatus {
 enum AiProvider {
   AI_PROVIDER_UNSPECIFIED = 0;
   AI_PROVIDER_GOOGLE = 1;
-  reserved 2;
+  reserved 2; // was AI_PROVIDER_OPENROUTER
 }
 
 // EnrichmentType classifies the kind of AI enrichment applied to a

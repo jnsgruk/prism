@@ -21,7 +21,6 @@ pub struct AiConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiTaskRouting {
     pub enrichment: AiTaskConfig,
-    pub insights: AiTaskConfig,
     pub agentic: AiTaskConfig,
     pub embeddings: AiTaskConfig,
 }
@@ -31,7 +30,6 @@ impl AiTaskRouting {
     pub fn get(&self, task: TaskType) -> &AiTaskConfig {
         match task {
             TaskType::Enrichment => &self.enrichment,
-            TaskType::Insights => &self.insights,
             TaskType::Agentic => &self.agentic,
             TaskType::Embeddings => &self.embeddings,
         }
@@ -44,10 +42,6 @@ impl Default for AiTaskRouting {
             enrichment: AiTaskConfig {
                 provider: AiProvider::Google,
                 model: "gemini-2.5-flash".into(),
-            },
-            insights: AiTaskConfig {
-                provider: AiProvider::Google,
-                model: "gemini-2.5-pro".into(),
             },
             agentic: AiTaskConfig {
                 provider: AiProvider::Google,
