@@ -258,7 +258,7 @@ export const DisabledSourceRow = ({
 }): React.ReactElement => (
   <div
     className={cn(
-      "group grid items-center gap-x-2 border-b px-4 py-2.5 text-sm opacity-50 last:border-b-0",
+      "group grid items-center gap-x-2 px-4 py-2.5 text-sm text-muted-foreground",
       "grid-cols-[1rem_1fr_auto_auto]",
       "sm:grid-cols-[1rem_minmax(8rem,1fr)_minmax(12rem,2fr)_6rem_2rem]",
     )}
