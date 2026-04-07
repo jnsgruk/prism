@@ -9,7 +9,8 @@ Prism is an engineering insights platform for understanding team and individual 
 ```bash
 prek run -av                              # All lints, tests, formatters — run before finishing any task
 cargo build                               # Build all crates
-cargo test                                # Run all Rust tests
+cargo nextest run                         # Run all Rust tests (unit + integration)
+cargo nextest run -p ps-integration       # Run integration tests only
 cargo clippy --allow-dirty --fix          # Lint + auto-fix
 nix fmt                                   # Format all files (treefmt: rustfmt, nixfmt, deadnix, oxfmt, shfmt)
 buf lint                                  # Lint proto files
@@ -615,24 +616,62 @@ Discourse also triggers `IdentityResolutionHandler`. Triggers are **not awaited*
 
 ### Rust — Integration Tests Are Primary
 
-Test against real PostgreSQL, never mock the database. External APIs (GitHub, Jira) mocked with `wiremock`.
+Test against real PostgreSQL, never mock the database. External APIs (GitHub, Jira) mocked with `wiremock`. **Tests must be run via `cargo nextest run`** — the integration test crate requires the nextest setup script to provision a database.
 
-**Database provisioning** is automatic via testcontainers-rs: when `DATABASE_URL` is not set, the test harness starts a shared `pgvector/pgvector:pg17` Docker container and runs all tests against it. The container is removed on process exit via `libc::atexit`. Set `DATABASE_URL` to skip the container and connect to an external Postgres instead (useful in CI or when you already have a local Postgres running).
+**Database provisioning** is automatic via a nextest setup script (`tests/integration/src/bin/setup-test-db.rs`). Before tests start, it:
+
+1. Starts a `pgvector/pgvector:pg17` Docker container (or reuses an existing one)
+2. Creates a pre-migrated template database (`ps_template`)
+3. Exports `DATABASE_URL` and `PS_TEST_TEMPLATE` to the nextest environment
+4. Spawns a watchdog process that stops the container when nextest exits
+
+Each test creates an isolated database from the template via `CREATE DATABASE ... TEMPLATE` (near-instant filesystem copy). Set `DATABASE_URL` externally to skip the container and use an existing Postgres instead (useful in CI).
 
 ```
 tests/integration/
 ├── src/
 │   ├── lib.rs
+│   ├── bin/
+│   │   └── setup-test-db.rs  # Nextest setup script (container + template DB)
 │   ├── common/
-│   │   ├── container.rs   # Shared testcontainers pgvector instance
-│   │   ├── macros.rs      # define_api_test!, define_repo_test!
-│   │   ├── server.rs      # TestServer (real gRPC server on random port)
-│   │   └── fixtures.rs    # create_admin_user() and other data builders
-│   ├── api/               # gRPC API tests (define_api_test!)
-│   └── repo/              # Repository layer tests (define_repo_test!)
+│   │   ├── db.rs              # TestDb, RepoTestContext
+│   │   ├── server.rs          # TestServer, ApiTestContext
+│   │   ├── wiremock_helpers.rs # SourceTestContext + mock response builders
+│   │   └── fixtures.rs        # create_admin_user() and other data builders
+│   ├── api/                   # gRPC API tests (ApiTestContext)
+│   ├── repo/                  # Repository layer tests (RepoTestContext)
+│   ├── source/                # Source adapter tests (SourceTestContext)
+│   └── metrics/               # Metrics computation tests (RepoTestContext)
 ```
 
-Key macros: `define_api_test!` (full gRPC server), `define_repo_test!` (just `Repos` + `PgPool`)
+**Three test context types** — tests are plain `#[tokio::test]` async functions:
+
+| Context | Provides | Use for |
+| --- | --- | --- |
+| `ApiTestContext` | `server.channel`, `server.pool`, `server.addr` (real gRPC server) | API-layer tests |
+| `RepoTestContext` | `repos`, `pool` (no server) | Repository and metrics tests |
+| `SourceTestContext` | `mock_server`, `repos`, `pool` + `build_ingestion_ctx()` | Source adapter tests |
+
+```rust
+// Example: API test
+#[tokio::test]
+async fn my_api_test() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+    // ... test using server.channel, server.pool ...
+    ctx.teardown().await;
+}
+
+// Example: Repo test
+#[tokio::test]
+async fn my_repo_test() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+    // ... test using repos, pool ...
+    ctx.teardown().await;
+}
+```
 
 ### Frontend — Lightweight, Custom Logic Only
 
@@ -642,7 +681,7 @@ Test custom hooks, data transformations, interactive components. Don't test shad
 
 ## Gotchas
 
-1. **sqlx offline mode** — after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`. Note: `cargo sqlx prepare` requires a live PostgreSQL with migrations applied — it cannot use the testcontainers instance. Start one with `docker run -d --name ps-sqlx -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg17`, run migrations, then `DATABASE_URL=postgres://postgres:postgres@localhost:5433/postgres cargo sqlx prepare --workspace`.
+1. **sqlx offline mode** — after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`. Note: `cargo sqlx prepare` requires a live PostgreSQL with migrations applied. Start one with `docker run -d --name ps-sqlx -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg17`, run migrations, then `DATABASE_URL=postgres://postgres:postgres@localhost:5433/postgres cargo sqlx prepare --workspace`.
 2. **Proto regeneration** — after changing `.proto` files, run `buf generate`. Both Rust and TypeScript clients need regeneration. `buf breaking --against .git#branch=main` catches compatibility issues.
 3. **Connect client changes** — frontend transport auto-discovers services. New service hooks go in `lib/hooks/` if shared, or in `views/<feature>/hooks/` if feature-local.
 4. **Auth interceptor** — all RPCs require authentication except: `GetSetupStatus`, `CompleteSetup`, `PreviewBackup`, `RestoreBackup`, `Login`. Adding new public RPCs requires updating the interceptor allow-list.
