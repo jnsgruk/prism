@@ -125,19 +125,6 @@ impl CostTracker {
             );
         }
     }
-
-    /// Check if the daily budget has been exceeded.
-    pub async fn check_budget(&self, cap_usd: f64) -> Result<bool, ps_core::Error> {
-        let today = time::OffsetDateTime::now_utc().date();
-        let spent = self.repo.get_daily_spend(today).await?;
-        Ok(spent < cap_usd)
-    }
-
-    /// Get the current daily spend.
-    pub async fn daily_spend(&self) -> Result<f64, ps_core::Error> {
-        let today = time::OffsetDateTime::now_utc().date();
-        self.repo.get_daily_spend(today).await
-    }
 }
 
 #[cfg(test)]

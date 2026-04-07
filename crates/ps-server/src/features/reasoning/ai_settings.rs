@@ -55,11 +55,6 @@ pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Stat
                     config.image_generation = Some(tc);
                 }
             }
-            "ai.budget_cap_usd" => {
-                if let Some(cap) = s.value.as_f64() {
-                    config.budget_cap_usd = Some(cap);
-                }
-            }
             _ => {}
         }
     }
@@ -92,7 +87,6 @@ pub async fn build_ai_settings(svc: &ReasoningServiceImpl) -> Result<AiSettings,
         insights: Some(task_config_to_proto(&config.tasks.insights)),
         agentic: Some(task_config_to_proto(&config.tasks.agentic)),
         embeddings: Some(task_config_to_proto(&config.tasks.embeddings)),
-        budget_cap_usd: config.budget_cap_usd,
         provider_secret_status,
         image_generation: config.image_generation.as_ref().map(task_config_to_proto),
     })
@@ -278,15 +272,6 @@ pub async fn update_ai_settings(
             .await
             .map_err(db_err)?;
     }
-    if let Some(cap) = req.budget_cap_usd {
-        let value = serde_json::json!(cap);
-        svc.repos
-            .config
-            .set_global_setting("ai.budget_cap_usd", &value)
-            .await
-            .map_err(db_err)?;
-    }
-
     // Reload config into the router
     let config = load_ai_config(svc).await?;
     svc.router.write().await.update_config(config);

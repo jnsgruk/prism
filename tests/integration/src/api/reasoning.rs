@@ -63,7 +63,6 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
         insights: None,
         agentic: None,
         embeddings: None,
-        budget_cap_usd: Some(50.0),
     });
     auth(&mut req, &token);
 
@@ -77,7 +76,6 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
     let enrichment = settings.enrichment.expect("enrichment config");
     assert_eq!(enrichment.provider, i32::from(AiProvider::Google));
     assert_eq!(enrichment.model, "gemini-2.0-flash");
-    assert_eq!(settings.budget_cap_usd, Some(50.0));
 
     // Re-read to verify persistence
     let mut req = Request::new(GetAiSettingsRequest {});
@@ -92,7 +90,6 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
     let enrichment = settings.enrichment.expect("enrichment config");
     assert_eq!(enrichment.provider, i32::from(AiProvider::Google));
     assert_eq!(enrichment.model, "gemini-2.0-flash");
-    assert_eq!(settings.budget_cap_usd, Some(50.0));
 });
 
 // ---------------------------------------------------------------------------

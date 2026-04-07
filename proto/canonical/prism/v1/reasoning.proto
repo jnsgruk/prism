@@ -93,8 +93,7 @@ message AiSettings {
   AiTaskConfig agentic = 3;
   // Model used for generating vector embeddings.
   AiTaskConfig embeddings = 4;
-  // Monthly budget cap in USD. Null means unlimited.
-  optional double budget_cap_usd = 5;
+  reserved 5; // was budget_cap_usd
   // Map of provider name to whether an API key is stored (e.g. {"google": true}).
   map<string, bool> provider_secret_status = 6;
   // Default model for image generation via the generate_image MCP tool.
@@ -112,7 +111,7 @@ message UpdateAiSettingsRequest {
   optional AiTaskConfig insights = 2;
   optional AiTaskConfig agentic = 3;
   optional AiTaskConfig embeddings = 4;
-  optional double budget_cap_usd = 5;
+  reserved 5; // was budget_cap_usd
   // Default model for image generation.
   optional AiTaskConfig image_generation = 6;
 }
@@ -194,7 +193,7 @@ message GetCostSummaryRequest {
 
 message GetCostSummaryResponse {
   double today_spend_usd = 1;
-  optional double budget_cap_usd = 2;
+  reserved 2; // was budget_cap_usd
   repeated DailySpend daily_spend = 3;
   repeated TaskSpend task_breakdown = 4;
   repeated ModelSpend model_breakdown = 5;

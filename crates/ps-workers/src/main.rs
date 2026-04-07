@@ -166,11 +166,6 @@ async fn setup_ai_router(
                         config.tasks.embeddings = tc;
                     }
                 }
-                "ai.budget_cap_usd" => {
-                    if let Some(cap) = s.value.as_f64() {
-                        config.budget_cap_usd = Some(cap);
-                    }
-                }
                 _ => {}
             }
         }

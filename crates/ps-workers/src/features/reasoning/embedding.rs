@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use ps_core::models::TaskType;
 use ps_core::repo::reasoning::QueuedEmbedding;
-use ps_reasoning::cost::CostTracker;
 use ps_reasoning::features::embeddings;
 use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
@@ -86,24 +85,6 @@ impl EmbeddingHandlerImpl {
         let mut iteration = 0u32;
 
         loop {
-            // Budget check (outside ctx.run — read-only, re-checking on replay is correct)
-            {
-                let router = self.router.read().await;
-                if let Some(cap) = router.budget_cap_usd() {
-                    let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-                    match cost_tracker.check_budget(cap).await {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            warn!(cap, "daily budget exceeded, pausing embedding");
-                            break;
-                        }
-                        Err(e) => {
-                            warn!(error = %e, "failed to check budget, continuing cautiously");
-                        }
-                    }
-                }
-            }
-
             // Step 3: Fetch queued batch (journaled — DB read)
             let items = self.find_queued(ctx, iteration).await?;
 

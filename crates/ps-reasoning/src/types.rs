@@ -9,10 +9,9 @@ pub struct AiTaskConfig {
 }
 
 /// All AI task routing configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AiConfig {
     pub tasks: AiTaskRouting,
-    pub budget_cap_usd: Option<f64>,
     /// Default model for image generation via the `generate_image` MCP tool.
     #[serde(default)]
     pub image_generation: Option<AiTaskConfig>,
@@ -35,16 +34,6 @@ impl AiTaskRouting {
             TaskType::Insights => &self.insights,
             TaskType::Agentic => &self.agentic,
             TaskType::Embeddings => &self.embeddings,
-        }
-    }
-}
-
-impl Default for AiConfig {
-    fn default() -> Self {
-        Self {
-            tasks: AiTaskRouting::default(),
-            budget_cap_usd: Some(5.0),
-            image_generation: None,
         }
     }
 }

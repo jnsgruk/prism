@@ -110,11 +110,6 @@ impl TaskRouter {
         vars
     }
 
-    /// Get the configured budget cap in USD (daily).
-    pub fn budget_cap_usd(&self) -> Option<f64> {
-        self.config.budget_cap_usd
-    }
-
     /// Get the task config for a given task type.
     pub fn task_config(&self, task: TaskType) -> &AiTaskConfig {
         self.config.tasks.get(task)

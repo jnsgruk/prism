@@ -2,7 +2,6 @@ use ps_proto::canonical::prism::v1::{GetCostSummaryRequest, GetCostSummaryRespon
 use tonic::{Request, Response, Status};
 
 use super::ReasoningServiceImpl;
-use super::ai_settings::load_ai_config;
 use crate::common::{ai_provider_to_proto, db_err, require_auth};
 
 pub async fn get_cost_summary(
@@ -17,7 +16,7 @@ pub async fn get_cost_summary(
     let today = time::OffsetDateTime::now_utc().date();
     let since = today - time::Duration::days(i64::from(days) - 1);
 
-    let (today_spend, daily_series, task_breakdown, model_breakdown, config) = tokio::try_join!(
+    let (today_spend, daily_series, task_breakdown, model_breakdown) = tokio::try_join!(
         async {
             svc.repos
                 .reasoning
@@ -48,7 +47,6 @@ pub async fn get_cost_summary(
                 .await
                 .map_err(db_err)
         },
-        async { load_ai_config(svc).await },
     )?;
 
     let daily_spend: Vec<ps_proto::canonical::prism::v1::DailySpend> = daily_series
@@ -89,7 +87,6 @@ pub async fn get_cost_summary(
 
     Ok(Response::new(GetCostSummaryResponse {
         today_spend_usd: today_spend,
-        budget_cap_usd: config.budget_cap_usd,
         daily_spend,
         task_breakdown,
         model_breakdown,

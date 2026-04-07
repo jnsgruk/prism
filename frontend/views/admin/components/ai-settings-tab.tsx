@@ -11,7 +11,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -104,9 +103,7 @@ export const AiSettingsTab = (): React.ReactElement => {
 
   return (
     <div className="space-y-6 pt-4">
-      <p className="text-sm text-muted-foreground">
-        Configure AI providers, model routing, and budget limits.
-      </p>
+      <p className="text-sm text-muted-foreground">Configure AI providers and model routing.</p>
 
       <ProviderCredentialsSection
         secretStatus={settings?.providerSecretStatus ?? {}}
@@ -151,21 +148,6 @@ export const AiSettingsTab = (): React.ReactElement => {
             onSuccess: () => toast.success("AI settings updated"),
             onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update"),
           });
-        }}
-        isUpdating={updateSettings.isPending}
-      />
-
-      <BudgetSection
-        currentCap={settings?.budgetCapUsd}
-        onUpdate={(cap) => {
-          updateSettings.mutate(
-            { budgetCapUsd: cap },
-            {
-              onSuccess: () => toast.success("Budget cap updated"),
-              onError: (err) =>
-                toast.error(err instanceof Error ? err.message : "Failed to update"),
-            },
-          );
         }}
         isUpdating={updateSettings.isPending}
       />
@@ -492,65 +474,6 @@ const TaskRoutingSection = ({
               </div>
             );
           })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Budget
-// ---------------------------------------------------------------------------
-
-const BudgetSection = ({
-  currentCap,
-  onUpdate,
-  isUpdating,
-}: {
-  currentCap: number | undefined;
-  onUpdate: (cap: number) => void;
-  isUpdating: boolean;
-}): React.ReactElement => {
-  const [value, setValue] = useState("");
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Daily Budget Cap</CardTitle>
-        <CardDescription>
-          Enrichment pauses when the daily spend exceeds this limit (USD).
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-3">
-          <Label>Current cap:</Label>
-          <span className="tabular-nums text-sm font-medium">
-            {currentCap != null ? `$${currentCap.toFixed(2)}` : "—"}
-          </span>
-          <Separator orientation="vertical" className="h-5" />
-          <Input
-            type="number"
-            step="0.50"
-            min="0"
-            placeholder="New cap (USD)"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="w-[140px]"
-          />
-          <Button
-            size="sm"
-            disabled={!value || isUpdating}
-            onClick={() => {
-              const cap = Number.parseFloat(value);
-              if (!Number.isNaN(cap) && cap >= 0) {
-                onUpdate(cap);
-                setValue("");
-              }
-            }}
-          >
-            {isUpdating && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-            Update
-          </Button>
         </div>
       </CardContent>
     </Card>

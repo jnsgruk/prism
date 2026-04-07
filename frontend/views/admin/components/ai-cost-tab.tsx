@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
@@ -27,33 +27,13 @@ export const AiCostSection = (): React.ReactElement => {
   }
 
   const todaySpend = data?.todaySpendUsd ?? 0;
-  const budgetCap = data?.budgetCapUsd;
-  const overBudget = budgetCap != null && todaySpend >= budgetCap;
 
   return (
     <div className="space-y-6 pt-4">
       <p className="text-sm text-muted-foreground">AI API usage and cost tracking.</p>
 
-      {overBudget && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-          <AlertTriangle className="size-4 text-destructive" />
-          <span className="text-sm font-medium text-destructive">
-            Daily budget exceeded — enrichment pipeline paused
-          </span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatCard label="Today" value={`$${todaySpend.toFixed(2)}`} />
-        <StatCard label="Budget cap" value={budgetCap != null ? `$${budgetCap.toFixed(2)}` : "—"} />
-        <StatCard
-          label="Utilisation"
-          value={
-            budgetCap != null && budgetCap > 0
-              ? `${Math.round((todaySpend / budgetCap) * 100)}%`
-              : "—"
-          }
-        />
         <StatCard
           label="7-day total"
           value={`$${(data?.dailySpend ?? []).reduce((sum, d) => sum + d.costUsd, 0).toFixed(2)}`}

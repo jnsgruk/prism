@@ -3,7 +3,6 @@ use std::sync::Arc;
 use ps_core::models::EnrichmentType;
 use ps_core::models::TaskType;
 use ps_core::repo::reasoning::{EmbeddingQueueEntry, QueuedContribution};
-use ps_reasoning::cost::CostTracker;
 use ps_reasoning::features::enrichment;
 use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
@@ -172,10 +171,6 @@ impl EnrichmentHandlerImpl {
         let mut s = CycleState::new();
 
         loop {
-            if self.is_budget_exceeded().await {
-                break;
-            }
-
             let batches = self.fetch_all_type_batches(ctx, s.iteration).await?;
             if batches.iter().all(|(_, c)| c.is_empty()) {
                 debug!("no more contributions to enrich across any type");
@@ -297,27 +292,6 @@ impl EnrichmentHandlerImpl {
                 duration_secs = elapsed.as_secs(),
                 "complete"
             );
-        }
-    }
-
-    /// Check whether the daily AI budget has been exceeded.
-    /// Returns `true` if the loop should break.
-    async fn is_budget_exceeded(&self) -> bool {
-        let router = self.router.read().await;
-        let Some(cap) = router.budget_cap_usd() else {
-            return false;
-        };
-        let cost_tracker = CostTracker::new(self.state.repos.reasoning.clone());
-        match cost_tracker.check_budget(cap).await {
-            Ok(true) => false,
-            Ok(false) => {
-                warn!(cap, "daily budget exceeded");
-                true
-            }
-            Err(e) => {
-                warn!(error = %e, "failed to check budget, continuing cautiously");
-                false
-            }
         }
     }
 
