@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE reasoning.conversations\n            SET total_tool_calls = total_tool_calls + $2,\n                total_prompt_tokens = total_prompt_tokens + $3,\n                total_completion_tokens = total_completion_tokens + $4,\n                last_activity_at = now()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a005682f3f8ea6be7cad3cf3e3ffa790379c8eac4edaff3d49dfec0d9f4895d1"
+}
