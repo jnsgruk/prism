@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -8,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -15,8 +18,21 @@ import type { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { aiProviderLabel } from "@/lib/proto-display";
 import { useCostSummary } from "@/views/admin/hooks/use-ai-cost";
 
+const COST_WINDOWS = [
+  { key: "1w", label: "Last week", days: 7 },
+  { key: "2w", label: "Last two weeks", days: 14 },
+  { key: "1m", label: "Last month", days: 30 },
+  { key: "1q", label: "Last quarter", days: 90 },
+  { key: "1y", label: "Last year", days: 365 },
+  { key: "all", label: "All time", days: 0 },
+] as const;
+
 export const AiCostSection = (): React.ReactElement => {
-  const { data, isLoading } = useCostSummary(7);
+  const [windowKey, setWindowKey] = useState("1m");
+  const window = COST_WINDOWS.find((w) => w.key === windowKey) ?? COST_WINDOWS[2];
+  const days = window.days || 3650;
+  const windowLabel = window.label;
+  const { data, isLoading } = useCostSummary(days);
 
   if (isLoading) {
     return (
@@ -27,24 +43,43 @@ export const AiCostSection = (): React.ReactElement => {
   }
 
   const todaySpend = data?.todaySpendUsd ?? 0;
+  const totalSpend = (data?.dailySpend ?? []).reduce((sum, d) => sum + d.costUsd, 0);
 
   return (
-    <div className="space-y-6 pt-4">
-      <p className="text-sm text-muted-foreground">AI API usage and cost tracking.</p>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-medium">Usage & Cost</h3>
+        <p className="text-xs text-muted-foreground">AI API usage and cost tracking.</p>
+      </div>
+      <ToggleGroup
+        className="h-8 w-full rounded-lg bg-muted p-[3px] text-muted-foreground"
+        value={[windowKey]}
+        onValueChange={(values) => {
+          const selected = values[0];
+          if (selected) setWindowKey(selected);
+        }}
+      >
+        {COST_WINDOWS.map((w) => (
+          <ToggleGroupItem
+            key={w.key}
+            value={w.key}
+            className="h-[calc(100%-1px)] flex-1 rounded-md bg-transparent px-3 py-0.5 text-sm font-medium text-foreground/60 hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+          >
+            {w.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatCard label="Today" value={`$${todaySpend.toFixed(2)}`} />
-        <StatCard
-          label="7-day total"
-          value={`$${(data?.dailySpend ?? []).reduce((sum, d) => sum + d.costUsd, 0).toFixed(2)}`}
-        />
+        <StatCard label={`${windowLabel} total`} value={`$${totalSpend.toFixed(2)}`} />
       </div>
 
-      <DailySpendChart data={data?.dailySpend ?? []} />
+      <DailySpendChart data={data?.dailySpend ?? []} windowLabel={windowLabel} />
 
-      <TaskBreakdownTable data={data?.taskBreakdown ?? []} />
+      <TaskBreakdownTable data={data?.taskBreakdown ?? []} windowLabel={windowLabel} />
 
-      <ModelBreakdownTable data={data?.modelBreakdown ?? []} />
+      <ModelBreakdownTable data={data?.modelBreakdown ?? []} windowLabel={windowLabel} />
     </div>
   );
 };
@@ -68,13 +103,15 @@ const StatCard = ({ label, value }: { label: string; value: string }): React.Rea
 
 const DailySpendChart = ({
   data,
+  windowLabel,
 }: {
   data: { date: string; costUsd: number; requestCount: bigint }[];
+  windowLabel: string;
 }): React.ReactElement => (
   <Card>
     <CardHeader>
       <CardTitle className="text-base">Daily Spend</CardTitle>
-      <CardDescription>Last 7 days</CardDescription>
+      <CardDescription>Last {windowLabel}</CardDescription>
     </CardHeader>
     <CardContent>
       {data.length === 0 ? (
@@ -111,6 +148,7 @@ const DailySpendChart = ({
 
 const TaskBreakdownTable = ({
   data,
+  windowLabel,
 }: {
   data: {
     taskType: string;
@@ -119,14 +157,16 @@ const TaskBreakdownTable = ({
     completionTokens: bigint;
     requestCount: bigint;
   }[];
+  windowLabel: string;
 }): React.ReactElement => (
   <Card>
     <CardHeader>
-      <CardTitle className="text-base">Today by Task</CardTitle>
+      <CardTitle className="text-base">By Task</CardTitle>
+      <CardDescription>Last {windowLabel}</CardDescription>
     </CardHeader>
     <CardContent>
       {data.length === 0 ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">No usage today</p>
+        <p className="py-4 text-center text-sm text-muted-foreground">No usage data</p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
           <Table>
@@ -175,6 +215,7 @@ const TaskBreakdownTable = ({
 
 const ModelBreakdownTable = ({
   data,
+  windowLabel,
 }: {
   data: {
     provider: AiProvider;
@@ -185,10 +226,12 @@ const ModelBreakdownTable = ({
     completionTokens: bigint;
     requestCount: bigint;
   }[];
+  windowLabel: string;
 }): React.ReactElement => (
   <Card>
     <CardHeader>
-      <CardTitle className="text-base">7-day Breakdown by Model</CardTitle>
+      <CardTitle className="text-base">By Model</CardTitle>
+      <CardDescription>Last {windowLabel}</CardDescription>
     </CardHeader>
     <CardContent>
       {data.length === 0 ? (
