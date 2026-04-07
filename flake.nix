@@ -171,6 +171,7 @@
               nixfmt
 
               # Dev tools
+              cargo-nextest
               cargo-watch
               tilt
               kubectl
@@ -284,7 +285,7 @@
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";
-                  entry = "cargo test";
+                  entry = "cargo nextest run";
                   pass_filenames = false;
                   stages = [ "pre-commit" ];
                 };

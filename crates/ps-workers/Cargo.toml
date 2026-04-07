@@ -36,4 +36,5 @@ url.workspace = true
 rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 wiremock.workspace = true

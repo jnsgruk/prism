@@ -93,7 +93,7 @@ mod tests {
         assert_eq!(call_count.load(Ordering::SeqCst), 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn transient_succeeds_on_retry() {
         let call_count = AtomicU32::new(0);
         let result: Result<&str, TestError> = retry_transient("test", is_transient, || async {
@@ -112,7 +112,7 @@ mod tests {
         assert_eq!(call_count.load(Ordering::SeqCst), 2);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn exhausts_retries_after_max_attempts() {
         let call_count = AtomicU32::new(0);
         let result: Result<(), TestError> = retry_transient("test", is_transient, || async {
