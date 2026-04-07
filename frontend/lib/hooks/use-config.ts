@@ -77,6 +77,10 @@ export const useUpdateSource = (): UseMutationResult<
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: configKeys.sources() });
       queryClient.invalidateQueries({ queryKey: configKeys.source(variables.sourceId) });
+      // When toggling enabled, the handlers status (SourceStatus[]) changes too
+      if (variables.enabled !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["handlers", "status"] });
+      }
     },
   });
 };
