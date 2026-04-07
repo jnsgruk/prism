@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 
+import { ApiTokensSection } from "./api-tokens-section";
 import { ImportDirectoryDialog } from "./import-directory-dialog";
 import { ImportJiraUsersDialog } from "./import-jira-users-dialog";
 import { ResetDataDialog } from "./reset-data-dialog";
@@ -7,8 +8,10 @@ import { ResetDataDialog } from "./reset-data-dialog";
 export const SystemTab = (): React.ReactElement => (
   <div className="space-y-6 pt-4">
     <p className="text-sm text-muted-foreground">
-      System-wide settings, data imports, and destructive operations.
+      System-wide settings, API tokens, data imports, and destructive operations.
     </p>
+
+    <ApiTokensSection />
 
     <div className="space-y-4">
       <div>
