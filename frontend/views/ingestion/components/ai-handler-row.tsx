@@ -69,6 +69,45 @@ const useHandlerActions = (
 };
 
 // ---------------------------------------------------------------------------
+// Shared overflow menu for AI handler rows
+// ---------------------------------------------------------------------------
+
+const AiHandlerMenu = ({
+  actions,
+}: {
+  actions: ReturnType<typeof useHandlerActions>;
+}): React.ReactElement => (
+  <div className="flex shrink-0 items-center justify-end">
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 data-popup-open:opacity-100 sm:opacity-0"
+          />
+        }
+      >
+        <MoreHorizontal className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side="bottom">
+        {actions.isRunning ? (
+          <DropdownMenuItem onClick={actions.cancel}>
+            <Square className="size-3.5" />
+            Cancel
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={actions.trigger}>
+            <Play className="size-3.5" />
+            Run
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 // Enrichment row
 // ---------------------------------------------------------------------------
 
@@ -105,38 +144,13 @@ export const EnrichmentRow = (): React.ReactElement => {
         )}
       </div>
 
-      {/* Spacer for items column */}
-      <span className="hidden sm:block" />
+      {/* Items */}
+      <span className="hidden text-right tabular-nums sm:block">
+        {status ? Number(status.totalEnrichments).toLocaleString() : "—"}
+      </span>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 data-popup-open:opacity-100 sm:opacity-0"
-              />
-            }
-          >
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom">
-            {actions.isRunning ? (
-              <DropdownMenuItem onClick={actions.cancel}>
-                <Square className="size-3.5" />
-                Cancel
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={actions.trigger}>
-                <Play className="size-3.5" />
-                Run
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <AiHandlerMenu actions={actions} />
     </div>
   );
 };
@@ -178,38 +192,13 @@ export const EmbeddingRow = (): React.ReactElement => {
         )}
       </div>
 
-      {/* Spacer for items column */}
-      <span className="hidden sm:block" />
+      {/* Items */}
+      <span className="hidden text-right tabular-nums sm:block">
+        {embStatus ? Number(embStatus.embeddedCount).toLocaleString() : "—"}
+      </span>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 data-popup-open:opacity-100 sm:opacity-0"
-              />
-            }
-          >
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom">
-            {actions.isRunning ? (
-              <DropdownMenuItem onClick={actions.cancel}>
-                <Square className="size-3.5" />
-                Cancel
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={actions.trigger}>
-                <Play className="size-3.5" />
-                Run
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <AiHandlerMenu actions={actions} />
     </div>
   );
 };
