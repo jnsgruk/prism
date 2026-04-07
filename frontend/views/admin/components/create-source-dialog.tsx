@@ -154,7 +154,9 @@ export const CreateSourceDialog = (): React.ReactElement => {
                 <Label htmlFor="source-type">Type</Label>
                 <Select value={sourceType} onValueChange={(v) => v !== null && handleTypeChange(v)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {SOURCE_TYPES.find((t) => t.value === sourceType)?.label ?? sourceType}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {SOURCE_TYPES.map((t) => (
