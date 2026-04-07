@@ -85,12 +85,10 @@ export const ApiTokensSection = (): React.ReactElement => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium">API Tokens</h3>
-          <Separator className="mt-2" />
-        </div>
+        <h3 className="text-sm font-medium">API Tokens</h3>
         <CreateTokenDialog />
       </div>
+      <Separator />
       {content()}
     </div>
   );
