@@ -1,6 +1,13 @@
 import { DOT_SEP, Stat } from "@/components/inline-stat";
-import { CancelButton, RunButton } from "@/components/run-cancel-buttons";
 import { StatusDot } from "@/components/status-dot";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Play, Square } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
@@ -103,11 +110,32 @@ export const EnrichmentRow = (): React.ReactElement => {
 
       {/* Actions */}
       <div className="flex shrink-0 items-center justify-end">
-        {actions.isRunning ? (
-          <CancelButton onClick={actions.cancel} isPending={actions.isPending} />
-        ) : (
-          <RunButton onClick={actions.trigger} isPending={actions.isPending} />
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 data-popup-open:opacity-100 sm:opacity-0"
+              />
+            }
+          >
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="bottom">
+            {actions.isRunning ? (
+              <DropdownMenuItem onClick={actions.cancel}>
+                <Square className="size-3.5" />
+                Cancel
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={actions.trigger}>
+                <Play className="size-3.5" />
+                Run
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -155,11 +183,32 @@ export const EmbeddingRow = (): React.ReactElement => {
 
       {/* Actions */}
       <div className="flex shrink-0 items-center justify-end">
-        {actions.isRunning ? (
-          <CancelButton onClick={actions.cancel} isPending={actions.isPending} />
-        ) : (
-          <RunButton onClick={actions.trigger} isPending={actions.isPending} />
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 data-popup-open:opacity-100 sm:opacity-0"
+              />
+            }
+          >
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="bottom">
+            {actions.isRunning ? (
+              <DropdownMenuItem onClick={actions.cancel}>
+                <Square className="size-3.5" />
+                Cancel
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={actions.trigger}>
+                <Play className="size-3.5" />
+                Run
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
