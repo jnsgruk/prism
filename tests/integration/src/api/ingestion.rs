@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::config_service_client::ConfigServiceClient;
 use ps_proto::canonical::prism::v1::handlers_service_client::HandlersServiceClient;
 use ps_proto::canonical::prism::v1::{
@@ -15,7 +15,11 @@ fn auth<T>(req: &mut Request<T>, token: &str) {
     );
 }
 
-define_api_test!(get_status_empty, |server| async move {
+#[tokio::test]
+async fn get_status_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
@@ -28,9 +32,15 @@ define_api_test!(get_status_empty, |server| async move {
         .expect("get_status")
         .into_inner();
     assert!(resp.sources.is_empty());
-});
 
-define_api_test!(get_status_shows_enabled_sources, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_status_shows_enabled_sources() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     // Create an enabled source via ConfigService
@@ -60,9 +70,15 @@ define_api_test!(get_status_shows_enabled_sources, |server| async move {
     assert_eq!(resp.sources.len(), 1);
     assert_eq!(resp.sources[0].name, "test-github");
     assert_eq!(resp.sources[0].source_type, i32::from(Platform::Github));
-});
 
-define_api_test!(list_runs_empty, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_runs_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
@@ -75,9 +91,15 @@ define_api_test!(list_runs_empty, |server| async move {
 
     let resp = client.list_runs(req).await.expect("list_runs").into_inner();
     assert!(resp.runs.is_empty());
-});
 
-define_api_test!(list_runs_filters_by_source, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_runs_filters_by_source() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     // Insert test fixture runs (using raw query — test-only code is not
@@ -116,9 +138,15 @@ define_api_test!(list_runs_filters_by_source, |server| async move {
 
     let resp = client.list_runs(req).await.expect("list_runs").into_inner();
     assert_eq!(resp.runs.len(), 3);
-});
 
-define_api_test!(trigger_run_requires_valid_source, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn trigger_run_requires_valid_source() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
@@ -137,9 +165,15 @@ define_api_test!(trigger_run_requires_valid_source, |server| async move {
     auth(&mut req, &token);
     let err = client.trigger_run(req).await.expect_err("should fail");
     assert_eq!(err.code(), tonic::Code::NotFound);
-});
 
-define_api_test!(trigger_backfill_validates_inputs, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn trigger_backfill_validates_inputs() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
@@ -160,13 +194,21 @@ define_api_test!(trigger_backfill_validates_inputs, |server| async move {
     auth(&mut req, &token);
     let err = client.trigger_backfill(req).await.expect_err("should fail");
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
 
-define_api_test!(unauthenticated_requests_rejected, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn unauthenticated_requests_rejected() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
     // No auth token
     let req = Request::new(GetStatusRequest {});
     let err = client.get_status(req).await.expect_err("should fail");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}

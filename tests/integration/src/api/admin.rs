@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::admin_service_client::AdminServiceClient;
 use ps_proto::canonical::prism::v1::{
     CreateApiTokenRequest, CreateBackupRequest, ListApiTokensRequest, ResetDataRequest,
@@ -18,7 +18,11 @@ fn auth<T>(req: &mut Request<T>, token: &str) {
 // CreateApiToken + ListApiTokens
 // ---------------------------------------------------------------------------
 
-define_api_test!(create_and_list_api_tokens, |server| async move {
+#[tokio::test]
+async fn create_and_list_api_tokens() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -50,13 +54,19 @@ define_api_test!(create_and_list_api_tokens, |server| async move {
 
     assert_eq!(list.tokens.len(), 1);
     assert_eq!(list.tokens[0].name, "ci-token");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // RevokeApiToken
 // ---------------------------------------------------------------------------
 
-define_api_test!(revoke_api_token, |server| async move {
+#[tokio::test]
+async fn revoke_api_token() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -91,13 +101,19 @@ define_api_test!(revoke_api_token, |server| async move {
         .into_inner();
 
     assert!(list.tokens.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // RevokeApiToken — not found
 // ---------------------------------------------------------------------------
 
-define_api_test!(revoke_api_token_not_found, |server| async move {
+#[tokio::test]
+async fn revoke_api_token_not_found() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -112,13 +128,19 @@ define_api_test!(revoke_api_token_not_found, |server| async move {
         .expect_err("should be not found");
 
     assert_eq!(err.code(), tonic::Code::NotFound);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // CreateApiToken — requires auth
 // ---------------------------------------------------------------------------
 
-define_api_test!(create_api_token_requires_auth, |server| async move {
+#[tokio::test]
+async fn create_api_token_requires_auth() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AdminServiceClient::new(server.channel.clone());
 
     let err = client
@@ -129,13 +151,19 @@ define_api_test!(create_api_token_requires_auth, |server| async move {
         .expect_err("should require auth");
 
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // CreateApiToken — empty name rejected
 // ---------------------------------------------------------------------------
 
-define_api_test!(create_api_token_empty_name, |server| async move {
+#[tokio::test]
+async fn create_api_token_empty_name() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -150,13 +178,19 @@ define_api_test!(create_api_token_empty_name, |server| async move {
         .expect_err("empty name should fail");
 
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // CreateBackup — streaming response
 // ---------------------------------------------------------------------------
 
-define_api_test!(create_backup_returns_data, |server| async move {
+#[tokio::test]
+async fn create_backup_returns_data() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -180,13 +214,19 @@ define_api_test!(create_backup_returns_data, |server| async move {
     assert!(!chunks.is_empty());
     let total_bytes: usize = chunks.iter().map(|c| c.chunk.len()).sum();
     assert!(total_bytes > 0, "backup should contain data");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // ResetData — confirm flag required
 // ---------------------------------------------------------------------------
 
-define_api_test!(reset_data_requires_confirm, |server| async move {
+#[tokio::test]
+async fn reset_data_requires_confirm() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = AdminServiceClient::new(server.channel.clone());
 
@@ -199,13 +239,19 @@ define_api_test!(reset_data_requires_confirm, |server| async move {
         .expect_err("should require confirm");
 
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // ResetData — actually resets
 // ---------------------------------------------------------------------------
 
-define_api_test!(reset_data_clears_contributions, |server| async move {
+#[tokio::test]
+async fn reset_data_clears_contributions() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let repos = ps_core::repo::Repos::new(server.pool.clone());
     let mut client = AdminServiceClient::new(server.channel.clone());
@@ -255,4 +301,6 @@ define_api_test!(reset_data_clears_contributions, |server| async move {
 
     assert!(resp.contributions_deleted >= 1);
     assert!(resp.people_deleted >= 1);
-});
+
+    ctx.teardown().await;
+}

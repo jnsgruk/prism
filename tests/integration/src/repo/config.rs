@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::models::{AiModel, AiProvider, Platform};
 use uuid::Uuid;
 
@@ -6,7 +6,12 @@ use uuid::Uuid;
 // Source CRUD
 // ---------------------------------------------------------------------------
 
-define_repo_test!(create_source_and_get, |repos, _pool| async move {
+#[tokio::test]
+async fn create_source_and_get() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     let settings = serde_json::json!({"org": "canonical"});
     let source = repos
@@ -23,27 +28,38 @@ define_repo_test!(create_source_and_get, |repos, _pool| async move {
 
     let fetched = repos.config.get_source(id).await.unwrap().unwrap();
     assert_eq!(fetched.name, "GitHub");
-});
 
-define_repo_test!(
-    create_source_conflict_returns_error,
-    |repos, _pool| async move {
-        let settings = serde_json::json!({});
-        repos
-            .config
-            .create_source(Uuid::now_v7(), "github", "dupe", &settings, None)
-            .await
-            .unwrap();
+    ctx.teardown().await;
+}
 
-        let err = repos
-            .config
-            .create_source(Uuid::now_v7(), "github", "dupe", &settings, None)
-            .await;
-        assert!(err.is_err());
-    }
-);
+#[tokio::test]
+async fn create_source_conflict_returns_error() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-define_repo_test!(list_sources_ordered_by_name, |repos, _pool| async move {
+    let settings = serde_json::json!({});
+    repos
+        .config
+        .create_source(Uuid::now_v7(), "github", "dupe", &settings, None)
+        .await
+        .unwrap();
+
+    let err = repos
+        .config
+        .create_source(Uuid::now_v7(), "github", "dupe", &settings, None)
+        .await;
+    assert!(err.is_err());
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_sources_ordered_by_name() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let settings = serde_json::json!({});
     repos
         .config
@@ -60,9 +76,16 @@ define_repo_test!(list_sources_ordered_by_name, |repos, _pool| async move {
     assert_eq!(sources.len(), 2);
     assert_eq!(sources[0].name, "Alpha GitHub");
     assert_eq!(sources[1].name, "Zulu Jira");
-});
 
-define_repo_test!(get_enabled_source_by_name, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_enabled_source_by_name() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let settings = serde_json::json!({});
     let id = Uuid::now_v7();
     repos
@@ -91,9 +114,16 @@ define_repo_test!(get_enabled_source_by_name, |repos, _pool| async move {
             .unwrap()
             .is_none()
     );
-});
 
-define_repo_test!(get_enabled_source_by_type, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_enabled_source_by_type() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let settings = serde_json::json!({});
     repos
         .config
@@ -117,9 +147,16 @@ define_repo_test!(get_enabled_source_by_type, |repos, _pool| async move {
             .unwrap()
             .is_none()
     );
-});
 
-define_repo_test!(update_source_settings, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_source_settings() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     let settings = serde_json::json!({"org": "old"});
     repos
@@ -138,9 +175,16 @@ define_repo_test!(update_source_settings, |repos, _pool| async move {
     let fetched = repos.config.get_source(id).await.unwrap().unwrap();
     assert_eq!(fetched.settings["org"], "new");
     assert_eq!(fetched.settings["extra"], true);
-});
 
-define_repo_test!(update_source_schedule, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_source_schedule() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     let settings = serde_json::json!({});
     repos
@@ -157,9 +201,16 @@ define_repo_test!(update_source_schedule, |repos, _pool| async move {
 
     let fetched = repos.config.get_source(id).await.unwrap().unwrap();
     assert_eq!(fetched.schedule_cron.as_deref(), Some("0 0 * * *"));
-});
 
-define_repo_test!(delete_source, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn delete_source() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     let settings = serde_json::json!({});
     repos
@@ -172,9 +223,16 @@ define_repo_test!(delete_source, |repos, _pool| async move {
     assert!(repos.config.get_source(id).await.unwrap().is_none());
     // Second delete returns false
     assert!(!repos.config.delete_source(id).await.unwrap());
-});
 
-define_repo_test!(source_exists, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn source_exists() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     assert!(!repos.config.source_exists(id).await.unwrap());
 
@@ -185,9 +243,16 @@ define_repo_test!(source_exists, |repos, _pool| async move {
         .await
         .unwrap();
     assert!(repos.config.source_exists(id).await.unwrap());
-});
 
-define_repo_test!(discourse_source_type_roundtrip, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn discourse_source_type_roundtrip() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let settings = serde_json::json!({});
     let id = Uuid::now_v7();
     repos
@@ -198,13 +263,20 @@ define_repo_test!(discourse_source_type_roundtrip, |repos, _pool| async move {
 
     let fetched = repos.config.get_source(id).await.unwrap().unwrap();
     assert_eq!(fetched.source_type, Platform::Discourse("ubuntu".into()));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Secrets
 // ---------------------------------------------------------------------------
 
-define_repo_test!(store_and_retrieve_secret, |repos, _pool| async move {
+#[tokio::test]
+async fn store_and_retrieve_secret() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let source_id = Uuid::now_v7();
     let settings = serde_json::json!({});
     repos
@@ -226,36 +298,47 @@ define_repo_test!(store_and_retrieve_secret, |repos, _pool| async move {
         .await
         .unwrap();
     assert_eq!(retrieved.as_deref(), Some(encrypted.as_slice()));
-});
 
-define_repo_test!(
-    secret_status_shows_which_keys_set,
-    |repos, _pool| async move {
-        let source_id = Uuid::now_v7();
-        let settings = serde_json::json!({});
-        repos
-            .config
-            .create_source(source_id, "github", "GH", &settings, None)
-            .await
-            .unwrap();
+    ctx.teardown().await;
+}
 
-        // No secrets yet
-        let keys = repos.config.list_secret_keys(source_id).await.unwrap();
-        assert!(keys.is_empty());
+#[tokio::test]
+async fn secret_status_shows_which_keys_set() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        // Add one
-        repos
-            .config
-            .upsert_secret(Uuid::now_v7(), source_id, "api_token", b"enc")
-            .await
-            .unwrap();
+    let source_id = Uuid::now_v7();
+    let settings = serde_json::json!({});
+    repos
+        .config
+        .create_source(source_id, "github", "GH", &settings, None)
+        .await
+        .unwrap();
 
-        let keys = repos.config.list_secret_keys(source_id).await.unwrap();
-        assert_eq!(keys, vec!["api_token"]);
-    }
-);
+    // No secrets yet
+    let keys = repos.config.list_secret_keys(source_id).await.unwrap();
+    assert!(keys.is_empty());
 
-define_repo_test!(list_all_secret_keys_grouped, |repos, _pool| async move {
+    // Add one
+    repos
+        .config
+        .upsert_secret(Uuid::now_v7(), source_id, "api_token", b"enc")
+        .await
+        .unwrap();
+
+    let keys = repos.config.list_secret_keys(source_id).await.unwrap();
+    assert_eq!(keys, vec!["api_token"]);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_all_secret_keys_grouped() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let settings = serde_json::json!({});
     let s1 = Uuid::now_v7();
     let s2 = Uuid::now_v7();
@@ -289,9 +372,16 @@ define_repo_test!(list_all_secret_keys_grouped, |repos, _pool| async move {
     let map = repos.config.list_all_secret_keys().await.unwrap();
     assert_eq!(map.get(&s1).map(Vec::len), Some(1));
     assert_eq!(map.get(&s2).map(Vec::len), Some(2));
-});
 
-define_repo_test!(upsert_secret_overwrites, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn upsert_secret_overwrites() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let source_id = Uuid::now_v7();
     let settings = serde_json::json!({});
     repos
@@ -318,13 +408,20 @@ define_repo_test!(upsert_secret_overwrites, |repos, _pool| async move {
         .unwrap()
         .unwrap();
     assert_eq!(val, b"new");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Global secrets
 // ---------------------------------------------------------------------------
 
-define_repo_test!(global_secret_crud, |repos, _pool| async move {
+#[tokio::test]
+async fn global_secret_crud() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     assert!(
         repos
             .config
@@ -364,13 +461,20 @@ define_repo_test!(global_secret_crud, |repos, _pool| async move {
             .await
             .unwrap()
     );
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Global settings
 // ---------------------------------------------------------------------------
 
-define_repo_test!(global_settings_crud, |repos, _pool| async move {
+#[tokio::test]
+async fn global_settings_crud() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     assert!(
         repos
             .config
@@ -430,13 +534,20 @@ define_repo_test!(global_settings_crud, |repos, _pool| async move {
             .await
             .unwrap()
     );
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // AI model catalogue
 // ---------------------------------------------------------------------------
 
-define_repo_test!(replace_and_list_ai_models, |repos, _pool| async move {
+#[tokio::test]
+async fn replace_and_list_ai_models() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let models = vec![
         AiModel {
             id: "google/gemini-pro".into(),
@@ -506,13 +617,20 @@ define_repo_test!(replace_and_list_ai_models, |repos, _pool| async move {
     let all = repos.config.list_ai_models(None, None).await.unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].display_name, "Gemini 2");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Backup helpers
 // ---------------------------------------------------------------------------
 
-define_repo_test!(count_and_export_sources, |repos, _pool| async move {
+#[tokio::test]
+async fn count_and_export_sources() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     assert_eq!(repos.config.count_sources().await.unwrap(), 0);
 
     let settings = serde_json::json!({"org": "test"});
@@ -526,4 +644,6 @@ define_repo_test!(count_and_export_sources, |repos, _pool| async move {
     let exported = repos.config.export_sources().await.unwrap();
     assert_eq!(exported.len(), 1);
     assert_eq!(exported[0]["name"], "GH");
-});
+
+    ctx.teardown().await;
+}

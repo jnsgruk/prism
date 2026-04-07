@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::models::{Platform, TeamType};
 use uuid::Uuid;
 
@@ -36,7 +36,12 @@ async fn insert_identity(pool: &sqlx::PgPool, person_id: Uuid, platform: &str, u
 // Teams
 // ---------------------------------------------------------------------------
 
-define_repo_test!(create_team_and_get, |repos, _pool| async move {
+#[tokio::test]
+async fn create_team_and_get() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("Kernel", "Canonical", TeamType::Team, None, None)
@@ -50,9 +55,16 @@ define_repo_test!(create_team_and_get, |repos, _pool| async move {
 
     let fetched = repos.org.get_team(team.id).await.unwrap().unwrap();
     assert_eq!(fetched.name, "Kernel");
-});
 
-define_repo_test!(list_teams_with_filters, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_teams_with_filters() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let parent = repos
         .org
         .create_team("Engineering", "Canonical", TeamType::Group, None, None)
@@ -90,9 +102,16 @@ define_repo_test!(list_teams_with_filters, |repos, _pool| async move {
         .await
         .unwrap();
     assert_eq!(groups.len(), 1);
-});
 
-define_repo_test!(create_team_hierarchy, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn create_team_hierarchy() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let org = repos
         .org
         .create_team("Canonical", "Canonical", TeamType::Org, None, None)
@@ -117,9 +136,16 @@ define_repo_test!(create_team_hierarchy, |repos, _pool| async move {
 
     assert_eq!(group.parent_team_id, Some(org.id));
     assert_eq!(team.parent_team_id, Some(group.id));
-});
 
-define_repo_test!(get_all_teams_flat, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_all_teams_flat() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     repos
         .org
         .create_team("A", "Org", TeamType::Team, None, None)
@@ -135,9 +161,16 @@ define_repo_test!(get_all_teams_flat, |repos, _pool| async move {
     assert_eq!(teams.len(), 2);
     // Ordered by name
     assert_eq!(teams[0].name, "A");
-});
 
-define_repo_test!(list_team_ids, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_team_ids() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let t1 = repos
         .org
         .create_team("A", "Org", TeamType::Team, None, None)
@@ -153,92 +186,107 @@ define_repo_test!(list_team_ids, |repos, _pool| async move {
     assert_eq!(ids.len(), 2);
     assert!(ids.contains(&t1.id));
     assert!(ids.contains(&t2.id));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // People & memberships
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    get_team_members_returns_active_only,
-    |repos, pool| async move {
-        let team = repos
-            .org
-            .create_team("Team", "Org", TeamType::Team, None, None)
-            .await
-            .unwrap();
+#[tokio::test]
+async fn get_team_members_returns_active_only() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        let alice = insert_person(&pool, "Alice", Some("alice@example.com")).await;
-        let bob = insert_person(&pool, "Bob", Some("bob@example.com")).await;
-
-        repos
-            .org
-            .assign_person_to_team(alice.into(), team.id.into())
-            .await
-            .unwrap();
-        repos
-            .org
-            .assign_person_to_team(bob.into(), team.id.into())
-            .await
-            .unwrap();
-
-        let members = repos.org.get_team_members(team.id.into()).await.unwrap();
-        assert_eq!(members.len(), 2);
-
-        // Deactivate bob
-        repos.org.deactivate_person(bob).await.unwrap();
-        let members = repos.org.get_team_members(team.id.into()).await.unwrap();
-        assert_eq!(members.len(), 1);
-        assert_eq!(members[0].name, "Alice");
-    }
-);
-
-define_repo_test!(
-    assign_person_to_team_ends_old_membership,
-    |repos, pool| async move {
-        let team_a = repos
-            .org
-            .create_team("A", "Org", TeamType::Team, None, None)
-            .await
-            .unwrap();
-        let team_b = repos
-            .org
-            .create_team("B", "Org", TeamType::Team, None, None)
-            .await
-            .unwrap();
-
-        let alice = insert_person(&pool, "Alice", None).await;
-
-        repos
-            .org
-            .assign_person_to_team(alice.into(), team_a.id.into())
-            .await
-            .unwrap();
-        let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
-        assert_eq!(members_a.len(), 1);
-
-        // Move to team B
-        repos
-            .org
-            .assign_person_to_team(alice.into(), team_b.id.into())
-            .await
-            .unwrap();
-        let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
-        assert_eq!(members_a.len(), 0);
-        let members_b = repos.org.get_team_members(team_b.id.into()).await.unwrap();
-        assert_eq!(members_b.len(), 1);
-    }
-);
-
-define_repo_test!(list_unassigned_people, |repos, pool| async move {
     let team = repos
         .org
         .create_team("Team", "Org", TeamType::Team, None, None)
         .await
         .unwrap();
 
-    let alice = insert_person(&pool, "Alice", None).await;
-    let _bob = insert_person(&pool, "Bob", None).await;
+    let alice = insert_person(pool, "Alice", Some("alice@example.com")).await;
+    let bob = insert_person(pool, "Bob", Some("bob@example.com")).await;
+
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team.id.into())
+        .await
+        .unwrap();
+    repos
+        .org
+        .assign_person_to_team(bob.into(), team.id.into())
+        .await
+        .unwrap();
+
+    let members = repos.org.get_team_members(team.id.into()).await.unwrap();
+    assert_eq!(members.len(), 2);
+
+    // Deactivate bob
+    repos.org.deactivate_person(bob).await.unwrap();
+    let members = repos.org.get_team_members(team.id.into()).await.unwrap();
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0].name, "Alice");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn assign_person_to_team_ends_old_membership() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let team_a = repos
+        .org
+        .create_team("A", "Org", TeamType::Team, None, None)
+        .await
+        .unwrap();
+    let team_b = repos
+        .org
+        .create_team("B", "Org", TeamType::Team, None, None)
+        .await
+        .unwrap();
+
+    let alice = insert_person(pool, "Alice", None).await;
+
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team_a.id.into())
+        .await
+        .unwrap();
+    let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
+    assert_eq!(members_a.len(), 1);
+
+    // Move to team B
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team_b.id.into())
+        .await
+        .unwrap();
+    let members_a = repos.org.get_team_members(team_a.id.into()).await.unwrap();
+    assert_eq!(members_a.len(), 0);
+    let members_b = repos.org.get_team_members(team_b.id.into()).await.unwrap();
+    assert_eq!(members_b.len(), 1);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_unassigned_people() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let team = repos
+        .org
+        .create_team("Team", "Org", TeamType::Team, None, None)
+        .await
+        .unwrap();
+
+    let alice = insert_person(pool, "Alice", None).await;
+    let _bob = insert_person(pool, "Bob", None).await;
 
     repos
         .org
@@ -249,10 +297,17 @@ define_repo_test!(list_unassigned_people, |repos, pool| async move {
     let unassigned = repos.org.list_unassigned_people().await.unwrap();
     assert_eq!(unassigned.len(), 1);
     assert_eq!(unassigned[0].name, "Bob");
-});
 
-define_repo_test!(deactivate_and_reactivate_person, |repos, pool| async move {
-    let id = insert_person(&pool, "Alice", None).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn deactivate_and_reactivate_person() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let id = insert_person(pool, "Alice", None).await;
 
     let person = repos.org.get_person(id).await.unwrap().unwrap();
     assert!(person.active);
@@ -264,10 +319,17 @@ define_repo_test!(deactivate_and_reactivate_person, |repos, pool| async move {
     repos.org.reactivate_person(id).await.unwrap();
     let person = repos.org.get_person(id).await.unwrap().unwrap();
     assert!(person.active);
-});
 
-define_repo_test!(update_person_fields, |repos, pool| async move {
-    let id = insert_person(&pool, "Alice", None).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_person_fields() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let id = insert_person(pool, "Alice", None).await;
 
     let updated = repos
         .org
@@ -282,15 +344,22 @@ define_repo_test!(update_person_fields, |repos, pool| async move {
     assert_eq!(updated.name, "Alice Updated");
     assert_eq!(updated.email.as_deref(), Some("alice@new.com"));
     assert_eq!(updated.level.as_deref(), Some("senior"));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Identities
 // ---------------------------------------------------------------------------
 
-define_repo_test!(batch_resolve_person_ids, |repos, pool| async move {
-    let alice = insert_person(&pool, "Alice", None).await;
-    insert_identity(&pool, alice, "github", "aliceg").await;
+#[tokio::test]
+async fn batch_resolve_person_ids() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let alice = insert_person(pool, "Alice", None).await;
+    insert_identity(pool, alice, "github", "aliceg").await;
 
     let map = repos
         .org
@@ -298,11 +367,18 @@ define_repo_test!(batch_resolve_person_ids, |repos, pool| async move {
         .await
         .unwrap();
     assert_eq!(map.get("aliceg"), Some(&alice));
-});
 
-define_repo_test!(case_insensitive_identity_lookup, |repos, pool| async move {
-    let alice = insert_person(&pool, "Alice", None).await;
-    insert_identity(&pool, alice, "github", "aliceg").await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn case_insensitive_identity_lookup() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let alice = insert_person(pool, "Alice", None).await;
+    insert_identity(pool, alice, "github", "aliceg").await;
 
     // Lookup with mixed case — batch_resolve lowercases input
     let map = repos
@@ -311,82 +387,99 @@ define_repo_test!(case_insensitive_identity_lookup, |repos, pool| async move {
         .await
         .unwrap();
     assert_eq!(map.get("aliceg"), Some(&alice));
-});
 
-define_repo_test!(get_identities_for_people, |repos, pool| async move {
-    let alice = insert_person(&pool, "Alice", None).await;
-    insert_identity(&pool, alice, "github", "alice-gh").await;
-    insert_identity(&pool, alice, "jira", "alice-jira").await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_identities_for_people() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let alice = insert_person(pool, "Alice", None).await;
+    insert_identity(pool, alice, "github", "alice-gh").await;
+    insert_identity(pool, alice, "jira", "alice-jira").await;
 
     let identities = repos.org.get_identities_for_people(&[alice]).await.unwrap();
     assert_eq!(identities.len(), 2);
-});
 
-define_repo_test!(
-    batch_ensure_identities_creates_people,
-    |repos, _pool| async move {
-        // batch_ensure_identities should auto-create people for unknown usernames
-        let users: Vec<(String, Option<String>)> = vec![("newuser".into(), None)];
-        let map = repos
-            .org
-            .batch_ensure_identities(&Platform::Github, &users)
-            .await
-            .unwrap();
-        assert!(map.contains_key("newuser"));
-        // The person was created
-        let person_id = map["newuser"];
-        let person = repos.org.get_person(person_id).await.unwrap();
-        assert!(person.is_some());
-    }
-);
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn batch_ensure_identities_creates_people() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
+    // batch_ensure_identities should auto-create people for unknown usernames
+    let users: Vec<(String, Option<String>)> = vec![("newuser".into(), None)];
+    let map = repos
+        .org
+        .batch_ensure_identities(&Platform::Github, &users)
+        .await
+        .unwrap();
+    assert!(map.contains_key("newuser"));
+    // The person was created
+    let person_id = map["newuser"];
+    let person = repos.org.get_person(person_id).await.unwrap();
+    assert!(person.is_some());
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Directory import
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    import_records_creates_teams_and_people,
-    |repos, _pool| async move {
-        use ps_core::repo::org::ImportRecord;
+#[tokio::test]
+async fn import_records_creates_teams_and_people() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        let records = vec![
-            ImportRecord {
-                name: "Alice A".into(),
-                email: Some("alice@example.com".into()),
-                level: None,
-                directory_id: Some("alice-1".into()),
-                team: Some("Kernel".into()),
-                team_type: Some(TeamType::Team),
-                org: Some("Canonical".into()),
-                identities: vec![],
-                manager_name: None,
-                depth: None,
-                has_reports: false,
-                group: None,
-            },
-            ImportRecord {
-                name: "Bob B".into(),
-                email: Some("bob@example.com".into()),
-                level: None,
-                directory_id: Some("bob-1".into()),
-                team: Some("Kernel".into()),
-                team_type: Some(TeamType::Team),
-                org: Some("Canonical".into()),
-                identities: vec![],
-                manager_name: None,
-                depth: None,
-                has_reports: false,
-                group: None,
-            },
-        ];
+    use ps_core::repo::org::ImportRecord;
 
-        let result = repos.org.import_records(&records).await.unwrap();
-        assert_eq!(result.people_imported, 2);
-        assert!(result.teams_created >= 1);
+    let records = vec![
+        ImportRecord {
+            name: "Alice A".into(),
+            email: Some("alice@example.com".into()),
+            level: None,
+            directory_id: Some("alice-1".into()),
+            team: Some("Kernel".into()),
+            team_type: Some(TeamType::Team),
+            org: Some("Canonical".into()),
+            identities: vec![],
+            manager_name: None,
+            depth: None,
+            has_reports: false,
+            group: None,
+        },
+        ImportRecord {
+            name: "Bob B".into(),
+            email: Some("bob@example.com".into()),
+            level: None,
+            directory_id: Some("bob-1".into()),
+            team: Some("Kernel".into()),
+            team_type: Some(TeamType::Team),
+            org: Some("Canonical".into()),
+            identities: vec![],
+            manager_name: None,
+            depth: None,
+            has_reports: false,
+            group: None,
+        },
+    ];
 
-        // Both people assigned to the Kernel team
-        let teams = repos.org.list_teams(None, None).await.unwrap();
-        let kernel = teams.iter().find(|t| t.name == "Kernel").unwrap();
-        assert_eq!(kernel.member_count, 2);
-    }
-);
+    let result = repos.org.import_records(&records).await.unwrap();
+    assert_eq!(result.people_imported, 2);
+    assert!(result.teams_created >= 1);
+
+    // Both people assigned to the Kernel team
+    let teams = repos.org.list_teams(None, None).await.unwrap();
+    let kernel = teams.iter().find(|t| t.name == "Kernel").unwrap();
+    assert_eq!(kernel.member_count, 2);
+
+    ctx.teardown().await;
+}

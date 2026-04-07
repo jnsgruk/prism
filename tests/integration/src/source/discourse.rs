@@ -1,6 +1,5 @@
 use crate::common::fixtures::create_person_with_identity;
 use crate::common::wiremock_helpers::*;
-use crate::define_source_test;
 use ps_core::ingestion::Source;
 use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path};
@@ -55,7 +54,10 @@ fn discourse_cursor(
 // fetch_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(fetch_batch_parses_topics, |ctx| async move {
+#[tokio::test]
+async fn fetch_batch_parses_topics() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -148,9 +150,14 @@ define_source_test!(fetch_batch_parses_topics, |ctx| async move {
         .expect("post item");
     assert_eq!(post_item.platform_id.as_str(), "1002");
     assert_eq!(post_item.platform_username.as_str(), "bob");
-});
 
-define_source_test!(fetch_batch_respects_watermark, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn fetch_batch_respects_watermark() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -202,9 +209,14 @@ define_source_test!(fetch_batch_respects_watermark, |ctx| async move {
         result.next_cursor.is_none(),
         "should stop after hitting watermark"
     );
-});
 
-define_source_test!(category_iteration, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn category_iteration() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings_with_categories(&ctx.mock_server.uri(), &[1, 2]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -239,21 +251,31 @@ define_source_test!(category_iteration, |ctx| async move {
         let next_cur: serde_json::Value = serde_json::from_str(next).unwrap();
         assert_eq!(next_cur["category_index"], 1);
     }
-});
 
-define_source_test!(watermark_uses_bumped_at, |_ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn watermark_uses_bumped_at() {
+    let _ctx = SourceTestContext::new().await;
+
     let source = discourse_source();
     assert_eq!(
         source.watermark_field(),
         ps_core::models::WatermarkField::MaxBumpedAt
     );
-});
+
+    _ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // store_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(store_batch_creates_contributions, |ctx| async move {
+#[tokio::test]
+async fn store_batch_creates_contributions() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -307,13 +329,18 @@ define_source_test!(store_batch_creates_contributions, |ctx| async move {
     .await
     .unwrap();
     assert_eq!(count.0, 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // watermark & plan tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(advance_watermark_stores_value, |ctx| async move {
+#[tokio::test]
+async fn advance_watermark_stores_value() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -339,9 +366,14 @@ define_source_test!(advance_watermark_stores_value, |ctx| async move {
         .await
         .unwrap();
     assert_eq!(wm.as_deref(), Some("2025-03-15T10:00:00Z"));
-});
 
-define_source_test!(plan_defaults_watermark, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn plan_defaults_watermark() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -359,9 +391,14 @@ define_source_test!(plan_defaults_watermark, |ctx| async move {
     assert_eq!(plan.source_name, "discourse-ubuntu");
     // Should have a default watermark (30 days ago)
     assert!(plan.watermark.is_some());
-});
 
-define_source_test!(plan_with_existing_watermark, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn plan_with_existing_watermark() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings(&ctx.mock_server.uri());
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -383,9 +420,14 @@ define_source_test!(plan_with_existing_watermark, |ctx| async move {
     let source = discourse_source();
     let plan = source.plan(&ing_ctx).await.expect("plan");
     assert_eq!(plan.watermark.as_deref(), Some("2025-03-01T00:00:00Z"));
-});
 
-define_source_test!(plan_with_categories, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn plan_with_categories() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = discourse_settings_with_categories(&ctx.mock_server.uri(), &[5, 10]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -404,4 +446,6 @@ define_source_test!(plan_with_categories, |ctx| async move {
     assert_eq!(plan.items.len(), 2);
     assert_eq!(plan.items[0], "5");
     assert_eq!(plan.items[1], "10");
-});
+
+    ctx.teardown().await;
+}

@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::auth_service_client::AuthServiceClient;
 use ps_proto::canonical::prism::v1::{
     CompleteSetupRequest, GetCurrentUserRequest, GetSetupStatusRequest, LoginRequest, LogoutRequest,
@@ -6,7 +6,11 @@ use ps_proto::canonical::prism::v1::{
 use tonic::Request;
 use tonic::metadata::MetadataValue;
 
-define_api_test!(setup_status_returns_false_initially, |server| async move {
+#[tokio::test]
+async fn setup_status_returns_false_initially() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     let resp = client
@@ -16,37 +20,46 @@ define_api_test!(setup_status_returns_false_initially, |server| async move {
         .into_inner();
 
     assert!(!resp.setup_complete);
-});
 
-define_api_test!(
-    complete_setup_creates_admin_and_session,
-    |server| async move {
-        let mut client = AuthServiceClient::new(server.channel.clone());
+    ctx.teardown().await;
+}
 
-        let resp = client
-            .complete_setup(CompleteSetupRequest {
-                username: "admin".into(),
-                display_name: "Test Admin".into(),
-                password: "secure-password-123".into(),
-            })
-            .await
-            .expect("complete_setup")
-            .into_inner();
+#[tokio::test]
+async fn complete_setup_creates_admin_and_session() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        assert!(!resp.session_token.is_empty());
+    let mut client = AuthServiceClient::new(server.channel.clone());
 
-        // Setup status should now be true
-        let status = client
-            .get_setup_status(GetSetupStatusRequest {})
-            .await
-            .expect("get_setup_status")
-            .into_inner();
+    let resp = client
+        .complete_setup(CompleteSetupRequest {
+            username: "admin".into(),
+            display_name: "Test Admin".into(),
+            password: "secure-password-123".into(),
+        })
+        .await
+        .expect("complete_setup")
+        .into_inner();
 
-        assert!(status.setup_complete);
-    }
-);
+    assert!(!resp.session_token.is_empty());
 
-define_api_test!(complete_setup_rejects_second_call, |server| async move {
+    // Setup status should now be true
+    let status = client
+        .get_setup_status(GetSetupStatusRequest {})
+        .await
+        .expect("get_setup_status")
+        .into_inner();
+
+    assert!(status.setup_complete);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn complete_setup_rejects_second_call() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     client
@@ -68,9 +81,15 @@ define_api_test!(complete_setup_rejects_second_call, |server| async move {
         .expect_err("second setup should fail");
 
     assert_eq!(err.code(), tonic::Code::FailedPrecondition);
-});
 
-define_api_test!(login_and_get_current_user, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn login_and_get_current_user() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     // Setup first
@@ -113,9 +132,15 @@ define_api_test!(login_and_get_current_user, |server| async move {
     assert_eq!(user.username, "admin");
     assert_eq!(user.display_name, "Test Admin");
     assert_eq!(user.role, "admin");
-});
 
-define_api_test!(login_with_wrong_password_fails, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn login_with_wrong_password_fails() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     client
@@ -136,9 +161,15 @@ define_api_test!(login_with_wrong_password_fails, |server| async move {
         .expect_err("login should fail");
 
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
 
-define_api_test!(logout_invalidates_session, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn logout_invalidates_session() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     let setup_resp = client
@@ -175,9 +206,15 @@ define_api_test!(logout_invalidates_session, |server| async move {
         .expect_err("should be unauthenticated");
 
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
 
-define_api_test!(protected_rpc_without_token_fails, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn protected_rpc_without_token_fails() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = AuthServiceClient::new(server.channel.clone());
 
     let err = client
@@ -186,4 +223,6 @@ define_api_test!(protected_rpc_without_token_fails, |server| async move {
         .expect_err("should require auth");
 
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}

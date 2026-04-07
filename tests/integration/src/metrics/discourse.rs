@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionType, PeriodType, Platform, TeamType};
 use time::OffsetDateTime;
@@ -77,7 +77,12 @@ async fn seed_team(
 // Basic Discourse metrics through real DB
 // ---------------------------------------------------------------------------
 
-define_repo_test!(basic_discourse_metrics, |repos, pool| async move {
+#[tokio::test]
+async fn basic_discourse_metrics() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -122,7 +127,7 @@ define_repo_test!(basic_discourse_metrics, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team(&repos, &pool, "DiscourseTeam", "Alice", &items).await;
+    let (team_id, _) = seed_team(repos, pool, "DiscourseTeam", "Alice", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
@@ -146,13 +151,20 @@ define_repo_test!(basic_discourse_metrics, |repos, pool| async move {
     assert_eq!(inst.topics_created, 2);
     assert_eq!(inst.posts, 2);
     assert_eq!(inst.likes_given, 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Multi-instance breakdown
 // ---------------------------------------------------------------------------
 
-define_repo_test!(multi_instance_breakdown, |repos, pool| async move {
+#[tokio::test]
+async fn multi_instance_breakdown() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -182,7 +194,7 @@ define_repo_test!(multi_instance_breakdown, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team(&repos, &pool, "MultiInstance", "Bob", &items).await;
+    let (team_id, _) = seed_team(repos, pool, "MultiInstance", "Bob", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
@@ -201,13 +213,20 @@ define_repo_test!(multi_instance_breakdown, |repos, pool| async move {
     assert_eq!(discourse.by_instance["ubuntu"].topics_created, 1);
     assert_eq!(discourse.by_instance["snapcraft"].topics_created, 1);
     assert_eq!(discourse.by_instance["snapcraft"].posts, 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Discourse metrics per-person (multiple team members)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
+#[tokio::test]
+async fn discourse_metrics_per_person() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -221,7 +240,7 @@ define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
         .unwrap();
 
     // Person A: 2 topics
-    let alice = insert_person(&pool, "Alice").await;
+    let alice = insert_person(pool, "Alice").await;
     for (i, item) in [
         make_discourse(
             ubuntu.clone(),
@@ -255,7 +274,7 @@ define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
         .unwrap();
 
     // Person B: 1 topic + 1 post
-    let bob = insert_person(&pool, "Bob").await;
+    let bob = insert_person(pool, "Bob").await;
     for item in &[
         make_discourse(
             ubuntu.clone(),
@@ -299,13 +318,20 @@ define_repo_test!(discourse_metrics_per_person, |repos, pool| async move {
     assert_eq!(discourse.replies, 1);
     assert_eq!(discourse.likes_received, 5);
     assert_eq!(discourse.active_participants, 2); // Alice + Bob
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Discourse snapshot end-to-end (compute_team_snapshot stores discourse data)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(discourse_snapshot_stored, |repos, pool| async move {
+#[tokio::test]
+async fn discourse_snapshot_stored() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -336,12 +362,12 @@ define_repo_test!(discourse_snapshot_stored, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team(&repos, &pool, "DiscSnapTeam", "Carol", &items).await;
+    let (team_id, _) = seed_team(repos, pool, "DiscSnapTeam", "Carol", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Week)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Week)
         .await
         .unwrap();
 
@@ -366,4 +392,6 @@ define_repo_test!(discourse_snapshot_stored, |repos, pool| async move {
     assert_eq!(by_instance["topics_created"], 1);
     assert_eq!(by_instance["posts"], 1);
     assert_eq!(by_instance["likes_given"], 1);
-});
+
+    ctx.teardown().await;
+}

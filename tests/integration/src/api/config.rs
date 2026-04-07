@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::config_service_client::ConfigServiceClient;
 use ps_proto::canonical::prism::v1::{
     CreateSourceRequest, DeleteSourceRequest, GetSourceRequest, ListSourcesRequest, Platform,
@@ -15,7 +15,11 @@ fn auth<T>(req: &mut Request<T>, token: &str) {
     );
 }
 
-define_api_test!(create_source_and_list, |server| async move {
+#[tokio::test]
+async fn create_source_and_list() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -51,9 +55,15 @@ define_api_test!(create_source_and_list, |server| async move {
 
     assert_eq!(list_resp.sources.len(), 1);
     assert_eq!(list_resp.sources[0].name, "My GitHub");
-});
 
-define_api_test!(get_source_returns_details, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_source_returns_details() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -94,9 +104,15 @@ define_api_test!(get_source_returns_details, |server| async move {
     assert_eq!(fetched.schedule_cron.as_deref(), Some("0 */6 * * *"));
     assert!(fetched.created_at.is_some());
     assert!(fetched.updated_at.is_some());
-});
 
-define_api_test!(update_source_toggles_enabled, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_source_toggles_enabled() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -156,9 +172,15 @@ define_api_test!(update_source_toggles_enabled, |server| async move {
         .expect("source");
 
     assert!(updated.enabled);
-});
 
-define_api_test!(delete_source, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn delete_source() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -199,9 +221,15 @@ define_api_test!(delete_source, |server| async move {
         .expect_err("get after delete should fail");
 
     assert_eq!(err.code(), tonic::Code::NotFound);
-});
 
-define_api_test!(set_secret_and_test_connection, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn set_secret_and_test_connection() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -262,9 +290,15 @@ define_api_test!(set_secret_and_test_connection, |server| async move {
 
     assert!(test_resp.success);
     assert!(test_resp.error_message.is_empty());
-});
 
-define_api_test!(test_connection_fails_without_secrets, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn test_connection_fails_without_secrets() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ConfigServiceClient::new(server.channel.clone());
 
@@ -299,4 +333,6 @@ define_api_test!(test_connection_fails_without_secrets, |server| async move {
 
     assert!(!test_resp.success);
     assert!(test_resp.error_message.contains("api_token"));
-});
+
+    ctx.teardown().await;
+}

@@ -38,8 +38,6 @@ tower = { version = "0.5", features = ["util"] }
 serde_json.workspace = true
 http = "1"
 zeroize.workspace = true
-testcontainers.workspace = true
-testcontainers-modules.workspace = true
 libc = "0.2"
 wiremock.workspace = true
 reqwest.workspace = true

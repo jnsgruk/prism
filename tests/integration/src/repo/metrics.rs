@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionState, ContributionType, PeriodType, Platform, TeamType};
 use ps_core::repo::metrics::SnapshotInput;
@@ -46,7 +46,12 @@ async fn insert_person(pool: &sqlx::PgPool, name: &str) -> Uuid {
 // Snapshots
 // ---------------------------------------------------------------------------
 
-define_repo_test!(upsert_snapshot_and_retrieve, |repos, _pool| async move {
+#[tokio::test]
+async fn upsert_snapshot_and_retrieve() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("Kernel", "Canonical", TeamType::Team, None, None)
@@ -83,63 +88,74 @@ define_repo_test!(upsert_snapshot_and_retrieve, |repos, _pool| async move {
     assert_eq!(fetched.throughput, Some(15));
     assert!((fetched.avg_review_turnaround_hours.unwrap() - 4.5).abs() < 0.01);
     assert_eq!(fetched.period_type, PeriodType::Week);
-});
 
-define_repo_test!(
-    recompute_overwrites_stale_snapshot,
-    |repos, _pool| async move {
-        let team = repos
-            .org
-            .create_team("T", "O", TeamType::Team, None, None)
-            .await
-            .unwrap();
-        let start = time::Date::from_calendar_date(2025, time::Month::March, 3).unwrap();
-        let end = time::Date::from_calendar_date(2025, time::Month::March, 9).unwrap();
+    ctx.teardown().await;
+}
 
-        let snap1 = SnapshotInput {
-            id: Uuid::now_v7(),
-            team_id: team.id,
-            period_start: start,
-            period_end: end,
-            period_type: PeriodType::Week,
-            throughput: 10,
-            avg_review_turnaround_hours: None,
-            avg_cycle_time_hours: None,
-            wip_avg: None,
-            flow_efficiency: None,
-            lead_time_hours: None,
-            raw_metrics: serde_json::json!({}),
-        };
-        repos.metrics.upsert_snapshot(&snap1).await.unwrap();
+#[tokio::test]
+async fn recompute_overwrites_stale_snapshot() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        // Recompute with updated throughput
-        let snap2 = SnapshotInput {
-            id: Uuid::now_v7(),
-            team_id: team.id,
-            period_start: start,
-            period_end: end,
-            period_type: PeriodType::Week,
-            throughput: 20,
-            avg_review_turnaround_hours: None,
-            avg_cycle_time_hours: None,
-            wip_avg: None,
-            flow_efficiency: None,
-            lead_time_hours: None,
-            raw_metrics: serde_json::json!({}),
-        };
-        repos.metrics.upsert_snapshot(&snap2).await.unwrap();
+    let team = repos
+        .org
+        .create_team("T", "O", TeamType::Team, None, None)
+        .await
+        .unwrap();
+    let start = time::Date::from_calendar_date(2025, time::Month::March, 3).unwrap();
+    let end = time::Date::from_calendar_date(2025, time::Month::March, 9).unwrap();
 
-        let fetched = repos
-            .metrics
-            .get_team_snapshot(team.id, start, PeriodType::Week)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched.throughput, Some(20));
-    }
-);
+    let snap1 = SnapshotInput {
+        id: Uuid::now_v7(),
+        team_id: team.id,
+        period_start: start,
+        period_end: end,
+        period_type: PeriodType::Week,
+        throughput: 10,
+        avg_review_turnaround_hours: None,
+        avg_cycle_time_hours: None,
+        wip_avg: None,
+        flow_efficiency: None,
+        lead_time_hours: None,
+        raw_metrics: serde_json::json!({}),
+    };
+    repos.metrics.upsert_snapshot(&snap1).await.unwrap();
 
-define_repo_test!(compare_team_snapshots, |repos, _pool| async move {
+    // Recompute with updated throughput
+    let snap2 = SnapshotInput {
+        id: Uuid::now_v7(),
+        team_id: team.id,
+        period_start: start,
+        period_end: end,
+        period_type: PeriodType::Week,
+        throughput: 20,
+        avg_review_turnaround_hours: None,
+        avg_cycle_time_hours: None,
+        wip_avg: None,
+        flow_efficiency: None,
+        lead_time_hours: None,
+        raw_metrics: serde_json::json!({}),
+    };
+    repos.metrics.upsert_snapshot(&snap2).await.unwrap();
+
+    let fetched = repos
+        .metrics
+        .get_team_snapshot(team.id, start, PeriodType::Week)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.throughput, Some(20));
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn compare_team_snapshots() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let t1 = repos
         .org
         .create_team("A", "O", TeamType::Team, None, None)
@@ -181,9 +197,16 @@ define_repo_test!(compare_team_snapshots, |repos, _pool| async move {
     // Ordered by team name
     assert_eq!(snapshots[0].team_name, "A");
     assert_eq!(snapshots[1].team_name, "B");
-});
 
-define_repo_test!(list_periods, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_periods() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("T", "O", TeamType::Team, None, None)
@@ -212,9 +235,16 @@ define_repo_test!(list_periods, |repos, _pool| async move {
     let periods = repos.metrics.list_periods().await.unwrap();
     assert_eq!(periods.len(), 1);
     assert_eq!(periods[0].period_type, PeriodType::Week);
-});
 
-define_repo_test!(get_snapshot_history, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_snapshot_history() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("T", "O", TeamType::Team, None, None)
@@ -253,82 +283,93 @@ define_repo_test!(get_snapshot_history, |repos, _pool| async move {
     assert_eq!(history.len(), 2);
     // Ordered by period_start DESC
     assert!(history[0].period_start > history[1].period_start);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Source contributions
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    get_team_contributions_for_period,
-    |repos, pool| async move {
-        let team = repos
-            .org
-            .create_team("T", "O", TeamType::Team, None, None)
-            .await
-            .unwrap();
-        let alice = insert_person(&pool, "Alice").await;
+#[tokio::test]
+async fn get_team_contributions_for_period() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        // Insert contributions BEFORE assigning to team — assign_person_to_team
-        // sets start_date = MIN(created_at)::date from contributions, so the
-        // contributions must exist first for the membership to cover the period.
-        let jan_10 = time::OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
-            time::Time::from_hms(12, 0, 0).unwrap(),
-        );
-        let item = make_contribution_at(
-            Platform::Github,
-            ContributionType::PullRequest,
-            "period-1",
-            jan_10,
-        );
-        repos
-            .activity
-            .upsert_contribution(Uuid::now_v7(), Some(alice), &item)
-            .await
-            .unwrap();
+    let team = repos
+        .org
+        .create_team("T", "O", TeamType::Team, None, None)
+        .await
+        .unwrap();
+    let alice = insert_person(pool, "Alice").await;
 
-        let feb_10 = time::OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::February, 10).unwrap(),
-            time::Time::from_hms(12, 0, 0).unwrap(),
-        );
-        let item2 = make_contribution_at(
-            Platform::Github,
-            ContributionType::PullRequest,
-            "period-2",
-            feb_10,
-        );
-        repos
-            .activity
-            .upsert_contribution(Uuid::now_v7(), Some(alice), &item2)
-            .await
-            .unwrap();
+    // Insert contributions BEFORE assigning to team — assign_person_to_team
+    // sets start_date = MIN(created_at)::date from contributions, so the
+    // contributions must exist first for the membership to cover the period.
+    let jan_10 = time::OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
+        time::Time::from_hms(12, 0, 0).unwrap(),
+    );
+    let item = make_contribution_at(
+        Platform::Github,
+        ContributionType::PullRequest,
+        "period-1",
+        jan_10,
+    );
+    repos
+        .activity
+        .upsert_contribution(Uuid::now_v7(), Some(alice), &item)
+        .await
+        .unwrap();
 
-        // Now assign — start_date will be 2025-01-10 (earliest contribution).
-        repos
-            .org
-            .assign_person_to_team(alice.into(), team.id.into())
-            .await
-            .unwrap();
+    let feb_10 = time::OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::February, 10).unwrap(),
+        time::Time::from_hms(12, 0, 0).unwrap(),
+    );
+    let item2 = make_contribution_at(
+        Platform::Github,
+        ContributionType::PullRequest,
+        "period-2",
+        feb_10,
+    );
+    repos
+        .activity
+        .upsert_contribution(Uuid::now_v7(), Some(alice), &item2)
+        .await
+        .unwrap();
 
-        let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
-        let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
+    // Now assign — start_date will be 2025-01-10 (earliest contribution).
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team.id.into())
+        .await
+        .unwrap();
 
-        let contribs = repos
-            .metrics
-            .get_team_contributions(team.id, period_start, period_end)
-            .await
-            .unwrap();
-        assert_eq!(contribs.len(), 1);
-        assert_eq!(contribs[0].platform_id, "period-1");
-    }
-);
+    let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
+    let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
+
+    let contribs = repos
+        .metrics
+        .get_team_contributions(team.id, period_start, period_end)
+        .await
+        .unwrap();
+    assert_eq!(contribs.len(), 1);
+    assert_eq!(contribs[0].platform_id, "period-1");
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Snapshot sources (traceability)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(snapshot_sources_traceability, |repos, _pool| async move {
+#[tokio::test]
+async fn snapshot_sources_traceability() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("T", "O", TeamType::Team, None, None)
@@ -393,4 +434,6 @@ define_repo_test!(snapshot_sources_traceability, |repos, _pool| async move {
         .insert_snapshot_sources(snap_id, &[])
         .await
         .unwrap();
-});
+
+    ctx.teardown().await;
+}

@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionState, ContributionType, PeriodType, Platform, TeamType};
 use time::OffsetDateTime;
@@ -106,7 +106,12 @@ async fn seed_team(
 // End-to-end snapshot computation for a week
 // ---------------------------------------------------------------------------
 
-define_repo_test!(compute_week_snapshot, |repos, pool| async move {
+#[tokio::test]
+async fn compute_week_snapshot() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -128,12 +133,12 @@ define_repo_test!(compute_week_snapshot, |repos, pool| async move {
         ),
     ];
 
-    let team_id = seed_team(&repos, &pool, "SnapTeam", "Alice", &items).await;
+    let team_id = seed_team(repos, pool, "SnapTeam", "Alice", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Week)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Week)
         .await
         .unwrap();
 
@@ -147,13 +152,20 @@ define_repo_test!(compute_week_snapshot, |repos, pool| async move {
     assert_eq!(snap.throughput, Some(3)); // 2 merged PRs + 1 closed Jira
     assert!(snap.avg_cycle_time_hours.is_some()); // Jira cycle time
     assert!((snap.avg_cycle_time_hours.unwrap() - 24.0).abs() < 0.01);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Monthly period boundaries
 // ---------------------------------------------------------------------------
 
-define_repo_test!(compute_month_snapshot, |repos, pool| async move {
+#[tokio::test]
+async fn compute_month_snapshot() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let mar_15 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::March, 15).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -170,12 +182,12 @@ define_repo_test!(compute_month_snapshot, |repos, pool| async move {
         Some(mar_20),
     )];
 
-    let team_id = seed_team(&repos, &pool, "MonthTeam", "Bob", &items).await;
+    let team_id = seed_team(repos, pool, "MonthTeam", "Bob", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::March, 1).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::March, 31).unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Month)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Month)
         .await
         .unwrap();
 
@@ -188,13 +200,20 @@ define_repo_test!(compute_month_snapshot, |repos, pool| async move {
 
     assert_eq!(snap.throughput, Some(1));
     assert_eq!(snap.period_type, PeriodType::Month);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Quarterly period boundaries
 // ---------------------------------------------------------------------------
 
-define_repo_test!(compute_quarter_snapshot, |repos, pool| async move {
+#[tokio::test]
+async fn compute_quarter_snapshot() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let feb_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::February, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -209,13 +228,13 @@ define_repo_test!(compute_quarter_snapshot, |repos, pool| async move {
         make_pr("PR-Q-2", ContributionState::Merged, feb_10, Some(feb_15)),
     ];
 
-    let team_id = seed_team(&repos, &pool, "QuarterTeam", "Carol", &items).await;
+    let team_id = seed_team(repos, pool, "QuarterTeam", "Carol", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 1).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::March, 31).unwrap();
 
     ps_metrics::compute_team_snapshot(
-        &repos,
+        repos,
         team_id,
         period_start,
         period_end,
@@ -233,13 +252,20 @@ define_repo_test!(compute_quarter_snapshot, |repos, pool| async move {
 
     assert_eq!(snap.throughput, Some(2));
     assert_eq!(snap.period_type, PeriodType::Quarter);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Recompute overwrites stale snapshot
 // ---------------------------------------------------------------------------
 
-define_repo_test!(recompute_overwrites_stale, |repos, pool| async move {
+#[tokio::test]
+async fn recompute_overwrites_stale() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -257,12 +283,12 @@ define_repo_test!(recompute_overwrites_stale, |repos, pool| async move {
         Some(jan_12),
     )];
 
-    let team_id = seed_team(&repos, &pool, "RecomputeTeam", "Dave", &items).await;
+    let team_id = seed_team(repos, pool, "RecomputeTeam", "Dave", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Week)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Week)
         .await
         .unwrap();
 
@@ -290,7 +316,7 @@ define_repo_test!(recompute_overwrites_stale, |repos, pool| async move {
         .await
         .unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Week)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Week)
         .await
         .unwrap();
 
@@ -301,13 +327,20 @@ define_repo_test!(recompute_overwrites_stale, |repos, pool| async move {
         .unwrap()
         .unwrap();
     assert_eq!(snap2.throughput, Some(2));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Snapshot includes per-source counts in raw_metrics
 // ---------------------------------------------------------------------------
 
-define_repo_test!(snapshot_includes_source_counts, |repos, pool| async move {
+#[tokio::test]
+async fn snapshot_includes_source_counts() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -329,12 +362,12 @@ define_repo_test!(snapshot_includes_source_counts, |repos, pool| async move {
         ),
     ];
 
-    let team_id = seed_team(&repos, &pool, "SourceCountTeam", "Eve", &items).await;
+    let team_id = seed_team(repos, pool, "SourceCountTeam", "Eve", &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
 
-    ps_metrics::compute_team_snapshot(&repos, team_id, period_start, period_end, PeriodType::Week)
+    ps_metrics::compute_team_snapshot(repos, team_id, period_start, period_end, PeriodType::Week)
         .await
         .unwrap();
 
@@ -350,13 +383,20 @@ define_repo_test!(snapshot_includes_source_counts, |repos, pool| async move {
     let by_source = &raw["throughput_by_source"];
     assert_eq!(by_source["github"], 2);
     assert_eq!(by_source["jira"], 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Multi-team computation via compute_all_snapshots
 // ---------------------------------------------------------------------------
 
-define_repo_test!(multi_team_computation, |repos, pool| async move {
+#[tokio::test]
+async fn multi_team_computation() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -367,8 +407,8 @@ define_repo_test!(multi_team_computation, |repos, pool| async move {
     );
 
     let team_a = seed_team(
-        &repos,
-        &pool,
+        repos,
+        pool,
         "TeamA",
         "Alice",
         &[make_pr(
@@ -381,8 +421,8 @@ define_repo_test!(multi_team_computation, |repos, pool| async move {
     .await;
 
     let team_b = seed_team(
-        &repos,
-        &pool,
+        repos,
+        pool,
         "TeamB",
         "Bob",
         &[
@@ -396,7 +436,7 @@ define_repo_test!(multi_team_computation, |repos, pool| async move {
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap();
 
     let computed =
-        ps_metrics::compute_all_snapshots(&repos, period_start, period_end, PeriodType::Week)
+        ps_metrics::compute_all_snapshots(repos, period_start, period_end, PeriodType::Week)
             .await
             .unwrap();
     assert_eq!(computed, 2);
@@ -416,4 +456,6 @@ define_repo_test!(multi_team_computation, |repos, pool| async move {
         .unwrap()
         .unwrap();
     assert_eq!(snap_b.throughput, Some(2));
-});
+
+    ctx.teardown().await;
+}

@@ -1,6 +1,5 @@
 use crate::common::fixtures::create_person_with_identity;
 use crate::common::wiremock_helpers::*;
-use crate::define_source_test;
 use ps_core::ingestion::Source;
 use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path};
@@ -51,7 +50,10 @@ fn team_repos_cursor(repos: &[(&str, &str)], watermark: Option<&str>) -> String 
 // fetch_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(fetch_batch_parses_graphql_prs, |ctx| async move {
+#[tokio::test]
+async fn fetch_batch_parses_graphql_prs() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -131,9 +133,14 @@ define_source_test!(fetch_batch_parses_graphql_prs, |ctx| async move {
         .expect("review item");
     assert_eq!(review.platform_id.as_str(), "testorg/myrepo/review/9001");
     assert_eq!(review.platform_username.as_str(), "bob");
-});
 
-define_source_test!(fetch_batch_handles_pagination, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn fetch_batch_handles_pagination() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -181,63 +188,70 @@ define_source_test!(fetch_batch_handles_pagination, |ctx| async move {
         result.next_cursor.is_some(),
         "should have next_cursor for pagination"
     );
-});
 
-define_source_test!(
-    fetch_batch_advances_repo_index_after_last_page,
-    |ctx| async move {
-        let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
-        let ing_ctx = ctx
-            .build_ingestion_ctx(
-                "github",
-                Platform::Github,
-                settings,
-                Some("test-token".into()),
-                None,
-                None,
-            )
-            .await;
+    ctx.teardown().await;
+}
 
-        // Single page, no more results
-        let pr = graphql_pr_node(
-            "testorg",
-            "repo1",
-            1,
-            "alice",
-            "PR 1",
-            "MERGED",
-            "2025-03-01T10:00:00Z",
-            "2025-03-10T10:00:00Z",
-            5,
-            2,
-            &[],
-        );
-        let response = graphql_search_response(&[pr], false, None);
+#[tokio::test]
+async fn fetch_batch_advances_repo_index_after_last_page() {
+    let ctx = SourceTestContext::new().await;
 
-        Mock::given(method("POST"))
-            .and(path("/graphql"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(&response))
-            .mount(&ctx.mock_server)
-            .await;
+    let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
+    let ing_ctx = ctx
+        .build_ingestion_ctx(
+            "github",
+            Platform::Github,
+            settings,
+            Some("test-token".into()),
+            None,
+            None,
+        )
+        .await;
 
-        let source = github_source();
-        // Two repos — after completing repo1, cursor should advance repo_index
-        let cursor = team_repos_cursor(&[("testorg", "repo1"), ("testorg", "repo2")], None);
+    // Single page, no more results
+    let pr = graphql_pr_node(
+        "testorg",
+        "repo1",
+        1,
+        "alice",
+        "PR 1",
+        "MERGED",
+        "2025-03-01T10:00:00Z",
+        "2025-03-10T10:00:00Z",
+        5,
+        2,
+        &[],
+    );
+    let response = graphql_search_response(&[pr], false, None);
 
-        let result = source
-            .fetch_batch(&ing_ctx, &cursor)
-            .await
-            .expect("fetch_batch");
-        assert!(result.next_cursor.is_some());
+    Mock::given(method("POST"))
+        .and(path("/graphql"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&response))
+        .mount(&ctx.mock_server)
+        .await;
 
-        // Parse the next cursor — repo_index should be 1
-        let next_cur: serde_json::Value =
-            serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
-        assert_eq!(next_cur["repo_index"], 1);
-    }
-);
+    let source = github_source();
+    // Two repos — after completing repo1, cursor should advance repo_index
+    let cursor = team_repos_cursor(&[("testorg", "repo1"), ("testorg", "repo2")], None);
 
-define_source_test!(failed_repo_recorded_in_cursor, |ctx| async move {
+    let result = source
+        .fetch_batch(&ing_ctx, &cursor)
+        .await
+        .expect("fetch_batch");
+    assert!(result.next_cursor.is_some());
+
+    // Parse the next cursor — repo_index should be 1
+    let next_cur: serde_json::Value =
+        serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
+    assert_eq!(next_cur["repo_index"], 1);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn failed_repo_recorded_in_cursor() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -271,9 +285,14 @@ define_source_test!(failed_repo_recorded_in_cursor, |ctx| async move {
         serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
     assert_eq!(next_cur["repo_index"], 1);
     assert_eq!(next_cur["failed_items"].as_array().unwrap().len(), 1);
-});
 
-define_source_test!(two_phase_transitions_correctly, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn two_phase_transitions_correctly() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -305,13 +324,18 @@ define_source_test!(two_phase_transitions_correctly, |ctx| async move {
         .expect("fetch_batch");
     // With no team members in DB, member search returns immediately with no cursor
     assert!(result.next_cursor.is_none());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // store_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(store_batch_upserts_contributions, |ctx| async move {
+#[tokio::test]
+async fn store_batch_upserts_contributions() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -360,9 +384,14 @@ define_source_test!(store_batch_upserts_contributions, |ctx| async move {
     .await
     .unwrap();
     assert_eq!(count.0, 1);
-});
 
-define_source_test!(store_batch_skips_unresolved_identities, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn store_batch_skips_unresolved_identities() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -400,13 +429,18 @@ define_source_test!(store_batch_skips_unresolved_identities, |ctx| async move {
         .await
         .expect("store_batch");
     assert_eq!(stored, 0, "unresolved identity should be skipped");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // watermark tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(watermark_advances_after_store, |ctx| async move {
+#[tokio::test]
+async fn watermark_advances_after_store() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -427,13 +461,18 @@ define_source_test!(watermark_advances_after_store, |ctx| async move {
 
     let wm = ctx.repos.activity.get_watermark("github").await.unwrap();
     assert_eq!(wm.as_deref(), Some("2025-03-15T12:00:00Z"));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // plan tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(plan_falls_back_to_org_discovery, |ctx| async move {
+#[tokio::test]
+async fn plan_falls_back_to_org_discovery() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -475,9 +514,14 @@ define_source_test!(plan_falls_back_to_org_discovery, |ctx| async move {
     assert_eq!(plan.repos[0].repo, "repo1");
     // Watermark should be set (default lookback)
     assert!(plan.watermark.is_some());
-});
 
-define_source_test!(plan_with_existing_watermark, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn plan_with_existing_watermark() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = github_settings(&ctx.mock_server.uri(), &["testorg"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -518,4 +562,6 @@ define_source_test!(plan_with_existing_watermark, |ctx| async move {
     let source = github_source();
     let plan = source.plan(&ing_ctx).await.expect("plan");
     assert_eq!(plan.watermark.as_deref(), Some("2025-03-01T00:00:00Z"));
-});
+
+    ctx.teardown().await;
+}

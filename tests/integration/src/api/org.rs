@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::org_service_client::OrgServiceClient;
 use ps_proto::canonical::prism::v1::{
     GetTeamRequest, ImportDirectoryRequest, ListPeopleRequest, ListTeamsRequest,
@@ -7,7 +7,11 @@ use ps_proto::canonical::prism::v1::{
 use tonic::Request;
 use tonic::metadata::MetadataValue;
 
-define_api_test!(list_teams_empty, |server| async move {
+#[tokio::test]
+async fn list_teams_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = OrgServiceClient::new(server.channel.clone());
 
@@ -27,66 +31,75 @@ define_api_test!(list_teams_empty, |server| async move {
         .into_inner();
 
     assert!(resp.teams.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 /// Helper: build a directory JSON payload from a slice of records.
 fn directory_json(records: &[serde_json::Value]) -> Vec<u8> {
     serde_json::to_vec(records).expect("serialize directory JSON")
 }
 
-define_api_test!(
-    import_directory_creates_people_and_teams,
-    |server| async move {
-        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-        let mut client = OrgServiceClient::new(server.channel.clone());
+#[tokio::test]
+async fn import_directory_creates_people_and_teams() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        let payload = directory_json(&[
-            serde_json::json!({
-                "name": "Alice Smith",
-                "email": "alice@example.com",
-                "level": "Senior",
-                "directory_id": "alice-1",
-                "team": "Platform",
-                "org": "Engineering",
-                "identities": [
-                    {"platform": "github", "username": "alicegh"},
-                    {"platform": "jira", "username": "asmith"}
-                ]
-            }),
-            serde_json::json!({
-                "name": "Bob Jones",
-                "email": "bob@example.com",
-                "directory_id": "bob-1",
-                "team": "Platform",
-                "org": "Engineering",
-                "identities": [
-                    {"platform": "github", "username": "bobgh"}
-                ]
-            }),
-        ]);
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = OrgServiceClient::new(server.channel.clone());
 
-        let mut req = Request::new(ImportDirectoryRequest {
-            file_content: payload,
-        });
-        req.metadata_mut().insert(
-            "authorization",
-            MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
-        );
+    let payload = directory_json(&[
+        serde_json::json!({
+            "name": "Alice Smith",
+            "email": "alice@example.com",
+            "level": "Senior",
+            "directory_id": "alice-1",
+            "team": "Platform",
+            "org": "Engineering",
+            "identities": [
+                {"platform": "github", "username": "alicegh"},
+                {"platform": "jira", "username": "asmith"}
+            ]
+        }),
+        serde_json::json!({
+            "name": "Bob Jones",
+            "email": "bob@example.com",
+            "directory_id": "bob-1",
+            "team": "Platform",
+            "org": "Engineering",
+            "identities": [
+                {"platform": "github", "username": "bobgh"}
+            ]
+        }),
+    ]);
 
-        let resp = client
-            .import_directory(req)
-            .await
-            .expect("import_directory")
-            .into_inner();
+    let mut req = Request::new(ImportDirectoryRequest {
+        file_content: payload,
+    });
+    req.metadata_mut().insert(
+        "authorization",
+        MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
+    );
 
-        assert_eq!(resp.people_imported, 2);
-        assert_eq!(resp.teams_created, 1);
-        assert_eq!(resp.identities_mapped, 3);
-        assert!(resp.warnings.is_empty());
-    }
-);
+    let resp = client
+        .import_directory(req)
+        .await
+        .expect("import_directory")
+        .into_inner();
 
-define_api_test!(list_people_after_import, |server| async move {
+    assert_eq!(resp.people_imported, 2);
+    assert_eq!(resp.teams_created, 1);
+    assert_eq!(resp.identities_mapped, 3);
+    assert!(resp.warnings.is_empty());
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_people_after_import() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = OrgServiceClient::new(server.channel.clone());
 
@@ -149,9 +162,15 @@ define_api_test!(list_people_after_import, |server| async move {
     let bob = &resp.people[1];
     assert_eq!(bob.name, "Bob Jones");
     assert!(bob.identities.is_empty());
-});
 
-define_api_test!(get_team_returns_members, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_team_returns_members() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = OrgServiceClient::new(server.channel.clone());
 
@@ -224,85 +243,90 @@ define_api_test!(get_team_returns_members, |server| async move {
     assert_eq!(team_resp.members[0].name, "Alice Smith");
     assert_eq!(team_resp.members[0].identities.len(), 1);
     assert_eq!(team_resp.members[1].name, "Bob Jones");
-});
 
-define_api_test!(
-    import_directory_upserts_by_directory_id,
-    |server| async move {
-        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-        let mut client = OrgServiceClient::new(server.channel.clone());
+    ctx.teardown().await;
+}
 
-        // First import
-        let payload = directory_json(&[serde_json::json!({
-            "name": "Alice Smith",
-            "email": "alice@old.com",
-            "directory_id": "alice-1",
-            "team": "Platform",
-            "org": "Engineering",
-            "identities": [{"platform": "github", "username": "alicegh"}]
-        })]);
+#[tokio::test]
+async fn import_directory_upserts_by_directory_id() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        let mut req = Request::new(ImportDirectoryRequest {
-            file_content: payload,
-        });
-        req.metadata_mut().insert(
-            "authorization",
-            MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
-        );
-        let first = client
-            .import_directory(req)
-            .await
-            .expect("first import")
-            .into_inner();
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = OrgServiceClient::new(server.channel.clone());
 
-        assert_eq!(first.people_imported, 1);
-        assert_eq!(first.teams_created, 1);
+    // First import
+    let payload = directory_json(&[serde_json::json!({
+        "name": "Alice Smith",
+        "email": "alice@old.com",
+        "directory_id": "alice-1",
+        "team": "Platform",
+        "org": "Engineering",
+        "identities": [{"platform": "github", "username": "alicegh"}]
+    })]);
 
-        // Second import with same directory_id but updated email
-        let payload = directory_json(&[serde_json::json!({
-            "name": "Alice Smith-Updated",
-            "email": "alice@new.com",
-            "directory_id": "alice-1",
-            "team": "Platform",
-            "org": "Engineering",
-            "identities": [{"platform": "github", "username": "alicegh"}]
-        })]);
+    let mut req = Request::new(ImportDirectoryRequest {
+        file_content: payload,
+    });
+    req.metadata_mut().insert(
+        "authorization",
+        MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
+    );
+    let first = client
+        .import_directory(req)
+        .await
+        .expect("first import")
+        .into_inner();
 
-        let mut req = Request::new(ImportDirectoryRequest {
-            file_content: payload,
-        });
-        req.metadata_mut().insert(
-            "authorization",
-            MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
-        );
-        let second = client
-            .import_directory(req)
-            .await
-            .expect("second import")
-            .into_inner();
+    assert_eq!(first.people_imported, 1);
+    assert_eq!(first.teams_created, 1);
 
-        // Should not create a new person (upsert by directory_id)
-        assert_eq!(second.people_imported, 0);
-        // Team already exists
-        assert_eq!(second.teams_created, 0);
+    // Second import with same directory_id but updated email
+    let payload = directory_json(&[serde_json::json!({
+        "name": "Alice Smith-Updated",
+        "email": "alice@new.com",
+        "directory_id": "alice-1",
+        "team": "Platform",
+        "org": "Engineering",
+        "identities": [{"platform": "github", "username": "alicegh"}]
+    })]);
 
-        // Verify only one person exists with the updated name
-        let mut req = Request::new(ListPeopleRequest {
-            active_only: None,
-            ..Default::default()
-        });
-        req.metadata_mut().insert(
-            "authorization",
-            MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
-        );
-        let people = client
-            .list_people(req)
-            .await
-            .expect("list_people")
-            .into_inner();
+    let mut req = Request::new(ImportDirectoryRequest {
+        file_content: payload,
+    });
+    req.metadata_mut().insert(
+        "authorization",
+        MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
+    );
+    let second = client
+        .import_directory(req)
+        .await
+        .expect("second import")
+        .into_inner();
 
-        assert_eq!(people.people.len(), 1);
-        assert_eq!(people.people[0].name, "Alice Smith-Updated");
-        assert_eq!(people.people[0].email.as_deref(), Some("alice@new.com"));
-    }
-);
+    // Should not create a new person (upsert by directory_id)
+    assert_eq!(second.people_imported, 0);
+    // Team already exists
+    assert_eq!(second.teams_created, 0);
+
+    // Verify only one person exists with the updated name
+    let mut req = Request::new(ListPeopleRequest {
+        active_only: None,
+        ..Default::default()
+    });
+    req.metadata_mut().insert(
+        "authorization",
+        MetadataValue::try_from(format!("Bearer {token}")).expect("valid metadata"),
+    );
+    let people = client
+        .list_people(req)
+        .await
+        .expect("list_people")
+        .into_inner();
+
+    assert_eq!(people.people.len(), 1);
+    assert_eq!(people.people[0].name, "Alice Smith-Updated");
+    assert_eq!(people.people[0].email.as_deref(), Some("alice@new.com"));
+
+    ctx.teardown().await;
+}

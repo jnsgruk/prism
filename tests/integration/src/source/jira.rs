@@ -1,6 +1,5 @@
 use crate::common::fixtures::create_person_with_identity;
 use crate::common::wiremock_helpers::*;
-use crate::define_source_test;
 use ps_core::ingestion::Source;
 use ps_core::models::{ContributionType, Platform};
 use wiremock::matchers::{method, path_regex};
@@ -38,7 +37,10 @@ fn jira_cursor(mock_uri: &str, projects: &[&str], watermark: Option<&str>) -> St
 // fetch_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(fetch_batch_parses_issues, |ctx| async move {
+#[tokio::test]
+async fn fetch_batch_parses_issues() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -85,9 +87,14 @@ define_source_test!(fetch_batch_parses_issues, |ctx| async move {
     assert_eq!(item.platform_id.as_str(), "PROJ-123");
     assert_eq!(item.title.as_deref(), Some("Implement feature Y"));
     assert_eq!(item.platform_username.as_str(), "user-account-1");
-});
 
-define_source_test!(fetch_batch_pagination_token_advances, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn fetch_batch_pagination_token_advances() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -132,9 +139,14 @@ define_source_test!(fetch_batch_pagination_token_advances, |ctx| async move {
     let next_cur: serde_json::Value =
         serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
     assert_eq!(next_cur["next_page_token"], "next-page-token-abc");
-});
 
-define_source_test!(fetch_batch_advances_to_next_project, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn fetch_batch_advances_to_next_project() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ1", "PROJ2"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -176,9 +188,14 @@ define_source_test!(fetch_batch_advances_to_next_project, |ctx| async move {
     let next_cur: serde_json::Value =
         serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
     assert_eq!(next_cur["project_index"], 1, "should advance to PROJ2");
-});
 
-define_source_test!(all_projects_exhausted_returns_none, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn all_projects_exhausted_returns_none() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -212,9 +229,14 @@ define_source_test!(all_projects_exhausted_returns_none, |ctx| async move {
         .expect("fetch_batch");
     assert!(result.next_cursor.is_none());
     assert!(result.items.is_empty());
-});
 
-define_source_test!(failed_project_isolation, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn failed_project_isolation() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["BAD", "GOOD"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -248,13 +270,18 @@ define_source_test!(failed_project_isolation, |ctx| async move {
         serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
     assert_eq!(next_cur["project_index"], 1);
     assert_eq!(next_cur["failed_items"].as_array().unwrap().len(), 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // store_batch tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(store_batch_upserts_jira_tickets, |ctx| async move {
+#[tokio::test]
+async fn store_batch_upserts_jira_tickets() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -302,13 +329,18 @@ define_source_test!(store_batch_upserts_jira_tickets, |ctx| async move {
     .await
     .unwrap();
     assert_eq!(count.0, 1);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // watermark tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(watermark_advances_per_source, |ctx| async move {
+#[tokio::test]
+async fn watermark_advances_per_source() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -329,13 +361,18 @@ define_source_test!(watermark_advances_per_source, |ctx| async move {
 
     let wm = ctx.repos.activity.get_watermark("jira").await.unwrap();
     assert_eq!(wm.as_deref(), Some("2025-03-15T12:00:00+00:00"));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // plan tests
 // ---------------------------------------------------------------------------
 
-define_source_test!(plan_loads_watermark, |ctx| async move {
+#[tokio::test]
+async fn plan_loads_watermark() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -357,9 +394,14 @@ define_source_test!(plan_loads_watermark, |ctx| async move {
     let source = jira_source();
     let plan = source.plan(&ing_ctx).await.expect("plan");
     assert_eq!(plan.watermark.as_deref(), Some("2025-03-01T00:00:00+00:00"));
-});
 
-define_source_test!(plan_defaults_watermark_when_none, |ctx| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn plan_defaults_watermark_when_none() {
+    let ctx = SourceTestContext::new().await;
+
     let settings = jira_settings(&ctx.mock_server.uri(), &["PROJ"]);
     let ing_ctx = ctx
         .build_ingestion_ctx(
@@ -376,4 +418,6 @@ define_source_test!(plan_defaults_watermark_when_none, |ctx| async move {
     let plan = source.plan(&ing_ctx).await.expect("plan");
     // Should have a default watermark (30 days ago)
     assert!(plan.watermark.is_some());
-});
+
+    ctx.teardown().await;
+}

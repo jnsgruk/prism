@@ -22,11 +22,31 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use tonic::transport::{Channel, Server};
 
+use super::db::TestDb;
+
 /// A running test server with a connected client channel.
 pub struct TestServer {
     pub addr: SocketAddr,
     pub channel: Channel,
     pub pool: PgPool,
+}
+
+/// Test context for API-layer tests with a real gRPC server and PostgreSQL.
+pub struct ApiTestContext {
+    pub server: TestServer,
+    db: TestDb,
+}
+
+impl ApiTestContext {
+    pub async fn new() -> Self {
+        let db = TestDb::new().await;
+        let server = TestServer::start(db.pool.clone()).await;
+        Self { server, db }
+    }
+
+    pub async fn teardown(self) {
+        self.db.teardown().await;
+    }
 }
 
 /// A fixed test secret key (32 bytes, only used in tests).

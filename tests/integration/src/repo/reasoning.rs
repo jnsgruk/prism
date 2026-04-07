@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::models::EnrichmentType;
 use ps_core::repo::reasoning::{
     CreateArtifactParams, CreateConversationParams, CreateMessageParams, EnrichmentResult,
@@ -61,27 +61,36 @@ async fn insert_typed_contribution(
 // API usage
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    log_api_usage_and_get_daily_spend,
-    |repos, _pool| async move {
-        repos
-            .reasoning
-            .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500, 0.05)
-            .await
-            .unwrap();
-        repos
-            .reasoning
-            .log_api_usage("google", "gemini-pro", "enrichment", 2000, 1000, 0.10)
-            .await
-            .unwrap();
+#[tokio::test]
+async fn log_api_usage_and_get_daily_spend() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        let today = OffsetDateTime::now_utc().date();
-        let spend = repos.reasoning.get_daily_spend(today).await.unwrap();
-        assert!((spend - 0.15).abs() < 0.001);
-    }
-);
+    repos
+        .reasoning
+        .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500, 0.05)
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .log_api_usage("google", "gemini-pro", "enrichment", 2000, 1000, 0.10)
+        .await
+        .unwrap();
 
-define_repo_test!(get_daily_spend_by_task, |repos, _pool| async move {
+    let today = OffsetDateTime::now_utc().date();
+    let spend = repos.reasoning.get_daily_spend(today).await.unwrap();
+    assert!((spend - 0.15).abs() < 0.001);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_daily_spend_by_task() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     repos
         .reasoning
         .log_api_usage("google", "gemini-pro", "enrichment", 1000, 500, 0.05)
@@ -103,9 +112,16 @@ define_repo_test!(get_daily_spend_by_task, |repos, _pool| async move {
     // Ordered by cost DESC
     assert_eq!(breakdown[0].task_type, "enrichment");
     assert_eq!(breakdown[0].request_count, 1);
-});
 
-define_repo_test!(get_spend_summary, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_spend_summary() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     repos
         .reasoning
         .log_api_usage("google", "gemini-pro", "enrichment", 100, 50, 0.01)
@@ -126,14 +142,21 @@ define_repo_test!(get_spend_summary, |repos, _pool| async move {
         .await
         .unwrap();
     assert_eq!(summary.len(), 2);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Enrichments
 // ---------------------------------------------------------------------------
 
-define_repo_test!(upsert_enrichment_and_retrieve, |repos, pool| async move {
-    let contrib_id = insert_contribution(&pool, "enrich-1").await;
+#[tokio::test]
+async fn upsert_enrichment_and_retrieve() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let contrib_id = insert_contribution(pool, "enrich-1").await;
 
     let params = UpsertEnrichmentParams {
         contribution_id: contrib_id,
@@ -156,49 +179,60 @@ define_repo_test!(upsert_enrichment_and_retrieve, |repos, pool| async move {
     assert_eq!(enrichments[0].id, id);
     assert_eq!(enrichments[0].enrichment_type, EnrichmentType::ReviewDepth);
     assert!((enrichments[0].confidence.unwrap() - 0.9).abs() < 0.01);
-});
 
-define_repo_test!(
-    upsert_enrichment_replaces_on_conflict,
-    |repos, pool| async move {
-        let contrib_id = insert_contribution(&pool, "enrich-replace").await;
+    ctx.teardown().await;
+}
 
-        let params1 = UpsertEnrichmentParams {
-            contribution_id: contrib_id,
-            enrichment_type: EnrichmentType::Sentiment,
-            value: &serde_json::json!({"sentiment": "positive"}),
-            model_name: "gemini-pro",
-            confidence: Some(0.7),
-            input_hash: None,
-            input_preview: None,
-        };
-        repos.reasoning.upsert_enrichment(&params1).await.unwrap();
+#[tokio::test]
+async fn upsert_enrichment_replaces_on_conflict() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        let params2 = UpsertEnrichmentParams {
-            contribution_id: contrib_id,
-            enrichment_type: EnrichmentType::Sentiment,
-            value: &serde_json::json!({"sentiment": "neutral"}),
-            model_name: "gemini-pro-2",
-            confidence: Some(0.85),
-            input_hash: None,
-            input_preview: None,
-        };
-        repos.reasoning.upsert_enrichment(&params2).await.unwrap();
+    let contrib_id = insert_contribution(pool, "enrich-replace").await;
 
-        let enrichments = repos
-            .reasoning
-            .get_enrichments_for_contribution(contrib_id)
-            .await
-            .unwrap();
-        assert_eq!(enrichments.len(), 1);
-        assert_eq!(enrichments[0].value["sentiment"], "neutral");
-        assert_eq!(enrichments[0].model_name, "gemini-pro-2");
-    }
-);
+    let params1 = UpsertEnrichmentParams {
+        contribution_id: contrib_id,
+        enrichment_type: EnrichmentType::Sentiment,
+        value: &serde_json::json!({"sentiment": "positive"}),
+        model_name: "gemini-pro",
+        confidence: Some(0.7),
+        input_hash: None,
+        input_preview: None,
+    };
+    repos.reasoning.upsert_enrichment(&params1).await.unwrap();
 
-define_repo_test!(bulk_upsert_enrichments, |repos, pool| async move {
-    let c1 = insert_contribution(&pool, "bulk-e-1").await;
-    let c2 = insert_contribution(&pool, "bulk-e-2").await;
+    let params2 = UpsertEnrichmentParams {
+        contribution_id: contrib_id,
+        enrichment_type: EnrichmentType::Sentiment,
+        value: &serde_json::json!({"sentiment": "neutral"}),
+        model_name: "gemini-pro-2",
+        confidence: Some(0.85),
+        input_hash: None,
+        input_preview: None,
+    };
+    repos.reasoning.upsert_enrichment(&params2).await.unwrap();
+
+    let enrichments = repos
+        .reasoning
+        .get_enrichments_for_contribution(contrib_id)
+        .await
+        .unwrap();
+    assert_eq!(enrichments.len(), 1);
+    assert_eq!(enrichments[0].value["sentiment"], "neutral");
+    assert_eq!(enrichments[0].model_name, "gemini-pro-2");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn bulk_upsert_enrichments() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let c1 = insert_contribution(pool, "bulk-e-1").await;
+    let c2 = insert_contribution(pool, "bulk-e-2").await;
 
     let results = vec![
         EnrichmentResult {
@@ -233,63 +267,84 @@ define_repo_test!(bulk_upsert_enrichments, |repos, pool| async move {
         .unwrap();
     assert_eq!(e1.len(), 1);
     assert_eq!(e1[0].model_name, "gemini-pro");
-});
 
-define_repo_test!(
-    bulk_upsert_enrichments_empty_is_noop,
-    |repos, _pool| async move {
-        let count = repos
-            .reasoning
-            .bulk_upsert_enrichments(&[], "model")
-            .await
-            .unwrap();
-        assert_eq!(count, 0);
-    }
-);
+    ctx.teardown().await;
+}
 
-define_repo_test!(
-    get_enrichments_for_contributions_batch,
-    |repos, pool| async move {
-        let c1 = insert_contribution(&pool, "batch-e-1").await;
-        let c2 = insert_contribution(&pool, "batch-e-2").await;
+#[tokio::test]
+async fn bulk_upsert_enrichments_empty_is_noop() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        let params = UpsertEnrichmentParams {
-            contribution_id: c1,
-            enrichment_type: EnrichmentType::ReviewDepth,
-            value: &serde_json::json!({"depth": "thorough"}),
-            model_name: "model",
-            confidence: None,
-            input_hash: None,
-            input_preview: None,
-        };
-        repos.reasoning.upsert_enrichment(&params).await.unwrap();
+    let count = repos
+        .reasoning
+        .bulk_upsert_enrichments(&[], "model")
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
 
-        let all = repos
-            .reasoning
-            .get_enrichments_for_contributions(&[c1, c2])
-            .await
-            .unwrap();
-        assert_eq!(all.len(), 1); // Only c1 has an enrichment
-    }
-);
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_enrichments_for_contributions_batch() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let c1 = insert_contribution(pool, "batch-e-1").await;
+    let c2 = insert_contribution(pool, "batch-e-2").await;
+
+    let params = UpsertEnrichmentParams {
+        contribution_id: c1,
+        enrichment_type: EnrichmentType::ReviewDepth,
+        value: &serde_json::json!({"depth": "thorough"}),
+        model_name: "model",
+        confidence: None,
+        input_hash: None,
+        input_preview: None,
+    };
+    repos.reasoning.upsert_enrichment(&params).await.unwrap();
+
+    let all = repos
+        .reasoning
+        .get_enrichments_for_contributions(&[c1, c2])
+        .await
+        .unwrap();
+    assert_eq!(all.len(), 1); // Only c1 has an enrichment
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Enrichment status & unenriched
 // ---------------------------------------------------------------------------
 
-define_repo_test!(get_enrichment_status_empty, |repos, _pool| async move {
+#[tokio::test]
+async fn get_enrichment_status_empty() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let status = repos.reasoning.get_enrichment_status().await.unwrap();
     assert_eq!(status.total_enrichments, 0);
     assert!(status.last_enrichment_at.is_none());
-});
 
-define_repo_test!(find_unenriched_contributions, |repos, pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn find_unenriched_contributions() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     // Create a PR review with content (eligible for review_depth)
-    let c1 =
-        insert_typed_contribution(&pool, "unenriched-1", "pr_review", Some("LGTM"), None, None)
-            .await;
+    let c1 = insert_typed_contribution(pool, "unenriched-1", "pr_review", Some("LGTM"), None, None)
+        .await;
     // Create another with no content (not eligible)
-    let _c2 = insert_typed_contribution(&pool, "unenriched-2", "pr_review", None, None, None).await;
+    let _c2 = insert_typed_contribution(pool, "unenriched-2", "pr_review", None, None, None).await;
 
     let results = repos
         .reasoning
@@ -298,15 +353,22 @@ define_repo_test!(find_unenriched_contributions, |repos, pool| async move {
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, c1);
-});
 
-define_repo_test!(find_unenriched_prs_by_size, |repos, pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn find_unenriched_prs_by_size() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     // PR with >50 lines (eligible for significance)
     let _c1 =
-        insert_typed_contribution(&pool, "big-pr", "pull_request", None, Some(40), Some(20)).await;
+        insert_typed_contribution(pool, "big-pr", "pull_request", None, Some(40), Some(20)).await;
     // PR with <=50 lines (not eligible)
     let _c2 =
-        insert_typed_contribution(&pool, "small-pr", "pull_request", None, Some(10), Some(5)).await;
+        insert_typed_contribution(pool, "small-pr", "pull_request", None, Some(10), Some(5)).await;
 
     let results = repos
         .reasoning
@@ -314,13 +376,20 @@ define_repo_test!(find_unenriched_prs_by_size, |repos, pool| async move {
         .await
         .unwrap();
     assert_eq!(results.len(), 1);
-});
+
+    ctx.teardown().await;
+}
 
 // The previous test for unknown enrichment type returning empty is no longer
 // needed — the EnrichmentType enum makes invalid types a compile-time error.
 
-define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
-    let c1 = insert_contribution(&pool, "del-type-1").await;
+#[tokio::test]
+async fn delete_enrichments_by_type() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let c1 = insert_contribution(pool, "del-type-1").await;
 
     let params = UpsertEnrichmentParams {
         contribution_id: c1,
@@ -358,7 +427,9 @@ define_repo_test!(delete_enrichments_by_type, |repos, pool| async move {
         .unwrap();
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].enrichment_type, EnrichmentType::Sentiment);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Conversations
@@ -370,8 +441,13 @@ async fn insert_user(pool: &sqlx::PgPool) -> Uuid {
     user_id
 }
 
-define_repo_test!(conversation_create_and_get, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+#[tokio::test]
+async fn conversation_create_and_get() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     let conv = repos
         .reasoning
@@ -403,10 +479,17 @@ define_repo_test!(conversation_create_and_get, |repos, pool| async move {
         .await
         .unwrap();
     assert!(missing.is_none());
-});
 
-define_repo_test!(conversation_list_with_counts, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_list_with_counts() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     // Create 3 conversations.
     for i in 0..3 {
@@ -459,10 +542,17 @@ define_repo_test!(conversation_list_with_counts, |repos, pool| async move {
         .await
         .unwrap();
     assert_eq!(page.len(), 2);
-});
 
-define_repo_test!(conversation_multi_turn_messages, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_multi_turn_messages() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     let conv = repos
         .reasoning
@@ -543,100 +633,111 @@ define_repo_test!(conversation_multi_turn_messages, |repos, pool| async move {
     assert_eq!(messages[3].role, "assistant");
     assert!(messages[1].reasoning_trace.is_some());
     assert!(messages[3].supporting_data.is_none());
-});
 
-define_repo_test!(
-    conversation_container_status_transitions,
-    |repos, pool| async move {
-        let user_id = insert_user(&pool).await;
+    ctx.teardown().await;
+}
 
-        let conv = repos
-            .reasoning
-            .create_conversation(&CreateConversationParams {
-                user_id,
-                title: Some("Container test"),
-                model_name: "test-model",
-            })
-            .await
-            .unwrap();
-        assert_eq!(conv.container_status, "pending");
+#[tokio::test]
+async fn conversation_container_status_transitions() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        // Transition: pending → active.
-        repos
-            .reasoning
-            .update_container_status(
-                conv.id,
-                Some("prism-agent-abc123"),
-                "active",
-                Some("oc-session-xyz"),
-            )
-            .await
-            .unwrap();
+    let user_id = insert_user(pool).await;
 
-        let fetched = repos
-            .reasoning
-            .get_conversation(conv.id)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched.container_status, "active");
-        assert_eq!(
-            fetched.container_pod_name.as_deref(),
-            Some("prism-agent-abc123")
-        );
-        assert_eq!(
-            fetched.opencode_session_id.as_deref(),
-            Some("oc-session-xyz")
-        );
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("Container test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+    assert_eq!(conv.container_status, "pending");
 
-        // Transition: active → reaped.
-        repos
-            .reasoning
-            .update_container_status(conv.id, None, "reaped", None)
-            .await
-            .unwrap();
+    // Transition: pending → active.
+    repos
+        .reasoning
+        .update_container_status(
+            conv.id,
+            Some("prism-agent-abc123"),
+            "active",
+            Some("oc-session-xyz"),
+        )
+        .await
+        .unwrap();
 
-        let fetched = repos
-            .reasoning
-            .get_conversation(conv.id)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched.container_status, "reaped");
-        // Pod name is preserved (COALESCE keeps existing value).
-        assert_eq!(
-            fetched.container_pod_name.as_deref(),
-            Some("prism-agent-abc123")
-        );
+    let fetched = repos
+        .reasoning
+        .get_conversation(conv.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.container_status, "active");
+    assert_eq!(
+        fetched.container_pod_name.as_deref(),
+        Some("prism-agent-abc123")
+    );
+    assert_eq!(
+        fetched.opencode_session_id.as_deref(),
+        Some("oc-session-xyz")
+    );
 
-        // Transition: reaped → active (resume with new pod).
-        repos
-            .reasoning
-            .update_container_status(
-                conv.id,
-                Some("prism-agent-def456"),
-                "active",
-                Some("oc-session-new"),
-            )
-            .await
-            .unwrap();
+    // Transition: active → reaped.
+    repos
+        .reasoning
+        .update_container_status(conv.id, None, "reaped", None)
+        .await
+        .unwrap();
 
-        let fetched = repos
-            .reasoning
-            .get_conversation(conv.id)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched.container_status, "active");
-        assert_eq!(
-            fetched.container_pod_name.as_deref(),
-            Some("prism-agent-def456")
-        );
-    }
-);
+    let fetched = repos
+        .reasoning
+        .get_conversation(conv.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.container_status, "reaped");
+    // Pod name is preserved (COALESCE keeps existing value).
+    assert_eq!(
+        fetched.container_pod_name.as_deref(),
+        Some("prism-agent-abc123")
+    );
 
-define_repo_test!(conversation_update_totals, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    // Transition: reaped → active (resume with new pod).
+    repos
+        .reasoning
+        .update_container_status(
+            conv.id,
+            Some("prism-agent-def456"),
+            "active",
+            Some("oc-session-new"),
+        )
+        .await
+        .unwrap();
+
+    let fetched = repos
+        .reasoning
+        .get_conversation(conv.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.container_status, "active");
+    assert_eq!(
+        fetched.container_pod_name.as_deref(),
+        Some("prism-agent-def456")
+    );
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_update_totals() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     let conv = repos
         .reasoning
@@ -672,10 +773,17 @@ define_repo_test!(conversation_update_totals, |repos, pool| async move {
     assert_eq!(fetched.total_prompt_tokens, 1800);
     assert_eq!(fetched.total_completion_tokens, 900);
     assert!((fetched.total_estimated_cost_usd - 0.05).abs() < 0.001);
-});
 
-define_repo_test!(conversation_artifacts_crud, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_artifacts_crud() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     let conv = repos
         .reasoning
@@ -759,14 +867,21 @@ define_repo_test!(conversation_artifacts_crud, |repos, pool| async move {
     );
 
     drop(a2);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Conversation export (backup)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(conversation_export_roundtrip, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+#[tokio::test]
+async fn conversation_export_roundtrip() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
 
     // Create a conversation with messages and an artifact.
     let conv = repos
@@ -868,69 +983,80 @@ define_repo_test!(conversation_export_roundtrip, |repos, pool| async move {
     );
 
     drop(msg);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Conversation events — Plan 57
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    conversation_events_append_and_poll,
-    |repos, pool| async move {
-        let user_id = insert_user(&pool).await;
-        let conv = repos
-            .reasoning
-            .create_conversation(&CreateConversationParams {
-                user_id,
-                title: Some("test events"),
-                model_name: "test-model",
-            })
-            .await
-            .unwrap();
+#[tokio::test]
+async fn conversation_events_append_and_poll() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        // Append events.
-        repos
-            .reasoning
-            .append_event(
-                conv.id,
-                "container_status",
-                &serde_json::json!({"status": "creating", "message": "Starting..."}),
-                None,
-                None,
-            )
-            .await
-            .unwrap();
-        repos
-            .reasoning
-            .append_event(
-                conv.id,
-                "tool_call_started",
-                &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
-                None,
-                None,
-            )
-            .await
-            .unwrap();
+    let user_id = insert_user(pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("test events"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
 
-        // Poll from start.
-        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
-        assert_eq!(events.len(), 2);
-        assert_eq!(events[0].event_type, "container_status");
-        assert_eq!(events[1].event_type, "tool_call_started");
+    // Append events.
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "container_status",
+            &serde_json::json!({"status": "creating", "message": "Starting..."}),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "tool_call_started",
+            &serde_json::json!({"tool_name": "list_teams", "arguments_json": "{}"}),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
 
-        // Poll from cursor (after first event).
-        let events = repos
-            .reasoning
-            .poll_events(conv.id, events[0].id)
-            .await
-            .unwrap();
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].event_type, "tool_call_started");
-    }
-);
+    // Poll from start.
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].event_type, "container_status");
+    assert_eq!(events[1].event_type, "tool_call_started");
 
-define_repo_test!(conversation_events_poll_empty, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    // Poll from cursor (after first event).
+    let events = repos
+        .reasoning
+        .poll_events(conv.id, events[0].id)
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "tool_call_started");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_events_poll_empty() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
@@ -943,10 +1069,17 @@ define_repo_test!(conversation_events_poll_empty, |repos, pool| async move {
 
     let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
     assert!(events.is_empty());
-});
 
-define_repo_test!(conversation_events_delete, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_events_delete() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
@@ -985,53 +1118,64 @@ define_repo_test!(conversation_events_delete, |repos, pool| async move {
 
     let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
     assert!(events.is_empty());
-});
 
-define_repo_test!(
-    conversation_events_cursor_ordering,
-    |repos, pool| async move {
-        let user_id = insert_user(&pool).await;
-        let conv = repos
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_events_cursor_ordering() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("ordering test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
+
+    // Insert 5 events.
+    for i in 0..5 {
+        repos
             .reasoning
-            .create_conversation(&CreateConversationParams {
-                user_id,
-                title: Some("ordering test"),
-                model_name: "test-model",
-            })
+            .append_event(
+                conv.id,
+                "partial_answer",
+                &serde_json::json!({"text": format!("answer {i}")}),
+                None,
+                None,
+            )
             .await
             .unwrap();
-
-        // Insert 5 events.
-        for i in 0..5 {
-            repos
-                .reasoning
-                .append_event(
-                    conv.id,
-                    "partial_answer",
-                    &serde_json::json!({"text": format!("answer {i}")}),
-                    None,
-                    None,
-                )
-                .await
-                .unwrap();
-        }
-
-        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
-        assert_eq!(events.len(), 5);
-        // Verify monotonically increasing IDs.
-        for i in 1..events.len() {
-            assert!(events[i].id > events[i - 1].id);
-        }
-        // Verify order matches insertion order.
-        for (i, event) in events.iter().enumerate() {
-            let text = event.payload.get("text").unwrap().as_str().unwrap();
-            assert_eq!(text, format!("answer {i}"));
-        }
     }
-);
 
-define_repo_test!(query_status_transitions, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert_eq!(events.len(), 5);
+    // Verify monotonically increasing IDs.
+    for i in 1..events.len() {
+        assert!(events[i].id > events[i - 1].id);
+    }
+    // Verify order matches insertion order.
+    for (i, event) in events.iter().enumerate() {
+        let text = event.payload.get("text").unwrap().as_str().unwrap();
+        assert_eq!(text, format!("answer {i}"));
+    }
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn query_status_transitions() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
@@ -1065,76 +1209,87 @@ define_repo_test!(query_status_transitions, |repos, pool| async move {
             .unwrap();
         assert_eq!(updated.query_status, status.as_str());
     }
-});
 
-define_repo_test!(
-    conversation_events_step_identity,
-    |repos, pool| async move {
-        let user_id = insert_user(&pool).await;
-        let conv = repos
-            .reasoning
-            .create_conversation(&CreateConversationParams {
-                user_id,
-                title: Some("step identity test"),
-                model_name: "test-model",
-            })
-            .await
-            .unwrap();
+    ctx.teardown().await;
+}
 
-        // Append events with step_id and step_seq.
-        repos
-            .reasoning
-            .append_event(
-                conv.id,
-                "thinking",
-                &serde_json::json!({"text": "thinking", "part_index": 0}),
-                Some("think-0-0"),
-                Some(0),
-            )
-            .await
-            .unwrap();
-        repos
-            .reasoning
-            .append_event(
-                conv.id,
-                "tool_call_started",
-                &serde_json::json!({"tool_name": "bash", "call_id": "c1", "arguments_json": "{}"}),
-                Some("tool-c1"),
-                Some(1),
-            )
-            .await
-            .unwrap();
+#[tokio::test]
+async fn conversation_events_step_identity() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        // Append event with NULL step_id/step_seq (backward compat).
-        repos
-            .reasoning
-            .append_event(
-                conv.id,
-                "partial_answer",
-                &serde_json::json!({"text": "answer"}),
-                None,
-                None,
-            )
-            .await
-            .unwrap();
+    let user_id = insert_user(pool).await;
+    let conv = repos
+        .reasoning
+        .create_conversation(&CreateConversationParams {
+            user_id,
+            title: Some("step identity test"),
+            model_name: "test-model",
+        })
+        .await
+        .unwrap();
 
-        let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
-        assert_eq!(events.len(), 3);
-        assert_eq!(events[0].step_id.as_deref(), Some("think-0-0"));
-        assert_eq!(events[0].step_seq, Some(0));
-        assert_eq!(events[1].step_id.as_deref(), Some("tool-c1"));
-        assert_eq!(events[1].step_seq, Some(1));
-        assert_eq!(events[2].step_id, None);
-        assert_eq!(events[2].step_seq, None);
+    // Append events with step_id and step_seq.
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "thinking",
+            &serde_json::json!({"text": "thinking", "part_index": 0}),
+            Some("think-0-0"),
+            Some(0),
+        )
+        .await
+        .unwrap();
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "tool_call_started",
+            &serde_json::json!({"tool_name": "bash", "call_id": "c1", "arguments_json": "{}"}),
+            Some("tool-c1"),
+            Some(1),
+        )
+        .await
+        .unwrap();
 
-        // Verify ordering is still by id.
-        assert!(events[0].id < events[1].id);
-        assert!(events[1].id < events[2].id);
-    }
-);
+    // Append event with NULL step_id/step_seq (backward compat).
+    repos
+        .reasoning
+        .append_event(
+            conv.id,
+            "partial_answer",
+            &serde_json::json!({"text": "answer"}),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
 
-define_repo_test!(query_status_cancel, |repos, pool| async move {
-    let user_id = insert_user(&pool).await;
+    let events = repos.reasoning.poll_events(conv.id, 0).await.unwrap();
+    assert_eq!(events.len(), 3);
+    assert_eq!(events[0].step_id.as_deref(), Some("think-0-0"));
+    assert_eq!(events[0].step_seq, Some(0));
+    assert_eq!(events[1].step_id.as_deref(), Some("tool-c1"));
+    assert_eq!(events[1].step_seq, Some(1));
+    assert_eq!(events[2].step_id, None);
+    assert_eq!(events[2].step_seq, None);
+
+    // Verify ordering is still by id.
+    assert!(events[0].id < events[1].id);
+    assert!(events[1].id < events[2].id);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn query_status_cancel() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    let user_id = insert_user(pool).await;
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
@@ -1163,4 +1318,6 @@ define_repo_test!(query_status_cancel, |repos, pool| async move {
         .unwrap()
         .unwrap();
     assert_eq!(conv.query_status, "cancelled");
-});
+
+    ctx.teardown().await;
+}

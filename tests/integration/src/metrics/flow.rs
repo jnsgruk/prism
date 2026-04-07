@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{ContributionState, ContributionType, Platform, TeamType};
 use time::OffsetDateTime;
@@ -110,7 +110,12 @@ async fn seed_team_with_contributions(
 // Cycle time from Jira tickets (end-to-end through DB)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(cycle_time_from_jira_tickets, |repos, pool| async move {
+#[tokio::test]
+async fn cycle_time_from_jira_tickets() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -139,7 +144,7 @@ define_repo_test!(cycle_time_from_jira_tickets, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team_with_contributions(&repos, &pool, &items).await;
+    let (team_id, _) = seed_team_with_contributions(repos, pool, &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
@@ -155,13 +160,20 @@ define_repo_test!(cycle_time_from_jira_tickets, |repos, pool| async move {
 
     let ct = ps_metrics::flow::compute_cycle_time(&contribs).unwrap();
     assert!((ct - 36.0).abs() < 0.01); // (24 + 48) / 2
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Lead time from PRs and Jira
 // ---------------------------------------------------------------------------
 
-define_repo_test!(lead_time_from_prs_and_jira, |repos, pool| async move {
+#[tokio::test]
+async fn lead_time_from_prs_and_jira() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(0, 0, 0).unwrap(),
@@ -196,7 +208,7 @@ define_repo_test!(lead_time_from_prs_and_jira, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team_with_contributions(&repos, &pool, &items).await;
+    let (team_id, _) = seed_team_with_contributions(repos, pool, &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
@@ -209,13 +221,20 @@ define_repo_test!(lead_time_from_prs_and_jira, |repos, pool| async move {
 
     let lead_time = ps_metrics::flow::compute_lead_time(&contribs).unwrap();
     assert!((lead_time - 36.0).abs() < 0.01); // (24 + 48) / 2
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // WIP counts open items
 // ---------------------------------------------------------------------------
 
-define_repo_test!(wip_counts_open_items, |repos, pool| async move {
+#[tokio::test]
+async fn wip_counts_open_items() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let jan_10 = OffsetDateTime::new_utc(
         time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
         time::Time::from_hms(12, 0, 0).unwrap(),
@@ -251,7 +270,7 @@ define_repo_test!(wip_counts_open_items, |repos, pool| async move {
         ),
     ];
 
-    let (team_id, _) = seed_team_with_contributions(&repos, &pool, &items).await;
+    let (team_id, _) = seed_team_with_contributions(repos, pool, &items).await;
 
     let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
     let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
@@ -264,124 +283,139 @@ define_repo_test!(wip_counts_open_items, |repos, pool| async move {
 
     let wip = ps_metrics::flow::compute_wip(&contribs, period_end).unwrap();
     assert!((wip - 2.0).abs() < 0.01);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Throughput counts completed by platform
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    throughput_counts_completed_by_period,
-    |repos, pool| async move {
-        let jan_10 = OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
-            time::Time::from_hms(12, 0, 0).unwrap(),
-        );
-        let jan_12 = OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap(),
-            time::Time::from_hms(12, 0, 0).unwrap(),
-        );
+#[tokio::test]
+async fn throughput_counts_completed_by_period() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        let items = vec![
-            make_pr(
-                "PR-T-1",
-                ContributionState::Merged,
-                jan_10,
-                Some(jan_12),
-                serde_json::json!({}),
-                serde_json::json!({}),
-            ),
-            make_pr(
-                "PR-T-2",
-                ContributionState::Open,
-                jan_10,
-                None,
-                serde_json::json!({}),
-                serde_json::json!({}),
-            ), // not counted
-            make_jira_ticket(
-                "JIRA-T-1",
-                ContributionState::Closed,
-                jan_10,
-                Some(jan_12),
-                Some(10.0),
-                None,
-            ),
-        ];
+    let jan_10 = OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
+        time::Time::from_hms(12, 0, 0).unwrap(),
+    );
+    let jan_12 = OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::January, 12).unwrap(),
+        time::Time::from_hms(12, 0, 0).unwrap(),
+    );
 
-        let (team_id, _) = seed_team_with_contributions(&repos, &pool, &items).await;
+    let items = vec![
+        make_pr(
+            "PR-T-1",
+            ContributionState::Merged,
+            jan_10,
+            Some(jan_12),
+            serde_json::json!({}),
+            serde_json::json!({}),
+        ),
+        make_pr(
+            "PR-T-2",
+            ContributionState::Open,
+            jan_10,
+            None,
+            serde_json::json!({}),
+            serde_json::json!({}),
+        ), // not counted
+        make_jira_ticket(
+            "JIRA-T-1",
+            ContributionState::Closed,
+            jan_10,
+            Some(jan_12),
+            Some(10.0),
+            None,
+        ),
+    ];
 
-        let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
-        let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
+    let (team_id, _) = seed_team_with_contributions(repos, pool, &items).await;
 
-        let contribs = repos
-            .metrics
-            .get_team_contributions(team_id, period_start, period_end)
-            .await
-            .unwrap();
+    let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
+    let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
 
-        let throughput = ps_metrics::compute_cross_source_throughput(&contribs);
-        assert_eq!(throughput.total, 2); // 1 merged PR + 1 closed Jira
-        assert_eq!(throughput.by_source["github"], 1);
-        assert_eq!(throughput.by_source["jira"], 1);
-    }
-);
+    let contribs = repos
+        .metrics
+        .get_team_contributions(team_id, period_start, period_end)
+        .await
+        .unwrap();
+
+    let throughput = ps_metrics::compute_cross_source_throughput(&contribs);
+    assert_eq!(throughput.total, 2); // 1 merged PR + 1 closed Jira
+    assert_eq!(throughput.by_source["github"], 1);
+    assert_eq!(throughput.by_source["jira"], 1);
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Flow efficiency from state durations
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    flow_efficiency_from_state_durations,
-    |repos, pool| async move {
-        let jan_10 = OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
-            time::Time::from_hms(0, 0, 0).unwrap(),
-        );
-        let jan_20 = OffsetDateTime::new_utc(
-            time::Date::from_calendar_date(2025, time::Month::January, 20).unwrap(),
-            time::Time::from_hms(0, 0, 0).unwrap(),
-        );
+#[tokio::test]
+async fn flow_efficiency_from_state_durations() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
 
-        // Total cycle time: 100 hours
-        // Active time (In Progress → Done): 60 hours
-        // Efficiency: 0.6
-        let history = serde_json::json!([
-            {"state": "To Do", "at": "2025-01-10T00:00:00Z"},
-            {"state": "In Progress", "at": "2025-01-12T16:00:00Z"},
-            {"state": "Done", "at": "2025-01-15T04:00:00Z"}
-        ]);
+    let jan_10 = OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::January, 10).unwrap(),
+        time::Time::from_hms(0, 0, 0).unwrap(),
+    );
+    let jan_20 = OffsetDateTime::new_utc(
+        time::Date::from_calendar_date(2025, time::Month::January, 20).unwrap(),
+        time::Time::from_hms(0, 0, 0).unwrap(),
+    );
 
-        let items = vec![make_jira_ticket(
-            "JIRA-EFF-1",
-            ContributionState::Closed,
-            jan_10,
-            Some(jan_20),
-            Some(100.0),
-            Some(history),
-        )];
+    // Total cycle time: 100 hours
+    // Active time (In Progress → Done): 60 hours
+    // Efficiency: 0.6
+    let history = serde_json::json!([
+        {"state": "To Do", "at": "2025-01-10T00:00:00Z"},
+        {"state": "In Progress", "at": "2025-01-12T16:00:00Z"},
+        {"state": "Done", "at": "2025-01-15T04:00:00Z"}
+    ]);
 
-        let (team_id, _) = seed_team_with_contributions(&repos, &pool, &items).await;
+    let items = vec![make_jira_ticket(
+        "JIRA-EFF-1",
+        ContributionState::Closed,
+        jan_10,
+        Some(jan_20),
+        Some(100.0),
+        Some(history),
+    )];
 
-        let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
-        let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
+    let (team_id, _) = seed_team_with_contributions(repos, pool, &items).await;
 
-        let contribs = repos
-            .metrics
-            .get_team_contributions(team_id, period_start, period_end)
-            .await
-            .unwrap();
+    let period_start = time::Date::from_calendar_date(2025, time::Month::January, 6).unwrap();
+    let period_end = time::Date::from_calendar_date(2025, time::Month::January, 31).unwrap();
 
-        let efficiency = ps_metrics::flow::compute_flow_efficiency(&contribs).unwrap();
-        assert!((efficiency - 0.6).abs() < 0.01);
-    }
-);
+    let contribs = repos
+        .metrics
+        .get_team_contributions(team_id, period_start, period_end)
+        .await
+        .unwrap();
+
+    let efficiency = ps_metrics::flow::compute_flow_efficiency(&contribs).unwrap();
+    assert!((efficiency - 0.6).abs() < 0.01);
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Empty period returns None
 // ---------------------------------------------------------------------------
 
-define_repo_test!(empty_period_returns_none, |repos, _pool| async move {
+#[tokio::test]
+async fn empty_period_returns_none() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let team = repos
         .org
         .create_team("EmptyTeam", "Org", TeamType::Team, None, None)
@@ -406,4 +440,6 @@ define_repo_test!(empty_period_returns_none, |repos, _pool| async move {
     assert!(ps_metrics::flow::compute_wip(&contribs, period_end).is_none());
     assert!(ps_metrics::flow::compute_lead_time(&contribs).is_none());
     assert!(ps_metrics::flow::compute_flow_efficiency(&contribs).is_none());
-});
+
+    ctx.teardown().await;
+}

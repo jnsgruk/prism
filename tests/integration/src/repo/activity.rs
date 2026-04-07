@@ -1,4 +1,4 @@
-use crate::define_repo_test;
+use crate::common::db::RepoTestContext;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{
     ContributionState, ContributionType, HandlerMethod, HandlerName, IngestionStatus, Platform,
@@ -55,7 +55,12 @@ fn make_contribution(
 // Contributions
 // ---------------------------------------------------------------------------
 
-define_repo_test!(upsert_contribution_and_retrieve, |repos, pool| async move {
+#[tokio::test]
+async fn upsert_contribution_and_retrieve() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let item = make_contribution(Platform::Github, ContributionType::PullRequest, "gh-pr-1");
     let id = Uuid::now_v7();
     repos
@@ -67,13 +72,20 @@ define_repo_test!(upsert_contribution_and_retrieve, |repos, pool| async move {
     // Verify via raw SQL that the row exists
     let row: (Uuid,) =
         sqlx::query_as("SELECT id FROM activity.contributions WHERE platform_id = 'gh-pr-1'")
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .unwrap();
     assert_eq!(row.0, id);
-});
 
-define_repo_test!(upsert_contribution_idempotent, |repos, pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn upsert_contribution_idempotent() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let item = make_contribution(Platform::Github, ContributionType::PullRequest, "gh-pr-2");
     let id1 = Uuid::now_v7();
     repos
@@ -95,13 +107,20 @@ define_repo_test!(upsert_contribution_idempotent, |repos, pool| async move {
     let count: (i64,) = sqlx::query_as(
         "SELECT COUNT(*)::bigint FROM activity.contributions WHERE platform = 'github' AND platform_id = 'gh-pr-2'",
     )
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await
     .unwrap();
     assert_eq!(count.0, 1);
-});
 
-define_repo_test!(bulk_upsert_contributions, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn bulk_upsert_contributions() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let items: Vec<ContributionInput> = (0..3)
         .map(|i| {
             make_contribution(
@@ -121,44 +140,62 @@ define_repo_test!(bulk_upsert_contributions, |repos, _pool| async move {
         .await
         .unwrap();
     assert_eq!(result.len(), 3);
-});
 
-define_repo_test!(bulk_upsert_empty_is_noop, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn bulk_upsert_empty_is_noop() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let result = repos
         .activity
         .bulk_upsert_contributions(&[], &[], &[])
         .await
         .unwrap();
     assert!(result.is_empty());
-});
 
-define_repo_test!(
-    get_contribution_ids_by_platform_ids,
-    |repos, _pool| async move {
-        let item = make_contribution(Platform::Github, ContributionType::PullRequest, "lookup-1");
-        let id = Uuid::now_v7();
-        repos
-            .activity
-            .upsert_contribution(id, None, &item)
-            .await
-            .unwrap();
+    ctx.teardown().await;
+}
 
-        let result = repos
-            .activity
-            .get_contribution_ids_by_platform_ids("github", &["lookup-1".into()])
-            .await
-            .unwrap();
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].0, id);
-        assert_eq!(result[0].1, "lookup-1");
-    }
-);
+#[tokio::test]
+async fn get_contribution_ids_by_platform_ids() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
+    let item = make_contribution(Platform::Github, ContributionType::PullRequest, "lookup-1");
+    let id = Uuid::now_v7();
+    repos
+        .activity
+        .upsert_contribution(id, None, &item)
+        .await
+        .unwrap();
+
+    let result = repos
+        .activity
+        .get_contribution_ids_by_platform_ids("github", &["lookup-1".into()])
+        .await
+        .unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].0, id);
+    assert_eq!(result[0].1, "lookup-1");
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Runs
 // ---------------------------------------------------------------------------
 
-define_repo_test!(create_run_and_complete, |repos, _pool| async move {
+#[tokio::test]
+async fn create_run_and_complete() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -179,9 +216,16 @@ define_repo_test!(create_run_and_complete, |repos, _pool| async move {
     assert_eq!(run.status, IngestionStatus::Completed);
     assert!(run.completed_at.is_some());
     assert_eq!(run.items_collected, Some(42));
-});
 
-define_repo_test!(fail_run_records_error, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn fail_run_records_error() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -201,9 +245,16 @@ define_repo_test!(fail_run_records_error, |repos, _pool| async move {
     let run = repos.activity.get_run(run_id).await.unwrap().unwrap();
     assert_eq!(run.status, IngestionStatus::Failed);
     assert_eq!(run.error_message.as_deref(), Some("Connection refused"));
-});
 
-define_repo_test!(complete_run_with_warnings, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn complete_run_with_warnings() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -225,9 +276,16 @@ define_repo_test!(complete_run_with_warnings, |repos, _pool| async move {
     assert_eq!(run.status, IngestionStatus::CompletedWithWarnings);
     assert_eq!(run.items_collected, Some(10));
     assert!(run.error_message.is_some());
-});
 
-define_repo_test!(list_runs_by_source, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_runs_by_source() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
     let id3 = Uuid::now_v7();
@@ -272,9 +330,16 @@ define_repo_test!(list_runs_by_source, |repos, _pool| async move {
 
     let all_runs = repos.activity.list_runs(None, None, false).await.unwrap();
     assert_eq!(all_runs.len(), 3);
-});
 
-define_repo_test!(list_runs_ingestion_only, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_runs_ingestion_only() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     test_create_run(
         &repos.activity,
         Uuid::now_v7(),
@@ -305,9 +370,16 @@ define_repo_test!(list_runs_ingestion_only, |repos, _pool| async move {
 
     let all = repos.activity.list_runs(None, None, false).await.unwrap();
     assert_eq!(all.len(), 3);
-});
 
-define_repo_test!(cancel_run_by_id, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn cancel_run_by_id() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -322,9 +394,16 @@ define_repo_test!(cancel_run_by_id, |repos, _pool| async move {
 
     let run = repos.activity.get_run(run_id).await.unwrap().unwrap();
     assert_eq!(run.status, IngestionStatus::Cancelled);
-});
 
-define_repo_test!(get_active_handler_runs, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_active_handler_runs() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
     test_create_run(
@@ -348,9 +427,16 @@ define_repo_test!(get_active_handler_runs, |repos, _pool| async move {
     let active = repos.activity.get_active_handler_runs().await.unwrap();
     assert_eq!(active.len(), 1);
     assert_eq!(active[0].id, id1);
-});
 
-define_repo_test!(update_run_progress, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_run_progress() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -369,9 +455,16 @@ define_repo_test!(update_run_progress, |repos, _pool| async move {
 
     let run = repos.activity.get_run(run_id).await.unwrap().unwrap();
     assert_eq!(run.items_collected, Some(25));
-});
 
-define_repo_test!(update_run_progress_detail, |repos, pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_run_progress_detail() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
     let run_id = Uuid::now_v7();
     test_create_run(
         &repos.activity,
@@ -392,17 +485,24 @@ define_repo_test!(update_run_progress_detail, |repos, pool| async move {
     let row: (Option<serde_json::Value>,) =
         sqlx::query_as("SELECT progress FROM activity.ingestion_runs WHERE id = $1")
             .bind(run_id)
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .unwrap();
     assert_eq!(row.0.unwrap()["prs"], 10);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Watermarks
 // ---------------------------------------------------------------------------
 
-define_repo_test!(get_watermark_and_advance, |repos, _pool| async move {
+#[tokio::test]
+async fn get_watermark_and_advance() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     // Initially none
     let wm = repos.activity.get_watermark("github").await.unwrap();
     assert!(wm.is_none());
@@ -425,13 +525,20 @@ define_repo_test!(get_watermark_and_advance, |repos, _pool| async move {
 
     let wm = repos.activity.get_watermark("github").await.unwrap();
     assert_eq!(wm.as_deref(), Some("2025-02-01T00:00:00Z"));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // ETag cache
 // ---------------------------------------------------------------------------
 
-define_repo_test!(store_and_check_etag, |repos, _pool| async move {
+#[tokio::test]
+async fn store_and_check_etag() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let etag = repos
         .activity
         .get_cached_etag("github", "https://api.github.com/repos/foo/bar")
@@ -473,13 +580,20 @@ define_repo_test!(store_and_check_etag, |repos, _pool| async move {
         .await
         .unwrap();
     assert_eq!(etag.as_deref(), Some("W/\"def456\""));
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Invocation tracking
 // ---------------------------------------------------------------------------
 
-define_repo_test!(invocation_tracking, |repos, _pool| async move {
+#[tokio::test]
+async fn invocation_tracking() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     // set_current_invocation_id upserts the watermark row if needed
     repos
         .activity
@@ -507,88 +621,103 @@ define_repo_test!(invocation_tracking, |repos, _pool| async move {
         .await
         .unwrap();
     assert!(inv_id.is_none());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Source status (cross-schema join)
 // ---------------------------------------------------------------------------
 
-define_repo_test!(
-    get_source_statuses_cross_schema_join,
-    |repos, _pool| async move {
-        // Create an enabled source
-        let settings = serde_json::json!({});
-        repos
-            .config
-            .create_source(Uuid::now_v7(), "github", "GH", &settings, None)
-            .await
-            .unwrap();
+#[tokio::test]
+async fn get_source_statuses_cross_schema_join() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
 
-        // Add watermark
-        repos
-            .activity
-            .upsert_watermark("GH", "2025-01-01", 50)
-            .await
-            .unwrap();
+    // Create an enabled source
+    let settings = serde_json::json!({});
+    repos
+        .config
+        .create_source(Uuid::now_v7(), "github", "GH", &settings, None)
+        .await
+        .unwrap();
 
-        // Create a completed run
-        let run_id = Uuid::now_v7();
-        test_create_run(
-            &repos.activity,
-            run_id,
-            "GH",
-            "GithubIngestionHandler",
-            "run_ingestion",
-        )
-        .await;
-        repos.activity.complete_run(run_id, 50).await.unwrap();
+    // Add watermark
+    repos
+        .activity
+        .upsert_watermark("GH", "2025-01-01", 50)
+        .await
+        .unwrap();
 
-        let statuses = repos.activity.get_source_statuses().await.unwrap();
-        assert_eq!(statuses.len(), 1);
-        assert_eq!(statuses[0].name, "GH");
-        assert_eq!(statuses[0].watermark_value.as_deref(), Some("2025-01-01"));
-        assert!(!statuses[0].has_active_run);
-        assert_eq!(statuses[0].items_collected_last_run, Some(50));
-    }
-);
+    // Create a completed run
+    let run_id = Uuid::now_v7();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "GH",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    repos.activity.complete_run(run_id, 50).await.unwrap();
 
-define_repo_test!(
-    get_source_statuses_with_active_run,
-    |repos, _pool| async move {
-        let settings = serde_json::json!({});
-        repos
-            .config
-            .create_source(Uuid::now_v7(), "github", "GH", &settings, None)
-            .await
-            .unwrap();
+    let statuses = repos.activity.get_source_statuses().await.unwrap();
+    assert_eq!(statuses.len(), 1);
+    assert_eq!(statuses[0].name, "GH");
+    assert_eq!(statuses[0].watermark_value.as_deref(), Some("2025-01-01"));
+    assert!(!statuses[0].has_active_run);
+    assert_eq!(statuses[0].items_collected_last_run, Some(50));
 
-        let run_id = Uuid::now_v7();
-        test_create_run(
-            &repos.activity,
-            run_id,
-            "GH",
-            "GithubIngestionHandler",
-            "run_ingestion",
-        )
-        .await;
-        repos
-            .activity
-            .update_run_progress(run_id, 10)
-            .await
-            .unwrap();
+    ctx.teardown().await;
+}
 
-        let statuses = repos.activity.get_source_statuses().await.unwrap();
-        assert_eq!(statuses.len(), 1);
-        assert!(statuses[0].has_active_run);
-        assert_eq!(statuses[0].active_run_items, Some(10));
-    }
-);
+#[tokio::test]
+async fn get_source_statuses_with_active_run() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
+    let settings = serde_json::json!({});
+    repos
+        .config
+        .create_source(Uuid::now_v7(), "github", "GH", &settings, None)
+        .await
+        .unwrap();
+
+    let run_id = Uuid::now_v7();
+    test_create_run(
+        &repos.activity,
+        run_id,
+        "GH",
+        "GithubIngestionHandler",
+        "run_ingestion",
+    )
+    .await;
+    repos
+        .activity
+        .update_run_progress(run_id, 10)
+        .await
+        .unwrap();
+
+    let statuses = repos.activity.get_source_statuses().await.unwrap();
+    assert_eq!(statuses.len(), 1);
+    assert!(statuses[0].has_active_run);
+    assert_eq!(statuses[0].active_run_items, Some(10));
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Cancel & reset
 // ---------------------------------------------------------------------------
 
-define_repo_test!(cancel_active_runs, |repos, _pool| async move {
+#[tokio::test]
+async fn cancel_active_runs() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id1 = Uuid::now_v7();
     let id2 = Uuid::now_v7();
     test_create_run(
@@ -614,9 +743,16 @@ define_repo_test!(cancel_active_runs, |repos, _pool| async move {
     let r2 = repos.activity.get_run(id2).await.unwrap().unwrap();
     assert_eq!(r1.status, IngestionStatus::Cancelled);
     assert_eq!(r2.status, IngestionStatus::Cancelled);
-});
 
-define_repo_test!(reset_all_clears_everything, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn reset_all_clears_everything() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     // Seed some data
     let item = make_contribution(Platform::Github, ContributionType::PullRequest, "reset-1");
     repos
@@ -671,13 +807,20 @@ define_repo_test!(reset_all_clears_everything, |repos, _pool| async move {
             .unwrap()
             .is_none()
     );
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Pipelines
 // ---------------------------------------------------------------------------
 
-define_repo_test!(create_pipeline_and_retrieve, |repos, _pool| async move {
+#[tokio::test]
+async fn create_pipeline_and_retrieve() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     let pipeline = repos
         .activity
@@ -695,9 +838,16 @@ define_repo_test!(create_pipeline_and_retrieve, |repos, _pool| async move {
     let latest = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
     assert_eq!(latest.id, id);
     assert_eq!(latest.status, "running");
-});
 
-define_repo_test!(update_pipeline_stage_advances, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn update_pipeline_stage_advances() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     repos.activity.create_pipeline(id, None).await.unwrap();
 
@@ -715,9 +865,16 @@ define_repo_test!(update_pipeline_stage_advances, |repos, _pool| async move {
     assert_eq!(pipeline.current_stage.as_deref(), Some("ingestion"));
     assert_eq!(pipeline.stages["team_sync"]["status"], "completed");
     assert_eq!(pipeline.stages["ingestion"]["status"], "running");
-});
 
-define_repo_test!(complete_pipeline_sets_status, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn complete_pipeline_sets_status() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     let id = Uuid::now_v7();
     repos
         .activity
@@ -759,9 +916,16 @@ define_repo_test!(complete_pipeline_sets_status, |repos, _pool| async move {
     let pipeline = repos.activity.get_latest_pipeline().await.unwrap().unwrap();
     assert_eq!(pipeline.status, "failed");
     assert_eq!(pipeline.error.as_deref(), Some("all handlers failed"));
-});
 
-define_repo_test!(list_recent_pipelines_ordered, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_recent_pipelines_ordered() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     // Create 3 pipelines
     for _ in 0..3 {
         let id = Uuid::now_v7();
@@ -784,9 +948,16 @@ define_repo_test!(list_recent_pipelines_ordered, |repos, _pool| async move {
     // Verify limit
     let limited = repos.activity.list_recent_pipelines(2).await.unwrap();
     assert_eq!(limited.len(), 2);
-});
 
-define_repo_test!(has_active_pipeline_check, |repos, _pool| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn has_active_pipeline_check() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let _pool = &ctx.pool;
+
     assert!(!repos.activity.has_active_pipeline().await.unwrap());
 
     let id = Uuid::now_v7();
@@ -801,4 +972,6 @@ define_repo_test!(has_active_pipeline_check, |repos, _pool| async move {
         .unwrap();
 
     assert!(!repos.activity.has_active_pipeline().await.unwrap());
-});
+
+    ctx.teardown().await;
+}

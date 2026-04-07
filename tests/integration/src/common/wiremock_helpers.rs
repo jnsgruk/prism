@@ -5,14 +5,33 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-/// Context provided to `define_source_test!` tests.
+use super::db::TestDb;
+
+/// Test context for source-adapter integration tests with wiremock + real PostgreSQL.
 pub struct SourceTestContext {
     pub mock_server: wiremock::MockServer,
     pub repos: Repos,
     pub pool: PgPool,
+    db: TestDb,
 }
 
 impl SourceTestContext {
+    pub async fn new() -> Self {
+        let db = TestDb::new().await;
+        let repos = Repos::new(db.pool.clone());
+        let mock_server = wiremock::MockServer::start().await;
+        Self {
+            mock_server,
+            repos,
+            pool: db.pool.clone(),
+            db,
+        }
+    }
+
+    pub async fn teardown(self) {
+        self.db.teardown().await;
+    }
+
     /// Build an `IngestionContext` that points HTTP calls at the mock server.
     pub async fn build_ingestion_ctx(
         &self,

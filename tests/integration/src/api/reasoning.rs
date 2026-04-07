@@ -1,4 +1,4 @@
-use crate::define_api_test;
+use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, AskQuestionRequest, DeleteEnrichmentsByTypeRequest,
@@ -23,7 +23,11 @@ fn auth<T>(req: &mut Request<T>, token: &str) {
 // GetAiSettings — defaults
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_ai_settings_defaults, |server| async move {
+#[tokio::test]
+async fn get_ai_settings_defaults() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -43,13 +47,19 @@ define_api_test!(get_ai_settings_defaults, |server| async move {
     // No provider keys set initially
     assert!(!settings.provider_secret_status["google"]);
     assert!(!settings.provider_secret_status["openrouter"]);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // UpdateAiSettings — round-trip
 // ---------------------------------------------------------------------------
 
-define_api_test!(update_ai_settings_round_trip, |server| async move {
+#[tokio::test]
+async fn update_ai_settings_round_trip() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -90,13 +100,19 @@ define_api_test!(update_ai_settings_round_trip, |server| async move {
     let enrichment = settings.enrichment.expect("enrichment config");
     assert_eq!(enrichment.provider, i32::from(AiProvider::Google));
     assert_eq!(enrichment.model, "gemini-2.0-flash");
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // SetProviderSecret — stores and reflects in status
 // ---------------------------------------------------------------------------
 
-define_api_test!(set_provider_secret_updates_status, |server| async move {
+#[tokio::test]
+async fn set_provider_secret_updates_status() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -124,13 +140,19 @@ define_api_test!(set_provider_secret_updates_status, |server| async move {
     assert!(settings.provider_secret_status["google"]);
     // openrouter still not set
     assert!(!settings.provider_secret_status["openrouter"]);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // SetProviderSecret — unknown provider
 // ---------------------------------------------------------------------------
 
-define_api_test!(set_provider_secret_unknown_provider, |server| async move {
+#[tokio::test]
+async fn set_provider_secret_unknown_provider() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -146,13 +168,19 @@ define_api_test!(set_provider_secret_unknown_provider, |server| async move {
         .expect_err("unknown provider");
 
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // SetProviderSecret — empty value rejected
 // ---------------------------------------------------------------------------
 
-define_api_test!(set_provider_secret_empty_value, |server| async move {
+#[tokio::test]
+async fn set_provider_secret_empty_value() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -168,13 +196,19 @@ define_api_test!(set_provider_secret_empty_value, |server| async move {
         .expect_err("empty secret");
 
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetEnrichmentPipelineStatus — empty
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_enrichment_pipeline_status_empty, |server| async move {
+#[tokio::test]
+async fn get_enrichment_pipeline_status_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -189,13 +223,19 @@ define_api_test!(get_enrichment_pipeline_status_empty, |server| async move {
 
     assert_eq!(resp.pending_count, 0);
     assert_eq!(resp.total_enrichments, 0);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetEmbeddingStatus — empty
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_embedding_status_empty, |server| async move {
+#[tokio::test]
+async fn get_embedding_status_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -212,13 +252,19 @@ define_api_test!(get_embedding_status_empty, |server| async move {
     assert_eq!(resp.embedded_count, 0);
     assert_eq!(resp.total_eligible, 0);
     assert_eq!(resp.coverage_percent, 0.0);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // ListAiModels — empty catalogue
 // ---------------------------------------------------------------------------
 
-define_api_test!(list_ai_models_empty, |server| async move {
+#[tokio::test]
+async fn list_ai_models_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -235,13 +281,19 @@ define_api_test!(list_ai_models_empty, |server| async move {
         .into_inner();
 
     assert!(resp.models.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetEnrichments — no enrichments for a random contribution
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_enrichments_empty, |server| async move {
+#[tokio::test]
+async fn get_enrichments_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -257,13 +309,19 @@ define_api_test!(get_enrichments_empty, |server| async move {
         .into_inner();
 
     assert!(resp.enrichments.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetCostSummary — empty
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_cost_summary_empty, |server| async move {
+#[tokio::test]
+async fn get_cost_summary_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -279,13 +337,19 @@ define_api_test!(get_cost_summary_empty, |server| async move {
     assert_eq!(resp.today_spend_usd, 0.0);
     assert!(resp.task_breakdown.is_empty());
     assert!(resp.model_breakdown.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetStorageHealth — no artifact store configured
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_storage_health_no_store, |server| async move {
+#[tokio::test]
+async fn get_storage_health_no_store() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -300,13 +364,19 @@ define_api_test!(get_storage_health_no_store, |server| async move {
 
     assert!(!resp.healthy);
     assert!(!resp.error_message.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // RefreshModelCatalogue — fires but doesn't crash (no Restate in tests)
 // ---------------------------------------------------------------------------
 
-define_api_test!(refresh_model_catalogue_returns, |server| async move {
+#[tokio::test]
+async fn refresh_model_catalogue_returns() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -321,13 +391,19 @@ define_api_test!(refresh_model_catalogue_returns, |server| async move {
 
     // No Restate running → started should be false
     assert!(!resp.started);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // FindSimilar — empty (no embeddings)
 // ---------------------------------------------------------------------------
 
-define_api_test!(find_similar_empty, |server| async move {
+#[tokio::test]
+async fn find_similar_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let repos = ps_core::repo::Repos::new(server.pool.clone());
     let mut client = ReasoningServiceClient::new(server.channel.clone());
@@ -373,13 +449,19 @@ define_api_test!(find_similar_empty, |server| async move {
         .into_inner();
 
     assert!(resp.items.is_empty());
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // DeleteEnrichmentsByType — empty type rejected
 // ---------------------------------------------------------------------------
 
-define_api_test!(delete_enrichments_by_type_empty_type, |server| async move {
+#[tokio::test]
+async fn delete_enrichments_by_type_empty_type() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -394,13 +476,19 @@ define_api_test!(delete_enrichments_by_type_empty_type, |server| async move {
         .expect_err("empty type should fail");
 
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Requires auth
 // ---------------------------------------------------------------------------
 
-define_api_test!(reasoning_requires_auth, |server| async move {
+#[tokio::test]
+async fn reasoning_requires_auth() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let err = client
@@ -409,13 +497,19 @@ define_api_test!(reasoning_requires_auth, |server| async move {
         .expect_err("should require auth");
 
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // Conversation CRUD
 // ---------------------------------------------------------------------------
 
-define_api_test!(list_conversations_empty, |server| async move {
+#[tokio::test]
+async fn list_conversations_empty() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -433,9 +527,15 @@ define_api_test!(list_conversations_empty, |server| async move {
 
     assert_eq!(resp.total_count, 0);
     assert!(resp.conversations.is_empty());
-});
 
-define_api_test!(list_and_get_conversations, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn list_and_get_conversations() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
     let repos = ps_core::repo::Repos::new(server.pool.clone());
@@ -510,9 +610,15 @@ define_api_test!(list_and_get_conversations, |server| async move {
     assert_eq!(resp.messages[0].content, "Hello");
 
     drop(c2);
-});
 
-define_api_test!(get_conversation_not_found, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn get_conversation_not_found() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -523,9 +629,15 @@ define_api_test!(get_conversation_not_found, |server| async move {
 
     let err = client.get_conversation(req).await.expect_err("not found");
     assert_eq!(err.code(), tonic::Code::NotFound);
-});
 
-define_api_test!(conversation_requires_auth, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn conversation_requires_auth() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let err = client
@@ -536,38 +648,47 @@ define_api_test!(conversation_requires_auth, |server| async move {
         .await
         .expect_err("should require auth");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // SaveInsightFromConversation — stub returns Unimplemented
 // ---------------------------------------------------------------------------
 
-define_api_test!(
-    save_insight_from_conversation_unimplemented,
-    |server| async move {
-        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-        let mut client = ReasoningServiceClient::new(server.channel.clone());
+#[tokio::test]
+async fn save_insight_from_conversation_unimplemented() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        let mut req = Request::new(SaveInsightFromConversationRequest {
-            conversation_id: uuid::Uuid::now_v7().to_string(),
-            message_id: uuid::Uuid::now_v7().to_string(),
-            title: "Test insight".into(),
-        });
-        auth(&mut req, &token);
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
 
-        let err = client
-            .save_insight_from_conversation(req)
-            .await
-            .expect_err("should be unimplemented");
-        assert_eq!(err.code(), tonic::Code::Unimplemented);
-    }
-);
+    let mut req = Request::new(SaveInsightFromConversationRequest {
+        conversation_id: uuid::Uuid::now_v7().to_string(),
+        message_id: uuid::Uuid::now_v7().to_string(),
+        title: "Test insight".into(),
+    });
+    auth(&mut req, &token);
+
+    let err = client
+        .save_insight_from_conversation(req)
+        .await
+        .expect_err("should be unimplemented");
+    assert_eq!(err.code(), tonic::Code::Unimplemented);
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetArtifactDownloadUrl — not found
 // ---------------------------------------------------------------------------
 
-define_api_test!(get_artifact_download_url_not_found, |server| async move {
+#[tokio::test]
+async fn get_artifact_download_url_not_found() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
@@ -581,32 +702,41 @@ define_api_test!(get_artifact_download_url_not_found, |server| async move {
         .await
         .expect_err("should be not found");
     assert_eq!(err.code(), tonic::Code::NotFound);
-});
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // GetArtifactDownloadUrl — requires auth
 // ---------------------------------------------------------------------------
 
-define_api_test!(
-    get_artifact_download_url_requires_auth,
-    |server| async move {
-        let mut client = ReasoningServiceClient::new(server.channel.clone());
+#[tokio::test]
+async fn get_artifact_download_url_requires_auth() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        let err = client
-            .get_artifact_download_url(GetArtifactDownloadUrlRequest {
-                artifact_id: uuid::Uuid::now_v7().to_string(),
-            })
-            .await
-            .expect_err("should require auth");
-        assert_eq!(err.code(), tonic::Code::Unauthenticated);
-    }
-);
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+
+    let err = client
+        .get_artifact_download_url(GetArtifactDownloadUrlRequest {
+            artifact_id: uuid::Uuid::now_v7().to_string(),
+        })
+        .await
+        .expect_err("should require auth");
+    assert_eq!(err.code(), tonic::Code::Unauthenticated);
+
+    ctx.teardown().await;
+}
 
 // ---------------------------------------------------------------------------
 // AskQuestion — concurrency guard and stream lifecycle
 // ---------------------------------------------------------------------------
 
-define_api_test!(ask_question_rejects_concurrent_query, |server| async move {
+#[tokio::test]
+async fn ask_question_rejects_concurrent_query() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (user_id, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let repos = ps_core::repo::Repos::new(server.pool.clone());
 
@@ -638,73 +768,85 @@ define_api_test!(ask_question_rejects_concurrent_query, |server| async move {
     // Should be rejected because the conversation is already running.
     let err = client.ask_question(req).await.expect_err("should reject");
     assert_eq!(err.code(), tonic::Code::AlreadyExists);
-});
 
-define_api_test!(
-    ask_question_streams_conversation_created,
-    |server| async move {
-        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    ctx.teardown().await;
+}
 
-        let mut client = ReasoningServiceClient::new(server.channel.clone());
-        let mut req = Request::new(AskQuestionRequest {
-            image_model: None,
-            question: "What is the meaning of life?".into(),
-            conversation_id: None,
-            model_override: None,
-        });
-        auth(&mut req, &token);
+#[tokio::test]
+async fn ask_question_streams_conversation_created() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        // ask_question should succeed and the first event should be ConversationCreated.
-        // The stream will then get an error because Restate is not available in tests.
-        let resp = client.ask_question(req).await.expect("ask_question");
-        let mut stream = resp.into_inner();
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
-        let first = stream.message().await.unwrap().unwrap();
-        assert!(matches!(
-            first.event.as_ref().unwrap(),
-            ask_question_response::Event::ConversationCreated(_)
-        ));
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
+        question: "What is the meaning of life?".into(),
+        conversation_id: None,
+        model_override: None,
+    });
+    auth(&mut req, &token);
+
+    // ask_question should succeed and the first event should be ConversationCreated.
+    // The stream will then get an error because Restate is not available in tests.
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    let first = stream.message().await.unwrap().unwrap();
+    assert!(matches!(
+        first.event.as_ref().unwrap(),
+        ask_question_response::Event::ConversationCreated(_)
+    ));
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn ask_question_streams_error_when_restate_unavailable() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
+    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+
+    let mut client = ReasoningServiceClient::new(server.channel.clone());
+    let mut req = Request::new(AskQuestionRequest {
+        image_model: None,
+        question: "Will this fail?".into(),
+        conversation_id: None,
+        model_override: None,
+    });
+    auth(&mut req, &token);
+
+    let resp = client.ask_question(req).await.expect("ask_question");
+    let mut stream = resp.into_inner();
+
+    // Collect all events.
+    let mut events = vec![];
+    while let Some(msg) = stream.message().await.unwrap() {
+        events.push(msg);
     }
-);
 
-define_api_test!(
-    ask_question_streams_error_when_restate_unavailable,
-    |server| async move {
-        let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    // First event is ConversationCreated, last should be Error (Restate unavailable).
+    assert!(!events.is_empty());
+    assert!(matches!(
+        events[0].event.as_ref().unwrap(),
+        ask_question_response::Event::ConversationCreated(_)
+    ));
+    let last = events.last().unwrap();
+    assert!(matches!(
+        last.event.as_ref().unwrap(),
+        ask_question_response::Event::Error(_)
+    ));
 
-        let mut client = ReasoningServiceClient::new(server.channel.clone());
-        let mut req = Request::new(AskQuestionRequest {
-            image_model: None,
-            question: "Will this fail?".into(),
-            conversation_id: None,
-            model_override: None,
-        });
-        auth(&mut req, &token);
+    ctx.teardown().await;
+}
 
-        let resp = client.ask_question(req).await.expect("ask_question");
-        let mut stream = resp.into_inner();
+#[tokio::test]
+async fn ask_question_validates_empty_question() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
 
-        // Collect all events.
-        let mut events = vec![];
-        while let Some(msg) = stream.message().await.unwrap() {
-            events.push(msg);
-        }
-
-        // First event is ConversationCreated, last should be Error (Restate unavailable).
-        assert!(!events.is_empty());
-        assert!(matches!(
-            events[0].event.as_ref().unwrap(),
-            ask_question_response::Event::ConversationCreated(_)
-        ));
-        let last = events.last().unwrap();
-        assert!(matches!(
-            last.event.as_ref().unwrap(),
-            ask_question_response::Event::Error(_)
-        ));
-    }
-);
-
-define_api_test!(ask_question_validates_empty_question, |server| async move {
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
@@ -721,9 +863,15 @@ define_api_test!(ask_question_validates_empty_question, |server| async move {
         .await
         .expect_err("should reject empty");
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
 
-define_api_test!(ask_question_validates_long_question, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn ask_question_validates_long_question() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     let mut client = ReasoningServiceClient::new(server.channel.clone());
@@ -740,9 +888,15 @@ define_api_test!(ask_question_validates_long_question, |server| async move {
         .await
         .expect_err("should reject long question");
     assert_eq!(err.code(), tonic::Code::InvalidArgument);
-});
 
-define_api_test!(ask_question_requires_auth, |server| async move {
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn ask_question_requires_auth() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
     let mut client = ReasoningServiceClient::new(server.channel.clone());
 
     let err = client
@@ -755,4 +909,6 @@ define_api_test!(ask_question_requires_auth, |server| async move {
         .await
         .expect_err("should require auth");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
-});
+
+    ctx.teardown().await;
+}
