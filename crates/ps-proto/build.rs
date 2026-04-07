@@ -11,6 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "../../proto/canonical/prism/v1/insights.proto",
     ];
 
+    // Ensure cargo reruns this script when any proto file changes.
+    // Without this, BuildKit's persistent target/ cache mount can serve
+    // stale generated code when only proto content changes.
+    for proto in protos {
+        println!("cargo:rerun-if-changed={proto}");
+    }
+
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
