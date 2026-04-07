@@ -73,14 +73,16 @@ const statusDotState = (status: string): string => {
 };
 
 const HandlerRow = ({ handler }: { handler: StageHandler }): React.ReactElement => (
-  <div className="flex items-center gap-2 text-xs">
-    {statusIcon(handler.status)}
-    <span className="truncate">{handler.name}</span>
+  <div className="flex min-w-0 items-center gap-2 text-xs">
+    <span className="shrink-0">{statusIcon(handler.status)}</span>
+    <span className="shrink-0">{handler.name}</span>
     {handler.items != null && handler.items > 0 && (
-      <span className="tabular-nums text-muted-foreground">{handler.items.toLocaleString()}</span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        {handler.items.toLocaleString()}
+      </span>
     )}
     {handler.error && (
-      <span className="truncate text-destructive" title={handler.error}>
+      <span className="min-w-0 truncate text-destructive" title={handler.error}>
         {handler.error}
       </span>
     )}
@@ -117,8 +119,8 @@ export const PipelineStage = ({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5 rounded-md border px-3 py-2",
-        stageKey === "ingestion" ? "min-w-28" : "w-40",
+        "flex flex-col gap-1.5 overflow-hidden rounded-md border px-3 py-2",
+        stageKey === "ingestion" ? "min-w-28 max-w-52" : "w-40",
         isCurrentStage && status === "running" && "border-blue-500/50 bg-blue-500/5",
         status === "failed" && "border-destructive/50 bg-destructive/5",
         status === "completed" && "border-emerald-500/30",
