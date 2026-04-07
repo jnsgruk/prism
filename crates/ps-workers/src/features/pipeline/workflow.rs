@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use futures::future::{join, join_all};
+use futures::future::join_all;
 use restate_sdk::prelude::*;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -20,7 +20,7 @@ use crate::infra::run_lifecycle::{
 };
 
 use super::stages::{
-    PipelineResult, PipelineStatus, SourceInfo, StageStatus, build_handler_list,
+    HandlerResult, PipelineResult, PipelineStatus, SourceInfo, StageStatus, build_handler_list,
     build_initial_stages, call_result, derive_pipeline_status, mark_remaining_cancelled,
     mark_stage_complete, mark_stage_running,
 };
@@ -139,43 +139,45 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 .await;
         }
 
-        // 5. FORK: main branch + identity resolution run concurrently
+        // 5. Dispatch identity resolution as fire-and-forget (if applicable).
+        //
+        // IMPORTANT: This must use `.send()` not `.call()` to avoid a
+        // `futures::join` with the main branch.  `join` polls both futures
+        // concurrently and the order in which their `.call()` journal entries
+        // are recorded depends on poll order — which is non-deterministic
+        // across executions, causing Restate error 570 on replay.
+        //
+        // Identity resolution has its own run record for observability;
+        // we mark the stage completed optimistically here.
         if has_discourse {
             mark_stage_running(&mut stages, "identity_resolution");
             self.update_state(&ctx, pipeline_id, "identity_resolution", &stages)
                 .await?;
-        }
 
-        let (main_result, identity_result) = join(
-            self.run_main_branch(pipeline_id, &mut stages, &ctx),
-            async {
-                if has_discourse {
-                    Some(
-                        ctx.service_client::<IdentityResolutionHandlerClient>()
-                            .resolve_identities()
-                            .call()
-                            .await,
-                    )
-                } else {
-                    None
-                }
-            },
-        )
-        .await;
+            ctx.service_client::<IdentityResolutionHandlerClient>()
+                .resolve_identities()
+                .send();
 
-        // Update identity_resolution stage with actual result
-        if let Some(ref result) = identity_result {
-            let handler_result = call_result("Identity Resolution".to_string(), result);
+            let handler_result = HandlerResult {
+                name: "Identity Resolution".to_string(),
+                status: StageStatus::Completed,
+                items: None,
+                error: None,
+            };
             mark_stage_complete(&mut stages, "identity_resolution", &[handler_result]);
             self.update_state(&ctx, pipeline_id, "identity_resolution", &stages)
                 .await?;
         }
 
-        // 6. Finalize
+        // 6. Main branch: metrics → enrichment → embedding → insights
+        let main_result = self.run_main_branch(pipeline_id, &mut stages, &ctx).await;
+
+        // 7. Finalize
         let status = derive_pipeline_status(&stages);
-        let error_msg = match (&main_result, &identity_result) {
-            (Err(e), _) | (_, Some(Err(e))) => Some(e.to_string()),
-            _ => None,
+        let error_msg = if let Err(ref e) = main_result {
+            Some(e.to_string())
+        } else {
+            None
         };
 
         self.finalize(
