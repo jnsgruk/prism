@@ -24,6 +24,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { platformLabel } from "@/lib/proto-display";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
@@ -342,7 +343,9 @@ const PersonDetailDialog = ({
                         key={`${id.platform}-${id.username}`}
                         className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
                       >
-                        <span className="font-medium capitalize">{id.platform}</span>
+                        <span className="font-medium">
+                          {platformLabel(id.platform, id.platformInstance)}
+                        </span>
                         <span className="text-muted-foreground">{id.username}</span>
                       </div>
                     ))}
