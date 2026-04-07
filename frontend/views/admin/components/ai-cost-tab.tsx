@@ -61,11 +61,11 @@ export const AiCostSection = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium">Usage</h3>
-          <p className="text-xs text-muted-foreground">AI API usage across all tasks.</p>
-        </div>
+      <div>
+        <h3 className="text-sm font-medium">Usage</h3>
+        <p className="text-xs text-muted-foreground">AI API usage across all tasks.</p>
+      </div>
+      <div>
         <ToggleGroup
           className="h-7 rounded-lg bg-muted p-[3px] text-muted-foreground"
           value={[windowKey]}
