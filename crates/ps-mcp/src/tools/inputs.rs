@@ -107,11 +107,10 @@ pub struct UploadArtifactInput {
 pub struct GenerateImageInput {
     /// The user's image prompt — pass through exactly as given.
     pub prompt: String,
-    /// Model ID (e.g. `"openai/dall-e-3"`, `"google/imagen-3"`).
+    /// Model ID (e.g. `"google/imagen-3"`).
     /// Optional — uses the configured default image model if omitted.
     pub model: Option<String>,
-    /// Provider: `"openrouter"` or `"google"`.
-    /// Optional — inferred from model ID prefix if present.
+    /// Deprecated — ignored. Kept for schema backwards compatibility.
     pub provider: Option<String>,
     /// Aspect ratio (e.g. `"1:1"`, `"16:9"`). Defaults to `"1:1"`.
     pub aspect_ratio: Option<String>,

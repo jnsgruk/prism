@@ -23,9 +23,9 @@ describe("parseModelSelection", () => {
     expect(result.imageModel).toBeUndefined();
   });
 
-  it("handles image: prefix with openrouter model", () => {
-    const result = parseModelSelection("image:openrouter/stabilityai/nano-banana-2");
+  it("handles image: prefix with nested model path", () => {
+    const result = parseModelSelection("image:google/imagen-3.0-generate-002");
     expect(result.isImageModel).toBe(true);
-    expect(result.imageModel).toBe("openrouter/stabilityai/nano-banana-2");
+    expect(result.imageModel).toBe("google/imagen-3.0-generate-002");
   });
 });

@@ -14,7 +14,7 @@ pub struct ModelCatalogueHandlerImpl {
 
 #[restate_sdk::service]
 pub trait ModelCatalogueHandler {
-    /// Refresh the model catalogue for all configured providers.
+    /// Refresh the model catalogue for the configured Google provider.
     async fn refresh_catalogue() -> Result<(), TerminalError>;
 }
 
@@ -30,8 +30,6 @@ struct CatalogueProgress {
     phase: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     google: Option<ProviderProgress>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    openrouter: Option<ProviderProgress>,
     status_message: String,
 }
 
@@ -43,7 +41,7 @@ struct ProviderProgress {
 }
 
 impl ModelCatalogueHandlerImpl {
-    /// Fetch models from each configured provider and store them.
+    /// Fetch models from the Google provider and store them.
     ///
     /// Run creation is journaled via `ctx.run()` so retries reuse the same
     /// run ID. All other operations are outside `ctx.run()`:
@@ -63,74 +61,53 @@ impl ModelCatalogueHandlerImpl {
         let mut progress = CatalogueProgress {
             phase: "starting".into(),
             google: None,
-            openrouter: None,
             status_message: "Starting model catalogue refresh".into(),
         };
         self.update_progress(run_id, 0, &progress).await;
 
-        let providers = [
-            (AiProvider::Google, "google_api_key"),
-            (AiProvider::OpenRouter, "openrouter_api_key"),
-        ];
+        progress.phase = "fetching google".into();
+        self.update_progress(run_id, 0, &progress).await;
 
-        let mut total_models: i32 = 0;
-        let mut had_error = false;
-        let mut first_error: Option<String> = None;
-
-        for (provider, secret_key_name) in &providers {
-            let provider_str = provider.to_string();
-            progress.phase = format!("fetching {provider_str}");
-            self.update_progress(run_id, total_models, &progress).await;
-
-            let Some(api_key) = self.decrypt_provider_key(secret_key_name).await else {
-                debug!(provider = %provider_str, "skipping — no API key configured");
-                continue;
-            };
-
-            match self.refresh_provider(*provider, &api_key).await {
-                Ok(count) => {
-                    #[allow(clippy::cast_possible_wrap)]
-                    let count_i32 = count as i32;
-                    total_models += count_i32;
-                    set_provider_progress(&mut progress, *provider, count, None);
-                    self.update_progress(run_id, total_models, &progress).await;
-                    debug!(provider = %provider_str, count, "model catalogue refreshed");
-                }
-                Err(err_msg) => {
-                    warn!(provider = %provider_str, "{err_msg}");
-                    set_provider_progress(&mut progress, *provider, 0, Some(&err_msg));
-                    had_error = true;
-                    if first_error.is_none() {
-                        first_error = Some(err_msg);
-                    }
-                }
-            }
-        }
-
-        // Complete or fail the run
-        if total_models == 0 && had_error {
-            let err_msg = first_error.unwrap_or_else(|| "all providers failed".into());
-            progress.phase = "failed".into();
-            progress.status_message = err_msg.clone();
+        let Some(api_key) = self.decrypt_provider_key("google_api_key").await else {
+            debug!("skipping — no Google API key configured");
+            progress.phase = "completed".into();
+            progress.status_message = "No Google API key configured".into();
             self.update_progress(run_id, 0, &progress).await;
 
-            fail_run!(ctx, self.state.repos, run_id, "_model_catalogue", &err_msg);
-            return Err(TerminalError::new(err_msg));
+            complete_run!(ctx, self.state.repos, run_id, "_model_catalogue", 0);
+            return Ok(());
+        };
+
+        match self.refresh_provider(AiProvider::Google, &api_key).await {
+            Ok(count) => {
+                #[allow(clippy::cast_possible_wrap)]
+                let count_i32 = count as i32;
+                progress.google = Some(ProviderProgress {
+                    models_fetched: count,
+                    error: None,
+                });
+                progress.phase = "completed".into();
+                progress.status_message = format!("{count_i32} models cached");
+                self.update_progress(run_id, count_i32, &progress).await;
+
+                complete_run!(ctx, self.state.repos, run_id, "_model_catalogue", count_i32);
+                debug!(count, "model catalogue refreshed");
+                Ok(())
+            }
+            Err(err_msg) => {
+                warn!("{err_msg}");
+                progress.google = Some(ProviderProgress {
+                    models_fetched: 0,
+                    error: Some(err_msg.clone()),
+                });
+                progress.phase = "failed".into();
+                progress.status_message = err_msg.clone();
+                self.update_progress(run_id, 0, &progress).await;
+
+                fail_run!(ctx, self.state.repos, run_id, "_model_catalogue", &err_msg);
+                Err(TerminalError::new(err_msg))
+            }
         }
-
-        progress.phase = "completed".into();
-        progress.status_message = format!("{total_models} models cached");
-        self.update_progress(run_id, total_models, &progress).await;
-
-        complete_run!(
-            ctx,
-            self.state.repos,
-            run_id,
-            "_model_catalogue",
-            total_models
-        );
-
-        Ok(())
     }
 
     /// Best-effort progress update (not journaled).
@@ -202,21 +179,5 @@ impl ModelCatalogueHandlerImpl {
                 None
             }
         }
-    }
-}
-
-fn set_provider_progress(
-    progress: &mut CatalogueProgress,
-    provider: AiProvider,
-    models_fetched: usize,
-    error: Option<&str>,
-) {
-    let prov = ProviderProgress {
-        models_fetched,
-        error: error.map(String::from),
-    };
-    match provider {
-        AiProvider::Google => progress.google = Some(prov),
-        AiProvider::OpenRouter => progress.openrouter = Some(prov),
     }
 }

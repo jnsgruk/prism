@@ -172,21 +172,12 @@ async fn setup_ai_router(
         router.update_config(config);
     }
 
-    for (provider, secret_key_name) in &[
-        ("google", "google_api_key"),
-        ("openrouter", "openrouter_api_key"),
-    ] {
-        if let Ok(Some(encrypted)) = state.repos.config.get_global_secret(secret_key_name).await
-            && let Ok(decrypted) = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
-            && let Ok(api_key) = String::from_utf8(decrypted)
-        {
-            match *provider {
-                "google" => router.set_google(&api_key),
-                "openrouter" => router.set_openrouter(&api_key),
-                _ => {}
-            }
-            info!(provider, "loaded AI provider key for enrichment handler");
-        }
+    if let Ok(Some(encrypted)) = state.repos.config.get_global_secret("google_api_key").await
+        && let Ok(decrypted) = ps_core::crypto::decrypt(&state.secret_key, &encrypted)
+        && let Ok(api_key) = String::from_utf8(decrypted)
+    {
+        router.set_google(&api_key);
+        info!("loaded Google AI provider key for enrichment handler");
     }
 
     Arc::new(tokio::sync::RwLock::new(router))

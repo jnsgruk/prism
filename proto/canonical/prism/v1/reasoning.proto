@@ -1,6 +1,6 @@
 // AI reasoning pipeline: provider configuration, model catalogue, cost
 // tracking, enrichment lifecycle, and semantic similarity search via
-// vector embeddings. Supports Google Gemini and OpenRouter providers.
+// vector embeddings.
 syntax = "proto3";
 
 package canonical.prism.v1;

@@ -46,7 +46,6 @@ async fn get_ai_settings_defaults() {
     assert!(settings.insights.is_some());
     // No provider keys set initially
     assert!(!settings.provider_secret_status["google"]);
-    assert!(!settings.provider_secret_status["openrouter"]);
 
     ctx.teardown().await;
 }
@@ -138,8 +137,6 @@ async fn set_provider_secret_updates_status() {
 
     let settings = resp.settings.expect("settings");
     assert!(settings.provider_secret_status["google"]);
-    // openrouter still not set
-    assert!(!settings.provider_secret_status["openrouter"]);
 
     ctx.teardown().await;
 }

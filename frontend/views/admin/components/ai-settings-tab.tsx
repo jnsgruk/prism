@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle2,
@@ -47,10 +40,7 @@ import {
   useUpdateAiSettings,
 } from "@/lib/hooks/use-ai-settings";
 
-const PROVIDERS = [
-  { value: AiProvider.GOOGLE, label: "Google Gemini" },
-  { value: AiProvider.OPENROUTER, label: "OpenRouter" },
-];
+const PROVIDERS = [{ value: AiProvider.GOOGLE, label: "Google Gemini" }];
 
 const TASK_TYPES = [
   {
@@ -441,27 +431,7 @@ const TaskRoutingSection = ({
                   <p className="text-sm font-medium">{task.label}</p>
                   <p className="text-xs text-muted-foreground">{task.description}</p>
                 </div>
-                <Select
-                  value={aiProviderKey(config.provider)}
-                  onValueChange={(providerKey) => {
-                    const provider =
-                      PROVIDERS.find((p) => aiProviderKey(p.value) === providerKey)?.value ??
-                      AiProvider.GOOGLE;
-                    onUpdate({ [task.key]: { provider, model: config.model } });
-                  }}
-                  disabled={isUpdating}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROVIDERS.map((p) => (
-                      <SelectItem key={p.value} value={aiProviderKey(p.value)}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <span className="w-[160px] text-sm text-muted-foreground">Google Gemini</span>
                 <ModelCombobox
                   provider={config.provider}
                   capability={task.capability}

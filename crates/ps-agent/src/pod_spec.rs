@@ -300,15 +300,15 @@ mod tests {
     fn provider_keys_are_injected() {
         let mut config = test_config();
         config.provider_keys = vec![
-            ("ANTHROPIC_API_KEY".to_string(), "sk-ant".to_string()),
-            ("OPENROUTER_API_KEY".to_string(), "sk-or".to_string()),
+            ("GOOGLE_API_KEY".to_string(), "gk-123".to_string()),
+            ("GEMINI_API_KEY".to_string(), "gk-123".to_string()),
         ];
         let pod = build_agent_pod("sess-abc123", &config, None);
         let container = &pod.spec.as_ref().unwrap().containers[0];
         let env = container.env.as_ref().unwrap();
 
-        let or_key = env.iter().find(|e| e.name == "OPENROUTER_API_KEY");
-        assert!(or_key.is_some());
-        assert_eq!(or_key.unwrap().value.as_deref(), Some("sk-or"));
+        let google_key = env.iter().find(|e| e.name == "GOOGLE_API_KEY");
+        assert!(google_key.is_some());
+        assert_eq!(google_key.unwrap().value.as_deref(), Some("gk-123"));
     }
 }

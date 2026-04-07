@@ -433,16 +433,16 @@ async fn global_secret_crud() {
 
     repos
         .config
-        .upsert_global_secret(Uuid::now_v7(), "openrouter_key", b"enc")
+        .upsert_global_secret(Uuid::now_v7(), "test_secret_key", b"enc")
         .await
         .unwrap();
 
     let keys = repos.config.list_global_secret_keys().await.unwrap();
-    assert_eq!(keys, vec!["openrouter_key"]);
+    assert_eq!(keys, vec!["test_secret_key"]);
 
     let val = repos
         .config
-        .get_global_secret("openrouter_key")
+        .get_global_secret("test_secret_key")
         .await
         .unwrap();
     assert_eq!(val.as_deref(), Some(b"enc".as_slice()));
@@ -450,14 +450,14 @@ async fn global_secret_crud() {
     assert!(
         repos
             .config
-            .delete_global_secret("openrouter_key")
+            .delete_global_secret("test_secret_key")
             .await
             .unwrap()
     );
     assert!(
         !repos
             .config
-            .delete_global_secret("openrouter_key")
+            .delete_global_secret("test_secret_key")
             .await
             .unwrap()
     );

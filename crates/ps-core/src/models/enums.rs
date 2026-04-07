@@ -408,8 +408,6 @@ pub enum SecretKey {
     ApiUsername,
     /// Google AI provider API key.
     GoogleApiKey,
-    /// `OpenRouter` AI provider API key.
-    OpenRouterApiKey,
 }
 
 impl fmt::Display for SecretKey {
@@ -426,7 +424,6 @@ impl SecretKey {
             Self::Email => "email",
             Self::ApiUsername => "api_username",
             Self::GoogleApiKey => "google_api_key",
-            Self::OpenRouterApiKey => "openrouter_api_key",
         }
     }
 }
@@ -440,7 +437,6 @@ impl FromStr for SecretKey {
             "email" => Ok(Self::Email),
             "api_username" => Ok(Self::ApiUsername),
             "google_api_key" => Ok(Self::GoogleApiKey),
-            "openrouter_api_key" => Ok(Self::OpenRouterApiKey),
             _ => Err(format!("invalid SecretKey: {s}")),
         }
     }
@@ -750,7 +746,6 @@ impl FromStr for TaskType {
 #[serde(rename_all = "snake_case")]
 pub enum AiProvider {
     Google,
-    OpenRouter,
 }
 
 impl fmt::Display for AiProvider {
@@ -763,7 +758,6 @@ impl AiProvider {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Google => "google",
-            Self::OpenRouter => "openrouter",
         }
     }
 }
@@ -773,7 +767,6 @@ impl FromStr for AiProvider {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "google" => Ok(Self::Google),
-            "openrouter" => Ok(Self::OpenRouter),
             _ => Err(format!("invalid AiProvider: {s}")),
         }
     }
@@ -973,7 +966,7 @@ mod tests {
 
     #[test]
     fn ai_provider_roundtrip() {
-        for variant in [AiProvider::Google, AiProvider::OpenRouter] {
+        for variant in [AiProvider::Google] {
             let s = variant.to_string();
             assert_eq!(s.parse::<AiProvider>().unwrap(), variant);
         }

@@ -129,7 +129,7 @@ async fn get_spend_summary() {
         .unwrap();
     repos
         .reasoning
-        .log_api_usage("openrouter", "llama-3", "insights", 200, 100, 0.03)
+        .log_api_usage("google", "gemini-2.5-pro", "insights", 200, 100, 0.03)
         .await
         .unwrap();
 

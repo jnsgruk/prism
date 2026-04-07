@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronsUpDown, ImageIcon, Sparkles } from "lucide-react";
+import { ChevronsUpDown, ImageIcon } from "lucide-react";
 
 import {
   Command,
@@ -25,36 +25,13 @@ const GeminiIcon = ({ className }: { className?: string }): React.ReactElement =
   </svg>
 );
 
-/** OpenRouter icon — double chevron. */
-const OpenRouterIcon = ({ className }: { className?: string }): React.ReactElement => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path
-      d="M7 8l4 4-4 4M13 8l4 4-4 4"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
 /** Provider icon for the trigger button and dropdown items. */
 const ProviderIcon = ({
-  provider,
   className = "size-4",
 }: {
-  provider: AiProvider;
+  provider?: AiProvider;
   className?: string;
-}): React.ReactElement => {
-  switch (provider) {
-    case AiProvider.GOOGLE:
-      return <GeminiIcon className={className} />;
-    case AiProvider.OPENROUTER:
-      return <OpenRouterIcon className={className} />;
-    default:
-      return <Sparkles className={className} />;
-  }
-};
+}): React.ReactElement => <GeminiIcon className={className} />;
 
 /** Format a context length like "1M" or "128K". */
 const formatContext = (n: number): string => {

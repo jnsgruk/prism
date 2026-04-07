@@ -3,7 +3,7 @@
 //! Dispatches to the correct Rig extractor based on provider and enrichment
 //! type, using a macro to avoid per-variant boilerplate.
 
-use ps_core::models::{AiProvider, TaskType};
+use ps_core::models::TaskType;
 use rig::client::CompletionClient;
 use rig::completion::Usage;
 
@@ -38,7 +38,7 @@ macro_rules! extract_typed {
     }};
 }
 
-/// Extract a single enrichment using the appropriate Rig extractor.
+/// Extract a single enrichment using the Gemini Rig extractor.
 ///
 /// Returns (value as JSON, confidence, token usage).
 pub async fn extract_enrichment(
@@ -47,17 +47,8 @@ pub async fn extract_enrichment(
     input_text: &str,
 ) -> Result<(serde_json::Value, f32, Usage), crate::routing::ProviderError> {
     let task_config = router.task_config(TaskType::Enrichment);
-
-    match task_config.provider {
-        AiProvider::Google => {
-            let client = router.google_client()?;
-            extract_with_client(client, &task_config.model, enrichment_type, input_text).await
-        }
-        AiProvider::OpenRouter => {
-            let client = router.openrouter_client()?;
-            extract_with_client(client, &task_config.model, enrichment_type, input_text).await
-        }
-    }
+    let client = router.google_client()?;
+    extract_with_client(client, &task_config.model, enrichment_type, input_text).await
 }
 
 /// Generic extraction using any Rig completion client.

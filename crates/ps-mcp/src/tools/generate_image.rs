@@ -1,4 +1,4 @@
-//! Image generation via provider APIs (`OpenRouter` / Google Gemini).
+//! Image generation via Google Gemini API.
 //!
 //! Called by the `generate_image` MCP tool.  Decodes the base64 response,
 //! uploads to S3 via `ArtifactStore`, and returns the standard artifact JSON.
@@ -10,13 +10,6 @@ use tracing::{debug, info};
 
 use crate::artifact_store::ArtifactStore;
 
-/// Resolved provider for image generation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImageProvider {
-    OpenRouter,
-    Google,
-}
-
 /// Successful image generation result.
 pub struct GeneratedImage {
     pub data: Bytes,
@@ -24,18 +17,14 @@ pub struct GeneratedImage {
 }
 
 // ---------------------------------------------------------------------------
-// Provider resolution
+// Model resolution
 // ---------------------------------------------------------------------------
 
-/// Resolve provider and model from explicit args + env fallbacks.
+/// Resolve model from explicit args + env fallbacks.
 ///
 /// Priority: explicit model arg → `DEFAULT_IMAGE_MODEL` env var.
-/// Provider is inferred from model prefix (`google/` → Google, else `OpenRouter`).
-pub fn resolve_model_and_provider(
-    model: Option<&str>,
-    provider: Option<&str>,
-) -> Result<(String, ImageProvider), String> {
-    let model_id = model
+pub fn resolve_model(model: Option<&str>) -> Result<String, String> {
+    model
         .filter(|s| !s.is_empty())
         .map(String::from)
         .or_else(|| std::env::var("DEFAULT_IMAGE_MODEL").ok())
@@ -43,126 +32,7 @@ pub fn resolve_model_and_provider(
             "No image model specified and DEFAULT_IMAGE_MODEL is not configured. \
              Ask an admin to set a default image model in AI settings."
                 .to_string()
-        })?;
-
-    let prov = if let Some(p) = provider {
-        match p {
-            "google" => ImageProvider::Google,
-            "openrouter" => ImageProvider::OpenRouter,
-            _ => return Err(format!("Unknown provider: {p}")),
-        }
-    } else if model_id.starts_with("google/") {
-        ImageProvider::Google
-    } else {
-        ImageProvider::OpenRouter
-    };
-
-    Ok((model_id, prov))
-}
-
-// ---------------------------------------------------------------------------
-// OpenRouter
-// ---------------------------------------------------------------------------
-
-#[derive(Deserialize)]
-struct OpenRouterResponse {
-    choices: Vec<OpenRouterChoice>,
-}
-
-#[derive(Deserialize)]
-struct OpenRouterChoice {
-    message: OpenRouterMessage,
-}
-
-#[derive(Deserialize)]
-struct OpenRouterMessage {
-    content: serde_json::Value,
-}
-
-pub async fn generate_openrouter(
-    http: &reqwest::Client,
-    model: &str,
-    prompt: &str,
-) -> Result<GeneratedImage, String> {
-    let api_key = std::env::var("OPENROUTER_API_KEY")
-        .map_err(|_| "OPENROUTER_API_KEY not set".to_string())?;
-
-    debug!(model, "calling OpenRouter image generation");
-
-    let body = serde_json::json!({
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-    });
-
-    let resp = http
-        .post("https://openrouter.ai/api/v1/chat/completions")
-        .bearer_auth(&api_key)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("OpenRouter request failed: {e}"))?;
-
-    let status = resp.status();
-    if !status.is_success() {
-        let text = resp.text().await.unwrap_or_default();
-        return Err(format!("OpenRouter returned {status}: {text}"));
-    }
-
-    let parsed: OpenRouterResponse = resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse OpenRouter response: {e}"))?;
-
-    let content = parsed
-        .choices
-        .first()
-        .map(|c| &c.message.content)
-        .ok_or("Empty response from OpenRouter")?;
-
-    extract_image_from_openrouter(content)
-}
-
-/// Extract base64 image data from `OpenRouter` response content.
-///
-/// `OpenRouter` image models return content in various formats:
-/// 1. `[{"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}]`
-/// 2. Plain base64 string in the content field
-/// 3. `{"type": "image", "data": "base64..."}` objects
-fn extract_image_from_openrouter(content: &serde_json::Value) -> Result<GeneratedImage, String> {
-    // Case 1: Array with image_url items
-    if let Some(arr) = content.as_array() {
-        for item in arr {
-            if let Some(url) = item
-                .get("image_url")
-                .and_then(|u| u.get("url"))
-                .and_then(|u| u.as_str())
-            {
-                return decode_data_uri(url);
-            }
-            // Case 3: image data objects
-            if let Some(data) = item.get("data").and_then(|d| d.as_str()) {
-                let ct = item
-                    .get("mimeType")
-                    .or_else(|| item.get("mime_type"))
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("image/png");
-                return decode_base64_image(data, ct);
-            }
-        }
-    }
-
-    // Case 2: Plain string (could be data URI or raw base64)
-    if let Some(s) = content.as_str() {
-        if s.starts_with("data:image/") {
-            return decode_data_uri(s);
-        }
-        if s.len() > 100 {
-            // Likely raw base64
-            return decode_base64_image(s, "image/png");
-        }
-    }
-
-    Err("Could not extract image from OpenRouter response".to_string())
+        })
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +120,7 @@ pub async fn generate_google(
 // Image decoding helpers
 // ---------------------------------------------------------------------------
 
+#[cfg(test)]
 fn decode_data_uri(uri: &str) -> Result<GeneratedImage, String> {
     // Format: data:image/png;base64,iVBOR...
     let after_data = uri
@@ -294,26 +165,19 @@ pub async fn generate_and_upload(
     artifacts: &ArtifactStore,
     prompt: &str,
     model: Option<&str>,
-    provider: Option<&str>,
+    _provider: Option<&str>,
     aspect_ratio: Option<&str>,
 ) -> Result<String, String> {
     if prompt.trim().is_empty() {
         return Err("prompt must not be empty".to_string());
     }
 
-    let (model_id, resolved_provider) = resolve_model_and_provider(model, provider)?;
+    let model_id = resolve_model(model)?;
     let _aspect = aspect_ratio.unwrap_or("1:1");
 
-    info!(
-        model = %model_id,
-        provider = ?resolved_provider,
-        "generating image"
-    );
+    info!(model = %model_id, "generating image");
 
-    let image = match resolved_provider {
-        ImageProvider::OpenRouter => generate_openrouter(http, &model_id, prompt).await?,
-        ImageProvider::Google => generate_google(http, &model_id, prompt).await?,
-    };
+    let image = generate_google(http, &model_id, prompt).await?;
 
     let ext = extension_for(&image.content_type);
     let timestamp = std::time::SystemTime::now()
@@ -349,31 +213,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolve_google_provider_from_model_prefix() {
-        let (model, prov) = resolve_model_and_provider(Some("google/imagen-3"), None).unwrap();
+    fn resolve_model_from_arg() {
+        let model = resolve_model(Some("google/imagen-3")).unwrap();
         assert_eq!(model, "google/imagen-3");
-        assert_eq!(prov, ImageProvider::Google);
-    }
-
-    #[test]
-    fn resolve_openrouter_provider_from_model_prefix() {
-        let (model, prov) = resolve_model_and_provider(Some("stabilityai/sdxl"), None).unwrap();
-        assert_eq!(model, "stabilityai/sdxl");
-        assert_eq!(prov, ImageProvider::OpenRouter);
-    }
-
-    #[test]
-    fn resolve_explicit_provider_overrides_prefix() {
-        let (_, prov) =
-            resolve_model_and_provider(Some("google/imagen-3"), Some("openrouter")).unwrap();
-        assert_eq!(prov, ImageProvider::OpenRouter);
     }
 
     #[test]
     fn resolve_missing_model_and_no_env_errors() {
         // Ensure DEFAULT_IMAGE_MODEL is not set for this test
         unsafe { std::env::remove_var("DEFAULT_IMAGE_MODEL") };
-        let result = resolve_model_and_provider(None, None);
+        let result = resolve_model(None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("No image model specified"));
     }
@@ -416,42 +265,6 @@ mod tests {
         assert_eq!(extension_for("image/webp"), "webp");
         assert_eq!(extension_for("image/gif"), "gif");
         assert_eq!(extension_for("application/octet-stream"), "png");
-    }
-
-    #[test]
-    fn extract_openrouter_image_url_format() {
-        let b64 = base64::engine::general_purpose::STANDARD.encode(b"img-data");
-        let content = serde_json::json!([
-            {
-                "type": "image_url",
-                "image_url": {"url": format!("data:image/png;base64,{b64}")}
-            }
-        ]);
-        let img = extract_image_from_openrouter(&content).unwrap();
-        assert_eq!(img.content_type, "image/png");
-        assert_eq!(img.data.as_ref(), b"img-data");
-    }
-
-    #[test]
-    fn extract_openrouter_plain_base64() {
-        let b64 = base64::engine::general_purpose::STANDARD.encode(vec![0u8; 200]);
-        let content = serde_json::json!(b64);
-        let img = extract_image_from_openrouter(&content).unwrap();
-        assert_eq!(img.content_type, "image/png");
-    }
-
-    #[test]
-    fn extract_openrouter_data_object() {
-        let b64 = base64::engine::general_purpose::STANDARD.encode(b"img");
-        let content = serde_json::json!([{"type": "image", "data": b64, "mimeType": "image/webp"}]);
-        let img = extract_image_from_openrouter(&content).unwrap();
-        assert_eq!(img.content_type, "image/webp");
-    }
-
-    #[test]
-    fn extract_openrouter_empty_content_errors() {
-        let content = serde_json::json!("short");
-        assert!(extract_image_from_openrouter(&content).is_err());
     }
 
     #[test]

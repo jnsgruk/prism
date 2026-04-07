@@ -102,12 +102,11 @@ export const runStatusLabel = (rs: RunStatus): string => RUN_STATUS_LABELS[rs] ?
 const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   [AiProvider.UNSPECIFIED]: "",
   [AiProvider.GOOGLE]: "Google",
-  [AiProvider.OPENROUTER]: "OpenRouter",
 };
 
 export const aiProviderLabel = (p: AiProvider): string => AI_PROVIDER_LABELS[p] ?? String(p);
 
-/** Lowercase key for provider (e.g. "google", "openrouter"). */
+/** Lowercase key for provider (e.g. "google"). */
 export const aiProviderKey = (p: AiProvider): string => AI_PROVIDER_LABELS[p]?.toLowerCase() ?? "";
 
 // ---------------------------------------------------------------------------

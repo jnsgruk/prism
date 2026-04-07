@@ -167,7 +167,6 @@ pub fn run_status_to_proto(status: &ps_core::models::IngestionStatus) -> i32 {
 pub fn ai_provider_to_proto(provider: ps_core::models::AiProvider) -> i32 {
     match provider {
         ps_core::models::AiProvider::Google => ProtoAiProvider::Google.into(),
-        ps_core::models::AiProvider::OpenRouter => ProtoAiProvider::Openrouter.into(),
     }
 }
 
@@ -180,7 +179,6 @@ pub fn proto_to_ai_provider_str(v: i32) -> Option<String> {
 pub fn proto_to_ai_provider(v: i32) -> Option<ps_core::models::AiProvider> {
     match ProtoAiProvider::try_from(v) {
         Ok(ProtoAiProvider::Google) => Some(ps_core::models::AiProvider::Google),
-        Ok(ProtoAiProvider::Openrouter) => Some(ps_core::models::AiProvider::OpenRouter),
         _ => None,
     }
 }

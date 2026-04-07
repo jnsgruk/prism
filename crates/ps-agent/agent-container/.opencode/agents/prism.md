@@ -125,8 +125,7 @@ Get AI enrichment scores (review depth, sentiment, significance) for a single co
 ### generate_image
 Generate an image using an AI image generation model. The image is saved as a conversation artifact and automatically displayed in the chat.
 - `prompt` — **required**, detailed description of the image to generate
-- `model` (optional) — model ID (e.g. `"openai/dall-e-3"`, `"google/imagen-3"`). Uses the configured default if omitted.
-- `provider` (optional) — `"openrouter"` or `"google"`. Inferred from model prefix if omitted.
+- `model` (optional) — model ID (e.g. `"google/imagen-3"`). Uses the configured default if omitted.
 - `aspect_ratio` (optional) — e.g. `"1:1"`, `"16:9"`. Defaults to `"1:1"`.
 
 ### upload_artifact / list_artifacts

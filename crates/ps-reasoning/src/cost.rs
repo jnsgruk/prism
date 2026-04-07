@@ -21,11 +21,8 @@ pub fn estimate_cost(provider: AiProvider, model: &str, usage: &Usage) -> f64 {
     input_cost + output_cost
 }
 
-fn model_pricing(provider: AiProvider, model: &str) -> ModelPricing {
-    match provider {
-        AiProvider::Google => google_pricing(model),
-        AiProvider::OpenRouter => openrouter_pricing(model),
-    }
+fn model_pricing(_provider: AiProvider, model: &str) -> ModelPricing {
+    google_pricing(model)
 }
 
 fn google_pricing(model: &str) -> ModelPricing {
@@ -49,23 +46,6 @@ fn google_pricing(model: &str) -> ModelPricing {
         _ => ModelPricing {
             input_per_million: 0.50,
             output_per_million: 2.0,
-        },
-    }
-}
-
-fn openrouter_pricing(model: &str) -> ModelPricing {
-    match model {
-        m if m.contains("claude") => ModelPricing {
-            input_per_million: 3.0,
-            output_per_million: 15.0,
-        },
-        m if m.contains("gpt-4") => ModelPricing {
-            input_per_million: 2.50,
-            output_per_million: 10.0,
-        },
-        _ => ModelPricing {
-            input_per_million: 1.0,
-            output_per_million: 5.0,
         },
     }
 }
@@ -178,26 +158,6 @@ mod tests {
             &usage(1_000_000, 0),
         );
         assert!((cost - 0.20).abs() < 0.001);
-    }
-
-    #[test]
-    fn openrouter_claude_pricing() {
-        let cost = estimate_cost(
-            AiProvider::OpenRouter,
-            "anthropic/claude-3-sonnet",
-            &usage(1_000_000, 1_000_000),
-        );
-        assert!((cost - 18.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn openrouter_gpt4_pricing() {
-        let cost = estimate_cost(
-            AiProvider::OpenRouter,
-            "openai/gpt-4-turbo",
-            &usage(1_000_000, 1_000_000),
-        );
-        assert!((cost - 12.5).abs() < 0.001);
     }
 
     #[test]

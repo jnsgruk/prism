@@ -77,10 +77,6 @@ pub async fn build_ai_settings(svc: &ReasoningServiceImpl) -> Result<AiSettings,
         "google".into(),
         secret_keys.contains(&"google_api_key".to_string()),
     );
-    provider_secret_status.insert(
-        "openrouter".into(),
-        secret_keys.contains(&"openrouter_api_key".to_string()),
-    );
 
     Ok(AiSettings {
         enrichment: Some(task_config_to_proto(&config.tasks.enrichment)),
@@ -129,32 +125,22 @@ pub async fn load_providers_from_db_impl(svc: &ReasoningServiceImpl) {
         }
     }
 
-    // Load provider API keys
-    for (provider, secret_key_name) in [
-        ("google", "google_api_key"),
-        ("openrouter", "openrouter_api_key"),
-    ] {
-        match svc.repos.config.get_global_secret(secret_key_name).await {
-            Ok(Some(encrypted)) => match ps_core::crypto::decrypt(&svc.secret_key, &encrypted) {
-                Ok(decrypted) => {
-                    if let Ok(api_key) = String::from_utf8(decrypted) {
-                        let mut router = svc.router.write().await;
-                        match provider {
-                            "google" => router.set_google(&api_key),
-                            "openrouter" => router.set_openrouter(&api_key),
-                            _ => {}
-                        }
-                        info!(provider, "loaded AI provider key from database");
-                    }
+    // Load Google API key
+    match svc.repos.config.get_global_secret("google_api_key").await {
+        Ok(Some(encrypted)) => match ps_core::crypto::decrypt(&svc.secret_key, &encrypted) {
+            Ok(decrypted) => {
+                if let Ok(api_key) = String::from_utf8(decrypted) {
+                    svc.router.write().await.set_google(&api_key);
+                    info!("loaded Google AI provider key from database");
                 }
-                Err(e) => {
-                    tracing::warn!(provider, error = %e, "failed to decrypt provider key");
-                }
-            },
-            Ok(None) => {}
-            Err(e) => {
-                tracing::warn!(provider, error = %e, "failed to load provider key");
             }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to decrypt Google provider key");
+            }
+        },
+        Ok(None) => {}
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to load Google provider key");
         }
     }
 }
@@ -181,7 +167,6 @@ fn provider_secret_key(provider: i32) -> Result<(&'static str, &'static str), St
         .ok_or_else(|| Status::invalid_argument("unknown provider"))?;
     match provider_str.as_str() {
         "google" => Ok(("google", "google_api_key")),
-        "openrouter" => Ok(("openrouter", "openrouter_api_key")),
         _ => Err(Status::invalid_argument(format!(
             "unknown provider: {provider_str}"
         ))),
@@ -310,13 +295,8 @@ pub async fn set_provider_secret(
         .map_err(db_err)?;
 
     // Update the router with the new Rig provider client
-    {
-        let mut router = svc.router.write().await;
-        match provider_name {
-            "google" => router.set_google(&req.secret_value),
-            "openrouter" => router.set_openrouter(&req.secret_value),
-            _ => {}
-        }
+    if provider_name == "google" {
+        svc.router.write().await.set_google(&req.secret_value);
     }
 
     info!(provider = %provider_name, "provider secret set");

@@ -1,12 +1,11 @@
-//! Fetch available models from AI provider APIs.
+//! Fetch available models from the Google Gemini API.
 //!
-//! Each provider has a `fetch_models` function that calls the provider's
-//! model-listing endpoint and returns a normalized `Vec<AiModel>`.
+//! Returns a normalized `Vec<AiModel>` for storage in the model catalogue.
 
 use ps_core::models::{AiModel, AiProvider};
 use tracing::debug;
 
-/// Errors that can occur when fetching a provider's model catalogue.
+/// Errors that can occur when fetching the model catalogue.
 #[derive(Debug, thiserror::Error)]
 pub enum CatalogueError {
     #[error("HTTP request failed: {0}")]
@@ -16,16 +15,13 @@ pub enum CatalogueError {
     Parse(String),
 }
 
-/// Fetch the model catalogue for a given provider.
+/// Fetch the model catalogue for the Google provider.
 pub async fn fetch_models(
     http: &reqwest::Client,
-    provider: AiProvider,
+    _provider: AiProvider,
     api_key: &str,
 ) -> Result<Vec<AiModel>, CatalogueError> {
-    match provider {
-        AiProvider::Google => fetch_google_models(http, api_key).await,
-        AiProvider::OpenRouter => fetch_openrouter_models(http, api_key).await,
-    }
+    fetch_google_models(http, api_key).await
 }
 
 // ---------------------------------------------------------------------------
@@ -168,213 +164,9 @@ async fn fetch_google_models(
     Ok(all_models)
 }
 
-// ---------------------------------------------------------------------------
-// OpenRouter
-// ---------------------------------------------------------------------------
-
-#[derive(serde::Deserialize)]
-struct OpenRouterListResponse {
-    data: Vec<OpenRouterModel>,
-}
-
-#[derive(serde::Deserialize)]
-struct OpenRouterModel {
-    /// e.g. "anthropic/claude-sonnet-4"
-    id: String,
-    name: String,
-    #[serde(default)]
-    description: Option<String>,
-    #[serde(default)]
-    context_length: Option<i32>,
-    #[serde(default)]
-    pricing: Option<OpenRouterPricing>,
-    #[serde(default)]
-    architecture: Option<OpenRouterArchitecture>,
-}
-
-#[derive(serde::Deserialize)]
-struct OpenRouterArchitecture {
-    #[serde(default)]
-    modality: Option<String>,
-    #[serde(default)]
-    output_modalities: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct OpenRouterPricing {
-    /// USD per token (string in the API)
-    #[serde(default)]
-    prompt: Option<String>,
-    #[serde(default)]
-    completion: Option<String>,
-}
-
-async fn fetch_openrouter_models(
-    http: &reqwest::Client,
-    api_key: &str,
-) -> Result<Vec<AiModel>, CatalogueError> {
-    let resp: OpenRouterListResponse = http
-        .get("https://openrouter.ai/api/v1/models")
-        .bearer_auth(api_key)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
-
-    let models: Vec<AiModel> = resp
-        .data
-        .into_iter()
-        .map(|m| {
-            // OpenRouter pricing is per-token (string); convert to per-million-tokens
-            let (input_price, output_price) = m.pricing.as_ref().map_or((None, None), |p| {
-                let inp = p
-                    .prompt
-                    .as_deref()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .map(|per_token| per_token * 1_000_000.0);
-                let out = p
-                    .completion
-                    .as_deref()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .map(|per_token| per_token * 1_000_000.0);
-                (inp, out)
-            });
-
-            let capabilities = if m.id.contains("embed") {
-                vec!["embeddings".into()]
-            } else {
-                let (has_text_output, has_image_output) = match &m.architecture {
-                    Some(arch) => {
-                        // Check output_modalities array first, then fall back to
-                        // the "input->output" modality string (output is after "->").
-                        let output_str =
-                            arch.modality.as_deref().and_then(|m| m.split("->").nth(1));
-                        let img = arch.output_modalities.iter().any(|o| o == "image")
-                            || output_str.is_some_and(|o| o.contains("image"));
-                        let txt = arch.output_modalities.iter().any(|o| o == "text")
-                            || output_str
-                                .map_or(arch.output_modalities.is_empty(), |o| o.contains("text"));
-                        (txt, img)
-                    }
-                    None => (true, false),
-                };
-
-                let mut caps = Vec::new();
-                if has_text_output {
-                    caps.push("completion".into());
-                    caps.push("tool_use".into());
-                }
-                if has_image_output {
-                    caps.push("image_generation".into());
-                }
-                caps
-            };
-
-            AiModel {
-                id: m.id,
-                provider: AiProvider::OpenRouter,
-                display_name: m.name,
-                description: m.description,
-                context_length: m.context_length,
-                input_price,
-                output_price,
-                capabilities,
-            }
-        })
-        .collect();
-
-    debug!(count = models.len(), "fetched OpenRouter models");
-    Ok(models)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Helper to parse an OpenRouter model JSON and extract capabilities.
-    fn openrouter_caps(json: serde_json::Value) -> Vec<String> {
-        let resp: OpenRouterListResponse =
-            serde_json::from_value(serde_json::json!({"data": [json]})).unwrap();
-        let m = &resp.data[0];
-
-        if m.id.contains("embed") {
-            return vec!["embeddings".into()];
-        }
-
-        let (has_text_output, has_image_output) = match &m.architecture {
-            Some(arch) => {
-                let output_str = arch.modality.as_deref().and_then(|m| m.split("->").nth(1));
-                let img = arch.output_modalities.iter().any(|o| o == "image")
-                    || output_str.is_some_and(|o| o.contains("image"));
-                let txt = arch.output_modalities.iter().any(|o| o == "text")
-                    || output_str.map_or(arch.output_modalities.is_empty(), |o| o.contains("text"));
-                (txt, img)
-            }
-            None => (true, false),
-        };
-
-        let mut caps = Vec::new();
-        if has_text_output {
-            caps.push("completion".into());
-            caps.push("tool_use".into());
-        }
-        if has_image_output {
-            caps.push("image_generation".into());
-        }
-        caps
-    }
-
-    #[test]
-    fn openrouter_image_only_model() {
-        let caps = openrouter_caps(serde_json::json!({
-            "id": "stabilityai/sdxl", "name": "SDXL",
-            "architecture": {"modality": "text->image", "output_modalities": ["image"]}
-        }));
-        assert!(!caps.contains(&"completion".to_string()));
-        assert!(caps.contains(&"image_generation".to_string()));
-    }
-
-    #[test]
-    fn openrouter_multimodal_model() {
-        let caps = openrouter_caps(serde_json::json!({
-            "id": "openai/gpt-4o", "name": "GPT-4o",
-            "architecture": {"output_modalities": ["text", "image"]}
-        }));
-        assert!(caps.contains(&"completion".to_string()));
-        assert!(caps.contains(&"tool_use".to_string()));
-        assert!(caps.contains(&"image_generation".to_string()));
-    }
-
-    #[test]
-    fn openrouter_text_only_model() {
-        let caps = openrouter_caps(serde_json::json!({
-            "id": "anthropic/claude-4", "name": "Claude 4",
-            "architecture": {"modality": "text->text", "output_modalities": ["text"]}
-        }));
-        assert!(caps.contains(&"completion".to_string()));
-        assert!(!caps.contains(&"image_generation".to_string()));
-    }
-
-    #[test]
-    fn openrouter_missing_architecture_defaults_to_text() {
-        let caps = openrouter_caps(serde_json::json!({
-            "id": "mistralai/mistral-large", "name": "Mistral Large"
-        }));
-        assert!(caps.contains(&"completion".to_string()));
-        assert!(!caps.contains(&"image_generation".to_string()));
-    }
-
-    #[test]
-    fn openrouter_modality_text_image_output() {
-        // Model with "text+image->text+image" modality format
-        let caps = openrouter_caps(serde_json::json!({
-            "id": "openai/gpt-image", "name": "GPT Image",
-            "architecture": {"modality": "text+image->text+image", "output_modalities": []}
-        }));
-        assert!(caps.contains(&"completion".to_string()));
-        assert!(caps.contains(&"image_generation".to_string()));
-    }
 
     /// Helper to compute capabilities for a Google model given its ID and
     /// supported generation methods (mirrors the logic in `fetch_google_models`).

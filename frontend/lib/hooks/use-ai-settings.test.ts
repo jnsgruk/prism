@@ -21,7 +21,7 @@ vi.mock("@ps/api/transport", () => ({
     service(ReasoningService, {
       getAiSettings: () =>
         create(GetAiSettingsResponseSchema, {
-          settings: { enrichment: { provider: AiProvider.OPENROUTER, model: "test-model" } },
+          settings: { enrichment: { provider: AiProvider.GOOGLE, model: "test-model" } },
         }),
       updateAiSettings: () => create(UpdateAiSettingsResponseSchema, {}),
       setProviderSecret: () => create(SetProviderSecretResponseSchema, {}),
@@ -52,7 +52,7 @@ describe("AI settings hooks", () => {
       const { result } = renderHook(() => useAiSettings(), { wrapper: TestWrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.enrichment?.provider).toBe(AiProvider.OPENROUTER);
+      expect(result.current.data?.enrichment?.provider).toBe(AiProvider.GOOGLE);
     });
   });
 
@@ -74,7 +74,7 @@ describe("AI settings hooks", () => {
       const { useSetProviderSecret } = await import("./use-ai-settings");
       const { result } = renderHook(() => useSetProviderSecret(), { wrapper: TestWrapper });
 
-      result.current.mutate({ provider: AiProvider.OPENROUTER, secretValue: "sk-xxx" });
+      result.current.mutate({ provider: AiProvider.GOOGLE, secretValue: "sk-xxx" });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
@@ -86,7 +86,7 @@ describe("AI settings hooks", () => {
       const { useTestProvider } = await import("./use-ai-settings");
       const { result } = renderHook(() => useTestProvider(), { wrapper: TestWrapper });
 
-      result.current.mutate({ provider: AiProvider.OPENROUTER });
+      result.current.mutate({ provider: AiProvider.GOOGLE });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data?.success).toBe(true);
@@ -108,7 +108,7 @@ describe("AI settings hooks", () => {
     it("fetches models for a provider and capability", async () => {
       vi.useRealTimers();
       const { useAiModels } = await import("./use-ai-settings");
-      const { result } = renderHook(() => useAiModels(AiProvider.OPENROUTER, "chat"), {
+      const { result } = renderHook(() => useAiModels(AiProvider.GOOGLE, "chat"), {
         wrapper: TestWrapper,
       });
 
@@ -136,7 +136,7 @@ describe("AI settings hooks", () => {
       const { aiKeys } = await import("./use-ai-settings");
       expect(aiKeys.all).toEqual(["ai"]);
       expect(aiKeys.settings()).toEqual(["ai", "settings"]);
-      expect(aiKeys.models("openrouter", "chat")).toEqual(["ai", "models", "openrouter", "chat"]);
+      expect(aiKeys.models("google", "chat")).toEqual(["ai", "models", "google", "chat"]);
       expect(aiKeys.storageHealth()).toEqual(["ai", "storage-health"]);
     });
   });
