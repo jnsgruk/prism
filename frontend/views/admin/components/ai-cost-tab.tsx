@@ -100,7 +100,7 @@ export const AiCostSection = (): React.ReactElement => {
             <CardTitle className="text-base">By task</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -147,7 +147,7 @@ export const AiCostSection = (): React.ReactElement => {
             <CardTitle className="text-base">By model</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
