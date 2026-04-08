@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { type BundledLanguage, type Highlighter, createHighlighter } from "shiki/bundle/web";
+import { type BundledLanguage, type Highlighter, createHighlighter } from "shiki";
 import { Loader2 } from "lucide-react";
 
 import { resolveLanguage } from "@/views/ask/hooks/use-file-tree";
@@ -10,6 +10,7 @@ import { resolveLanguage } from "@/views/ask/hooks/use-file-tree";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 const loadedLanguages = new Set<string>(["text"]);
+const failedLanguages = new Set<string>();
 
 const getHighlighter = (): Promise<Highlighter> => {
   if (!highlighterPromise) {
@@ -22,13 +23,13 @@ const getHighlighter = (): Promise<Highlighter> => {
 };
 
 const ensureLanguage = async (highlighter: Highlighter, lang: string): Promise<void> => {
-  if (loadedLanguages.has(lang)) return;
+  if (loadedLanguages.has(lang) || failedLanguages.has(lang)) return;
   try {
     await highlighter.loadLanguage(lang as BundledLanguage);
     loadedLanguages.add(lang);
   } catch {
-    // Language not available in the bundle — fall back to plain text
-    loadedLanguages.add(lang);
+    // Language not available — track separately so codeToHtml falls back to "text".
+    failedLanguages.add(lang);
   }
 };
 
@@ -68,7 +69,7 @@ export const CodePreview = ({
       if (cancelled) return;
 
       const result = highlighter.codeToHtml(code, {
-        lang: loadedLanguages.has(language) ? language : "text",
+        lang: loadedLanguages.has(language) && !failedLanguages.has(language) ? language : "text",
         themes: {
           light: "github-light",
           dark: "github-dark",

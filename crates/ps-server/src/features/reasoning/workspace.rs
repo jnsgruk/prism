@@ -41,7 +41,10 @@ fn guess_content_type(filename: &str) -> &'static str {
         Some("csv") => "text/csv",
         Some("json" | "jsonl") => "application/json",
         Some("md" | "mdx") => "text/markdown",
-        Some("txt" | "log" | "nix" | "proto" | "graphql" | "gql" | "dockerfile") => "text/plain",
+        Some(
+            "txt" | "log" | "lock" | "cfg" | "ini" | "env" | "nix" | "proto" | "graphql" | "gql"
+            | "dockerfile",
+        ) => "text/plain",
         Some("html" | "htm") => "text/html",
         Some("css" | "scss") => "text/css",
         Some("js" | "mjs" | "cjs") => "text/javascript",
