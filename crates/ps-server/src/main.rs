@@ -24,9 +24,8 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Install the rustls crypto provider before any TLS usage. Both `ring`
-    // (from object_store) and `aws-lc-rs` (from kube) are in the dep tree,
-    // so rustls can't auto-detect — we explicitly pick aws-lc-rs.
+    // Install the rustls crypto provider before any TLS usage. Multiple
+    // providers may be in the dep tree, so we explicitly pick aws-lc-rs.
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
     tracing_subscriber::fmt()
@@ -71,33 +70,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ps_reasoning::routing::TaskRouter::new(ai_config),
     ));
 
-    // Object storage — optional, configured via env vars
-    let artifact_store: Option<Arc<dyn ps_core::ArtifactStore>> =
-        if let (Ok(endpoint), Ok(bucket)) =
-            (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
-        {
-            let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
-            let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
-            match ps_core::artifact_store::S3ArtifactStore::new(
-                &endpoint,
-                &bucket,
-                &access_key,
-                &secret_key_s3,
-            ) {
-                Ok(store) => {
-                    info!(%endpoint, %bucket, "S3 artifact store configured");
-                    Some(Arc::new(store))
-                }
-                Err(e) => {
-                    tracing::warn!(error = %e, "failed to configure S3 artifact store");
-                    None
-                }
-            }
-        } else {
-            info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
-            None
-        };
-
     // Workspace filesystem path — set when the shared workspaces PVC is mounted.
     let workspaces_path = std::env::var("WORKSPACES_PATH").ok().map(|p| {
         info!(path = %p, "workspace filesystem access configured");
@@ -108,7 +80,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         repos.clone(),
         secret_key,
         router,
-        artifact_store,
         workspaces_path,
         restate_url,
     );

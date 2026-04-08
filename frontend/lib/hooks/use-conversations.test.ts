@@ -70,7 +70,6 @@ vi.mock("@ps/api/transport", () => ({
       updateAiSettings: () => ({}),
       setProviderSecret: () => ({}),
       testProvider: () => ({}),
-      getStorageHealth: () => ({}),
       getUsageSummary: () => ({}),
       listAiModels: () => ({}),
       refreshModelCatalogue: () => ({}),

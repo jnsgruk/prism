@@ -3,10 +3,10 @@ use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceCl
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, AskQuestionRequest, DeleteEnrichmentsByTypeRequest,
     FindSimilarRequest, GetAiSettingsRequest, GetConversationRequest, GetEmbeddingStatusRequest,
-    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
-    GetUsageSummaryRequest, ListAiModelsRequest, ListConversationsRequest,
-    RefreshModelCatalogueRequest, SaveInsightFromConversationRequest, SetProviderSecretRequest,
-    UpdateAiSettingsRequest, ask_question_response,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetUsageSummaryRequest,
+    ListAiModelsRequest, ListConversationsRequest, RefreshModelCatalogueRequest,
+    SaveInsightFromConversationRequest, SetProviderSecretRequest, UpdateAiSettingsRequest,
+    ask_question_response,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -330,33 +330,6 @@ async fn get_usage_summary_empty() {
 
     assert!(resp.task_breakdown.is_empty());
     assert!(resp.model_breakdown.is_empty());
-
-    ctx.teardown().await;
-}
-
-// ---------------------------------------------------------------------------
-// GetStorageHealth — no artifact store configured
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn get_storage_health_no_store() {
-    let ctx = ApiTestContext::new().await;
-    let server = &ctx.server;
-
-    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = ReasoningServiceClient::new(server.channel.clone());
-
-    let mut req = Request::new(GetStorageHealthRequest {});
-    auth(&mut req, &token);
-
-    let resp = client
-        .get_storage_health(req)
-        .await
-        .expect("get_storage_health")
-        .into_inner();
-
-    assert!(!resp.healthy);
-    assert!(!resp.error_message.is_empty());
 
     ctx.teardown().await;
 }

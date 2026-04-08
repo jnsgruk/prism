@@ -1,5 +1,5 @@
 # NetworkPolicy restricting agent container egress.
-# Agent pods can reach: ps-server (gRPC), RustFS (S3), and external HTTPS (443).
+# Agent pods can reach: ps-server (gRPC) and external HTTPS (443).
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -26,17 +26,6 @@ spec:
               app: ps-server
       ports:
         - port: 8080
-          protocol: TCP
-    # RustFS / S3 (for artifact uploads).
-    # Service exposes port 80 (targetPort 9000). Allow both for CNI compatibility.
-    - to:
-        - podSelector:
-            matchLabels:
-              app: rustfs
-      ports:
-        - port: 80
-          protocol: TCP
-        - port: 9000
           protocol: TCP
     # External HTTPS (GitHub, Jira, Discourse, LLM API providers).
     - to:

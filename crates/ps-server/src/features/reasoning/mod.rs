@@ -18,16 +18,14 @@ use ps_proto::canonical::prism::v1::{
     GetConversationResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse,
     GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
     GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
-    GetEnrichmentsRequest, GetEnrichmentsResponse, GetStorageHealthRequest,
-    GetStorageHealthResponse, GetUsageSummaryRequest, GetUsageSummaryResponse,
+    GetEnrichmentsRequest, GetEnrichmentsResponse, GetUsageSummaryRequest, GetUsageSummaryResponse,
     GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse,
     ListConversationsRequest, ListConversationsResponse, ListWorkspaceFilesRequest,
     ListWorkspaceFilesResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse,
     RenameConversationRequest, RenameConversationResponse, ResumeStreamRequest,
     ResumeStreamResponse, SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
     SearchByTextRequest, SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    SyncWorkspaceFilesRequest, SyncWorkspaceFilesResponse, TestProviderRequest,
-    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -37,7 +35,6 @@ pub struct ReasoningServiceImpl {
     repos: Repos,
     secret_key: Zeroizing<[u8; 32]>,
     router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
-    artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
     workspaces_path: Option<std::path::PathBuf>,
     restate_url: String,
     http_client: reqwest::Client,
@@ -48,7 +45,6 @@ impl ReasoningServiceImpl {
         repos: Repos,
         secret_key: Zeroizing<[u8; 32]>,
         router: Arc<RwLock<ps_reasoning::routing::TaskRouter>>,
-        artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
         workspaces_path: Option<std::path::PathBuf>,
         restate_url: String,
     ) -> Self {
@@ -56,7 +52,6 @@ impl ReasoningServiceImpl {
             repos,
             secret_key,
             router,
-            artifact_store,
             workspaces_path,
             restate_url,
             http_client: reqwest::Client::new(),
@@ -118,13 +113,6 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<TestProviderRequest>,
     ) -> Result<Response<TestProviderResponse>, Status> {
         ai_settings::test_provider(self, request).await
-    }
-
-    async fn get_storage_health(
-        &self,
-        request: Request<GetStorageHealthRequest>,
-    ) -> Result<Response<GetStorageHealthResponse>, Status> {
-        ai_settings::get_storage_health(self, request).await
     }
 
     async fn get_usage_summary(
@@ -244,12 +232,5 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<GetWorkspaceFileRequest>,
     ) -> Result<Response<GetWorkspaceFileResponse>, Status> {
         workspace::get_workspace_file(self, request).await
-    }
-
-    async fn sync_workspace_files(
-        &self,
-        request: Request<SyncWorkspaceFilesRequest>,
-    ) -> Result<Response<SyncWorkspaceFilesResponse>, Status> {
-        workspace::sync_workspace_files(self, request).await
     }
 }

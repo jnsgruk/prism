@@ -108,7 +108,7 @@ docker_build(
 # Resource configuration
 # ---------------------------------------------------------------------------
 k8s_resource("ps-migrate", resource_deps=["postgres"], labels=["prism"])
-k8s_resource("ps-server", resource_deps=["ps-migrate", "rustfs-init"], labels=["prism"],)
+k8s_resource("ps-server", resource_deps=["ps-migrate"], labels=["prism"],)
 k8s_resource("ps-workers", resource_deps=["ps-migrate"], labels=["prism"],)
 k8s_resource("ps-frontend", resource_deps=["ps-server"], labels=["prism"])
 
@@ -117,7 +117,4 @@ k8s_resource(workload="eg-gateway-helm-certgen", labels=["gateway"])
 
 k8s_resource("postgres", port_forwards=["5432:5432"], labels=["infra"],)
 k8s_resource("restate",  port_forwards=["9070:9070"], labels=["infra"])
-k8s_resource("rustfs",      port_forwards=["9000:9000", "9001:9001"], labels=["infra"])
-k8s_resource("rustfs-init", resource_deps=["rustfs"], labels=["infra"])
-
 k8s_resource("prism-agent-image-builder", labels=["agent"])

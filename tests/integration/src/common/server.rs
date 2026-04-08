@@ -81,7 +81,6 @@ impl TestServer {
             repos.clone(),
             test_secret_key(),
             router,
-            None, // no artifact store in tests
             None, // no workspaces path in tests
             "http://127.0.0.1:1".into(),
         );

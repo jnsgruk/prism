@@ -46,7 +46,6 @@ export {
   useUpdateAiSettings,
   useSetProviderSecret,
   useTestProvider,
-  useStorageHealth,
   useAiModels,
   useRefreshModelCatalogue,
   aiKeys,

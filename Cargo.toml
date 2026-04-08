@@ -121,8 +121,6 @@ futures = "0.3"
 # Memory safety
 zeroize = "1"
 
-# Object storage
-object_store = { version = "0.12", features = ["aws"] }
 bytes = "1"
 url = "2"
 

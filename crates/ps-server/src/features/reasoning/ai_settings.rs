@@ -1,10 +1,9 @@
 use ps_core::crypto;
 use ps_proto::canonical::prism::v1::{
     AiModelInfo, AiSettings, AiTaskConfig as ProtoAiTaskConfig, GetAiSettingsRequest,
-    GetAiSettingsResponse, GetStorageHealthRequest, GetStorageHealthResponse, ListAiModelsRequest,
-    ListAiModelsResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse,
-    SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest, TestProviderResponse,
-    UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    GetAiSettingsResponse, ListAiModelsRequest, ListAiModelsResponse, RefreshModelCatalogueRequest,
+    RefreshModelCatalogueResponse, SetProviderSecretRequest, SetProviderSecretResponse,
+    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
 use tonic::{Request, Response, Status};
@@ -381,30 +380,6 @@ pub async fn test_provider(
         Err(e) => Ok(Response::new(TestProviderResponse {
             success: false,
             error_message: e.to_string(),
-        })),
-    }
-}
-
-pub async fn get_storage_health(
-    svc: &ReasoningServiceImpl,
-    request: Request<GetStorageHealthRequest>,
-) -> Result<Response<GetStorageHealthResponse>, Status> {
-    let _ctx = require_auth(&request)?;
-
-    match &svc.artifact_store {
-        Some(store) => match store.health_check().await {
-            Ok(()) => Ok(Response::new(GetStorageHealthResponse {
-                healthy: true,
-                error_message: String::new(),
-            })),
-            Err(e) => Ok(Response::new(GetStorageHealthResponse {
-                healthy: false,
-                error_message: e.to_string(),
-            })),
-        },
-        None => Ok(Response::new(GetStorageHealthResponse {
-            healthy: false,
-            error_message: "object storage not configured".into(),
         })),
     }
 }

@@ -9,7 +9,6 @@ resources:
   - ps-server.yaml
   - ps-workers.yaml
   - ps-frontend.yaml
-  - rustfs.yaml
   - gateway.yaml
   - agent-rbac.yaml
   - agent-network-policy.yaml

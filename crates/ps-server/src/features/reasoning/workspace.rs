@@ -1,8 +1,7 @@
 use base64::Engine;
 use ps_proto::canonical::prism::v1::{
     GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListWorkspaceFilesRequest,
-    ListWorkspaceFilesResponse, SyncWorkspaceFilesRequest, SyncWorkspaceFilesResponse,
-    WorkspaceFileInfo,
+    ListWorkspaceFilesResponse, WorkspaceFileInfo,
 };
 use std::path::{Path, PathBuf};
 use tonic::{Request, Response, Status};
@@ -295,15 +294,5 @@ pub async fn get_workspace_file(
         download_url,
         content_type,
         size_bytes,
-    }))
-}
-
-pub async fn sync_workspace_files(
-    _svc: &ReasoningServiceImpl,
-    _request: Request<SyncWorkspaceFilesRequest>,
-) -> Result<Response<SyncWorkspaceFilesResponse>, Status> {
-    // No longer needed with shared PVC — workspace files are always available.
-    Ok(Response::new(SyncWorkspaceFilesResponse {
-        synced_count: 0,
     }))
 }

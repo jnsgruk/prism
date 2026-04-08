@@ -20,10 +20,6 @@ service ReasoningService {
   rpc SetProviderSecret(SetProviderSecretRequest) returns (SetProviderSecretResponse);
   // TestProvider verifies connectivity to an AI provider using its stored key.
   rpc TestProvider(TestProviderRequest) returns (TestProviderResponse);
-  // GetStorageHealth checks connectivity to the S3/RustFS object store used
-  // for embedding storage.
-  rpc GetStorageHealth(GetStorageHealthRequest) returns (GetStorageHealthResponse);
-
   // GetUsageSummary returns AI token/request usage broken down by task and model.
   rpc GetUsageSummary(GetUsageSummaryRequest) returns (GetUsageSummaryResponse);
 
@@ -72,15 +68,11 @@ service ReasoningService {
   // RenameConversation sets a user-provided title on a conversation.
   rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
   // ListWorkspaceFiles returns the file listing of the agent container's /workspace
-  // directory. When the container is running, reads the live filesystem; otherwise
-  // falls back to the last S3 snapshot taken before the container was reaped.
+  // directory on the shared PVC.
   rpc ListWorkspaceFiles(ListWorkspaceFilesRequest) returns (ListWorkspaceFilesResponse);
   // GetWorkspaceFile returns the content of a single file from the workspace.
   // Returned as a data URL (base64-encoded).
   rpc GetWorkspaceFile(GetWorkspaceFileRequest) returns (GetWorkspaceFileResponse);
-  // SyncWorkspaceFiles triggers an on-demand sync of the container's /workspace
-  // to S3. Returns the number of files synced. Only works when the container is running.
-  rpc SyncWorkspaceFiles(SyncWorkspaceFilesRequest) returns (SyncWorkspaceFilesResponse);
 }
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
@@ -144,13 +136,6 @@ message TestProviderRequest {
 
 message TestProviderResponse {
   bool success = 1;
-  string error_message = 2;
-}
-
-message GetStorageHealthRequest {}
-
-message GetStorageHealthResponse {
-  bool healthy = 1;
   string error_message = 2;
 }
 
@@ -635,11 +620,3 @@ message GetWorkspaceFileResponse {
   int64 size_bytes = 3;
 }
 
-message SyncWorkspaceFilesRequest {
-  string conversation_id = 1;
-}
-
-message SyncWorkspaceFilesResponse {
-  // Number of files synced to S3.
-  int32 synced_count = 1;
-}

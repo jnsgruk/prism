@@ -15,14 +15,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
     let http_client = build_http_client();
     let container_manager = setup_container_manager().await;
-    let artifact_store = setup_artifact_store();
 
     let state = SharedState {
         repos: ps_core::repo::Repos::new(pool.clone()),
         secret_key,
         http_client,
         container_manager,
-        artifact_store,
     };
 
     let ai_router = setup_ai_router(&state).await;
@@ -60,7 +58,7 @@ fn init_logging() {
 
 #[allow(clippy::expect_used)]
 async fn connect_database() -> Result<sqlx::PgPool, Box<dyn std::error::Error>> {
-    // Install the rustls crypto provider before any TLS usage (kube, object_store).
+    // Install the rustls crypto provider before any TLS usage (kube, reqwest).
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -91,10 +89,6 @@ async fn setup_container_manager() -> Option<Arc<ps_agent::ContainerManager>> {
                 small_model: String::new(),
                 prism_api_url: "http://ps-server:8080".to_string(),
                 service_token: String::new(),
-                s3_endpoint: std::env::var("S3_ENDPOINT").unwrap_or_default(),
-                s3_bucket: std::env::var("S3_BUCKET").unwrap_or_else(|_| "ps-artifacts".into()),
-                s3_access_key_id: std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default(),
-                s3_secret_access_key: std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default(),
                 provider_keys: vec![],
             };
             Some(Arc::new(ps_agent::ContainerManager::new(
@@ -105,32 +99,6 @@ async fn setup_container_manager() -> Option<Arc<ps_agent::ContainerManager>> {
         }
         Err(e) => {
             warn!(error = %e, "K8s not available — agent containers disabled");
-            None
-        }
-    }
-}
-
-fn setup_artifact_store() -> Option<Arc<dyn ps_core::ArtifactStore>> {
-    let (Ok(endpoint), Ok(bucket)) = (std::env::var("S3_ENDPOINT"), std::env::var("S3_BUCKET"))
-    else {
-        info!("S3 artifact store not configured (S3_ENDPOINT/S3_BUCKET not set)");
-        return None;
-    };
-
-    let access_key = std::env::var("S3_ACCESS_KEY_ID").unwrap_or_default();
-    let secret_key_s3 = std::env::var("S3_SECRET_ACCESS_KEY").unwrap_or_default();
-    match ps_core::artifact_store::S3ArtifactStore::new(
-        &endpoint,
-        &bucket,
-        &access_key,
-        &secret_key_s3,
-    ) {
-        Ok(store) => {
-            info!(%endpoint, %bucket, "S3 artifact store configured");
-            Some(Arc::new(store))
-        }
-        Err(e) => {
-            warn!(error = %e, "failed to configure S3 artifact store");
             None
         }
     }

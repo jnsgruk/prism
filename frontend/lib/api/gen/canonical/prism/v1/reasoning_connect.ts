@@ -28,8 +28,6 @@ import {
   GetEnrichmentsByContributionsResponse,
   GetEnrichmentsRequest,
   GetEnrichmentsResponse,
-  GetStorageHealthRequest,
-  GetStorageHealthResponse,
   GetUsageSummaryRequest,
   GetUsageSummaryResponse,
   GetWorkspaceFileRequest,
@@ -52,8 +50,6 @@ import {
   SearchByTextResponse,
   SetProviderSecretRequest,
   SetProviderSecretResponse,
-  SyncWorkspaceFilesRequest,
-  SyncWorkspaceFilesResponse,
   TestProviderRequest,
   TestProviderResponse,
   UpdateAiSettingsRequest,
@@ -113,18 +109,6 @@ export const ReasoningService = {
       name: "TestProvider",
       I: TestProviderRequest,
       O: TestProviderResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * GetStorageHealth checks connectivity to the S3/RustFS object store used
-     * for embedding storage.
-     *
-     * @generated from rpc canonical.prism.v1.ReasoningService.GetStorageHealth
-     */
-    getStorageHealth: {
-      name: "GetStorageHealth",
-      I: GetStorageHealthRequest,
-      O: GetStorageHealthResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -325,8 +309,7 @@ export const ReasoningService = {
     },
     /**
      * ListWorkspaceFiles returns the file listing of the agent container's /workspace
-     * directory. When the container is running, reads the live filesystem; otherwise
-     * falls back to the last S3 snapshot taken before the container was reaped.
+     * directory on the shared PVC.
      *
      * @generated from rpc canonical.prism.v1.ReasoningService.ListWorkspaceFiles
      */
@@ -346,18 +329,6 @@ export const ReasoningService = {
       name: "GetWorkspaceFile",
       I: GetWorkspaceFileRequest,
       O: GetWorkspaceFileResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * SyncWorkspaceFiles triggers an on-demand sync of the container's /workspace
-     * to S3. Returns the number of files synced. Only works when the container is running.
-     *
-     * @generated from rpc canonical.prism.v1.ReasoningService.SyncWorkspaceFiles
-     */
-    syncWorkspaceFiles: {
-      name: "SyncWorkspaceFiles",
-      I: SyncWorkspaceFilesRequest,
-      O: SyncWorkspaceFilesResponse,
       kind: MethodKind.Unary,
     },
   },

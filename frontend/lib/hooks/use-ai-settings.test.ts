@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   GetAiSettingsResponseSchema,
-  GetStorageHealthResponseSchema,
   ListAiModelsResponseSchema,
   ReasoningService,
   RefreshModelCatalogueResponseSchema,
@@ -26,7 +25,6 @@ vi.mock("@ps/api/transport", () => ({
       updateAiSettings: () => create(UpdateAiSettingsResponseSchema, {}),
       setProviderSecret: () => create(SetProviderSecretResponseSchema, {}),
       testProvider: () => create(TestProviderResponseSchema, { success: true }),
-      getStorageHealth: () => create(GetStorageHealthResponseSchema, { healthy: true }),
       listAiModels: () => create(ListAiModelsResponseSchema, { models: [] }),
       refreshModelCatalogue: () => create(RefreshModelCatalogueResponseSchema, {}),
       // Provide stubs for any other methods the service might expect
@@ -93,17 +91,6 @@ describe("AI settings hooks", () => {
     });
   });
 
-  describe("useStorageHealth", () => {
-    it("fetches storage health status", async () => {
-      vi.useRealTimers();
-      const { useStorageHealth } = await import("./use-ai-settings");
-      const { result } = renderHook(() => useStorageHealth(), { wrapper: TestWrapper });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.healthy).toBe(true);
-    });
-  });
-
   describe("useAiModels", () => {
     it("fetches models for a provider and capability", async () => {
       vi.useRealTimers();
@@ -137,7 +124,6 @@ describe("AI settings hooks", () => {
       expect(aiKeys.all).toEqual(["ai"]);
       expect(aiKeys.settings()).toEqual(["ai", "settings"]);
       expect(aiKeys.models("google", "chat")).toEqual(["ai", "models", "google", "chat"]);
-      expect(aiKeys.storageHealth()).toEqual(["ai", "storage-health"]);
     });
   });
 });

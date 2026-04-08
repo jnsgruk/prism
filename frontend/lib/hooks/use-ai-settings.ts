@@ -22,7 +22,6 @@ export const aiKeys = {
   models: (provider: string, capability: string) =>
     [...aiKeys.all, "models", provider, capability] as const,
   usage: (days: number) => [...aiKeys.all, "usage", days] as const,
-  storageHealth: () => [...aiKeys.all, "storage-health"] as const,
 };
 
 export const useAiSettings = (): UseQueryResult<AiSettings | undefined, Error> =>
@@ -72,16 +71,6 @@ export const useTestProvider = (): UseMutationResult<
 > =>
   useMutation({
     mutationFn: (req) => client.testProvider(req),
-  });
-
-export const useStorageHealth = (): UseQueryResult<
-  Awaited<ReturnType<typeof client.getStorageHealth>>,
-  Error
-> =>
-  useQuery({
-    queryKey: aiKeys.storageHealth(),
-    queryFn: () => client.getStorageHealth({}),
-    refetchInterval: 60_000,
   });
 
 export const useAiModels = (

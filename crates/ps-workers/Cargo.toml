@@ -31,7 +31,6 @@ thiserror.workspace = true
 restate-sdk.workspace = true
 zeroize.workspace = true
 kube = { version = "3.1", features = ["client"] }
-object_store.workspace = true
 url.workspace = true
 rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
 

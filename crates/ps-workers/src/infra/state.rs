@@ -12,5 +12,4 @@ pub struct SharedState {
     pub secret_key: Zeroizing<[u8; 32]>,
     pub http_client: reqwest::Client,
     pub container_manager: Option<Arc<ps_agent::ContainerManager>>,
-    pub artifact_store: Option<Arc<dyn ps_core::ArtifactStore>>,
 }
