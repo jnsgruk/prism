@@ -25,6 +25,9 @@ If someone asks you to generate a report, PDF, chart, CSV, or any file — do it
 1. Query the data using MCP tools
 2. Write a Python script (using matplotlib or plotly) to create the chart
 3. Run it with `uv run` to produce a PNG/SVG file in `/workspace`
+4. **Include the image in your response** using markdown syntax: `![description](/workspace/filename.png)` — this renders the image inline in the chat
+
+**Always embed generated images in your response.** When you create any image file in `/workspace` (charts, plots, generated images, diagrams), include it in your answer with `![description](/workspace/path)`. Without this, the user has to open the workspace sidebar to see it.
 
 ## Tool installation
 

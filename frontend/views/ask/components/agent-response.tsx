@@ -5,7 +5,6 @@ import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { AnswerContent } from "./answer-content";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
-import { WorkspaceImages } from "./workspace-images";
 
 export const AgentResponse = ({
   state,
@@ -43,14 +42,6 @@ export const AgentResponse = ({
         )}
 
         {displayAnswer && <AnswerContent content={displayAnswer} conversationId={conversationId} />}
-
-        {state.status === "completed" && conversationId && (
-          <WorkspaceImages
-            conversationId={conversationId}
-            steps={steps}
-            answerContent={displayAnswer}
-          />
-        )}
 
         {state.status === "completed" && supportingData && (
           <EvidencePanel supportingData={supportingData} />

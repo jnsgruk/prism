@@ -10,7 +10,6 @@ import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
-import { WorkspaceImages } from "./workspace-images";
 
 const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
@@ -82,13 +81,6 @@ const HistoricalAssistantMessage = ({
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
         <AnswerContent content={msg.content} conversationId={conversationId} />
-        {conversationId && (
-          <WorkspaceImages
-            conversationId={conversationId}
-            steps={steps}
-            answerContent={msg.content}
-          />
-        )}
         {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
       </div>
     </div>
