@@ -105,7 +105,7 @@ export const CodePreview = ({
   return (
     <div
       ref={containerRef}
-      className={`overflow-auto rounded-md text-sm [&_pre]:!overflow-visible [&_pre]:!bg-transparent [&_pre]:p-3 ${className ?? ""}`}
+      className={`overflow-auto rounded-md text-sm [&_pre]:!overflow-visible [&_pre]:rounded-md [&_pre]:p-3 ${className ?? ""}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

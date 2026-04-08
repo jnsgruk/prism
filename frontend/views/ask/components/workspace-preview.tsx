@@ -40,7 +40,7 @@ const PreviewContent = ({ state }: { state: PreviewState }): React.ReactElement 
         code={state.textContent}
         fileName={state.artifact.displayName}
         contentType={state.contentType}
-        className="max-h-full bg-muted"
+        className="max-h-full"
       />
     );
   }

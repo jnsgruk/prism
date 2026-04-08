@@ -108,7 +108,7 @@ export const WorkspacePreviewDialog = ({
             code={state.textContent}
             fileName={state.artifact.displayName}
             contentType={state.contentType}
-            className="max-h-[75vh] bg-muted"
+            className="max-h-[75vh]"
           />
         )}
 
