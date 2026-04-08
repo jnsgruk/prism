@@ -74,7 +74,7 @@ export const WorkspacePreviewDialog = ({
 }): React.ReactElement => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     {state && (
-      <DialogContent className="sm:max-w-5xl">
+      <DialogContent className="sm:max-w-5xl" showCloseButton={false}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
