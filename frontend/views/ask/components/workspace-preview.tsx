@@ -19,7 +19,7 @@ const PreviewContent = ({ state }: { state: PreviewState }): React.ReactElement 
         <img
           src={state.url}
           alt={state.artifact.displayName}
-          className="max-h-48 rounded object-contain"
+          className="max-h-full rounded object-contain"
         />
       </div>
     );
@@ -40,7 +40,7 @@ const PreviewContent = ({ state }: { state: PreviewState }): React.ReactElement 
         code={state.textContent}
         fileName={state.artifact.displayName}
         contentType={state.contentType}
-        className="max-h-48 bg-muted"
+        className="max-h-full bg-muted"
       />
     );
   }

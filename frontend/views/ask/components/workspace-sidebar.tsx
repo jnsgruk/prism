@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useGetWorkspaceFile, useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
 
 import {
@@ -13,9 +12,17 @@ import {
   isTextContent,
   useWorkspaceFileTree,
 } from "@/views/ask/hooks/use-file-tree";
+import { useResize } from "@/views/ask/hooks/use-resize";
 import { WorkspaceTree } from "@/views/ask/components/workspace-tree";
 import { WorkspacePreview, type PreviewState } from "@/views/ask/components/workspace-preview";
 import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
+
+const DEFAULT_WIDTH = 320;
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 640;
+const DEFAULT_PREVIEW_HEIGHT = 240;
+const MIN_PREVIEW_HEIGHT = 100;
+const MAX_PREVIEW_HEIGHT = 500;
 
 export const WorkspaceSidebar = ({
   open,
@@ -40,6 +47,26 @@ export const WorkspaceSidebar = ({
     [workspaceData?.files],
   );
   const workspaceRoots = useWorkspaceFileTree(workspaceFiles);
+
+  // Resizable width
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const { onPointerDown: onWidthDragDown } = useResize({
+    axis: "horizontal",
+    min: MIN_WIDTH,
+    max: MAX_WIDTH,
+    reverse: true, // Dragging left increases width (sidebar is right-anchored).
+    onResize: setWidth,
+  });
+
+  // Resizable preview height
+  const [previewHeight, setPreviewHeight] = useState(DEFAULT_PREVIEW_HEIGHT);
+  const { onPointerDown: onPreviewDragDown } = useResize({
+    axis: "vertical",
+    min: MIN_PREVIEW_HEIGHT,
+    max: MAX_PREVIEW_HEIGHT,
+    reverse: true, // Dragging up increases height.
+    onResize: setPreviewHeight,
+  });
 
   // Preview state
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
@@ -147,14 +174,25 @@ export const WorkspaceSidebar = ({
   }, [previewState, handleDownload]);
 
   const fileCount = workspaceFiles.filter((f) => !f.isDirectory).length;
+  const showPreview = previewState || previewLoading;
 
   return (
     <>
       <div
-        className={`flex h-full flex-col border-l bg-background transition-all duration-200 ${
-          open ? "w-80" : "w-0 overflow-hidden border-l-0"
+        className={`relative flex h-full shrink-0 flex-col border-l bg-background transition-[width] duration-200 ${
+          open ? "" : "w-0 overflow-hidden border-l-0"
         }`}
+        style={open ? { width: `${width}px` } : undefined}
       >
+        {/* Drag handle — left edge of sidebar */}
+        {open && (
+          <div
+            className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/20 active:bg-primary/30"
+            onPointerDown={onWidthDragDown}
+            data-current-size={width}
+          />
+        )}
+
         {/* Header */}
         <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
           <span className="flex-1 text-sm font-medium">Workspace</span>
@@ -189,11 +227,16 @@ export const WorkspaceSidebar = ({
               />
             </div>
 
-            {/* Preview pane */}
-            {(previewState || previewLoading) && (
-              <>
-                <Separator />
-                <div className="max-h-[40%] shrink-0">
+            {/* Preview pane with drag handle on top edge */}
+            {showPreview && (
+              <div className="relative shrink-0 border-t" style={{ height: `${previewHeight}px` }}>
+                {/* Drag handle — top edge of preview */}
+                <div
+                  className="absolute top-0 right-0 left-0 z-20 h-1 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"
+                  onPointerDown={onPreviewDragDown}
+                  data-current-size={previewHeight}
+                />
+                <div className="h-full overflow-auto">
                   <WorkspacePreview
                     state={previewState}
                     isLoading={previewLoading}
@@ -201,7 +244,7 @@ export const WorkspaceSidebar = ({
                     onClose={closePreview}
                   />
                 </div>
-              </>
+              </div>
             )}
           </div>
         )}
