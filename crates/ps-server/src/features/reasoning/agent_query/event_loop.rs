@@ -12,6 +12,8 @@ pub struct EventLoopResult {
     pub tool_calls: i32,
     pub total_input: u64,
     pub total_output: u64,
+    /// `true` when the loop exited because the SSE deadline elapsed.
+    pub timed_out: bool,
 }
 
 /// Stream SSE events from the `OpenCode` subscription, writing each event to
@@ -32,10 +34,12 @@ pub async fn run_event_loop(
     let mut registry = StepRegistry::new();
     let mut event_mapper = ps_agent::event_mapper::EventMapper::new();
     let mut seen_work = false;
+    let mut timed_out = false;
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         if remaining.is_zero() {
+            timed_out = true;
             break;
         }
 
@@ -44,6 +48,7 @@ pub async fn run_event_loop(
             Ok(None) => break,
             Err(_) => {
                 warn!("SSE stream timed out");
+                timed_out = true;
                 break;
             }
         };
@@ -88,6 +93,7 @@ pub async fn run_event_loop(
         tool_calls,
         total_input,
         total_output,
+        timed_out,
     }
 }
 

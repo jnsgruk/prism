@@ -247,6 +247,7 @@ async fn run_query_stream(
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let conversation_id: Uuid = cid_str.parse()?;
+    let stream_start = tokio::time::Instant::now();
 
     // Phase 1: Call Restate prepare_query synchronously.
     let pod_ip = prepare_and_poll(
@@ -291,9 +292,12 @@ async fn run_query_stream(
     )
     .await?;
 
+    // Use actual elapsed time for prepare phase, not the worst-case PREPARE_TIMEOUT.
+    // This gives the SSE phase the full remaining budget from STREAM_TIMEOUT.
+    let elapsed = stream_start.elapsed();
     let sse_timeout = STREAM_TIMEOUT
-        .checked_sub(PREPARE_TIMEOUT)
-        .unwrap_or(std::time::Duration::from_secs(180));
+        .checked_sub(elapsed)
+        .unwrap_or(std::time::Duration::from_secs(60));
 
     let loop_result =
         event_loop::run_event_loop(repos, &mut subscription, conversation_id, sse_timeout, tx)
@@ -316,8 +320,8 @@ async fn run_query_stream(
 ///
 /// Returns the answer as-is when valid, or a user-facing explanation when
 /// the answer is empty or is just the question echoed back (a known failure
-/// mode when the model hits its step limit mid-work).
-fn validate_answer(raw: &str, question: &str, tool_calls: i32) -> String {
+/// mode when the model hits its step limit or the stream times out).
+fn validate_answer(raw: &str, question: &str, tool_calls: i32, timed_out: bool) -> String {
     let trimmed = raw.trim();
     let is_empty = trimmed.is_empty();
     let is_echo =
@@ -328,18 +332,33 @@ fn validate_answer(raw: &str, question: &str, tool_calls: i32) -> String {
     }
 
     if tool_calls > 0 {
+        let reason = if timed_out {
+            "timed out"
+        } else {
+            "hit step limit"
+        };
         tracing::warn!(
             tool_calls,
             answer_len = trimmed.len(),
             is_echo,
-            "agent completed tool calls but produced no usable answer — likely hit step limit"
+            timed_out,
+            "agent produced no usable answer — likely {reason}"
         );
-        format!(
-            "I ran out of steps before I could finish answering. \
-             I completed {tool_calls} tool calls gathering data but wasn't \
-             able to synthesize a response. Please try again — I'll pick up \
-             where I left off, or you can ask a simpler question."
-        )
+        if timed_out {
+            format!(
+                "I ran out of time before I could finish answering. \
+                 I completed {tool_calls} tool calls gathering data but the \
+                 request timed out before I could synthesize a response. \
+                 Please try again — I'll pick up where I left off."
+            )
+        } else {
+            format!(
+                "I ran out of steps before I could finish answering. \
+                 I completed {tool_calls} tool calls gathering data but wasn't \
+                 able to synthesize a response. Please try again — I'll pick up \
+                 where I left off, or you can ask a simpler question."
+            )
+        }
     } else {
         tracing::warn!("agent produced empty answer with no tool calls");
         "I wasn't able to produce an answer. Please try again.".to_string()
@@ -360,7 +379,12 @@ async fn finalize_query(
     loop_result: &event_loop::EventLoopResult,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let answer = validate_answer(&loop_result.answer_text, question, loop_result.tool_calls);
+    let answer = validate_answer(
+        &loop_result.answer_text,
+        question,
+        loop_result.tool_calls,
+        loop_result.timed_out,
+    );
     let tool_calls = loop_result.tool_calls;
     let input_tok = loop_result.total_input as i32;
     let output_tok = loop_result.total_output as i32;
