@@ -65,7 +65,7 @@ impl TestServer {
         let repos = ps_core::repo::Repos::new(pool.clone());
 
         let auth_service = AuthServiceImpl::new(repos.clone());
-        let admin_service = AdminServiceImpl::new(repos.clone());
+        let admin_service = AdminServiceImpl::new(repos.clone(), None);
         let org_service = OrgServiceImpl::new(repos.clone());
         let config_service = ConfigServiceImpl::new(repos.clone(), test_secret_key());
         let metrics_service = MetricsServiceImpl::new(repos.clone());

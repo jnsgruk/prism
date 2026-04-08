@@ -52,8 +52,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let repos = ps_core::repo::Repos::new(pool.clone());
 
+    // Workspace filesystem path — set when the shared workspaces PVC is mounted.
+    let workspaces_path = std::env::var("WORKSPACES_PATH").ok().map(|p| {
+        info!(path = %p, "workspace filesystem access configured");
+        std::path::PathBuf::from(p)
+    });
+
     let auth_service = AuthServiceImpl::new(repos.clone());
-    let admin_service = AdminServiceImpl::new(repos.clone());
+    let admin_service = AdminServiceImpl::new(repos.clone(), workspaces_path.clone());
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
@@ -69,12 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let router = Arc::new(tokio::sync::RwLock::new(
         ps_reasoning::routing::TaskRouter::new(ai_config),
     ));
-
-    // Workspace filesystem path — set when the shared workspaces PVC is mounted.
-    let workspaces_path = std::env::var("WORKSPACES_PATH").ok().map(|p| {
-        info!(path = %p, "workspace filesystem access configured");
-        std::path::PathBuf::from(p)
-    });
 
     let reasoning_service = ReasoningServiceImpl::new(
         repos.clone(),

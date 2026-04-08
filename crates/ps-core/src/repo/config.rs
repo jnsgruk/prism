@@ -578,4 +578,12 @@ impl ConfigRepo {
             })
             .collect()
     }
+
+    /// Return the on-disk size of the current `PostgreSQL` database in bytes.
+    pub async fn database_size_bytes(&self) -> Result<i64, Error> {
+        let row = sqlx::query!("SELECT pg_database_size(current_database()) AS size")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(row.size.unwrap_or(0))
+    }
 }

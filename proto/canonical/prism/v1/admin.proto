@@ -19,6 +19,8 @@ service AdminService {
   rpc RevokeApiToken(RevokeApiTokenRequest) returns (RevokeApiTokenResponse);
   // ResetData deletes all people, teams, and contributions. Requires confirm=true.
   rpc ResetData(ResetDataRequest) returns (ResetDataResponse);
+  // GetSystemInfo returns storage usage statistics for the admin dashboard.
+  rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse);
 }
 
 message CreateBackupRequest {}
@@ -71,4 +73,15 @@ message ResetDataResponse {
   int32 people_deleted = 1;
   int32 teams_deleted = 2;
   int32 contributions_deleted = 3;
+}
+
+message GetSystemInfoRequest {}
+
+message GetSystemInfoResponse {
+  // PostgreSQL database size in bytes.
+  int64 database_size_bytes = 1;
+  // Bytes used on the workspace PVC.
+  int64 workspace_used_bytes = 2;
+  // Total bytes available on the workspace PVC.
+  int64 workspace_total_bytes = 3;
 }

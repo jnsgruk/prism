@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file canonical/prism/v1/admin.proto.
  */
 export const file_canonical_prism_v1_admin: GenFile /*@__PURE__*/ = fileDesc(
-  "Ch5jYW5vbmljYWwvcHJpc20vdjEvYWRtaW4ucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSIVChNDcmVhdGVCYWNrdXBSZXF1ZXN0IiUKFENyZWF0ZUJhY2t1cFJlc3BvbnNlEg0KBWNodW5rGAEgASgMIiUKFUNyZWF0ZUFwaVRva2VuUmVxdWVzdBIMCgRuYW1lGAEgASgJIkcKFkNyZWF0ZUFwaVRva2VuUmVzcG9uc2USEAoIdG9rZW5faWQYASABKAkSDQoFdG9rZW4YAiABKAkSDAoEbmFtZRgDIAEoCSIWChRMaXN0QXBpVG9rZW5zUmVxdWVzdCJJChVMaXN0QXBpVG9rZW5zUmVzcG9uc2USMAoGdG9rZW5zGAEgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLkFwaVRva2VuSW5mbyKQAQoMQXBpVG9rZW5JbmZvEhAKCHRva2VuX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIpChVSZXZva2VBcGlUb2tlblJlcXVlc3QSEAoIdG9rZW5faWQYASABKAkiGAoWUmV2b2tlQXBpVG9rZW5SZXNwb25zZSIjChBSZXNldERhdGFSZXF1ZXN0Eg8KB2NvbmZpcm0YASABKAgiYQoRUmVzZXREYXRhUmVzcG9uc2USFgoOcGVvcGxlX2RlbGV0ZWQYASABKAUSFQoNdGVhbXNfZGVsZXRlZBgCIAEoBRIdChVjb250cmlidXRpb25zX2RlbGV0ZWQYAyABKAUyhQQKDEFkbWluU2VydmljZRJjCgxDcmVhdGVCYWNrdXASJy5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlQmFja3VwUmVxdWVzdBooLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVCYWNrdXBSZXNwb25zZTABEmcKDkNyZWF0ZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVBcGlUb2tlblJlc3BvbnNlEmQKDUxpc3RBcGlUb2tlbnMSKC5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEmcKDlJldm9rZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLlJldm9rZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlc3BvbnNlElgKCVJlc2V0RGF0YRIkLmNhbm9uaWNhbC5wcmlzbS52MS5SZXNldERhdGFSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlJlc2V0RGF0YVJlc3BvbnNlYgZwcm90bzM",
+  "Ch5jYW5vbmljYWwvcHJpc20vdjEvYWRtaW4ucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSIVChNDcmVhdGVCYWNrdXBSZXF1ZXN0IiUKFENyZWF0ZUJhY2t1cFJlc3BvbnNlEg0KBWNodW5rGAEgASgMIiUKFUNyZWF0ZUFwaVRva2VuUmVxdWVzdBIMCgRuYW1lGAEgASgJIkcKFkNyZWF0ZUFwaVRva2VuUmVzcG9uc2USEAoIdG9rZW5faWQYASABKAkSDQoFdG9rZW4YAiABKAkSDAoEbmFtZRgDIAEoCSIWChRMaXN0QXBpVG9rZW5zUmVxdWVzdCJJChVMaXN0QXBpVG9rZW5zUmVzcG9uc2USMAoGdG9rZW5zGAEgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLkFwaVRva2VuSW5mbyKQAQoMQXBpVG9rZW5JbmZvEhAKCHRva2VuX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIpChVSZXZva2VBcGlUb2tlblJlcXVlc3QSEAoIdG9rZW5faWQYASABKAkiGAoWUmV2b2tlQXBpVG9rZW5SZXNwb25zZSIjChBSZXNldERhdGFSZXF1ZXN0Eg8KB2NvbmZpcm0YASABKAgiYQoRUmVzZXREYXRhUmVzcG9uc2USFgoOcGVvcGxlX2RlbGV0ZWQYASABKAUSFQoNdGVhbXNfZGVsZXRlZBgCIAEoBRIdChVjb250cmlidXRpb25zX2RlbGV0ZWQYAyABKAUiFgoUR2V0U3lzdGVtSW5mb1JlcXVlc3QicQoVR2V0U3lzdGVtSW5mb1Jlc3BvbnNlEhsKE2RhdGFiYXNlX3NpemVfYnl0ZXMYASABKAMSHAoUd29ya3NwYWNlX3VzZWRfYnl0ZXMYAiABKAMSHQoVd29ya3NwYWNlX3RvdGFsX2J5dGVzGAMgASgDMusECgxBZG1pblNlcnZpY2USYwoMQ3JlYXRlQmFja3VwEicuY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUJhY2t1cFJlcXVlc3QaKC5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlQmFja3VwUmVzcG9uc2UwARJnCg5DcmVhdGVBcGlUb2tlbhIpLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVBcGlUb2tlblJlcXVlc3QaKi5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlQXBpVG9rZW5SZXNwb25zZRJkCg1MaXN0QXBpVG9rZW5zEiguY2Fub25pY2FsLnByaXNtLnYxLkxpc3RBcGlUb2tlbnNSZXF1ZXN0GikuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RBcGlUb2tlbnNSZXNwb25zZRJnCg5SZXZva2VBcGlUb2tlbhIpLmNhbm9uaWNhbC5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlcXVlc3QaKi5jYW5vbmljYWwucHJpc20udjEuUmV2b2tlQXBpVG9rZW5SZXNwb25zZRJYCglSZXNldERhdGESJC5jYW5vbmljYWwucHJpc20udjEuUmVzZXREYXRhUmVxdWVzdBolLmNhbm9uaWNhbC5wcmlzbS52MS5SZXNldERhdGFSZXNwb25zZRJkCg1HZXRTeXN0ZW1JbmZvEiguY2Fub25pY2FsLnByaXNtLnYxLkdldFN5c3RlbUluZm9SZXF1ZXN0GikuY2Fub25pY2FsLnByaXNtLnYxLkdldFN5c3RlbUluZm9SZXNwb25zZWIGcHJvdG8z",
   [file_google_protobuf_timestamp],
 );
 
@@ -248,6 +248,51 @@ export const ResetDataResponseSchema: GenMessage<ResetDataResponse> /*@__PURE__*
 );
 
 /**
+ * @generated from message canonical.prism.v1.GetSystemInfoRequest
+ */
+export type GetSystemInfoRequest = Message<"canonical.prism.v1.GetSystemInfoRequest"> & {};
+
+/**
+ * Describes the message canonical.prism.v1.GetSystemInfoRequest.
+ * Use `create(GetSystemInfoRequestSchema)` to create a new message.
+ */
+export const GetSystemInfoRequestSchema: GenMessage<GetSystemInfoRequest> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_admin, 11);
+
+/**
+ * @generated from message canonical.prism.v1.GetSystemInfoResponse
+ */
+export type GetSystemInfoResponse = Message<"canonical.prism.v1.GetSystemInfoResponse"> & {
+  /**
+   * PostgreSQL database size in bytes.
+   *
+   * @generated from field: int64 database_size_bytes = 1;
+   */
+  databaseSizeBytes: bigint;
+
+  /**
+   * Bytes used on the workspace PVC.
+   *
+   * @generated from field: int64 workspace_used_bytes = 2;
+   */
+  workspaceUsedBytes: bigint;
+
+  /**
+   * Total bytes available on the workspace PVC.
+   *
+   * @generated from field: int64 workspace_total_bytes = 3;
+   */
+  workspaceTotalBytes: bigint;
+};
+
+/**
+ * Describes the message canonical.prism.v1.GetSystemInfoResponse.
+ * Use `create(GetSystemInfoResponseSchema)` to create a new message.
+ */
+export const GetSystemInfoResponseSchema: GenMessage<GetSystemInfoResponse> /*@__PURE__*/ =
+  messageDesc(file_canonical_prism_v1_admin, 12);
+
+/**
  * AdminService provides privileged operations for instance administrators
  * including backup export, API token lifecycle, and data reset.
  *
@@ -303,5 +348,15 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof ResetDataRequestSchema;
     output: typeof ResetDataResponseSchema;
+  };
+  /**
+   * GetSystemInfo returns storage usage statistics for the admin dashboard.
+   *
+   * @generated from rpc canonical.prism.v1.AdminService.GetSystemInfo
+   */
+  getSystemInfo: {
+    methodKind: "unary";
+    input: typeof GetSystemInfoRequestSchema;
+    output: typeof GetSystemInfoResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_admin, 0);

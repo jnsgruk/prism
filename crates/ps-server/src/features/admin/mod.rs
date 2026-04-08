@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::pin::Pin;
 
 use ps_core::auth::{generate_token, hash_token};
@@ -7,8 +8,9 @@ use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::admin_service_server::AdminService;
 use ps_proto::canonical::prism::v1::{
     ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, CreateBackupRequest,
-    CreateBackupResponse, ListApiTokensRequest, ListApiTokensResponse, ResetDataRequest,
-    ResetDataResponse, RevokeApiTokenRequest, RevokeApiTokenResponse,
+    CreateBackupResponse, GetSystemInfoRequest, GetSystemInfoResponse, ListApiTokensRequest,
+    ListApiTokensResponse, ResetDataRequest, ResetDataResponse, RevokeApiTokenRequest,
+    RevokeApiTokenResponse,
 };
 use time::OffsetDateTime;
 use tokio_stream::Stream;
@@ -20,11 +22,15 @@ use crate::common::{backup_err, db_err, require_admin, require_auth, to_timestam
 
 pub struct AdminServiceImpl {
     repos: Repos,
+    workspaces_path: Option<PathBuf>,
 }
 
 impl AdminServiceImpl {
-    pub fn new(repos: Repos) -> Self {
-        Self { repos }
+    pub fn new(repos: Repos, workspaces_path: Option<PathBuf>) -> Self {
+        Self {
+            repos,
+            workspaces_path,
+        }
     }
 }
 
@@ -92,7 +98,7 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("users", &user_rows)
                 .map_err(backup_err)?;
 
-            // Conversation tables (metadata only — artifact files in S3 are not included)
+            // Conversation tables (metadata only — workspace files on PVC are not included)
             let conv_rows = repos.reasoning.export_conversations().await.map_err(db_err)?;
             writer.write_table("conversations", &conv_rows)
                 .map_err(backup_err)?;
@@ -246,4 +252,48 @@ impl AdminService for AdminServiceImpl {
 
         Ok(Response::new(resp))
     }
+
+    async fn get_system_info(
+        &self,
+        request: Request<GetSystemInfoRequest>,
+    ) -> Result<Response<GetSystemInfoResponse>, Status> {
+        let _ctx = require_admin(&request)?;
+
+        let database_size_bytes = self
+            .repos
+            .config
+            .database_size_bytes()
+            .await
+            .map_err(db_err)?;
+
+        let (workspace_used_bytes, workspace_total_bytes) =
+            if let Some(ref path) = self.workspaces_path {
+                workspace_pvc_stats(path)?
+            } else {
+                (0, 0)
+            };
+
+        Ok(Response::new(GetSystemInfoResponse {
+            database_size_bytes,
+            workspace_used_bytes,
+            workspace_total_bytes,
+        }))
+    }
+}
+
+/// Read workspace PVC usage via `statvfs`.
+///
+/// On Docker Desktop with hostpath provisioner this reports host filesystem
+/// stats rather than the 50Gi PVC request. In production with a real RWX
+/// provisioner (NFS/EFS) it reports accurate PVC capacity.
+#[allow(clippy::result_large_err)]
+fn workspace_pvc_stats(path: &std::path::Path) -> Result<(i64, i64), Status> {
+    let stat = nix::sys::statvfs::statvfs(path)
+        .map_err(|e| Status::internal(format!("statvfs failed: {e}")))?;
+    #[allow(clippy::cast_possible_wrap)]
+    let total = stat.blocks() as i64 * stat.fragment_size() as i64;
+    #[allow(clippy::cast_possible_wrap)]
+    let available = stat.blocks_available() as i64 * stat.fragment_size() as i64;
+    let used = total - available;
+    Ok((used, total))
 }

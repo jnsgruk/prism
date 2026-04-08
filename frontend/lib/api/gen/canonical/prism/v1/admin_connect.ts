@@ -11,6 +11,8 @@ import {
   CreateApiTokenResponse,
   CreateBackupRequest,
   CreateBackupResponse,
+  GetSystemInfoRequest,
+  GetSystemInfoResponse,
   ListApiTokensRequest,
   ListApiTokensResponse,
   ResetDataRequest,
@@ -82,6 +84,17 @@ export const AdminService = {
       name: "ResetData",
       I: ResetDataRequest,
       O: ResetDataResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetSystemInfo returns storage usage statistics for the admin dashboard.
+     *
+     * @generated from rpc canonical.prism.v1.AdminService.GetSystemInfo
+     */
+    getSystemInfo: {
+      name: "GetSystemInfo",
+      I: GetSystemInfoRequest,
+      O: GetSystemInfoResponse,
       kind: MethodKind.Unary,
     },
   },

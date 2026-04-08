@@ -6,6 +6,7 @@ import {
   AdminService,
   type ApiTokenInfo,
   type CreateApiTokenResponse,
+  type GetSystemInfoResponse,
   type ResetDataResponse,
 } from "@ps/api/gen/canonical/prism/v1/admin_pb";
 import type {
@@ -29,7 +30,15 @@ const orgClient = createClient(OrgService, transport);
 export const adminKeys = {
   all: ["admin"] as const,
   tokens: (): readonly ["admin", "tokens"] => [...adminKeys.all, "tokens"] as const,
+  systemInfo: () => [...adminKeys.all, "system-info"] as const,
 };
+
+export const useSystemInfo = (): UseQueryResult<GetSystemInfoResponse, Error> =>
+  useQuery({
+    queryKey: adminKeys.systemInfo(),
+    queryFn: () => adminClient.getSystemInfo({}),
+    refetchInterval: 60_000,
+  });
 
 export const useListApiTokens = (): UseQueryResult<ApiTokenInfo[], Error> =>
   useQuery({
