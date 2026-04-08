@@ -17,7 +17,9 @@ use super::ReasoningServiceImpl;
 use crate::common::{db_err, require_auth};
 
 /// Maximum time the gRPC stream stays open (client-facing).
-const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+/// 10 minutes — agents often compile code, install packages, or run
+/// multi-step pipelines that need more than a few minutes.
+const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
 /// Maximum time to wait for Restate `prepare_query` to return the pod IP.
 /// Must be < `STREAM_TIMEOUT` to leave budget for SSE streaming.
