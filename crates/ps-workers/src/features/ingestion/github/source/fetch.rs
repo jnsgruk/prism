@@ -608,7 +608,7 @@ fn search_review_to_contribution(
         platform_id: format!("{owner}/{repo}/review/{review_id}").into(),
         platform_username: reviewer.to_lowercase().into(),
         title: Some(format!("Review on #{pr_number}")),
-        url: Some(format!("{pr_url}/reviews/{review_id}")),
+        url: Some(format!("{pr_url}#pullrequestreview-{review_id}")),
         state: review_state,
         created_at: submitted_at.unwrap_or(parse_datetime(pr_created_at)?),
         updated_at: submitted_at,
