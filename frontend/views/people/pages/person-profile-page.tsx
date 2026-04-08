@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useCallback, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -26,7 +26,7 @@ import {
   ContributionType,
   Platform,
 } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { useGetIndividualProfile } from "@/lib/hooks/use-metrics";
+import { useGetIndividualProfile, usePersonContributionCount } from "@/lib/hooks/use-metrics";
 import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
 import { ActivityChart } from "@/views/people/components/activity-chart";
@@ -43,19 +43,33 @@ const PersonProfilePage = (): React.ReactElement => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [discourseOpen, setDiscourseOpen] = useState(false);
   const [identitiesOpen, setIdentitiesOpen] = useState(false);
-  const [prTotalCount, setPrTotalCount] = useState<number | null>(null);
-  const [reviewTotalCount, setReviewTotalCount] = useState<number | null>(null);
-  const [discourseTotalCount, setDiscourseTotalCount] = useState<number | null>(null);
-  const onPrTotalCount = useCallback((n: number) => setPrTotalCount(n), []);
-  const onReviewTotalCount = useCallback((n: number) => setReviewTotalCount(n), []);
-  const onDiscourseTotalCount = useCallback((n: number) => setDiscourseTotalCount(n), []);
 
-  const { data: profile, isLoading, error } = useGetIndividualProfile(personId ?? "", period);
+  const safeId = personId ?? "";
+  const periodFilters = useMemo(
+    () => ({ since: period.start || undefined, until: period.end || undefined }),
+    [period.start, period.end],
+  );
+
+  const { data: profile, isLoading, error } = useGetIndividualProfile(safeId, period);
   const {
     data: insights,
     isLoading: insightsLoading,
     error: insightsError,
-  } = usePersonInsights(personId ?? "", periodKey);
+  } = usePersonInsights(safeId, periodKey);
+
+  const { data: prTotalCount } = usePersonContributionCount(safeId, {
+    ...periodFilters,
+    contributionType: ContributionType.PULL_REQUEST,
+    state: ContributionState.MERGED,
+  });
+  const { data: reviewTotalCount } = usePersonContributionCount(safeId, {
+    ...periodFilters,
+    contributionType: ContributionType.PR_REVIEW,
+  });
+  const { data: discourseTotalCount } = usePersonContributionCount(safeId, {
+    ...periodFilters,
+    platform: Platform.DISCOURSE,
+  });
 
   if (!personId) {
     return (
@@ -151,7 +165,7 @@ const PersonProfilePage = (): React.ReactElement => {
                     )}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
-                    {prTotalCount != null && prTotalCount > 0 && (
+                    {prTotalCount !== undefined && prTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
                         {prTotalCount}
                       </Badge>
@@ -165,7 +179,6 @@ const PersonProfilePage = (): React.ReactElement => {
                       period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
                       defaultState={ContributionState.MERGED}
-                      onTotalCount={onPrTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -188,7 +201,7 @@ const PersonProfilePage = (): React.ReactElement => {
                     )}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
-                    {reviewTotalCount != null && reviewTotalCount > 0 && (
+                    {reviewTotalCount !== undefined && reviewTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
                         {reviewTotalCount}
                       </Badge>
@@ -201,7 +214,6 @@ const PersonProfilePage = (): React.ReactElement => {
                       personId={personId}
                       period={period}
                       defaultContributionType={ContributionType.PR_REVIEW}
-                      onTotalCount={onReviewTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -231,7 +243,7 @@ const PersonProfilePage = (): React.ReactElement => {
                       )}
                       <MessageSquare className="size-4 text-muted-foreground" />
                       <CardTitle>Discourse</CardTitle>
-                      {discourseTotalCount != null && discourseTotalCount > 0 && (
+                      {discourseTotalCount !== undefined && discourseTotalCount > 0 && (
                         <Badge variant="secondary" className="ml-1">
                           {discourseTotalCount}
                         </Badge>
@@ -244,7 +256,6 @@ const PersonProfilePage = (): React.ReactElement => {
                         personId={personId}
                         period={period}
                         defaultPlatform={Platform.DISCOURSE}
-                        onTotalCount={onDiscourseTotalCount}
                       />
                     </CardContent>
                   </CollapsibleContent>

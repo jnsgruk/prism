@@ -178,6 +178,62 @@ export const useListPersonContributions = (
     enabled: personId.length > 0,
   });
 
+/** Lightweight hook that fetches only the totalCount for team contributions. */
+export const useTeamContributionCount = (
+  teamId: string,
+  period: Period,
+  filters: Omit<
+    ContributionFilters,
+    "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc"
+  >,
+): UseQueryResult<number, Error> => {
+  const full: ContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
+  return useQuery({
+    queryKey: metricsKeys.contributions(teamId, period, full),
+    queryFn: () =>
+      metricsClient.listTeamContributions({
+        teamId,
+        period,
+        contributionType: filters.contributionType,
+        state: filters.state,
+        platform: filters.platform,
+        platformInstance: filters.platformInstance,
+        pageSize: 1,
+        pageIndex: 0,
+      }),
+    select: (data): number => data.totalCount,
+    enabled: teamId.length > 0,
+  });
+};
+
+/** Lightweight hook that fetches only the totalCount for person contributions. */
+export const usePersonContributionCount = (
+  personId: string,
+  filters: Omit<
+    PersonContributionFilters,
+    "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc"
+  >,
+): UseQueryResult<number, Error> => {
+  const full: PersonContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
+  return useQuery({
+    queryKey: metricsKeys.personContributions(personId, full),
+    queryFn: () =>
+      metricsClient.listPersonContributions({
+        personId,
+        platform: filters.platform,
+        platformInstance: filters.platformInstance,
+        contributionType: filters.contributionType,
+        since: filters.since,
+        until: filters.until,
+        state: filters.state,
+        pageSize: 1,
+        pageIndex: 0,
+      }),
+    select: (data): number => data.totalCount,
+    enabled: personId.length > 0,
+  });
+};
+
 export const useContribution = (contributionId: string): UseQueryResult<Contribution, Error> =>
   useQuery({
     queryKey: [...metricsKeys.all, "contribution", contributionId] as const,

@@ -16,7 +16,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { ContributionState, ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { useCompareTeams, useGetFlowMetrics } from "@/lib/hooks/use-metrics";
+import {
+  useCompareTeams,
+  useGetFlowMetrics,
+  useTeamContributionCount,
+} from "@/lib/hooks/use-metrics";
 import { useTeamInsights } from "@/views/teams/hooks/use-insights";
 import { CommunityPanel } from "@/views/teams/components/community-panel";
 import { ComparisonTable } from "@/views/teams/components/comparison-table";
@@ -92,11 +96,15 @@ const TeamsPage = (): React.ReactElement => {
   const [membersOpen, setMembersOpen] = useState(false);
   const [prsOpen, setPrsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
-  const [prTotalCount, setPrTotalCount] = useState<number | null>(null);
-  const [reviewTotalCount, setReviewTotalCount] = useState<number | null>(null);
-  const onPrTotalCount = useCallback((n: number) => setPrTotalCount(n), []);
-  const onReviewTotalCount = useCallback((n: number) => setReviewTotalCount(n), []);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
+
+  const { data: prTotalCount } = useTeamContributionCount(effectiveTeamId, period, {
+    contributionType: ContributionType.PULL_REQUEST,
+    state: ContributionState.MERGED,
+  });
+  const { data: reviewTotalCount } = useTeamContributionCount(effectiveTeamId, period, {
+    contributionType: ContributionType.PR_REVIEW,
+  });
 
   // Enrichment insights (needs hasChildren for include_descendants)
   const {
@@ -227,7 +235,7 @@ const TeamsPage = (): React.ReactElement => {
                     )}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
-                    {prTotalCount != null && prTotalCount > 0 && (
+                    {prTotalCount !== undefined && prTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
                         {prTotalCount}
                       </Badge>
@@ -241,7 +249,6 @@ const TeamsPage = (): React.ReactElement => {
                       period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
                       defaultState={ContributionState.MERGED}
-                      onTotalCount={onPrTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -268,7 +275,7 @@ const TeamsPage = (): React.ReactElement => {
                     )}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
-                    {reviewTotalCount != null && reviewTotalCount > 0 && (
+                    {reviewTotalCount !== undefined && reviewTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
                         {reviewTotalCount}
                       </Badge>
@@ -282,7 +289,6 @@ const TeamsPage = (): React.ReactElement => {
                       teamId={effectiveTeamId}
                       period={period}
                       defaultContributionType={ContributionType.PR_REVIEW}
-                      onTotalCount={onReviewTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
