@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FolderOpen, X } from "lucide-react";
+import { zipSync } from "fflate";
+import { Download, FolderOpen, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -178,6 +179,47 @@ export const WorkspaceSidebar = ({
   const fileCount = workspaceFiles.filter((f) => !f.isDirectory).length;
   const showPreview = previewState || previewLoading;
 
+  // Download all workspace files as a zip.
+  const [zipping, setZipping] = useState(false);
+  const handleDownloadZip = useCallback(async () => {
+    if (!conversationId || fileCount === 0) return;
+    setZipping(true);
+
+    try {
+      const files = workspaceFiles.filter((f) => !f.isDirectory);
+      // Fetch all files in parallel.
+      const entries: Record<string, Uint8Array> = {};
+      await Promise.all(
+        files.map(async (f) => {
+          const res = await getWorkspaceFile.mutateAsync({
+            conversationId,
+            path: f.path,
+          });
+          const fetchRes = await fetch(res.downloadUrl);
+          const buf = await fetchRes.arrayBuffer();
+          entries[f.path] = new Uint8Array(buf);
+        }),
+      );
+
+      const zipped = zipSync(entries);
+      const blob = new Blob([zipped.buffer as ArrayBuffer], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "workspace.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        `Failed to download workspace: ${err instanceof Error ? err.message : "unknown error"}`,
+      );
+    } finally {
+      setZipping(false);
+    }
+  }, [conversationId, fileCount, workspaceFiles, getWorkspaceFile]);
+
   return (
     <>
       <div
@@ -202,6 +244,22 @@ export const WorkspaceSidebar = ({
             <Badge variant="secondary" className="text-[10px]">
               {fileCount}
             </Badge>
+          )}
+          {fileCount > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              title="Download workspace as zip"
+              disabled={zipping}
+              onClick={handleDownloadZip}
+            >
+              {zipping ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+            </Button>
           )}
           <Button variant="ghost" size="icon" className="size-6" onClick={onClose}>
             <X className="size-3.5" />
