@@ -1,6 +1,6 @@
 use ps_core::repo::Repos;
 use restate_sdk::prelude::*;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use super::{AgenticQueryRequest, PrepareQueryResponse, SharedState};
@@ -129,12 +129,26 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
 
     async fn cleanup_storage(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
         let session_id = ctx.key().to_string();
-        info!(session_id, "cleaning up agent pod");
+        info!(session_id, "cleaning up agent pod and workspace");
 
         if let Some(ref cm) = self.state.container_manager
             && let Err(e) = cm.delete_pod(&session_id).await
         {
             warn!(error = %e, "failed to delete pod during cleanup");
+        }
+
+        // Delete workspace directory from the shared PVC.
+        // Only called on user-initiated conversation delete — pod expiry does NOT trigger this.
+        // Not wrapped in ctx.run() — idempotent and must not be journaled.
+        if let Some(ref ws_path) = self.state.workspaces_path {
+            let dir = ws_path.join(&session_id);
+            match tokio::fs::remove_dir_all(&dir).await {
+                Ok(()) => info!(session_id, "deleted workspace directory"),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    debug!(session_id, "workspace directory already gone");
+                }
+                Err(e) => warn!(session_id, error = %e, "failed to delete workspace directory"),
+            }
         }
 
         Ok(())

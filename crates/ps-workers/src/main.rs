@@ -15,12 +15,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let secret_key = ps_core::crypto::load_secret_key().expect("PS_SECRET_KEY must be set");
     let http_client = build_http_client();
     let container_manager = setup_container_manager().await;
+    let workspaces_path = std::env::var("WORKSPACES_PATH").ok().map(|p| {
+        info!(path = %p, "workspace filesystem cleanup configured");
+        std::path::PathBuf::from(p)
+    });
 
     let state = SharedState {
         repos: ps_core::repo::Repos::new(pool.clone()),
         secret_key,
         http_client,
         container_manager,
+        workspaces_path,
     };
 
     let ai_router = setup_ai_router(&state).await;

@@ -51,12 +51,21 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: WORKSPACES_PATH
+              value: /workspaces
             - name: RUST_LOG
               # value: info,ps_workers=debug,ps_core=debug
               value: info
+          volumeMounts:
+            - name: workspaces
+              mountPath: /workspaces
           resources:
             requests:
               memory: 1Gi
               cpu: 100m
             limits:
               memory: 2Gi
+      volumes:
+        - name: workspaces
+          persistentVolumeClaim:
+            claimName: prism-workspaces
