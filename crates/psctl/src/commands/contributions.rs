@@ -42,6 +42,7 @@ pub async fn contributions(
             state: 0,
             search: None,
             platform_instance: None,
+            until: None,
         })
         .await?
         .into_inner();

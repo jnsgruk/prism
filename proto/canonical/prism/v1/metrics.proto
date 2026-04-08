@@ -281,6 +281,8 @@ message ListPersonContributionsRequest {
   optional string search = 10;
   // Filter by platform instance (e.g. "ubuntu" for Discourse).
   optional string platform_instance = 11;
+  // Only contributions created before this date (YYYY-MM-DD, exclusive upper bound).
+  optional string until = 12;
 }
 
 message ListPersonContributionsResponse {

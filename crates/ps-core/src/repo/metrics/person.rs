@@ -31,6 +31,7 @@ impl MetricsRepo {
         let platform = params.platform;
         let contribution_type = params.contribution_type;
         let since = params.since;
+        let until = params.until;
         let sort_field = params.sort_field;
         let sort_desc = params.sort_desc;
         let page_size = params.page_size;
@@ -57,6 +58,7 @@ impl MetricsRepo {
                   c.title ILIKE '%' || $10 || '%'
                   OR c.metadata->>'repo' ILIKE '%' || $10 || '%'
               ))
+              AND ($11::date IS NULL OR c.created_at < ($11::date + INTERVAL '1 day')::timestamptz)
             ORDER BY
               CASE WHEN $7 = 'platform' AND NOT $8 THEN c.platform END ASC NULLS LAST,
               CASE WHEN $7 = 'platform' AND $8 THEN c.platform END DESC NULLS LAST,
@@ -78,6 +80,7 @@ impl MetricsRepo {
             sort_desc,
             state,
             search,
+            until,
         )
         .fetch_all(&self.pool)
         .await

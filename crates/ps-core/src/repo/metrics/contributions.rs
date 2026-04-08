@@ -22,6 +22,7 @@ pub struct ListPersonContributionsParams<'a> {
     pub platform: Option<&'a str>,
     pub contribution_type: Option<&'a str>,
     pub since: Option<Date>,
+    pub until: Option<Date>,
     pub sort_field: Option<&'a str>,
     pub sort_desc: bool,
     pub page_size: i32,

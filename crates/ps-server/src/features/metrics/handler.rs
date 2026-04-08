@@ -460,6 +460,12 @@ impl MetricsService for MetricsServiceImpl {
             .filter(|s| !s.is_empty())
             .map(parse_date)
             .transpose()?;
+        let until = req
+            .until
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .map(parse_date)
+            .transpose()?;
         let sort_field = req.sort_field.as_deref().filter(|s| !s.is_empty());
         let sort_desc = req.sort_desc.unwrap_or(true);
         let state_str = proto_to_contribution_state_str(req.state);
@@ -473,6 +479,7 @@ impl MetricsService for MetricsServiceImpl {
                 platform: platform_str.as_deref(),
                 contribution_type: contribution_type_str.as_deref(),
                 since,
+                until,
                 sort_field,
                 sort_desc,
                 page_size,
