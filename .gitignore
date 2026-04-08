@@ -34,3 +34,6 @@ Thumbs.db
 k8s/gateway/charts/
 
 reports/
+
+# Historical plans (kept locally, not tracked)
+plans/

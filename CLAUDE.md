@@ -29,19 +29,20 @@ bun run test                              # Run frontend tests via vitest (run f
 1. Run `prek run -av`
 2. Ensure **zero warnings** from `cargo clippy` and `nix fmt` — lints must be 100% clean before committing
 3. Consider if the test coverage needs updating
-4. Update the **Implementation Progress** checklist in `README.md` if the task completes (or partially completes) a workstream
-5. Provide a **draft commit message** using Conventional Commits format
+4. If the change affects architecture, technology choices, or key conventions, update the relevant file in `docs/` to reflect the current state
+5. If the change represents a significant decision or reversal of a previous decision, add a dated entry to `docs/08-decision-log.md` with context, decision, and rationale
+6. Provide a **draft commit message** using Conventional Commits format
 
 **Commit rules:**
 
 - Use `--no-gpg-sign` when committing autonomously
 - Always commit in logical chunks along the way. Don't wait to be prompted.
 - **`.sqlx/` changes go in a separate commit** with message `chore: update sqlx query cache` — never mix query cache updates with code changes.
-- **`plans/` changes go in a separate commit** with message `docs: update plan <N> <short description>` — never mix plan doc updates with code changes.
+- **`docs/` changes go in a separate commit** with message `docs: <short description>` — never mix documentation updates with code changes.
 
 ## Code Structure
 
-Code is organised **feature-first, layer-second**. See `plans/18-code-structure.md` for the full strategy, invariants, and worked examples.
+Code is organised **feature-first, layer-second**. See `docs/01-architecture.md` for the full strategy, invariants, and worked examples.
 
 ### Key rules
 
