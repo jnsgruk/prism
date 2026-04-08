@@ -37,3 +37,6 @@ reports/
 
 # Historical plans (kept locally, not tracked)
 plans/
+
+# Override global .claude ignore for project rules
+!.claude/rules/
