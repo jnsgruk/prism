@@ -22,6 +22,23 @@ bun dev                                   # Start frontend dev server (run from 
 bun run test                              # Run frontend tests via vitest (run from frontend/)
 ```
 
+## Local Dev Services (Tilt)
+
+Tilt port-forwards all infrastructure to localhost. Use these for troubleshooting, sqlx query cache updates, and ad-hoc queries:
+
+| Service | Port(s) | Credentials / Connection |
+| --- | --- | --- |
+| PostgreSQL | `5432` | `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism` |
+| Restate Admin API | `9070` | `curl http://localhost:9070/...` — manage invocations, deployments, state |
+| RustFS (S3) | `9000` (API), `9001` (console) | Access key: `prism`, secret: `prism-dev-password`, bucket: `ps-artifacts` |
+
+For sqlx query cache updates: `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism cargo sqlx prepare --workspace`
+
+Useful Restate commands:
+- List invocations: `restate invocations list`
+- Cancel stuck invocation: `restate invocations cancel <id>`
+- Re-register deployment: `restate deployments register http://localhost:9080/ --force --yes`
+
 ## Workflow Requirements
 
 **Before finishing any task**, always:
