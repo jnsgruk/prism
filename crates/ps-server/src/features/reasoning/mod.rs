@@ -13,19 +13,20 @@ use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::canonical::prism::v1::{
     AskQuestionRequest, AskQuestionResponse, DeleteConversationRequest, DeleteConversationResponse,
-    DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, FindSimilarRequest,
-    FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse, GetConversationRequest,
-    GetConversationResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse,
-    GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
-    GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
-    GetEnrichmentsRequest, GetEnrichmentsResponse, GetUsageSummaryRequest, GetUsageSummaryResponse,
-    GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse,
-    ListConversationsRequest, ListConversationsResponse, ListWorkspaceFilesRequest,
-    ListWorkspaceFilesResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse,
-    RenameConversationRequest, RenameConversationResponse, ResumeStreamRequest,
-    ResumeStreamResponse, SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
-    SearchByTextRequest, SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, DownloadWorkspaceFileRequest,
+    FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
+    GetConversationRequest, GetConversationResponse, GetEmbeddingStatusRequest,
+    GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
+    GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
+    GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
+    GetUsageSummaryRequest, GetUsageSummaryResponse, GetWorkspaceFileRequest,
+    GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse, ListConversationsRequest,
+    ListConversationsResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse,
+    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, RenameConversationRequest,
+    RenameConversationResponse, ResumeStreamRequest, ResumeStreamResponse,
+    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
+    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
+    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -72,6 +73,7 @@ impl ReasoningService for ReasoningServiceImpl {
         tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
     type ResumeStreamStream =
         tokio_stream::wrappers::ReceiverStream<Result<ResumeStreamResponse, Status>>;
+    type DownloadWorkspaceFileStream = workspace::DownloadWorkspaceFileStream;
 
     async fn get_ai_settings(
         &self,
@@ -232,5 +234,12 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<GetWorkspaceFileRequest>,
     ) -> Result<Response<GetWorkspaceFileResponse>, Status> {
         workspace::get_workspace_file(self, request).await
+    }
+
+    async fn download_workspace_file(
+        &self,
+        request: Request<DownloadWorkspaceFileRequest>,
+    ) -> Result<Response<Self::DownloadWorkspaceFileStream>, Status> {
+        workspace::download_workspace_file(self, request).await
     }
 }

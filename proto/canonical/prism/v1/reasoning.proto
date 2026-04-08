@@ -73,6 +73,10 @@ service ReasoningService {
   // GetWorkspaceFile returns the content of a single file from the workspace.
   // Returned as a data URL (base64-encoded).
   rpc GetWorkspaceFile(GetWorkspaceFileRequest) returns (GetWorkspaceFileResponse);
+  // DownloadWorkspaceFile streams a workspace file in chunks.
+  // First message includes content_type and total_size_bytes; subsequent
+  // messages carry only the data field (~64KB per chunk).
+  rpc DownloadWorkspaceFile(DownloadWorkspaceFileRequest) returns (stream DownloadWorkspaceFileResponse);
 }
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
@@ -618,5 +622,20 @@ message GetWorkspaceFileResponse {
   string content_type = 2;
   // File size in bytes.
   int64 size_bytes = 3;
+}
+
+message DownloadWorkspaceFileRequest {
+  string conversation_id = 1;
+  // File path relative to the workspace root (e.g. "src/main.py").
+  string path = 2;
+}
+
+message DownloadWorkspaceFileResponse {
+  // MIME type of the file (set in first chunk only).
+  string content_type = 1;
+  // Total file size in bytes (set in first chunk only).
+  int64 total_size_bytes = 2;
+  // File content chunk (~64KB per message).
+  bytes data = 3;
 }
 

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useGetWorkspaceFile, useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
+import { useDownloadWorkspaceFile, useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
 
 import {
   type ArtifactDisplay,
@@ -34,7 +34,7 @@ export const WorkspaceSidebar = ({
   conversationId?: string;
   onClose: () => void;
 }): React.ReactElement => {
-  const getWorkspaceFile = useGetWorkspaceFile();
+  const downloadFile = useDownloadWorkspaceFile();
 
   const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
   const workspaceFiles: WorkspaceFileDisplay[] = useMemo(
@@ -88,44 +88,32 @@ export const WorkspaceSidebar = ({
   // Revoke blob URL on unmount to prevent memory leaks.
   useEffect(() => cleanupBlobUrl, [cleanupBlobUrl]);
 
-  const loadPreviewFromUrl = useCallback(
-    async (dataUrl: string, artifact: ArtifactDisplay): Promise<void> => {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      cleanupBlobUrl();
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-
-      const contentType = artifact.contentType ?? "application/octet-stream";
-      let textContent: string | undefined;
-      if (isTextContent(contentType)) {
-        textContent = await blob.text();
-      }
-
-      setPreviewState({ artifact, url, contentType, textContent });
-      setPreviewLoading(false);
-    },
-    [cleanupBlobUrl],
-  );
-
   const handlePreview = useCallback(
     (artifact: ArtifactDisplay) => {
       if (!conversationId) return;
       setSelectedPath(artifact.id);
       setPreviewLoading(true);
 
-      getWorkspaceFile.mutate(
+      downloadFile.mutate(
         { conversationId, path: artifact.id },
         {
-          onSuccess: (data) => {
-            loadPreviewFromUrl(data.downloadUrl, {
-              ...artifact,
-              contentType: data.contentType,
-              sizeBytes: data.sizeBytes,
-            }).catch(() => {
-              toast.error(`Failed to preview ${artifact.displayName}`);
-              setPreviewLoading(false);
+          onSuccess: async ({ blobUrl, contentType }) => {
+            cleanupBlobUrl();
+            blobUrlRef.current = blobUrl;
+
+            let textContent: string | undefined;
+            if (isTextContent(contentType)) {
+              const res = await fetch(blobUrl);
+              textContent = await res.text();
+            }
+
+            setPreviewState({
+              artifact: { ...artifact, contentType },
+              url: blobUrl,
+              contentType,
+              textContent,
             });
+            setPreviewLoading(false);
           },
           onError: (err) => {
             toast.error(`Failed to preview ${artifact.displayName}: ${err.message}`);
@@ -134,36 +122,30 @@ export const WorkspaceSidebar = ({
         },
       );
     },
-    [conversationId, getWorkspaceFile, loadPreviewFromUrl],
+    [conversationId, downloadFile, cleanupBlobUrl],
   );
 
   const handleDownload = useCallback(
     (artifact: ArtifactDisplay) => {
       if (!conversationId) return;
-      getWorkspaceFile.mutate(
+      downloadFile.mutate(
         { conversationId, path: artifact.id },
         {
-          onSuccess: (data) => {
-            fetch(data.downloadUrl)
-              .then((res) => res.blob())
-              .then((blob) => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = artifact.displayName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-              })
-              .catch(() => toast.error(`Failed to download ${artifact.displayName}`));
+          onSuccess: ({ blobUrl }) => {
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = artifact.displayName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(blobUrl);
           },
           onError: (err) =>
             toast.error(`Failed to download ${artifact.displayName}: ${err.message}`),
         },
       );
     },
-    [conversationId, getWorkspaceFile],
+    [conversationId, downloadFile],
   );
 
   const closePreview = useCallback(() => {
@@ -187,16 +169,17 @@ export const WorkspaceSidebar = ({
 
     try {
       const files = workspaceFiles.filter((f) => !f.isDirectory);
-      // Fetch all files in parallel.
+      // Fetch all files in parallel via streaming RPC.
       const entries: Record<string, Uint8Array> = {};
       await Promise.all(
         files.map(async (f) => {
-          const res = await getWorkspaceFile.mutateAsync({
+          const { blobUrl } = await downloadFile.mutateAsync({
             conversationId,
             path: f.path,
           });
-          const fetchRes = await fetch(res.downloadUrl);
+          const fetchRes = await fetch(blobUrl);
           const buf = await fetchRes.arrayBuffer();
+          URL.revokeObjectURL(blobUrl);
           entries[f.path] = new Uint8Array(buf);
         }),
       );
@@ -218,7 +201,7 @@ export const WorkspaceSidebar = ({
     } finally {
       setZipping(false);
     }
-  }, [conversationId, fileCount, workspaceFiles, getWorkspaceFile]);
+  }, [conversationId, fileCount, workspaceFiles, downloadFile]);
 
   return (
     <>

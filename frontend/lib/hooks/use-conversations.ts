@@ -108,3 +108,43 @@ export const useGetWorkspaceFile = (): UseMutationResult<
   useMutation({
     mutationFn: (req: { conversationId: string; path: string }) => client.getWorkspaceFile(req),
   });
+
+/** Result of a streamed workspace file download. */
+export interface DownloadedFile {
+  blobUrl: string;
+  contentType: string;
+  totalSizeBytes: number;
+}
+
+/**
+ * Download a workspace file via the streaming RPC, collecting chunks into a
+ * Blob and returning a blob URL suitable for preview or download.
+ */
+export const useDownloadWorkspaceFile = (): UseMutationResult<
+  DownloadedFile,
+  Error,
+  { conversationId: string; path: string }
+> =>
+  useMutation({
+    mutationFn: async (req: { conversationId: string; path: string }): Promise<DownloadedFile> => {
+      const chunks: ArrayBuffer[] = [];
+      let contentType = "application/octet-stream";
+      let totalSizeBytes = 0;
+
+      for await (const response of client.downloadWorkspaceFile(req)) {
+        if (response.contentType) {
+          contentType = response.contentType;
+        }
+        if (response.totalSizeBytes) {
+          totalSizeBytes = Number(response.totalSizeBytes);
+        }
+        if (response.data.length > 0) {
+          chunks.push(response.data.buffer.slice(0) as ArrayBuffer);
+        }
+      }
+
+      const blob = new Blob(chunks, { type: contentType });
+      const blobUrl = URL.createObjectURL(blob);
+      return { blobUrl, contentType, totalSizeBytes };
+    },
+  });

@@ -1,9 +1,11 @@
 use base64::Engine;
 use ps_proto::canonical::prism::v1::{
-    GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListWorkspaceFilesRequest,
-    ListWorkspaceFilesResponse, WorkspaceFileInfo,
+    DownloadWorkspaceFileRequest, DownloadWorkspaceFileResponse, GetWorkspaceFileRequest,
+    GetWorkspaceFileResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse,
+    WorkspaceFileInfo,
 };
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncReadExt;
 use tonic::{Request, Response, Status};
 use tracing::debug;
 use uuid::Uuid;
@@ -295,4 +297,127 @@ pub async fn get_workspace_file(
         content_type,
         size_bytes,
     }))
+}
+
+/// Stream file content in ~64KB chunks.
+const CHUNK_SIZE: usize = 65_536;
+
+pub type DownloadWorkspaceFileStream =
+    tokio_stream::wrappers::ReceiverStream<Result<DownloadWorkspaceFileResponse, Status>>;
+
+pub async fn download_workspace_file(
+    svc: &ReasoningServiceImpl,
+    request: Request<DownloadWorkspaceFileRequest>,
+) -> Result<Response<DownloadWorkspaceFileStream>, Status> {
+    let _ctx = require_auth(&request)?;
+    let req = request.into_inner();
+
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+    if req.path.is_empty() || req.path.contains("..") {
+        return Err(Status::invalid_argument("invalid path"));
+    }
+
+    let _conv = svc
+        .repos
+        .reasoning
+        .get_conversation(conv_id)
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| Status::not_found("conversation not found"))?;
+
+    let workspaces_path = svc
+        .workspaces_path
+        .as_ref()
+        .ok_or_else(|| Status::unavailable("workspace storage not configured"))?
+        .clone();
+
+    let file_path_str = req.path.clone();
+    let cid = conv_id.to_string();
+
+    // Resolve and validate path (blocking for canonicalize).
+    let (canonical, content_type, total_size) =
+        tokio::task::spawn_blocking(move || -> Result<(PathBuf, String, i64), String> {
+            let ws_root = workspace_dir(&workspaces_path, &cid);
+            let file_path = ws_root.join(&file_path_str);
+
+            let canonical = file_path
+                .canonicalize()
+                .map_err(|_| "file not found".to_string())?;
+            let canonical_root = ws_root
+                .canonicalize()
+                .map_err(|_| "workspace not found".to_string())?;
+
+            if !canonical.starts_with(&canonical_root) {
+                return Err("invalid path".to_string());
+            }
+
+            let metadata =
+                std::fs::metadata(&canonical).map_err(|e| format!("metadata failed: {e}"))?;
+            #[allow(clippy::cast_possible_wrap)]
+            let total_size = metadata.len() as i64;
+
+            let mut ct = guess_content_type(&file_path_str).to_string();
+            if ct == "application/octet-stream"
+                && std::fs::read(&canonical).is_ok_and(|s| looks_like_text(&s))
+            {
+                ct = "text/plain".to_string();
+            }
+
+            Ok((canonical, ct, total_size))
+        })
+        .await
+        .map_err(|_| Status::internal("task failed"))?
+        .map_err(Status::not_found)?;
+
+    let (tx, rx) = tokio::sync::mpsc::channel(8);
+
+    tokio::spawn(async move {
+        let file = match tokio::fs::File::open(&canonical).await {
+            Ok(f) => f,
+            Err(e) => {
+                let _ = tx
+                    .send(Err(Status::not_found(format!("open failed: {e}"))))
+                    .await;
+                return;
+            }
+        };
+        let mut reader = tokio::io::BufReader::new(file);
+        let mut buf = vec![0u8; CHUNK_SIZE];
+        let mut first = true;
+
+        loop {
+            match reader.read(&mut buf).await {
+                Ok(0) => break,
+                Ok(n) => {
+                    let msg = DownloadWorkspaceFileResponse {
+                        content_type: if first {
+                            content_type.clone()
+                        } else {
+                            String::new()
+                        },
+                        total_size_bytes: if first { total_size } else { 0 },
+                        data: buf.get(..n).unwrap_or_default().to_vec(),
+                    };
+                    first = false;
+                    if tx.send(Ok(msg)).await.is_err() {
+                        break; // client disconnected
+                    }
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(Err(Status::internal(format!("read failed: {e}"))))
+                        .await;
+                    break;
+                }
+            }
+        }
+    });
+
+    Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+        rx,
+    )))
 }

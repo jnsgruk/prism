@@ -14,6 +14,8 @@ import {
   DeleteConversationResponse,
   DeleteEnrichmentsByTypeRequest,
   DeleteEnrichmentsByTypeResponse,
+  DownloadWorkspaceFileRequest,
+  DownloadWorkspaceFileResponse,
   FindSimilarRequest,
   FindSimilarResponse,
   GetAiSettingsRequest,
@@ -330,6 +332,19 @@ export const ReasoningService = {
       I: GetWorkspaceFileRequest,
       O: GetWorkspaceFileResponse,
       kind: MethodKind.Unary,
+    },
+    /**
+     * DownloadWorkspaceFile streams a workspace file in chunks.
+     * First message includes content_type and total_size_bytes; subsequent
+     * messages carry only the data field (~64KB per chunk).
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.DownloadWorkspaceFile
+     */
+    downloadWorkspaceFile: {
+      name: "DownloadWorkspaceFile",
+      I: DownloadWorkspaceFileRequest,
+      O: DownloadWorkspaceFileResponse,
+      kind: MethodKind.ServerStreaming,
     },
   },
 } as const;
