@@ -60,12 +60,14 @@ export const WorkspaceSidebar = ({
 
   // Resizable preview height
   const [previewHeight, setPreviewHeight] = useState(DEFAULT_PREVIEW_HEIGHT);
+  const previewRef = useRef<HTMLDivElement>(null);
   const { onPointerDown: onPreviewDragDown } = useResize({
     axis: "vertical",
     min: MIN_PREVIEW_HEIGHT,
     max: MAX_PREVIEW_HEIGHT,
     reverse: true, // Dragging up increases height.
     onResize: setPreviewHeight,
+    targetRef: previewRef,
   });
 
   // Preview state
@@ -229,7 +231,11 @@ export const WorkspaceSidebar = ({
 
             {/* Preview pane with drag handle on top edge */}
             {showPreview && (
-              <div className="relative shrink-0 border-t" style={{ height: `${previewHeight}px` }}>
+              <div
+                ref={previewRef}
+                className="relative shrink-0 border-t"
+                style={{ height: `${previewHeight}px` }}
+              >
                 {/* Drag handle — top edge of preview */}
                 <div
                   className="absolute top-0 right-0 left-0 z-20 h-1 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"
