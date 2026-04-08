@@ -92,6 +92,10 @@ const TeamsPage = (): React.ReactElement => {
   const [membersOpen, setMembersOpen] = useState(false);
   const [prsOpen, setPrsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [prTotalCount, setPrTotalCount] = useState<number | null>(null);
+  const [reviewTotalCount, setReviewTotalCount] = useState<number | null>(null);
+  const onPrTotalCount = useCallback((n: number) => setPrTotalCount(n), []);
+  const onReviewTotalCount = useCallback((n: number) => setReviewTotalCount(n), []);
   const hasChildren = (selectedTeam?.children.length ?? 0) > 0;
 
   // Enrichment insights (needs hasChildren for include_descendants)
@@ -223,9 +227,9 @@ const TeamsPage = (): React.ReactElement => {
                     )}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
-                    {currentMetrics && (
+                    {prTotalCount != null && prTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
-                        {currentMetrics.throughput}
+                        {prTotalCount}
                       </Badge>
                     )}
                   </CollapsibleTrigger>
@@ -237,6 +241,7 @@ const TeamsPage = (): React.ReactElement => {
                       period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
                       defaultState={ContributionState.MERGED}
+                      onTotalCount={onPrTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -263,9 +268,9 @@ const TeamsPage = (): React.ReactElement => {
                     )}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
-                    {currentMetrics && currentMetrics.reviewTurnaroundP75Hours > 0 && (
+                    {reviewTotalCount != null && reviewTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
-                        P75 {currentMetrics.reviewTurnaroundP75Hours.toFixed(1)}h
+                        {reviewTotalCount}
                       </Badge>
                     )}
                   </CollapsibleTrigger>
@@ -277,6 +282,7 @@ const TeamsPage = (): React.ReactElement => {
                       teamId={effectiveTeamId}
                       period={period}
                       defaultContributionType={ContributionType.PR_REVIEW}
+                      onTotalCount={onReviewTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>

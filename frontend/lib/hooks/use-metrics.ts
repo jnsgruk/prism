@@ -56,6 +56,7 @@ export const metricsKeys = {
       filters.platform ?? "",
       filters.contributionType ?? "",
       filters.since ?? "",
+      filters.until ?? "",
       filters.state ?? "",
       filters.search ?? "",
       filters.sortField ?? "",
@@ -134,6 +135,7 @@ export interface PersonContributionFilters {
   platformInstance?: string;
   contributionType?: ContributionType;
   since?: string;
+  until?: string;
   sortField?: string;
   sortDesc?: boolean;
   pageSize: number;
@@ -165,6 +167,7 @@ export const useListPersonContributions = (
         platformInstance: filters.platformInstance,
         contributionType: filters.contributionType,
         since: filters.since,
+        until: filters.until,
         state: filters.state,
         search: filters.search,
         sortField: filters.sortField,

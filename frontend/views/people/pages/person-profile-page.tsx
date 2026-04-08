@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -43,6 +43,12 @@ const PersonProfilePage = (): React.ReactElement => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [discourseOpen, setDiscourseOpen] = useState(false);
   const [identitiesOpen, setIdentitiesOpen] = useState(false);
+  const [prTotalCount, setPrTotalCount] = useState<number | null>(null);
+  const [reviewTotalCount, setReviewTotalCount] = useState<number | null>(null);
+  const [discourseTotalCount, setDiscourseTotalCount] = useState<number | null>(null);
+  const onPrTotalCount = useCallback((n: number) => setPrTotalCount(n), []);
+  const onReviewTotalCount = useCallback((n: number) => setReviewTotalCount(n), []);
+  const onDiscourseTotalCount = useCallback((n: number) => setDiscourseTotalCount(n), []);
 
   const { data: profile, isLoading, error } = useGetIndividualProfile(personId ?? "", period);
   const {
@@ -59,13 +65,8 @@ const PersonProfilePage = (): React.ReactElement => {
     );
   }
 
-  const github = profile?.activityByPlatform.find((a) => a.platform === Platform.GITHUB);
-  const prCount = github?.metrics["pull_request_count"] ?? 0;
-  const reviewCount = github?.metrics["pr_review_count"] ?? 0;
-  const discourseCount =
-    profile?.activityByPlatform
-      .filter((a) => a.platform === Platform.DISCOURSE)
-      .reduce((sum, a) => sum + a.contributionCount, 0) ?? 0;
+  const hasDiscourseActivity =
+    profile?.activityByPlatform.some((a) => a.platform === Platform.DISCOURSE) ?? false;
 
   return (
     <>
@@ -150,9 +151,9 @@ const PersonProfilePage = (): React.ReactElement => {
                     )}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
-                    {prCount > 0 && (
+                    {prTotalCount != null && prTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
-                        {prCount}
+                        {prTotalCount}
                       </Badge>
                     )}
                   </CollapsibleTrigger>
@@ -161,8 +162,10 @@ const PersonProfilePage = (): React.ReactElement => {
                   <CardContent className="pt-0">
                     <ContributionTable
                       personId={personId}
+                      period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
                       defaultState={ContributionState.MERGED}
+                      onTotalCount={onPrTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -185,9 +188,9 @@ const PersonProfilePage = (): React.ReactElement => {
                     )}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
-                    {reviewCount > 0 && (
+                    {reviewTotalCount != null && reviewTotalCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
-                        {reviewCount}
+                        {reviewTotalCount}
                       </Badge>
                     )}
                   </CollapsibleTrigger>
@@ -196,7 +199,9 @@ const PersonProfilePage = (): React.ReactElement => {
                   <CardContent className="pt-0">
                     <ContributionTable
                       personId={personId}
+                      period={period}
                       defaultContributionType={ContributionType.PR_REVIEW}
+                      onTotalCount={onReviewTotalCount}
                     />
                   </CardContent>
                 </CollapsibleContent>
@@ -204,7 +209,7 @@ const PersonProfilePage = (): React.ReactElement => {
             </Collapsible>
 
             {/* Discourse — collapsible, only if person has discourse activity */}
-            {discourseCount > 0 && (
+            {hasDiscourseActivity && (
               <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
                 <Card>
                   <CardHeader
@@ -226,14 +231,21 @@ const PersonProfilePage = (): React.ReactElement => {
                       )}
                       <MessageSquare className="size-4 text-muted-foreground" />
                       <CardTitle>Discourse</CardTitle>
-                      <Badge variant="secondary" className="ml-1">
-                        {discourseCount}
-                      </Badge>
+                      {discourseTotalCount != null && discourseTotalCount > 0 && (
+                        <Badge variant="secondary" className="ml-1">
+                          {discourseTotalCount}
+                        </Badge>
+                      )}
                     </CollapsibleTrigger>
                   </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <ContributionTable personId={personId} defaultPlatform={Platform.DISCOURSE} />
+                      <ContributionTable
+                        personId={personId}
+                        period={period}
+                        defaultPlatform={Platform.DISCOURSE}
+                        onTotalCount={onDiscourseTotalCount}
+                      />
                     </CardContent>
                   </CollapsibleContent>
                 </Card>

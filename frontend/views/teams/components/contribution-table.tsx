@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { ExternalLink, Search } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
@@ -286,6 +286,7 @@ export const ContributionTable = ({
   defaultContributionType,
   defaultState,
   defaultPlatform,
+  onTotalCount,
 }: {
   teamId?: string;
   personId?: string;
@@ -293,6 +294,7 @@ export const ContributionTable = ({
   defaultContributionType?: ContributionType;
   defaultState?: ContributionState;
   defaultPlatform?: Platform;
+  onTotalCount?: (count: number) => void;
 }): React.ReactElement => {
   const isReview = defaultContributionType === ContributionType.PR_REVIEW;
   const isDiscourse = defaultPlatform === Platform.DISCOURSE;
@@ -366,6 +368,8 @@ export const ContributionTable = ({
     sortDesc,
     pageSize,
     pageIndex,
+    since: period?.start || undefined,
+    until: period?.end || undefined,
   };
 
   // Both hooks must always be called (React rules of hooks).
@@ -388,6 +392,10 @@ export const ContributionTable = ({
   const contributions = data?.contributions ?? [];
   const totalCount = data?.totalCount ?? 0;
   const hasNextPage = (pageIndex + 1) * pageSize < totalCount;
+
+  useEffect(() => {
+    onTotalCount?.(totalCount);
+  }, [totalCount, onTotalCount]);
 
   const resetPage = (): void => setPageIndex(0);
 
