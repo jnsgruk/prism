@@ -59,6 +59,8 @@ spec:
               value: http://restate:9070
             - name: WORKSPACES_PATH
               value: /workspaces
+            - name: WORKSPACES_CAPACITY_BYTES
+              value: "53687091200" # 50Gi
             - name: RUST_LOG
               value: info
           volumeMounts:

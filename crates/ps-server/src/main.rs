@@ -58,8 +58,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::path::PathBuf::from(p)
     });
 
+    let workspaces_capacity_bytes = std::env::var("WORKSPACES_CAPACITY_BYTES")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok());
+
     let auth_service = AuthServiceImpl::new(repos.clone());
-    let admin_service = AdminServiceImpl::new(repos.clone(), workspaces_path.clone());
+    let admin_service = AdminServiceImpl::new(
+        repos.clone(),
+        workspaces_path.clone(),
+        workspaces_capacity_bytes,
+    );
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
     let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());

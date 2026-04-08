@@ -23,13 +23,22 @@ use crate::common::{backup_err, db_err, require_admin, require_auth, to_timestam
 pub struct AdminServiceImpl {
     repos: Repos,
     workspaces_path: Option<PathBuf>,
+    /// Configured PVC capacity in bytes (from `WORKSPACES_CAPACITY_BYTES` env var).
+    /// Falls back to `statvfs` if not set, which may report host filesystem size
+    /// on Docker Desktop with hostpath provisioner.
+    workspaces_capacity_bytes: Option<i64>,
 }
 
 impl AdminServiceImpl {
-    pub fn new(repos: Repos, workspaces_path: Option<PathBuf>) -> Self {
+    pub fn new(
+        repos: Repos,
+        workspaces_path: Option<PathBuf>,
+        workspaces_capacity_bytes: Option<i64>,
+    ) -> Self {
         Self {
             repos,
             workspaces_path,
+            workspaces_capacity_bytes,
         }
     }
 }
@@ -268,7 +277,11 @@ impl AdminService for AdminServiceImpl {
 
         let (workspace_used_bytes, workspace_total_bytes) =
             if let Some(ref path) = self.workspaces_path {
-                workspace_pvc_stats(path)?
+                let used = dir_size_bytes(path).await;
+                let total = self
+                    .workspaces_capacity_bytes
+                    .unwrap_or_else(|| statvfs_total_bytes(path).unwrap_or(0));
+                (used, total)
             } else {
                 (0, 0)
             };
@@ -281,19 +294,44 @@ impl AdminService for AdminServiceImpl {
     }
 }
 
-/// Read workspace PVC usage via `statvfs`.
-///
-/// On Docker Desktop with hostpath provisioner this reports host filesystem
-/// stats rather than the 50Gi PVC request. In production with a real RWX
-/// provisioner (NFS/EFS) it reports accurate PVC capacity.
-#[allow(clippy::result_large_err)]
-fn workspace_pvc_stats(path: &std::path::Path) -> Result<(i64, i64), Status> {
-    let stat = nix::sys::statvfs::statvfs(path)
-        .map_err(|e| Status::internal(format!("statvfs failed: {e}")))?;
+/// Walk a directory tree and sum file sizes. Returns 0 on error.
+async fn dir_size_bytes(path: &std::path::Path) -> i64 {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || dir_size_sync(&path))
+        .await
+        .unwrap_or(0)
+}
+
+fn dir_size_sync(path: &std::path::Path) -> i64 {
+    let mut total: u64 = 0;
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let ft = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+            if ft.is_dir() {
+                stack.push(entry.path());
+            } else if ft.is_file() {
+                total += entry.metadata().map(|m| m.len()).unwrap_or(0);
+            }
+        }
+    }
+    #[allow(clippy::cast_possible_wrap)]
+    let result = total as i64;
+    result
+}
+
+/// Get total filesystem capacity via `statvfs`. Used as fallback when
+/// `WORKSPACES_CAPACITY_BYTES` is not set.
+fn statvfs_total_bytes(path: &std::path::Path) -> Option<i64> {
+    let stat = nix::sys::statvfs::statvfs(path).ok()?;
     #[allow(clippy::cast_possible_wrap)]
     let total = stat.blocks() as i64 * stat.fragment_size() as i64;
-    #[allow(clippy::cast_possible_wrap)]
-    let available = stat.blocks_available() as i64 * stat.fragment_size() as i64;
-    let used = total - available;
-    Ok((used, total))
+    Some(total)
 }
