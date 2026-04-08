@@ -1,18 +1,17 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, ChevronDown, ChevronRight, GitBranch, Lightbulb, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
-
-import { z } from "zod";
-import type { TeamMappingSuggestion } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
 import {
   useAssignGithubTeam,
   useDismissTeamMappingSuggestion,
 } from "@/views/admin/hooks/use-admin";
 import { useGetTeamMappingSuggestions } from "@/views/teams/hooks/use-teams";
+import { Check, ChevronDown, ChevronRight, GitBranch, Lightbulb, X } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
+
+import type { TeamMappingSuggestion } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 const STORAGE_KEY = "prism:suggestions-collapsed";
 
@@ -116,7 +115,8 @@ export const TeamMappingSuggestions = ({
   const { data: allSuggestions } = useGetTeamMappingSuggestions();
   const [collapsedIds, setCollapsedIds] = useState(getCollapsedTeams);
 
-  const isCollapsed = collapsedIds.has(teamId);
+  // Default collapsed — only expanded when explicitly in the set.
+  const isExpanded = collapsedIds.has(teamId);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsedIds((prev) => {
@@ -140,7 +140,7 @@ export const TeamMappingSuggestions = ({
 
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
-      <CardHeader className="pb-2">
+      <CardHeader className={isExpanded ? "pb-2" : ""}>
         <CardTitle
           className="flex cursor-pointer items-center gap-2 text-sm"
           onClick={toggleCollapsed}
@@ -150,11 +150,11 @@ export const TeamMappingSuggestions = ({
         </CardTitle>
         <CardAction>
           <Button variant="ghost" size="icon-sm" onClick={toggleCollapsed}>
-            {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+            {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
           </Button>
         </CardAction>
       </CardHeader>
-      {!isCollapsed && (
+      {isExpanded && (
         <CardContent>
           <p className="mb-3 text-xs text-muted-foreground">
             Based on member overlap between GitHub teams and this Prism team.

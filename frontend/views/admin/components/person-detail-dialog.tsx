@@ -19,18 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { SortingState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { platformLabel } from "@/lib/proto-display";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { personNameColumn, personTeamColumn } from "@/views/people/components/person-columns";
 import {
   useUpdatePerson,
   useDeactivatePerson,
@@ -38,163 +32,8 @@ import {
   useAssignPersonToTeam,
   useRemovePersonFromTeam,
 } from "@/views/admin/hooks/use-admin";
-import { flattenTeams } from "@/views/admin/lib/team-utils";
-import { PersonFilter } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
 
-type Filter = "all" | "unassigned" | "inactive";
-
-const filterToEnum = (f: Filter): PersonFilter | undefined => {
-  switch (f) {
-    case "unassigned":
-      return PersonFilter.UNASSIGNED;
-    case "inactive":
-      return PersonFilter.INACTIVE;
-    default:
-      return undefined;
-  }
-};
-
-const columns = [personNameColumn, personTeamColumn];
-
-export const PeopleTab = (): React.ReactElement => {
-  const { data: tree } = useGetTeamTree();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search);
-  const [pageSize, setPageSize] = useState(25);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageTokens, setPageTokens] = useState<string[]>([""]);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-
-  const allTeams = useMemo(() => (tree ? flattenTeams(tree.roots) : []), [tree]);
-
-  // Reset to first page when filters change.
-  useEffect(() => {
-    setPageIndex(0);
-    setPageTokens([""]);
-  }, [debouncedSearch, filter, pageSize, sorting]);
-
-  const sortField = sorting[0]?.id;
-  const sortDesc = sorting[0]?.desc ?? false;
-
-  const { data, isLoading, isError, error } = usePaginatedPeople({
-    search: debouncedSearch || undefined,
-    filter: filterToEnum(filter),
-    pageSize,
-    pageToken: pageTokens[pageIndex] ?? "",
-    sortField,
-    sortDesc,
-  });
-
-  const people = data?.people ?? [];
-  const totalCount = data?.pagination?.totalCount ?? 0;
-  const nextPageToken = data?.pagination?.nextPageToken ?? "";
-
-  const handleNextPage = useCallback(() => {
-    if (!nextPageToken) return;
-    setPageTokens((prev) => {
-      const next = [...prev];
-      next[pageIndex + 1] = nextPageToken;
-      return next;
-    });
-    setPageIndex((i) => i + 1);
-  }, [nextPageToken, pageIndex]);
-
-  const handlePrevPage = useCallback(() => {
-    setPageIndex((i) => Math.max(0, i - 1));
-  }, []);
-
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-  }, []);
-
-  if (isLoading && people.length === 0) {
-    return (
-      <div className="space-y-3 pt-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <Alert variant="destructive" className="mt-4">
-        {error?.message ?? "Failed to load people"}
-      </Alert>
-    );
-  }
-
-  return (
-    <div className="space-y-4 pt-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Search people..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <div className="flex items-center gap-1">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "unassigned" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("unassigned")}
-          >
-            Unassigned
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("inactive")}
-          >
-            Inactive
-          </Button>
-        </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={people}
-        sorting={sorting}
-        onSortingChange={setSorting}
-        onRowClick={setSelectedPerson}
-      />
-
-      <DataTablePagination
-        totalCount={totalCount}
-        pageSize={pageSize}
-        pageIndex={pageIndex}
-        hasNextPage={!!nextPageToken}
-        onPageSizeChange={handlePageSizeChange}
-        onPreviousPage={handlePrevPage}
-        onNextPage={handleNextPage}
-      />
-
-      {selectedPerson && (
-        <PersonDetailDialog
-          person={selectedPerson}
-          teams={allTeams}
-          open={!!selectedPerson}
-          onOpenChange={(open) => {
-            if (!open) setSelectedPerson(null);
-          }}
-        />
-      )}
-    </div>
-  );
-};
-
-const PersonDetailDialog = ({
+export const PersonDetailDialog = ({
   person,
   teams,
   open,

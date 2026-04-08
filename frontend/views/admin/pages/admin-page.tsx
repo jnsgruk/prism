@@ -3,21 +3,24 @@ import { useSearchParams } from "react-router";
 
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Plug, Settings, UserCog, Users } from "lucide-react";
+import { Brain, Building2, Plug, Settings } from "lucide-react";
 
 import { AiSettingsTab } from "@/views/admin/components/ai-settings-tab";
-import { PeopleTab } from "@/views/admin/components/people-tab";
+import { OrgTab } from "@/views/admin/components/org-tab";
 import { SourcesTab } from "@/views/admin/components/sources-tab";
 import { SystemTab } from "@/views/admin/components/system-tab";
-import { TeamsTab } from "@/views/admin/components/teams-tab";
 
-const VALID_TABS = new Set(["sources", "teams", "people", "ai", "system"]);
+const VALID_TABS = new Set(["sources", "org", "ai", "system"]);
 const DEFAULT_TAB = "sources";
+
+/** Backwards-compat: map old tab names to new ones. */
+const TAB_ALIASES: Record<string, string> = { teams: "org", people: "org" };
 
 const AdminPage = (): React.ReactElement => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
-  const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : DEFAULT_TAB;
+  const resolved = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null;
+  const tab = resolved && VALID_TABS.has(resolved) ? resolved : DEFAULT_TAB;
 
   const setTab = useCallback(
     (value: string | number | null) => {
@@ -45,13 +48,9 @@ const AdminPage = (): React.ReactElement => {
               <Plug className="size-4" />
               Sources
             </TabsTrigger>
-            <TabsTrigger value="teams">
-              <Users className="size-4" />
-              Teams
-            </TabsTrigger>
-            <TabsTrigger value="people">
-              <UserCog className="size-4" />
-              People
+            <TabsTrigger value="org">
+              <Building2 className="size-4" />
+              Organisation
             </TabsTrigger>
             <TabsTrigger value="ai">
               <Brain className="size-4" />
@@ -65,11 +64,8 @@ const AdminPage = (): React.ReactElement => {
           <TabsContent value="sources">
             <SourcesTab />
           </TabsContent>
-          <TabsContent value="teams">
-            <TeamsTab />
-          </TabsContent>
-          <TabsContent value="people">
-            <PeopleTab />
+          <TabsContent value="org">
+            <OrgTab />
           </TabsContent>
           <TabsContent value="ai">
             <AiSettingsTab />

@@ -7,11 +7,8 @@ import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 vi.mock("@/views/admin/components/sources-tab", () => ({
   SourcesTab: (): React.ReactElement => <div data-testid="sources-tab">Sources Content</div>,
 }));
-vi.mock("@/views/admin/components/teams-tab", () => ({
-  TeamsTab: (): React.ReactElement => <div data-testid="teams-tab">Teams Content</div>,
-}));
-vi.mock("@/views/admin/components/people-tab", () => ({
-  PeopleTab: (): React.ReactElement => <div data-testid="people-tab">People Content</div>,
+vi.mock("@/views/admin/components/org-tab", () => ({
+  OrgTab: (): React.ReactElement => <div data-testid="org-tab">Organisation Content</div>,
 }));
 vi.mock("@/views/admin/components/ai-settings-tab", () => ({
   AiSettingsTab: (): React.ReactElement => <div data-testid="ai-tab">AI Content</div>,
@@ -53,8 +50,7 @@ describe("AdminPage", () => {
     await renderPage();
 
     expect(screen.getByRole("tab", { name: /Sources/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Teams/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /People/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Organisation/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /AI/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /System/i })).toBeInTheDocument();
   });

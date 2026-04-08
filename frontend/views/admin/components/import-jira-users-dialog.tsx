@@ -6,19 +6,22 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { useImportJiraUsers } from "@/views/admin/hooks/use-admin";
 import { AlertCircle, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@ps/cn";
 
-import { useImportJiraUsers } from "@/views/admin/hooks/use-admin";
-
-export const ImportJiraUsersDialog = (): React.ReactElement => {
+export const ImportJiraUsersDialog = ({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}): React.ReactElement => {
   const importJiraUsers = useImportJiraUsers();
   const [dragActive, setDragActive] = useState(false);
-  const [open, setOpen] = useState(false);
 
   const handleFile = async (file: File): Promise<void> => {
     const buffer = await file.arrayBuffer();
@@ -41,11 +44,7 @@ export const ImportJiraUsersDialog = (): React.ReactElement => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        <Upload className="size-4" />
-        Import Jira Users
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import Jira Users</DialogTitle>

@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,8 +20,6 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
-import { teamTypeBadgeVariant, teamTypeLabel } from "@/views/teams/hooks/use-teams";
 
 /** Collect all team IDs in a tree. */
 const collectIds = (teams: Team[]): Set<string> => {
@@ -94,7 +91,7 @@ const TeamTreeNode = ({
         className={`group flex w-full items-center gap-2 border-b px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
           isSelected ? "bg-muted/50" : ""
         }`}
-        style={{ paddingLeft: `${depth * 1.25 + 0.75}rem` }}
+        style={{ paddingLeft: `${depth * 0.75 + 0.75}rem` }}
         onClick={() => onSelect(team.id)}
       >
         {hasChildren ? (
@@ -118,18 +115,14 @@ const TeamTreeNode = ({
 
         <span className="min-w-0 flex-1 truncate font-medium">{team.name}</span>
 
-        <Badge variant={teamTypeBadgeVariant(team.teamType)} className="shrink-0 text-[10px]">
-          {teamTypeLabel(team.teamType)}
-        </Badge>
-
         <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <Users className="size-3" />
           {team.totalMemberCount > 0 ? team.totalMemberCount : team.memberCount}
+          <Users className="size-3" />
         </span>
 
         {hasActions && (
           <span
-            className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100"
+            className={`flex shrink-0 items-center transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
             onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenu>
@@ -237,7 +230,7 @@ export const TeamTree = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div>
       {/* Sticky toolbar: search + expand/collapse */}
       <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-3 py-2">
         <div className="relative flex-1">
