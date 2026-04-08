@@ -37,13 +37,28 @@ fn is_hidden(path: &Path) -> bool {
 }
 
 fn guess_content_type(filename: &str) -> &'static str {
+    // Check well-known extensionless filenames first.
+    let basename = filename.rsplit('/').next().unwrap_or(filename);
+    match basename.to_ascii_uppercase().as_str() {
+        "DOCKERFILE" | "MAKEFILE" | "RAKEFILE" | "GEMFILE" | "PROCFILE" | "LICENSE" | "LICENCE"
+        | "COPYING" | "AUTHORS" | "CONTRIBUTORS" | "CHANGELOG" | "README" | "CODEOWNERS"
+        | "JUSTFILE" => return "text/plain",
+        _ => {}
+    }
+    // Check if the filename starts with a dot but has no further extension
+    // (e.g. .gitignore, .dockerignore, .editorconfig).
+    if basename.starts_with('.') && !basename[1..].contains('.') {
+        return "text/plain";
+    }
+    // Files with a TAG suffix (e.g. CACHEDIR.TAG) or no recognised extension.
     match filename.rsplit('.').next() {
         Some("csv") => "text/csv",
         Some("json" | "jsonl") => "application/json",
         Some("md" | "mdx") => "text/markdown",
         Some(
             "txt" | "log" | "lock" | "cfg" | "ini" | "env" | "nix" | "proto" | "graphql" | "gql"
-            | "dockerfile",
+            | "dockerfile" | "tag" | "conf" | "properties" | "gitignore" | "dockerignore"
+            | "editorconfig",
         ) => "text/plain",
         Some("html" | "htm") => "text/html",
         Some("css" | "scss") => "text/css",
@@ -69,6 +84,13 @@ fn guess_content_type(filename: &str) -> &'static str {
         Some("tar") => "application/x-tar",
         _ => "application/octet-stream",
     }
+}
+
+/// Check whether raw bytes look like text (valid UTF-8, no null bytes).
+fn looks_like_text(data: &[u8]) -> bool {
+    // Check a prefix — no need to scan multi-MB binaries.
+    let sample = data.get(..8192).unwrap_or(data);
+    !sample.contains(&0) && std::str::from_utf8(sample).is_ok()
 }
 
 // ---------------------------------------------------------------------------
@@ -159,7 +181,11 @@ fn read_file_as_data_url(
     }
 
     let data = std::fs::read(&canonical).map_err(|e| format!("read failed: {e}"))?;
-    let content_type = guess_content_type(path).to_string();
+    let mut content_type = guess_content_type(path).to_string();
+    // If the extension-based guess gave up, sniff the actual content.
+    if content_type == "application/octet-stream" && looks_like_text(&data) {
+        content_type = "text/plain".to_string();
+    }
     #[allow(clippy::cast_possible_wrap)]
     let size_bytes = data.len() as i64;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
