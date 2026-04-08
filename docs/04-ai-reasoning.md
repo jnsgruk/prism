@@ -39,6 +39,7 @@ Natural-language questions about engineering data are handled by an agentic arch
 2. **Restate** runs `prepare_query` in `AgenticQueryHandler` — this handles durable pod lifecycle only (~90s):
    - Claims the conversation atomically via CAS update
    - Creates an ephemeral K8s pod running OpenCode with ps-mcp as the MCP server
+   - The pod mounts the shared `prism-workspaces` PVC at `/workspace` via `subPath: {conversation_id}`
    - Waits for pod readiness
 3. **ps-server** streams SSE events directly from the OpenCode pod to the gRPC client — this avoids Restate's journal/timeout issues with long-running non-journaled work
 4. **QueryWatchdogHandler** (Restate, singleton key) runs every 60s to reset stuck conversations
@@ -50,11 +51,15 @@ Natural-language questions about engineering data are handled by an agentic arch
 - Container isolation — agents can safely run code analysis tools (git, rg, tokei) without risk to the main system
 - Session management within container lifetime; conversation history persisted in DB for multi-turn + resume
 
+### Workspace Storage
+
+Each conversation gets an isolated directory on the shared `prism-workspaces` PVC. Agent pods mount it at `/workspace` with `subPath: {conversation_id}`, so each agent sees only its own files. ps-server mounts the same PVC read-only at `/workspaces` and serves file listings and content directly to the frontend via `ListWorkspaceFiles` and `GetWorkspaceFile` RPCs. No S3 sync or artifact upload step is needed — files appear in the workspace sidebar as soon as the agent writes them.
+
 ### ps-mcp — Data Tools
 
 The MCP server running inside agent containers provides:
 - **Data query tools** — query team metrics, search contributions, find people, explore trends
-- **S3 artifact tools** — upload generated files (charts, reports) to RustFS for the UI to display
+- **Image generation** — generate images via AI models, saved to `/workspace`
 
 ### Why SSE Streaming Lives in ps-server
 

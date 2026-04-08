@@ -90,9 +90,9 @@ Agent container lifecycle management. K8s pod spec construction, container manag
 
 ### ps-mcp — MCP Server
 
-MCP stdio server binary running inside agent containers. Provides Prism data tools (query metrics, search contributions) and S3 artifact tools (upload files to RustFS).
+MCP stdio server binary running inside agent containers. Provides Prism data tools (query metrics, search contributions) and image generation. Files the agent creates are written to `/workspace` on a shared PVC and browsable in the UI sidebar.
 
-**Belongs here:** MCP tool definitions, data query handlers, S3 upload logic.
+**Belongs here:** MCP tool definitions, data query handlers, image generation.
 **Does NOT belong here:** pod lifecycle, LLM calls.
 
 ### ps-migrate — Migration Runner

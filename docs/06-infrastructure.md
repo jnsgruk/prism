@@ -79,6 +79,8 @@ k8s/
 
 **Agent pods** are created dynamically by ps-agent via the K8s API when agentic queries are initiated. RBAC grants ps-workers permission to create/delete pods in the namespace.
 
+**Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by both ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). This allows ps-server to serve workspace file listings directly from the filesystem. Agent pods are isolated to their own conversation subdirectory. Workspace directories are cleaned up when conversations are deleted. Requires an RWX-capable storage class (Docker Desktop hostpath works on a single node; production needs NFS, EFS, or similar).
+
 ## Gateway
 
 Envoy Gateway handles TLS termination and routes requests:
