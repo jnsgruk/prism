@@ -15,7 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
-import { ContributionState, ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   useCompareTeams,
   useGetFlowMetrics,
@@ -100,7 +100,6 @@ const TeamsPage = (): React.ReactElement => {
 
   const { data: prTotalCount } = useTeamContributionCount(effectiveTeamId, period, {
     contributionType: ContributionType.PULL_REQUEST,
-    state: ContributionState.MERGED,
   });
   const { data: reviewTotalCount } = useTeamContributionCount(effectiveTeamId, period, {
     contributionType: ContributionType.PR_REVIEW,
@@ -248,7 +247,6 @@ const TeamsPage = (): React.ReactElement => {
                       teamId={effectiveTeamId}
                       period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
-                      defaultState={ContributionState.MERGED}
                     />
                   </CardContent>
                 </CollapsibleContent>

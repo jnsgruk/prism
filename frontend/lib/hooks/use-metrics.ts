@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import type {
   ContributionState,
@@ -118,6 +118,7 @@ export const useListTeamContributions = (
         platformInstance: filters.platformInstance,
       }),
     enabled: teamId.length > 0,
+    placeholderData: keepPreviousData,
   });
 
 export const useGetFlowMetrics = (
@@ -176,6 +177,7 @@ export const useListPersonContributions = (
         pageIndex: filters.pageIndex,
       }),
     enabled: personId.length > 0,
+    placeholderData: keepPreviousData,
   });
 
 /** Lightweight hook that fetches only the totalCount for team contributions. */

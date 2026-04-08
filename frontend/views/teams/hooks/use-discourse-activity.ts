@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import type {
   GetDiscourseActivityResponse,
@@ -26,4 +26,5 @@ export const useDiscourseActivity = (
         instance: instance || undefined,
       }),
     enabled: !!teamId && enabled,
+    placeholderData: keepPreviousData,
   });

@@ -21,11 +21,7 @@ import {
   defaultPeriodKey,
 } from "@/views/teams/components/period-selector";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
-import {
-  ContributionState,
-  ContributionType,
-  Platform,
-} from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { useGetIndividualProfile, usePersonContributionCount } from "@/lib/hooks/use-metrics";
 import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
@@ -60,7 +56,6 @@ const PersonProfilePage = (): React.ReactElement => {
   const { data: prTotalCount } = usePersonContributionCount(safeId, {
     ...periodFilters,
     contributionType: ContributionType.PULL_REQUEST,
-    state: ContributionState.MERGED,
   });
   const { data: reviewTotalCount } = usePersonContributionCount(safeId, {
     ...periodFilters,
@@ -178,7 +173,6 @@ const PersonProfilePage = (): React.ReactElement => {
                       personId={personId}
                       period={period}
                       defaultContributionType={ContributionType.PULL_REQUEST}
-                      defaultState={ContributionState.MERGED}
                     />
                   </CardContent>
                 </CollapsibleContent>
