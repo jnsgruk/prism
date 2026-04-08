@@ -40,7 +40,6 @@ export const MetricsRow = ({
       {showDiscourse && (
         <TableCell className="tabular-nums">{metrics.discoursePosts || "\u2014"}</TableCell>
       )}
-      <TableCell>{metrics.memberCount}</TableCell>
     </TableRow>
   );
 };

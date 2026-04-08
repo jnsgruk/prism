@@ -44,8 +44,6 @@ export const ComparisonTable = ({
           return dir * (a.throughput - b.throughput);
         case "reviewP75":
           return dir * (a.reviewTurnaroundP75Hours - b.reviewTurnaroundP75Hours);
-        case "members":
-          return dir * (a.memberCount - b.memberCount);
         case "cycleTime":
           return dir * (a.avgCycleTimeHours - b.avgCycleTimeHours);
         case "discourseTopics":
@@ -123,14 +121,6 @@ export const ComparisonTable = ({
                     Posts
                   </SortableHeader>
                 )}
-                <SortableHeader
-                  field="members"
-                  current={sortField}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                >
-                  Members
-                </SortableHeader>
               </TableRow>
             </TableHeader>
             <TableBody>

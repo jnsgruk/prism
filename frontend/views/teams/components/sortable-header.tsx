@@ -5,7 +5,6 @@ export type SortField =
   | "name"
   | "throughput"
   | "reviewP75"
-  | "members"
   | "cycleTime"
   | "discourseTopics"
   | "discoursePosts";
