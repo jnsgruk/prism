@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import { AgentResponse } from "./agent-response";
 import { ContainerStatus } from "./container-status";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
+import { WorkspaceImages } from "./workspace-images";
 
 const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
@@ -64,7 +66,18 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
   }
 };
 
-const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): React.ReactElement => {
+const HistoricalAssistantMessage = ({
+  msg,
+  conversationId,
+  workspaceFiles,
+  isLast,
+}: {
+  msg: ConversationMessage;
+  conversationId?: string;
+  workspaceFiles: WorkspaceFileDisplay[];
+  /** Only the last assistant message shows the workspace image gallery. */
+  isLast: boolean;
+}): React.ReactElement => {
   const steps = parseReasoningTrace(msg.reasoningTraceJson);
 
   return (
@@ -74,7 +87,14 @@ const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): Reac
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
-        <AnswerContent content={msg.content} />
+        <AnswerContent content={msg.content} conversationId={conversationId} />
+        {isLast && conversationId && (
+          <WorkspaceImages
+            conversationId={conversationId}
+            workspaceFiles={workspaceFiles}
+            answerContent={msg.content}
+          />
+        )}
         {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
       </div>
     </div>
@@ -128,10 +148,14 @@ export const ConversationThread = ({
   messages,
   state,
   onRetry,
+  conversationId,
+  workspaceFiles,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
   onRetry?: (question: string) => void;
+  conversationId?: string;
+  workspaceFiles: WorkspaceFileDisplay[];
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +200,16 @@ export const ConversationThread = ({
         } else if (msg.role === "error") {
           content = <InlineError content={msg.content} onRetry={retryHandler} />;
         } else {
-          content = <HistoricalAssistantMessage msg={msg} />;
+          const isLastAssistant =
+            idx === displayMessages.findLastIndex((m) => m.role === "assistant") && !isAgentActive;
+          content = (
+            <HistoricalAssistantMessage
+              msg={msg}
+              conversationId={conversationId}
+              workspaceFiles={workspaceFiles}
+              isLast={isLastAssistant}
+            />
+          );
         }
 
         return <div key={msg.id}>{content}</div>;
@@ -200,6 +233,8 @@ export const ConversationThread = ({
           answer={state.status === "streaming" ? state.partialAnswer : state.answer}
           question={state.question}
           supportingData={state.status === "completed" ? state.supportingData : undefined}
+          conversationId={conversationId}
+          workspaceFiles={workspaceFiles}
         />
       )}
 
