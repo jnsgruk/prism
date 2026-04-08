@@ -53,7 +53,9 @@ Natural-language questions about engineering data are handled by an agentic arch
 
 ### Workspace Storage
 
-Each conversation gets an isolated directory on the shared `prism-workspaces` PVC. Agent pods mount it at `/workspace` with `subPath: {conversation_id}`, so each agent sees only its own files. ps-server mounts the same PVC read-only at `/workspaces` and serves file listings and content directly to the frontend via `ListWorkspaceFiles` and `GetWorkspaceFile` RPCs. No S3 sync or artifact upload step is needed — files appear in the workspace sidebar as soon as the agent writes them.
+Each conversation gets an isolated directory on the shared `prism-workspaces` PVC (ReadWriteMany, 50Gi). Agent pods mount it at `/workspace` with `subPath: {conversation_id}`, so each agent sees only its own files. ps-server mounts the same PVC read-only at `/workspaces` and serves file listings via `ListWorkspaceFiles` and streamed content via `DownloadWorkspaceFile` (64KB chunked gRPC stream). Files appear in the workspace sidebar as soon as the agent writes them.
+
+When a user deletes a conversation, the `cleanup_storage` Restate handler deletes both the agent pod and the workspace directory from the PVC. Pod expiry (idle/max lifetime) does **not** delete workspace files — users can browse completed conversations. ps-workers mounts the PVC read-write for this cleanup.
 
 ### ps-mcp — Data Tools
 

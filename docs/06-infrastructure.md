@@ -65,7 +65,6 @@ k8s/
     namespace.yaml
     postgres.yaml          # PostgreSQL + pgvector
     restate.yaml           # Restate orchestrator
-    rustfs.yaml            # S3-compatible object storage
     ps-migrate.yaml        # Init container (runs migrations)
     ps-server.yaml         # API server
     ps-workers.yaml        # Restate workers

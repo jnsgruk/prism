@@ -12,7 +12,6 @@ Prism is an engineering insights platform for understanding team and individual 
 | API | gRPC (tonic + tonic-web), Connect protocol for browser clients |
 | Orchestration | Restate (durable execution for ingestion and background work) |
 | AI | Rig framework (Google Gemini), OpenCode agent in ephemeral K8s pods |
-| Object storage | RustFS (S3-compatible, self-hosted) |
 | Package manager | Bun (frontend), Cargo (Rust) |
 | Dev environment | Nix flake + direnv |
 | Containers | Ubuntu-based with Chisel, multi-stage Dockerfile |

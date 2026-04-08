@@ -30,7 +30,6 @@ Tilt port-forwards all infrastructure to localhost. Use these for troubleshootin
 | --- | --- | --- |
 | PostgreSQL | `5432` | `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism` |
 | Restate Admin API | `9070` | `curl http://localhost:9070/...` — manage invocations, deployments, state |
-| RustFS (S3) | `9000` (API), `9001` (console) | Access key: `prism`, secret: `prism-dev-password`, bucket: `ps-artifacts` |
 
 For sqlx query cache updates: `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism cargo sqlx prepare --workspace`
 

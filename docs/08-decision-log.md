@@ -4,6 +4,21 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-04-08 — Remove RustFS, Use Shared PVC for Workspace Storage
+
+**Context:** RustFS (S3-compatible object storage) was deployed but never actively used. Workspace files were already stored on a shared ReadWriteMany PVC (`prism-workspaces`). The ArtifactStore code, S3 env vars, and RustFS deployment were dead weight.
+
+**Decision:** Remove RustFS entirely. Standardise on the shared PVC approach with workspace garbage collection, streaming file downloads, and storage monitoring.
+
+**Rationale:**
+- RustFS had zero actual reads or writes — the PVC replaced it before any usage
+- Shared PVC is simpler to operate: no separate deployment, credentials, or bucket management
+- Streaming gRPC (64KB chunks) replaces base64 data URLs for file serving, reducing server memory
+- Workspace directories are now cleaned up when conversations are deleted (via Restate handler)
+- Storage usage (PVC + database) is now visible in the admin System tab
+
+---
+
 ## 2026-04-07 — Strip OpenRouter, Keep Google Gemini Only
 
 **Context:** Prism supported two AI providers (Google Gemini, OpenRouter) with dual-provider abstraction across routing, cost tracking, catalogue fetching, image generation, and frontend UI.
@@ -75,7 +90,7 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
-## 2026-03-18 — RustFS for S3 Storage
+## 2026-03-18 — RustFS for S3 Storage *(superseded 2026-04-08)*
 
 **Context:** Agentic query generates artifacts (charts, reports) that need durable storage accessible to the frontend.
 
@@ -85,6 +100,8 @@ Significant architectural decisions in reverse chronological order. Each entry r
 - Self-hosted, no cloud dependency
 - S3-compatible API — standard tooling and SDKs work out of the box
 - Lightweight single-binary deployment suitable for single-node K8s
+
+**Superseded by:** Shared PVC approach (see 2026-04-08 entry). RustFS was never actually used for workspace files — the shared PVC replaced it before any real usage.
 
 ---
 
