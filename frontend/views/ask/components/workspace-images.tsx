@@ -1,70 +1,100 @@
 import { useMemo } from "react";
 
-import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
+import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { WorkspaceImage } from "@/views/ask/components/workspace-image";
 
 /** Image extensions we display inline. */
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg|bmp)$/i;
 
+/** Match workspace image paths in arbitrary text (tool args, results, content). */
+const WORKSPACE_PATH_RE = /\/workspace\/([\w./-]+\.(?:png|jpe?g|gif|webp|svg|bmp))/gi;
+
+/** Normalise a workspace path — strip /workspace/ prefix and leading slash. */
+const normalise = (p: string): string => {
+  let s = p;
+  if (s.startsWith("/workspace/")) s = s.slice("/workspace/".length);
+  if (s.startsWith("workspace/")) s = s.slice("workspace/".length);
+  if (s.startsWith("/")) s = s.slice(1);
+  return s;
+};
+
 /**
  * Extract workspace image paths already referenced in markdown content
  * via `![alt](path)` syntax so we don't duplicate them.
  */
-const extractReferencedImages = (markdown: string): Set<string> => {
+const extractMarkdownImages = (markdown: string): Set<string> => {
   const refs = new Set<string>();
-  // Match markdown image syntax: ![...](path)
   const re = /!\[[^\]]*\]\(([^)]+)\)/g;
   let match;
   while ((match = re.exec(markdown)) !== null) {
-    let src = match[1]!;
-    // Normalise: strip /workspace/ prefix, leading slash.
-    if (src.startsWith("/workspace/")) src = src.slice("/workspace/".length);
-    if (src.startsWith("workspace/")) src = src.slice("workspace/".length);
-    if (src.startsWith("/")) src = src.slice(1);
-    refs.add(src);
+    if (IMAGE_EXT_RE.test(match[1]!)) {
+      refs.add(normalise(match[1]!));
+    }
   }
   return refs;
 };
 
 /**
- * Shows workspace image files that are NOT already referenced in the
- * assistant's markdown response. This ensures generated images (e.g. from
- * Python matplotlib scripts) always appear in the chat, even when the agent
- * doesn't use markdown image syntax.
+ * Extract image paths mentioned in tool call traces (bash commands, write
+ * operations, result summaries). This finds images the agent produced even
+ * when it doesn't reference them in markdown syntax.
+ */
+const extractImagePathsFromSteps = (steps: AgentStep[]): string[] => {
+  const paths = new Set<string>();
+
+  for (const step of steps) {
+    if (step.kind !== "tool") continue;
+
+    // Scan arguments (e.g. bash command containing an output path,
+    // or write tool targeting an image file).
+    if (step.argumentsJson) {
+      for (const m of step.argumentsJson.matchAll(WORKSPACE_PATH_RE)) {
+        paths.add(normalise(m[0]));
+      }
+    }
+
+    // Scan result summary for workspace image paths.
+    if (step.resultSummary) {
+      for (const m of step.resultSummary.matchAll(WORKSPACE_PATH_RE)) {
+        paths.add(normalise(m[0]));
+      }
+    }
+  }
+
+  return [...paths];
+};
+
+/**
+ * Shows workspace images that were produced during a specific message's
+ * tool calls and are NOT already rendered inline via markdown image syntax.
+ * This associates images with the message that created them.
  */
 export const WorkspaceImages = ({
   conversationId,
-  workspaceFiles,
+  steps,
   answerContent,
 }: {
   conversationId: string;
-  workspaceFiles: WorkspaceFileDisplay[];
+  /** Tool call steps from this specific message's reasoning trace. */
+  steps: AgentStep[];
   /** The assistant's markdown text — used to deduplicate already-inlined images. */
   answerContent: string;
 }): React.ReactElement | null => {
-  const unreferencedImages = useMemo(() => {
-    const referenced = extractReferencedImages(answerContent);
-    return workspaceFiles.filter((f) => {
-      if (f.isDirectory) return false;
-      if (!IMAGE_EXT_RE.test(f.path)) return false;
-      // Check if this path is already referenced in the markdown.
-      // Compare against both the full path and just the filename.
-      const normalised = f.path.startsWith("/") ? f.path.slice(1) : f.path;
-      const fileName = f.path.split("/").pop() ?? f.path;
-      return !referenced.has(normalised) && !referenced.has(fileName);
-    });
-  }, [workspaceFiles, answerContent]);
+  const imagePaths = useMemo(() => {
+    const markdownRefs = extractMarkdownImages(answerContent);
+    return extractImagePathsFromSteps(steps).filter((p) => !markdownRefs.has(p));
+  }, [steps, answerContent]);
 
-  if (unreferencedImages.length === 0) return null;
+  if (imagePaths.length === 0) return null;
 
   return (
     <div className="space-y-3">
-      {unreferencedImages.map((file) => (
+      {imagePaths.map((path) => (
         <WorkspaceImage
-          key={file.path}
+          key={path}
           conversationId={conversationId}
-          path={file.path}
-          alt={file.path.split("/").pop()}
+          path={path}
+          alt={path.split("/").pop()}
         />
       ))}
     </div>

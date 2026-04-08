@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
 
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
-import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import { AnswerContent } from "./answer-content";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
@@ -15,7 +14,6 @@ export const AgentResponse = ({
   question,
   supportingData,
   conversationId,
-  workspaceFiles,
 }: {
   state: AgentState;
   steps: AgentStep[];
@@ -23,7 +21,6 @@ export const AgentResponse = ({
   question?: string;
   supportingData?: string;
   conversationId?: string;
-  workspaceFiles: WorkspaceFileDisplay[];
 }): React.ReactElement => {
   // Filter out echoed question text that OpenCode sends as the first Part::Text
   const isEchoedQuestion = question && answer.trim() === question.trim();
@@ -50,7 +47,7 @@ export const AgentResponse = ({
         {state.status === "completed" && conversationId && (
           <WorkspaceImages
             conversationId={conversationId}
-            workspaceFiles={workspaceFiles}
+            steps={steps}
             answerContent={displayAnswer}
           />
         )}

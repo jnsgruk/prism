@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useAiModels } from "@/lib/hooks/use-ai-settings";
 import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
-import { useGetConversation, useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
+import { useGetConversation } from "@/lib/hooks/use-conversations";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
-import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import { QueryInput } from "@/views/ask/components/query-input";
 import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
 import { WorkspaceSidebar } from "@/views/ask/components/workspace-sidebar";
@@ -22,17 +21,6 @@ const AskPage = (): React.ReactElement => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
-  const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
-  const workspaceFiles: WorkspaceFileDisplay[] = useMemo(
-    () =>
-      (workspaceData?.files ?? []).map((f) => ({
-        path: f.path,
-        sizeBytes: f.sizeBytes,
-        isDirectory: f.isDirectory,
-        contentType: f.contentType,
-      })),
-    [workspaceData?.files],
-  );
 
   const messages: ConversationMessage[] = useMemo(
     () => conversationData?.messages ?? [],
@@ -172,7 +160,6 @@ const AskPage = (): React.ReactElement => {
                       state={state}
                       onRetry={handleAsk}
                       conversationId={conversationId}
-                      workspaceFiles={workspaceFiles}
                     />
                   </div>
                 )}
