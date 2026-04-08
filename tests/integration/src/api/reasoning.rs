@@ -2,11 +2,11 @@ use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::reasoning_service_client::ReasoningServiceClient;
 use ps_proto::canonical::prism::v1::{
     AiProvider, AiTaskConfig, AskQuestionRequest, DeleteEnrichmentsByTypeRequest,
-    FindSimilarRequest, GetAiSettingsRequest, GetArtifactDownloadUrlRequest,
-    GetConversationRequest, GetEmbeddingStatusRequest, GetEnrichmentPipelineStatusRequest,
-    GetEnrichmentsRequest, GetStorageHealthRequest, GetUsageSummaryRequest, ListAiModelsRequest,
-    ListConversationsRequest, RefreshModelCatalogueRequest, SaveInsightFromConversationRequest,
-    SetProviderSecretRequest, UpdateAiSettingsRequest, ask_question_response,
+    FindSimilarRequest, GetAiSettingsRequest, GetConversationRequest, GetEmbeddingStatusRequest,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentsRequest, GetStorageHealthRequest,
+    GetUsageSummaryRequest, ListAiModelsRequest, ListConversationsRequest,
+    RefreshModelCatalogueRequest, SaveInsightFromConversationRequest, SetProviderSecretRequest,
+    UpdateAiSettingsRequest, ask_question_response,
 };
 use tonic::Request;
 use tonic::metadata::MetadataValue;
@@ -669,54 +669,6 @@ async fn save_insight_from_conversation_unimplemented() {
         .await
         .expect_err("should be unimplemented");
     assert_eq!(err.code(), tonic::Code::Unimplemented);
-
-    ctx.teardown().await;
-}
-
-// ---------------------------------------------------------------------------
-// GetArtifactDownloadUrl — not found
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn get_artifact_download_url_not_found() {
-    let ctx = ApiTestContext::new().await;
-    let server = &ctx.server;
-
-    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = ReasoningServiceClient::new(server.channel.clone());
-
-    let mut req = Request::new(GetArtifactDownloadUrlRequest {
-        artifact_id: uuid::Uuid::now_v7().to_string(),
-    });
-    auth(&mut req, &token);
-
-    let err = client
-        .get_artifact_download_url(req)
-        .await
-        .expect_err("should be not found");
-    assert_eq!(err.code(), tonic::Code::NotFound);
-
-    ctx.teardown().await;
-}
-
-// ---------------------------------------------------------------------------
-// GetArtifactDownloadUrl — requires auth
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn get_artifact_download_url_requires_auth() {
-    let ctx = ApiTestContext::new().await;
-    let server = &ctx.server;
-
-    let mut client = ReasoningServiceClient::new(server.channel.clone());
-
-    let err = client
-        .get_artifact_download_url(GetArtifactDownloadUrlRequest {
-            artifact_id: uuid::Uuid::now_v7().to_string(),
-        })
-        .await
-        .expect_err("should require auth");
-    assert_eq!(err.code(), tonic::Code::Unauthenticated);
 
     ctx.teardown().await;
 }

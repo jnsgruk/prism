@@ -19,7 +19,6 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
     let mut stream = resp.into_inner();
 
     let mut tool_calls = 0i32;
-    let mut artifacts: Vec<ArtifactInfo> = Vec::new();
     let mut final_answer = String::new();
     let mut total_duration_ms = 0i32;
     let mut had_container_ready = false;
@@ -98,17 +97,6 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
                 total_duration_ms = a.duration_ms;
             }
 
-            ask_question_response::Event::ArtifactUploaded(a) => {
-                artifacts.push(ArtifactInfo {
-                    display_name: a.display_name.clone(),
-                    content_type: a.content_type.clone(),
-                    size_bytes: a.size_bytes,
-                });
-                if !json {
-                    eprintln!("\x1b[35m\u{1f4ce} {} uploaded\x1b[0m", a.display_name);
-                }
-            }
-
             ask_question_response::Event::Error(e) => {
                 if json {
                     let out = serde_json::json!({
@@ -129,11 +117,6 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
             "answer": final_answer,
             "tool_calls": tool_calls,
             "duration_ms": total_duration_ms,
-            "artifacts": artifacts.iter().map(|a| serde_json::json!({
-                "display_name": a.display_name,
-                "content_type": a.content_type,
-                "size_bytes": a.size_bytes,
-            })).collect::<Vec<_>>(),
         });
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {
@@ -144,13 +127,11 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
         }
 
         // Footer with stats.
-        if tool_calls > 0 || !artifacts.is_empty() {
+        if tool_calls > 0 {
             println!();
             println!(
-                "\x1b[2m---\n{tool_calls} tool call{} | {} artifact{} | {:.1}s\x1b[0m",
+                "\x1b[2m---\n{tool_calls} tool call{} | {:.1}s\x1b[0m",
                 if tool_calls == 1 { "" } else { "s" },
-                artifacts.len(),
-                if artifacts.len() == 1 { "" } else { "s" },
                 f64::from(total_duration_ms) / 1000.0,
             );
         }
@@ -160,12 +141,6 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
     }
 
     Ok(())
-}
-
-struct ArtifactInfo {
-    display_name: String,
-    content_type: String,
-    size_bytes: i64,
 }
 
 /// Truncate a string for display, appending an ellipsis if necessary.

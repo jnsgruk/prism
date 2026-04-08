@@ -3,15 +3,10 @@ import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
-import type {
-  ConversationArtifact,
-  ConversationMessage,
-} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { AgentResponse } from "./agent-response";
-import { ArtifactList } from "./artifact-list";
 import { ContainerStatus } from "./container-status";
 import { EvidencePanel } from "./evidence-panel";
-import { InlineImage } from "./inline-image";
 import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
 import { AnswerContent } from "./answer-content";
@@ -69,16 +64,8 @@ const parseReasoningTrace = (json?: string): AgentStep[] => {
   }
 };
 
-const HistoricalAssistantMessage = ({
-  msg,
-  artifacts = [],
-}: {
-  msg: ConversationMessage;
-  artifacts?: ConversationArtifact[];
-}): React.ReactElement => {
+const HistoricalAssistantMessage = ({ msg }: { msg: ConversationMessage }): React.ReactElement => {
   const steps = parseReasoningTrace(msg.reasoningTraceJson);
-  const imageArtifacts = artifacts.filter((a) => a.contentType?.startsWith("image/"));
-  const otherArtifacts = artifacts.filter((a) => !a.contentType?.startsWith("image/"));
 
   return (
     <div className="flex gap-3">
@@ -87,11 +74,7 @@ const HistoricalAssistantMessage = ({
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
         {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={false} />}
-        {imageArtifacts.map((a) => (
-          <InlineImage key={a.id} artifact={a} />
-        ))}
         <AnswerContent content={msg.content} />
-        {otherArtifacts.length > 0 && <ArtifactList artifacts={otherArtifacts} />}
         {msg.supportingDataJson && <EvidencePanel supportingData={msg.supportingDataJson} />}
       </div>
     </div>
@@ -144,12 +127,10 @@ const deduplicateMessages = (msgs: ConversationMessage[]): ConversationMessage[]
 export const ConversationThread = ({
   messages,
   state,
-  conversationArtifacts = [],
   onRetry,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
-  conversationArtifacts?: ConversationArtifact[];
   onRetry?: (question: string) => void;
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -182,7 +163,6 @@ export const ConversationThread = ({
   return (
     <div className="space-y-6">
       {displayMessages.map((msg, idx) => {
-        const msgArtifacts = conversationArtifacts.filter((a) => a.messageId === msg.id);
         const retryHandler = onRetry
           ? (): void => {
               const prev = displayMessages.slice(0, idx).findLast((m) => m.role === "user");
@@ -196,16 +176,11 @@ export const ConversationThread = ({
         } else if (msg.role === "error") {
           content = <InlineError content={msg.content} onRetry={retryHandler} />;
         } else {
-          content = <HistoricalAssistantMessage msg={msg} artifacts={msgArtifacts} />;
+          content = <HistoricalAssistantMessage msg={msg} />;
         }
 
         return <div key={msg.id}>{content}</div>;
       })}
-
-      {/* Show unlinked artifacts (created before the message_id backfill) at the bottom. */}
-      {state.status === "idle" && conversationArtifacts.filter((a) => !a.messageId).length > 0 && (
-        <ArtifactList artifacts={conversationArtifacts.filter((a) => !a.messageId)} />
-      )}
 
       {state.status !== "idle" && state.status !== "error" && state.question && (
         <>
@@ -224,7 +199,6 @@ export const ConversationThread = ({
           steps={state.steps}
           answer={state.status === "streaming" ? state.partialAnswer : state.answer}
           question={state.question}
-          artifacts={state.artifacts}
           supportingData={state.status === "completed" ? state.supportingData : undefined}
         />
       )}

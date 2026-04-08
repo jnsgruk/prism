@@ -18,8 +18,6 @@ import {
   FindSimilarResponse,
   GetAiSettingsRequest,
   GetAiSettingsResponse,
-  GetArtifactDownloadUrlRequest,
-  GetArtifactDownloadUrlResponse,
   GetConversationRequest,
   GetConversationResponse,
   GetEmbeddingStatusRequest,
@@ -34,10 +32,14 @@ import {
   GetStorageHealthResponse,
   GetUsageSummaryRequest,
   GetUsageSummaryResponse,
+  GetWorkspaceFileRequest,
+  GetWorkspaceFileResponse,
   ListAiModelsRequest,
   ListAiModelsResponse,
   ListConversationsRequest,
   ListConversationsResponse,
+  ListWorkspaceFilesRequest,
+  ListWorkspaceFilesResponse,
   RefreshModelCatalogueRequest,
   RefreshModelCatalogueResponse,
   RenameConversationRequest,
@@ -50,6 +52,8 @@ import {
   SearchByTextResponse,
   SetProviderSecretRequest,
   SetProviderSecretResponse,
+  SyncWorkspaceFilesRequest,
+  SyncWorkspaceFilesResponse,
   TestProviderRequest,
   TestProviderResponse,
   UpdateAiSettingsRequest,
@@ -239,7 +243,7 @@ export const ReasoningService = {
     /**
      * AskQuestion sends a natural-language question to the agentic query interface.
      * Returns a server stream of events: container status, tool calls, partial answer,
-     * artifact uploads, and final answer with reasoning trace.
+     * and final answer with reasoning trace.
      *
      * @generated from rpc canonical.prism.v1.ReasoningService.AskQuestion
      */
@@ -274,7 +278,7 @@ export const ReasoningService = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetConversation returns a single conversation with its messages and artifacts.
+     * GetConversation returns a single conversation with its messages.
      *
      * @generated from rpc canonical.prism.v1.ReasoningService.GetConversation
      */
@@ -297,8 +301,8 @@ export const ReasoningService = {
       kind: MethodKind.Unary,
     },
     /**
-     * DeleteConversation deletes a conversation and its messages, artifacts, and
-     * events. If the conversation has an active container, it is also reaped.
+     * DeleteConversation deletes a conversation and its messages and events.
+     * If the conversation has an active container, it is also reaped.
      *
      * @generated from rpc canonical.prism.v1.ReasoningService.DeleteConversation
      */
@@ -320,14 +324,40 @@ export const ReasoningService = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
+     * ListWorkspaceFiles returns the file listing of the agent container's /workspace
+     * directory. When the container is running, reads the live filesystem; otherwise
+     * falls back to the last S3 snapshot taken before the container was reaped.
      *
-     * @generated from rpc canonical.prism.v1.ReasoningService.GetArtifactDownloadUrl
+     * @generated from rpc canonical.prism.v1.ReasoningService.ListWorkspaceFiles
      */
-    getArtifactDownloadUrl: {
-      name: "GetArtifactDownloadUrl",
-      I: GetArtifactDownloadUrlRequest,
-      O: GetArtifactDownloadUrlResponse,
+    listWorkspaceFiles: {
+      name: "ListWorkspaceFiles",
+      I: ListWorkspaceFilesRequest,
+      O: ListWorkspaceFilesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetWorkspaceFile returns the content of a single file from the workspace.
+     * Returned as a data URL (base64-encoded).
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.GetWorkspaceFile
+     */
+    getWorkspaceFile: {
+      name: "GetWorkspaceFile",
+      I: GetWorkspaceFileRequest,
+      O: GetWorkspaceFileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SyncWorkspaceFiles triggers an on-demand sync of the container's /workspace
+     * to S3. Returns the number of files synced. Only works when the container is running.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.SyncWorkspaceFiles
+     */
+    syncWorkspaceFiles: {
+      name: "SyncWorkspaceFiles",
+      I: SyncWorkspaceFilesRequest,
+      O: SyncWorkspaceFilesResponse,
       kind: MethodKind.Unary,
     },
   },

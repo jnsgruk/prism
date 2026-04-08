@@ -43,11 +43,14 @@ pub const ANNOTATION_TOKEN_SESSION_ID: &str = "prism.canonical.com/token-session
 pub const WORKSPACE_VOLUME_NAME: &str = "workspace";
 pub const WORKSPACE_MOUNT_PATH: &str = "/workspace";
 
+/// Name of the shared workspaces PVC mounted by both ps-server and agent pods.
+pub const SHARED_WORKSPACE_PVC: &str = "prism-workspaces";
+
 /// Build a K8s Pod spec for an agent container.
 ///
-/// When `pvc_name` is provided, a persistent volume is mounted at `/workspace`.
-/// When `None`, the workspace is ephemeral container storage.
-pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig, pvc_name: Option<&str>) -> Pod {
+/// The shared workspaces PVC is mounted at `/workspace` with `subPath`
+/// set to the session ID, isolating each conversation's files.
+pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
     let labels = BTreeMap::from([
         (LABEL_APP.to_string(), LABEL_APP_VALUE.to_string()),
         (LABEL_SESSION.to_string(), session_id.to_string()),
@@ -91,13 +94,12 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig, pvc_name: Opti
         ..Default::default()
     };
 
-    let volume_mounts = pvc_name.map(|_| {
-        vec![VolumeMount {
-            name: WORKSPACE_VOLUME_NAME.to_string(),
-            mount_path: WORKSPACE_MOUNT_PATH.to_string(),
-            ..Default::default()
-        }]
-    });
+    let volume_mounts = Some(vec![VolumeMount {
+        name: WORKSPACE_VOLUME_NAME.to_string(),
+        mount_path: WORKSPACE_MOUNT_PATH.to_string(),
+        sub_path: Some(session_id.to_string()),
+        ..Default::default()
+    }]);
 
     let container = Container {
         name: "agent".to_string(),
@@ -114,16 +116,14 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig, pvc_name: Opti
         ..Default::default()
     };
 
-    let volumes = pvc_name.map(|name| {
-        vec![Volume {
-            name: WORKSPACE_VOLUME_NAME.to_string(),
-            persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
-                claim_name: name.to_string(),
-                read_only: Some(false),
-            }),
-            ..Default::default()
-        }]
-    });
+    let volumes = Some(vec![Volume {
+        name: WORKSPACE_VOLUME_NAME.to_string(),
+        persistent_volume_claim: Some(PersistentVolumeClaimVolumeSource {
+            claim_name: SHARED_WORKSPACE_PVC.to_string(),
+            read_only: Some(false),
+        }),
+        ..Default::default()
+    }]);
 
     Pod {
         metadata: k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta {
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn pod_has_correct_labels() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let labels = pod.metadata.labels.as_ref().unwrap();
         assert_eq!(labels.get(LABEL_APP), Some(&"prism-agent".to_string()));
         assert_eq!(labels.get(LABEL_SESSION), Some(&"sess-abc123".to_string()));
@@ -184,26 +184,26 @@ mod tests {
 
     #[test]
     fn pod_has_last_activity_annotation() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let annotations = pod.metadata.annotations.as_ref().unwrap();
         assert!(annotations.contains_key(ANNOTATION_LAST_ACTIVITY));
     }
 
     #[test]
     fn pod_name_uses_session_prefix() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         assert_eq!(pod.metadata.name, Some("prism-agent-sess-abc".to_string()));
     }
 
     #[test]
     fn pod_has_correct_namespace() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         assert_eq!(pod.metadata.namespace, Some("prism".to_string()));
     }
 
     #[test]
     fn container_has_model_env_vars() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let container = &pod.spec.as_ref().unwrap().containers[0];
         let env = container.env.as_ref().unwrap();
 
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn container_has_resource_limits() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let container = &pod.spec.as_ref().unwrap().containers[0];
         let resources = container.resources.as_ref().unwrap();
 
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn container_exposes_port_4096() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let container = &pod.spec.as_ref().unwrap().containers[0];
         let ports = container.ports.as_ref().unwrap();
         assert_eq!(ports[0].container_port, 4096);
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn restart_policy_is_never() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
+        let pod = build_agent_pod("sess-abc123", &test_config());
         assert_eq!(
             pod.spec.as_ref().unwrap().restart_policy,
             Some("Never".to_string())
@@ -263,17 +263,8 @@ mod tests {
     }
 
     #[test]
-    fn pod_has_no_volumes_without_pvc() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), None);
-        let spec = pod.spec.as_ref().unwrap();
-        assert!(spec.volumes.is_none());
-        let container = &spec.containers[0];
-        assert!(container.volume_mounts.is_none());
-    }
-
-    #[test]
-    fn pod_has_workspace_volume_when_pvc_provided() {
-        let pod = build_agent_pod("sess-abc123", &test_config(), Some("prism-ws-sess-abc"));
+    fn pod_has_shared_workspace_volume_with_subpath() {
+        let pod = build_agent_pod("sess-abc123", &test_config());
         let spec = pod.spec.as_ref().unwrap();
 
         let volumes = spec.volumes.as_ref().expect("volumes should be set");
@@ -283,7 +274,7 @@ mod tests {
             .persistent_volume_claim
             .as_ref()
             .expect("PVC source should be set");
-        assert_eq!(pvc_source.claim_name, "prism-ws-sess-abc");
+        assert_eq!(pvc_source.claim_name, SHARED_WORKSPACE_PVC);
         assert_eq!(pvc_source.read_only, Some(false));
 
         let container = &spec.containers[0];
@@ -294,6 +285,7 @@ mod tests {
         assert_eq!(mounts.len(), 1);
         assert_eq!(mounts[0].name, "workspace");
         assert_eq!(mounts[0].mount_path, "/workspace");
+        assert_eq!(mounts[0].sub_path, Some("sess-abc123".to_string()));
     }
 
     #[test]
@@ -303,7 +295,7 @@ mod tests {
             ("GOOGLE_API_KEY".to_string(), "gk-123".to_string()),
             ("GEMINI_API_KEY".to_string(), "gk-123".to_string()),
         ];
-        let pod = build_agent_pod("sess-abc123", &config, None);
+        let pod = build_agent_pod("sess-abc123", &config);
         let container = &pod.spec.as_ref().unwrap().containers[0];
         let env = container.env.as_ref().unwrap();
 

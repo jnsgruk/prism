@@ -28,20 +28,6 @@ pub fn state_str_to_proto(s: Option<&str>) -> i32 {
     })
 }
 
-pub fn guess_content_type(filename: &str) -> &'static str {
-    match filename.rsplit('.').next() {
-        Some("csv") => "text/csv",
-        Some("json") => "application/json",
-        Some("md") => "text/markdown",
-        Some("txt") => "text/plain",
-        Some("html") => "text/html",
-        Some("png") => "image/png",
-        Some("svg") => "image/svg+xml",
-        Some("pdf") => "application/pdf",
-        _ => "application/octet-stream",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,24 +138,4 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // Content type guessing
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn guess_content_type_known_extensions() {
-        assert_eq!(guess_content_type("report.csv"), "text/csv");
-        assert_eq!(guess_content_type("data.json"), "application/json");
-        assert_eq!(guess_content_type("readme.md"), "text/markdown");
-        assert_eq!(guess_content_type("notes.txt"), "text/plain");
-        assert_eq!(guess_content_type("chart.png"), "image/png");
-        assert_eq!(guess_content_type("doc.pdf"), "application/pdf");
-    }
-
-    #[test]
-    fn guess_content_type_unknown_defaults_to_octet_stream() {
-        assert_eq!(
-            guess_content_type("archive.tar.gz"),
-            "application/octet-stream"
-        );
-        assert_eq!(guess_content_type("noext"), "application/octet-stream");
-    }
 }

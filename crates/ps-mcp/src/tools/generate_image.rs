@@ -1,14 +1,12 @@
 //! Image generation via Google Gemini API.
 //!
-//! Called by the `generate_image` MCP tool.  Decodes the base64 response,
-//! uploads to S3 via `ArtifactStore`, and returns the standard artifact JSON.
+//! Called by the `generate_image` MCP tool. Decodes the base64 response and
+//! saves the image to `/workspace`.
 
 use base64::Engine as _;
 use bytes::Bytes;
 use serde::Deserialize;
 use tracing::{debug, info};
-
-use crate::artifact_store::ArtifactStore;
 
 /// Successful image generation result.
 pub struct GeneratedImage {
@@ -158,11 +156,9 @@ fn extension_for(content_type: &str) -> &str {
 // Top-level generate + upload
 // ---------------------------------------------------------------------------
 
-/// Generate an image and upload it to S3.  Returns the JSON result string
-/// in the same format as `upload_artifact`.
-pub async fn generate_and_upload(
+/// Generate an image and save it to `/workspace`.
+pub async fn generate_and_save(
     http: &reqwest::Client,
-    artifacts: &ArtifactStore,
     prompt: &str,
     model: Option<&str>,
     _provider: Option<&str>,
@@ -187,23 +183,22 @@ pub async fn generate_and_upload(
     let filename = format!("generated-image-{timestamp}.{ext}");
     let size = image.data.len();
 
-    let key = artifacts
-        .upload(&filename, Some(&image.content_type), image.data)
+    let file_path = format!("/workspace/{filename}");
+    tokio::fs::write(&file_path, &image.data)
         .await
-        .map_err(|e| format!("S3 upload failed: {e}"))?;
+        .map_err(|e| format!("failed to write image to workspace: {e}"))?;
 
-    // Truncate prompt to a reasonable display name
     let display_name: String = prompt.chars().take(80).collect();
 
     let result = serde_json::json!({
         "status": "generated",
-        "artifact_key": key,
+        "file_path": file_path,
         "display_name": display_name,
         "content_type": image.content_type,
         "size_bytes": size,
     });
 
-    info!(key = %key, size_bytes = size, "image generated and uploaded");
+    info!(file_path = %file_path, size_bytes = size, "image generated and saved to workspace");
 
     serde_json::to_string_pretty(&result).map_err(|e| format!("serialization error: {e}"))
 }

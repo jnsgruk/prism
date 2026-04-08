@@ -101,10 +101,6 @@ impl AdminService for AdminServiceImpl {
             writer.write_table("conversation_messages", &msg_rows)
                 .map_err(backup_err)?;
 
-            let artifact_rows = repos.reasoning.export_conversation_artifacts().await.map_err(db_err)?;
-            writer.write_table("conversation_artifacts", &artifact_rows)
-                .map_err(backup_err)?;
-
             writer.finish()
                 .map_err(backup_err)?;
 

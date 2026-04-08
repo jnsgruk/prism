@@ -93,15 +93,6 @@ pub struct ListPeopleInput {
     pub search: Option<String>,
 }
 
-/// Input for uploading an artifact.
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-pub struct UploadArtifactInput {
-    /// Path to the file in /workspace to upload.
-    pub file_path: String,
-    /// Human-readable display name (defaults to filename).
-    pub display_name: Option<String>,
-}
-
 /// Input for generating an image.
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct GenerateImageInput {

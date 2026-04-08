@@ -13,7 +13,7 @@ pub mod pod_spec;
 pub const OPENCODE_PORT: u16 = 4096;
 
 #[cfg(feature = "kube")]
-pub use container_manager::{ContainerManager, PodOverrides, PodStatus, pvc_name_for_session};
+pub use container_manager::{ContainerManager, PodOverrides, PodStatus};
 #[cfg(feature = "kube")]
 pub use pod_spec::{ANNOTATION_TOKEN_SESSION_ID, AgentPodConfig, WORKSPACE_MOUNT_PATH};
 

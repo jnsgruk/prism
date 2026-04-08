@@ -10,14 +10,12 @@ use rmcp::{
     tool_handler, tool_router,
 };
 
-use crate::artifact_store::ArtifactStore;
 use crate::prism_client::PrismClient;
 
 use ps_proto::canonical::prism::v1 as proto;
 
 use convert::{
-    contribution_type_str_to_proto, guess_content_type, parse_insight_period,
-    platform_str_to_proto, state_str_to_proto,
+    contribution_type_str_to_proto, parse_insight_period, platform_str_to_proto, state_str_to_proto,
 };
 use format::{
     format_contribution, format_person_insights, format_similar_item, format_team_insights,
@@ -25,14 +23,13 @@ use format::{
 use inputs::{
     CompareTeamsInput, GenerateImageInput, GetPersonProfileInput, ListPeopleInput, ListTeamsInput,
     QueryContributionsInput, QueryEnrichmentsInput, QueryTeamMetricsInput, SearchByTextInput,
-    SearchSimilarInput, UploadArtifactInput,
+    SearchSimilarInput,
 };
 
-/// MCP tool server providing Prism data tools and S3 artifact management.
+/// MCP tool server providing Prism data query tools and image generation.
 #[derive(Clone)]
 pub struct PrismTools {
     client: PrismClient,
-    artifacts: ArtifactStore,
     http: reqwest::Client,
     tool_router: ToolRouter<Self>,
 }
@@ -44,14 +41,13 @@ impl std::fmt::Debug for PrismTools {
 }
 
 impl PrismTools {
-    pub fn new(client: PrismClient, artifacts: ArtifactStore) -> Self {
+    pub fn new(client: PrismClient) -> Self {
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()
             .unwrap_or_default();
         Self {
             client,
-            artifacts,
             http,
             tool_router: Self::tool_router(),
         }
@@ -374,85 +370,20 @@ impl PrismTools {
     }
 
     /// Generate an image using an AI image generation model.
-    /// The image is saved as a conversation artifact and automatically displayed in the chat.
+    /// The image is saved to /workspace and visible in the workspace sidebar.
     #[rmcp::tool(name = "generate_image")]
     async fn generate_image(
         &self,
         Parameters(input): Parameters<GenerateImageInput>,
     ) -> Result<String, String> {
-        generate_image::generate_and_upload(
+        generate_image::generate_and_save(
             &self.http,
-            &self.artifacts,
             &input.prompt,
             input.model.as_deref(),
             input.provider.as_deref(),
             input.aspect_ratio.as_deref(),
         )
         .await
-    }
-
-    /// Upload a file from /workspace as a conversation artifact to S3.
-    /// Returns the artifact key and confirmation.
-    #[rmcp::tool(name = "upload_artifact")]
-    async fn upload_artifact(
-        &self,
-        Parameters(input): Parameters<UploadArtifactInput>,
-    ) -> Result<String, String> {
-        let path = std::path::Path::new(&input.file_path);
-        if !path.exists() {
-            return Err(format!("File not found: {}", input.file_path));
-        }
-
-        let data = tokio::fs::read(&input.file_path)
-            .await
-            .map_err(|e| format!("Failed to read file: {e}"))?;
-
-        let filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("artifact")
-            .to_string();
-        let display_name = input.display_name.as_deref().unwrap_or(&filename);
-        let content_type = guess_content_type(&filename);
-        let size = data.len();
-
-        let key = self
-            .artifacts
-            .upload(&filename, Some(content_type), data.into())
-            .await
-            .map_err(|e| format!("S3 upload failed: {e}"))?;
-
-        serde_json::to_string_pretty(&serde_json::json!({
-            "status": "uploaded",
-            "artifact_key": key,
-            "display_name": display_name,
-            "content_type": content_type,
-            "size_bytes": size,
-        }))
-        .map_err(|e| format!("serialization error: {e}"))
-    }
-
-    /// List all artifacts uploaded in the current conversation.
-    #[rmcp::tool(name = "list_artifacts")]
-    async fn list_artifacts(&self) -> Result<String, String> {
-        let entries = self
-            .artifacts
-            .list()
-            .await
-            .map_err(|e| format!("S3 list failed: {e}"))?;
-
-        let items: Vec<_> = entries
-            .iter()
-            .map(|e| {
-                serde_json::json!({
-                    "key": &e.key,
-                    "filename": &e.filename,
-                    "size_bytes": e.size_bytes,
-                })
-            })
-            .collect();
-
-        serde_json::to_string_pretty(&items).map_err(|e| format!("serialization error: {e}"))
     }
 }
 
@@ -533,13 +464,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tool_router_registers_all_12_tools() {
+    fn tool_router_registers_all_tools() {
         let router = PrismTools::tool_router();
         let tools = router.list_all();
         assert_eq!(
             tools.len(),
-            12,
-            "Expected 12 MCP tools, got {}",
+            10,
+            "Expected 10 MCP tools, got {}",
             tools.len()
         );
 
@@ -554,8 +485,6 @@ mod tests {
         assert!(names.contains(&"query_enrichments"));
         assert!(names.contains(&"list_teams"));
         assert!(names.contains(&"list_people"));
-        assert!(names.contains(&"upload_artifact"));
-        assert!(names.contains(&"list_artifacts"));
     }
 
     #[test]

@@ -1,8 +1,7 @@
 use crate::common::db::RepoTestContext;
 use ps_core::models::EnrichmentType;
 use ps_core::repo::reasoning::{
-    CreateArtifactParams, CreateConversationParams, CreateMessageParams, EnrichmentResult,
-    UpsertEnrichmentParams,
+    CreateConversationParams, CreateMessageParams, EnrichmentResult, UpsertEnrichmentParams,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -750,100 +749,6 @@ async fn conversation_update_totals() {
     ctx.teardown().await;
 }
 
-#[tokio::test]
-async fn conversation_artifacts_crud() {
-    let ctx = RepoTestContext::new().await;
-    let repos = &ctx.repos;
-    let pool = &ctx.pool;
-
-    let user_id = insert_user(pool).await;
-
-    let conv = repos
-        .reasoning
-        .create_conversation(&CreateConversationParams {
-            user_id,
-            title: None,
-            model_name: "test-model",
-        })
-        .await
-        .unwrap();
-
-    let msg = repos
-        .reasoning
-        .create_message(&CreateMessageParams {
-            conversation_id: conv.id,
-            role: "assistant",
-            content: "Here is a report.",
-            reasoning_trace: None,
-            supporting_data: None,
-            prompt_tokens: 0,
-            completion_tokens: 100,
-        })
-        .await
-        .unwrap();
-
-    // Create two artifacts.
-    let a1 = repos
-        .reasoning
-        .create_artifact(&CreateArtifactParams {
-            conversation_id: conv.id,
-            message_id: Some(msg.id),
-            artifact_key: &format!("conversations/{}/report.csv", conv.id),
-            display_name: "report.csv",
-            content_type: Some("text/csv"),
-            size_bytes: 1024,
-        })
-        .await
-        .unwrap();
-
-    let a2 = repos
-        .reasoning
-        .create_artifact(&CreateArtifactParams {
-            conversation_id: conv.id,
-            message_id: None,
-            artifact_key: &format!("conversations/{}/analysis.json", conv.id),
-            display_name: "analysis.json",
-            content_type: Some("application/json"),
-            size_bytes: 2048,
-        })
-        .await
-        .unwrap();
-
-    // List artifacts.
-    let artifacts = repos.reasoning.list_artifacts(conv.id).await.unwrap();
-    assert_eq!(artifacts.len(), 2);
-    assert_eq!(artifacts[0].display_name, "report.csv");
-    assert_eq!(artifacts[1].display_name, "analysis.json");
-
-    // Get single artifact.
-    let fetched = repos.reasoning.get_artifact(a1.id).await.unwrap().unwrap();
-    assert_eq!(fetched.content_type.as_deref(), Some("text/csv"));
-    assert_eq!(fetched.size_bytes, 1024);
-    assert_eq!(fetched.message_id, Some(msg.id));
-
-    // Artifact count shows up in conversation list.
-    let (list, _) = repos
-        .reasoning
-        .list_conversations(user_id, 10, 0)
-        .await
-        .unwrap();
-    assert_eq!(list[0].artifact_count, 2);
-
-    // Non-existent artifact returns None.
-    assert!(
-        repos
-            .reasoning
-            .get_artifact(Uuid::now_v7())
-            .await
-            .unwrap()
-            .is_none()
-    );
-
-    drop(a2);
-
-    ctx.teardown().await;
-}
-
 // ---------------------------------------------------------------------------
 // Conversation export (backup)
 // ---------------------------------------------------------------------------
@@ -856,7 +761,6 @@ async fn conversation_export_roundtrip() {
 
     let user_id = insert_user(pool).await;
 
-    // Create a conversation with messages and an artifact.
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
@@ -881,7 +785,7 @@ async fn conversation_export_roundtrip() {
         .await
         .unwrap();
 
-    let assistant_msg = repos
+    let _assistant_msg = repos
         .reasoning
         .create_message(&CreateMessageParams {
             conversation_id: conv.id,
@@ -891,19 +795,6 @@ async fn conversation_export_roundtrip() {
             supporting_data: None,
             prompt_tokens: 0,
             completion_tokens: 60,
-        })
-        .await
-        .unwrap();
-
-    repos
-        .reasoning
-        .create_artifact(&CreateArtifactParams {
-            conversation_id: conv.id,
-            message_id: Some(assistant_msg.id),
-            artifact_key: &format!("conversations/{}/velocity.csv", conv.id),
-            display_name: "velocity.csv",
-            content_type: Some("text/csv"),
-            size_bytes: 512,
         })
         .await
         .unwrap();
@@ -933,27 +824,6 @@ async fn conversation_export_roundtrip() {
     assert_eq!(exported_msgs[0]["conversation_id"], conv.id.to_string());
     assert_eq!(exported_msgs[1]["role"], "assistant");
     assert!(exported_msgs[1]["reasoning_trace"].is_object());
-
-    // Export artifacts.
-    let exported_artifacts = repos
-        .reasoning
-        .export_conversation_artifacts()
-        .await
-        .unwrap();
-    assert_eq!(exported_artifacts.len(), 1);
-    assert_eq!(exported_artifacts[0]["display_name"], "velocity.csv");
-    assert_eq!(exported_artifacts[0]["content_type"], "text/csv");
-    assert_eq!(exported_artifacts[0]["size_bytes"], 512);
-    assert_eq!(
-        exported_artifacts[0]["conversation_id"],
-        conv.id.to_string()
-    );
-    assert!(
-        exported_artifacts[0]["artifact_key"]
-            .as_str()
-            .unwrap()
-            .contains("velocity.csv")
-    );
 
     drop(msg);
 

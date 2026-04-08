@@ -3,7 +3,6 @@ use ps_proto::canonical::prism::v1::{AskQuestionResponse, ask_question_response}
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use super::artifact;
 use super::step_registry::StepRegistry;
 
 /// Accumulated results from streaming the SSE event loop.
@@ -65,9 +64,6 @@ pub async fn run_event_loop(
         }
 
         seen_work = true;
-
-        // Intercept artifact uploads.
-        artifact::handle_artifact_upload(repos, conversation_id, &event).await;
 
         // Map event to proto and write to DB + send to client.
         if let Some(proto_event) = event_mapper.map_event(&event)

@@ -2,10 +2,6 @@ import { createClient } from "@connectrpc/connect";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import type {
-  AgentArtifactUploaded,
-  ArtifactInfo,
-} from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
@@ -56,7 +52,6 @@ export type AgentState =
       conversationId?: string;
       steps: AgentStep[];
       partialAnswer: string;
-      artifacts: ArtifactInfo[];
       contextUsage?: ContextUsage;
     }
   | {
@@ -68,18 +63,9 @@ export type AgentState =
       supportingData: string;
       tokenUsage: TokenUsage;
       durationMs: number;
-      artifacts: ArtifactInfo[];
       contextUsage?: ContextUsage;
     }
   | { status: "error"; message: string; retryable: boolean };
-
-const toArtifactInfo = (a: AgentArtifactUploaded): ArtifactInfo =>
-  ({
-    id: a.artifactId,
-    displayName: a.displayName,
-    contentType: a.contentType,
-    sizeBytes: a.sizeBytes,
-  }) as ArtifactInfo;
 
 type StreamMeta =
   | { status: "idle" }
@@ -89,7 +75,6 @@ type StreamMeta =
       question: string;
       conversationId?: string;
       partialAnswer: string;
-      artifacts: ArtifactInfo[];
       contextUsage?: ContextUsage;
     }
   | {
@@ -100,7 +85,6 @@ type StreamMeta =
       supportingData: string;
       tokenUsage: TokenUsage;
       durationMs: number;
-      artifacts: ArtifactInfo[];
       contextUsage?: ContextUsage;
     }
   | { status: "error"; message: string; retryable: boolean };
@@ -182,7 +166,6 @@ export const useAskQuestion = (): {
       initialConversationId?: string,
     ) => {
       let partialAnswer = "";
-      const artifacts: ArtifactInfo[] = [];
       let streamConversationId: string | undefined = initialConversationId;
 
       for await (const response of stream) {
@@ -223,17 +206,7 @@ export const useAskQuestion = (): {
               question,
               conversationId: streamConversationId,
               partialAnswer,
-              artifacts: [...artifacts],
             });
-            break;
-          }
-
-          case "artifactUploaded": {
-            const v = event.value as AgentArtifactUploaded;
-            artifacts.push(toArtifactInfo(v));
-            setMeta((prev) =>
-              prev.status === "streaming" ? { ...prev, artifacts: [...artifacts] } : prev,
-            );
             break;
           }
 
@@ -246,7 +219,6 @@ export const useAskQuestion = (): {
               completionTokens: number;
               estimatedCostUsd: number;
               durationMs: number;
-              artifacts: ArtifactInfo[];
             };
             setMeta({
               status: "completed",
@@ -260,7 +232,6 @@ export const useAskQuestion = (): {
                 estimatedCostUsd: v.estimatedCostUsd,
               },
               durationMs: v.durationMs,
-              artifacts: [...artifacts, ...v.artifacts],
             });
             queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
             if (v.conversationId) {
@@ -305,7 +276,6 @@ export const useAskQuestion = (): {
                     question,
                     conversationId: streamConversationId,
                     partialAnswer,
-                    artifacts: [...artifacts],
                   }
                 : prev,
             );
@@ -381,7 +351,6 @@ export const useAskQuestion = (): {
         question: q,
         conversationId,
         partialAnswer: "",
-        artifacts: [],
       });
 
       try {

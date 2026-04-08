@@ -9,7 +9,6 @@ import {
   Loader2,
   Search,
   Terminal,
-  Upload,
   X,
 } from "lucide-react";
 import Markdown from "react-markdown";
@@ -24,7 +23,6 @@ const toolIcon = (toolName: string): LucideIcon => {
     return FileText;
   if (toolName === "glob") return FolderSearch;
   if (toolName === "grep") return Search;
-  if (toolName === "upload_artifact") return Upload;
   return Terminal;
 };
 

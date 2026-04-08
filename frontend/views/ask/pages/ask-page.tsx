@@ -1,4 +1,4 @@
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, PanelRight, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -11,22 +11,19 @@ import { useGetConversation } from "@/lib/hooks/use-conversations";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
 import { QueryInput } from "@/views/ask/components/query-input";
 import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
+import { WorkspaceSidebar } from "@/views/ask/components/workspace-sidebar";
 
 const AskPage = (): React.ReactElement => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const { state, ask, cancel, reset, resume } = useAskQuestion();
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
   const messages: ConversationMessage[] = useMemo(
     () => conversationData?.messages ?? [],
-    [conversationData],
-  );
-
-  const conversationArtifacts = useMemo(
-    () => conversationData?.artifacts ?? [],
     [conversationData],
   );
 
@@ -113,58 +110,76 @@ const AskPage = (): React.ReactElement => {
 
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
-  const headerActions = conversationId ? (
-    <Button
-      variant="outline"
-      size="sm"
-      className="gap-1.5"
-      onClick={() => {
-        reset();
-        navigate("/ask");
-      }}
-    >
-      <Plus className="size-4" />
-      New
-    </Button>
-  ) : null;
+  const headerActions = (
+    <div className="flex items-center gap-1.5">
+      {conversationId && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            reset();
+            navigate("/ask");
+          }}
+        >
+          <Plus className="size-4" />
+          New
+        </Button>
+      )}
+      <Button
+        variant={sidebarOpen ? "default" : "outline"}
+        size="icon"
+        className="size-8"
+        onClick={() => setSidebarOpen((v) => !v)}
+        title="Toggle workspace"
+      >
+        <PanelRight className="size-4" />
+      </Button>
+    </div>
+  );
 
   return (
     <>
       <PageHeader title="Ask" actions={headerActions} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {isLoading && conversationId ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto px-6 pt-6">
-              {showSuggestions ? (
-                <SuggestedQuestions onSelect={handleAsk} />
-              ) : (
-                <div className="mx-auto max-w-3xl">
-                  <ConversationThread
-                    messages={messages}
-                    state={state}
-                    conversationArtifacts={conversationArtifacts}
-                    onRetry={handleAsk}
-                  />
-                </div>
-              )}
+      <div className="flex min-w-0 flex-1 overflow-hidden">
+        {/* Main conversation column */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {isLoading && conversationId ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
-            <div className="mx-auto w-full max-w-3xl px-6 pb-6 pt-3">
-              <QueryInput
-                onSubmit={handleAsk}
-                onCancel={cancel}
-                isStreaming={isActive}
-                disabled={isLoading}
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                contextUsage={contextUsage}
-              />
-            </div>
-          </>
-        )}
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto px-6 pt-6">
+                {showSuggestions ? (
+                  <SuggestedQuestions onSelect={handleAsk} />
+                ) : (
+                  <div className="mx-auto max-w-3xl">
+                    <ConversationThread messages={messages} state={state} onRetry={handleAsk} />
+                  </div>
+                )}
+              </div>
+              <div className="mx-auto w-full max-w-3xl px-6 pb-6 pt-3">
+                <QueryInput
+                  onSubmit={handleAsk}
+                  onCancel={cancel}
+                  isStreaming={isActive}
+                  disabled={isLoading}
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  contextUsage={contextUsage}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Workspace file sidebar */}
+        <WorkspaceSidebar
+          open={sidebarOpen}
+          conversationId={conversationId}
+          onClose={() => setSidebarOpen(false)}
+        />
       </div>
     </>
   );

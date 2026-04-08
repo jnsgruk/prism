@@ -61,7 +61,6 @@ export {
 export {
   useListConversations,
   useGetConversation,
-  useGetArtifactDownloadUrl,
   useDeleteConversation,
   useRenameConversation,
   useSaveInsightFromConversation,

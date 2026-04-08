@@ -1,4 +1,3 @@
-mod artifact;
 mod event_loop;
 mod event_mapping;
 mod resume;
@@ -68,7 +67,6 @@ pub async fn ask_question(
     let repos = svc.repos.clone();
     let question = req.question.clone();
     let model_for_usage = model_name.clone();
-
     let (tx, rx) = tokio::sync::mpsc::channel(64);
 
     // Send conversation_created as the first event.
@@ -400,7 +398,7 @@ async fn finalize_query(
         "tool_call_count": tool_calls,
         "steps": trace_steps,
     });
-    let msg = repos
+    let _msg = repos
         .reasoning
         .create_message(&ps_core::repo::reasoning::CreateMessageParams {
             conversation_id,
@@ -412,11 +410,6 @@ async fn finalize_query(
             completion_tokens: output_tok,
         })
         .await?;
-
-    let _ = repos
-        .reasoning
-        .link_artifacts_to_message(conversation_id, msg.id)
-        .await;
 
     repos
         .reasoning

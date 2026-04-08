@@ -53,7 +53,7 @@ service ReasoningService {
 
   // AskQuestion sends a natural-language question to the agentic query interface.
   // Returns a server stream of events: container status, tool calls, partial answer,
-  // artifact uploads, and final answer with reasoning trace.
+  // and final answer with reasoning trace.
   rpc AskQuestion(AskQuestionRequest) returns (stream AskQuestionResponse);
   // ResumeStream reconnects to an in-flight agentic query, replaying all
   // events from last_event_id (0 = start). Returns the same event stream
@@ -61,18 +61,26 @@ service ReasoningService {
   rpc ResumeStream(ResumeStreamRequest) returns (stream ResumeStreamResponse);
   // ListConversations returns the user's conversation history, newest first.
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
-  // GetConversation returns a single conversation with its messages and artifacts.
+  // GetConversation returns a single conversation with its messages.
   rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
   // SaveInsightFromConversation saves an agent answer as a persistent insight
   // snapshot, linking it back to the originating conversation.
   rpc SaveInsightFromConversation(SaveInsightFromConversationRequest) returns (SaveInsightFromConversationResponse);
-  // DeleteConversation deletes a conversation and its messages, artifacts, and
-  // events. If the conversation has an active container, it is also reaped.
+  // DeleteConversation deletes a conversation and its messages and events.
+  // If the conversation has an active container, it is also reaped.
   rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
   // RenameConversation sets a user-provided title on a conversation.
   rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
-  // GetArtifactDownloadUrl returns a pre-signed S3 URL for downloading an artifact.
-  rpc GetArtifactDownloadUrl(GetArtifactDownloadUrlRequest) returns (GetArtifactDownloadUrlResponse);
+  // ListWorkspaceFiles returns the file listing of the agent container's /workspace
+  // directory. When the container is running, reads the live filesystem; otherwise
+  // falls back to the last S3 snapshot taken before the container was reaped.
+  rpc ListWorkspaceFiles(ListWorkspaceFilesRequest) returns (ListWorkspaceFilesResponse);
+  // GetWorkspaceFile returns the content of a single file from the workspace.
+  // Returned as a data URL (base64-encoded).
+  rpc GetWorkspaceFile(GetWorkspaceFileRequest) returns (GetWorkspaceFileResponse);
+  // SyncWorkspaceFiles triggers an on-demand sync of the container's /workspace
+  // to S3. Returns the number of files synced. Only works when the container is running.
+  rpc SyncWorkspaceFiles(SyncWorkspaceFilesRequest) returns (SyncWorkspaceFilesResponse);
 }
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
@@ -376,7 +384,6 @@ message ResumeStreamResponse {
     AgentError error = 5;
     AgentThinking thinking = 6;
     AgentContainerStatus container_status = 7;
-    AgentArtifactUploaded artifact_uploaded = 8;
     AgentTokenUsage token_usage = 9;
   }
 }
@@ -391,7 +398,6 @@ message AskQuestionResponse {
     AgentError error = 5;
     AgentThinking thinking = 6;
     AgentContainerStatus container_status = 7;
-    AgentArtifactUploaded artifact_uploaded = 8;
     // Sent as the first event when a new conversation is created or resumed.
     AgentConversationCreated conversation_created = 9;
     AgentTokenUsage token_usage = 10;
@@ -461,8 +467,7 @@ message AgentFinalAnswer {
   reserved 6; // was estimated_cost_usd
   int32 tool_call_count = 7;
   int32 duration_ms = 8;
-  // Artifacts generated during this turn.
-  repeated ArtifactInfo artifacts = 9;
+  reserved 9;
 }
 
 // AgentError indicates an error during processing.
@@ -487,15 +492,6 @@ message AgentContainerStatus {
   string message = 2;
 }
 
-// AgentArtifactUploaded indicates an artifact was uploaded to S3 during the turn.
-message AgentArtifactUploaded {
-  string artifact_id = 1;
-  string display_name = 2;
-  string content_type = 3;
-  int64 size_bytes = 4;
-  string download_url = 5;
-}
-
 // AgentTokenUsage reports cumulative token consumption for a conversation turn,
 // enabling the client to display context window utilization.
 message AgentTokenUsage {
@@ -505,14 +501,6 @@ message AgentTokenUsage {
   int64 output_tokens = 2;
   // Model's maximum context window size in tokens.
   int64 context_window = 3;
-}
-
-// ArtifactInfo describes an artifact attached to a conversation response.
-message ArtifactInfo {
-  string id = 1;
-  string display_name = 2;
-  string content_type = 3;
-  int64 size_bytes = 4;
 }
 
 // ---------------------------------------------------------------------------
@@ -539,7 +527,7 @@ message ConversationSummary {
   int32 total_tool_calls = 6;
   reserved 7; // was total_estimated_cost_usd
   int32 message_count = 8;
-  int32 artifact_count = 9;
+  reserved 9; // was artifact_count
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp last_activity_at = 11;
   // Query lifecycle status: 'idle', 'pending', 'running', 'completed', 'failed', 'cancelled'.
@@ -556,7 +544,7 @@ message GetConversationRequest {
 message GetConversationResponse {
   ConversationSummary conversation = 1;
   repeated ConversationMessage messages = 2;
-  repeated ConversationArtifact artifacts = 3;
+  reserved 3;
 }
 
 // ConversationMessage is a single turn in a conversation.
@@ -573,17 +561,6 @@ message ConversationMessage {
   int32 prompt_tokens = 6;
   int32 completion_tokens = 7;
   google.protobuf.Timestamp created_at = 8;
-}
-
-// ConversationArtifact is a file generated during a conversation.
-message ConversationArtifact {
-  string id = 1;
-  optional string message_id = 2;
-  string artifact_key = 3;
-  string display_name = 4;
-  optional string content_type = 5;
-  int64 size_bytes = 6;
-  google.protobuf.Timestamp created_at = 7;
 }
 
 message SaveInsightFromConversationRequest {
@@ -614,13 +591,55 @@ message RenameConversationRequest {
 
 message RenameConversationResponse {}
 
-message GetArtifactDownloadUrlRequest {
-  string artifact_id = 1;
+// ---------------------------------------------------------------------------
+// Workspace file browsing
+// ---------------------------------------------------------------------------
+
+// WorkspaceFileInfo describes a single file or directory in the agent workspace.
+message WorkspaceFileInfo {
+  // Path relative to the workspace root (e.g. "src/main.py").
+  string path = 1;
+  // File size in bytes (0 for directories).
+  int64 size_bytes = 2;
+  // Whether this entry is a directory.
+  bool is_directory = 3;
+  // Last modified time as Unix epoch seconds (when available).
+  optional int64 modified_unix = 4;
+  // Inferred MIME type (when available).
+  optional string content_type = 5;
 }
 
-message GetArtifactDownloadUrlResponse {
-  // Pre-signed S3 download URL.
+message ListWorkspaceFilesRequest {
+  string conversation_id = 1;
+}
+
+message ListWorkspaceFilesResponse {
+  repeated WorkspaceFileInfo files = 1;
+  // Data source: "live" (from running container), "snapshot" (from S3),
+  // or "unavailable" (no container and no snapshot).
+  string source = 2;
+}
+
+message GetWorkspaceFileRequest {
+  string conversation_id = 1;
+  // File path relative to the workspace root (e.g. "src/main.py").
+  string path = 2;
+}
+
+message GetWorkspaceFileResponse {
+  // File content as a data URL (base64-encoded for binary, text for text files).
   string download_url = 1;
-  // Seconds until the URL expires.
-  int32 expires_in_seconds = 2;
+  // MIME type of the file.
+  string content_type = 2;
+  // File size in bytes.
+  int64 size_bytes = 3;
+}
+
+message SyncWorkspaceFilesRequest {
+  string conversation_id = 1;
+}
+
+message SyncWorkspaceFilesResponse {
+  // Number of files synced to S3.
+  int32 synced_count = 1;
 }

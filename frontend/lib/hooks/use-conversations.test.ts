@@ -22,7 +22,6 @@ const mockConversations = [
     totalToolCalls: 5,
 
     messageCount: 4,
-    artifactCount: 1,
   }),
   create(ConversationSummarySchema, {
     id: "conv-2",
@@ -33,7 +32,6 @@ const mockConversations = [
     totalToolCalls: 3,
 
     messageCount: 2,
-    artifactCount: 0,
   }),
 ];
 
@@ -66,7 +64,6 @@ vi.mock("@ps/api/transport", () => ({
         create(GetConversationResponseSchema, {
           conversation: mockConversations[0],
           messages: mockMessages,
-          artifacts: [],
         }),
       // Stubs for remaining service methods
       getAiSettings: () => ({}),
@@ -86,7 +83,6 @@ vi.mock("@ps/api/transport", () => ({
       getEmbeddingStatus: () => ({}),
       askQuestion: async function* (): AsyncGenerator<Record<string, never>> {},
       saveInsightFromConversation: () => ({}),
-      getArtifactDownloadUrl: () => ({}),
     });
   }),
 }));

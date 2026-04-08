@@ -1,4 +1,4 @@
-import { Check, MessageSquare, Paperclip, Pencil, Search, Trash2, X } from "lucide-react";
+import { Check, MessageSquare, Pencil, Search, Trash2, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -110,12 +110,6 @@ const ConversationRow = ({
                 <MessageSquare className="size-3" />
                 {conv.messageCount} messages
               </span>
-              {conv.artifactCount > 0 && (
-                <span className="flex items-center gap-1">
-                  <Paperclip className="size-3" />
-                  {conv.artifactCount} artifacts
-                </span>
-              )}
               <span>{formatRelative(conv.lastActivityAt)}</span>
             </div>
           </Link>

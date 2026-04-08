@@ -1,4 +1,4 @@
-import { Check, ChevronDown, MessageSquare, Paperclip, Pencil, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, MessageSquare, Pencil, Trash2, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -127,12 +127,6 @@ const ConversationItemContent = ({
             <MessageSquare className="size-3" />
             {conv.messageCount}
           </span>
-          {conv.artifactCount > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Paperclip className="size-3" />
-              {conv.artifactCount}
-            </span>
-          )}
           <span>{formatRelative(conv.lastActivityAt)}</span>
         </div>
       </div>

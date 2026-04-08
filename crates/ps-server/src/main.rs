@@ -98,11 +98,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         };
 
+    // Workspace filesystem path — set when the shared workspaces PVC is mounted.
+    let workspaces_path = std::env::var("WORKSPACES_PATH").ok().map(|p| {
+        info!(path = %p, "workspace filesystem access configured");
+        std::path::PathBuf::from(p)
+    });
+
     let reasoning_service = ReasoningServiceImpl::new(
         repos.clone(),
         secret_key,
         router,
         artifact_store,
+        workspaces_path,
         restate_url,
     );
 

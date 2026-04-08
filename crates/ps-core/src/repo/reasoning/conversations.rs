@@ -49,7 +49,6 @@ pub struct ConversationSummary {
     pub total_completion_tokens: i32,
     pub query_status: String,
     pub message_count: i64,
-    pub artifact_count: i64,
     pub created_at: OffsetDateTime,
     pub last_activity_at: OffsetDateTime,
 }
@@ -64,18 +63,6 @@ pub struct ConversationMessage {
     pub supporting_data: Option<serde_json::Value>,
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
-    pub created_at: OffsetDateTime,
-}
-
-/// An artifact generated during a conversation (metadata — file lives in S3).
-pub struct ConversationArtifact {
-    pub id: Uuid,
-    pub conversation_id: Uuid,
-    pub message_id: Option<Uuid>,
-    pub artifact_key: String,
-    pub display_name: String,
-    pub content_type: Option<String>,
-    pub size_bytes: i64,
     pub created_at: OffsetDateTime,
 }
 
@@ -95,16 +82,6 @@ pub struct CreateMessageParams<'a> {
     pub supporting_data: Option<&'a serde_json::Value>,
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
-}
-
-/// Parameters for recording a conversation artifact.
-pub struct CreateArtifactParams<'a> {
-    pub conversation_id: Uuid,
-    pub message_id: Option<Uuid>,
-    pub artifact_key: &'a str,
-    pub display_name: &'a str,
-    pub content_type: Option<&'a str>,
-    pub size_bytes: i64,
 }
 
 impl ReasoningRepo {
@@ -183,9 +160,7 @@ impl ReasoningRepo {
                            c.total_prompt_tokens, c.total_completion_tokens,
                            c.query_status, c.created_at, c.last_activity_at,
                            (SELECT COUNT(*) FROM reasoning.conversation_messages m
-                            WHERE m.conversation_id = c.id) AS "message_count!",
-                           (SELECT COUNT(*) FROM reasoning.conversation_artifacts a
-                            WHERE a.conversation_id = c.id) AS "artifact_count!"
+                            WHERE m.conversation_id = c.id) AS "message_count!"
                     FROM reasoning.conversations c
                     WHERE c.user_id = $1
                     ORDER BY c.last_activity_at DESC
@@ -553,100 +528,6 @@ impl ReasoningRepo {
     }
 
     // -----------------------------------------------------------------------
-    // Conversation artifacts
-    // -----------------------------------------------------------------------
-
-    /// Record an artifact generated during a conversation.
-    pub async fn create_artifact(
-        &self,
-        params: &CreateArtifactParams<'_>,
-    ) -> Result<ConversationArtifact, Error> {
-        let row = sqlx::query_as!(
-            ConversationArtifact,
-            r#"
-            INSERT INTO reasoning.conversation_artifacts
-                (conversation_id, message_id, artifact_key, display_name,
-                 content_type, size_bytes)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (conversation_id, artifact_key) DO UPDATE
-                SET display_name = EXCLUDED.display_name,
-                    size_bytes = EXCLUDED.size_bytes
-            RETURNING id, conversation_id, message_id, artifact_key, display_name,
-                      content_type, size_bytes, created_at
-            "#,
-            params.conversation_id,
-            params.message_id,
-            params.artifact_key,
-            params.display_name,
-            params.content_type,
-            params.size_bytes,
-        )
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(row)
-    }
-
-    /// List artifacts for a conversation.
-    pub async fn list_artifacts(
-        &self,
-        conversation_id: Uuid,
-    ) -> Result<Vec<ConversationArtifact>, Error> {
-        let rows = sqlx::query_as!(
-            ConversationArtifact,
-            r#"
-            SELECT id, conversation_id, message_id, artifact_key, display_name,
-                   content_type, size_bytes, created_at
-            FROM reasoning.conversation_artifacts
-            WHERE conversation_id = $1
-            ORDER BY created_at ASC
-            "#,
-            conversation_id,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(rows)
-    }
-
-    /// Link all unlinked artifacts in a conversation to the given message.
-    /// Called after storing the assistant message so that artifacts created
-    /// during streaming can be associated with the correct turn.
-    pub async fn link_artifacts_to_message(
-        &self,
-        conversation_id: Uuid,
-        message_id: Uuid,
-    ) -> Result<u64, Error> {
-        let result: sqlx::postgres::PgQueryResult = sqlx::query!(
-            r#"
-            UPDATE reasoning.conversation_artifacts
-            SET message_id = $2
-            WHERE conversation_id = $1 AND message_id IS NULL
-            "#,
-            conversation_id,
-            message_id,
-        )
-        .execute(&self.pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
-    /// Get a single artifact by ID (for download URL generation).
-    pub async fn get_artifact(&self, id: Uuid) -> Result<Option<ConversationArtifact>, Error> {
-        let row = sqlx::query_as!(
-            ConversationArtifact,
-            r#"
-            SELECT id, conversation_id, message_id, artifact_key, display_name,
-                   content_type, size_bytes, created_at
-            FROM reasoning.conversation_artifacts
-            WHERE id = $1
-            "#,
-            id,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-        Ok(row)
-    }
-
-    // -----------------------------------------------------------------------
     // Backup / export
     // -----------------------------------------------------------------------
 
@@ -725,37 +606,6 @@ impl ReasoningRepo {
                     "prompt_tokens": m.prompt_tokens,
                     "completion_tokens": m.completion_tokens,
                     "created_at": m.created_at.to_string(),
-                })
-            })
-            .collect())
-    }
-
-    /// Export all conversation artifacts as JSON values for backup.
-    pub async fn export_conversation_artifacts(&self) -> Result<Vec<serde_json::Value>, Error> {
-        let rows: Vec<ConversationArtifact> = sqlx::query_as!(
-            ConversationArtifact,
-            r#"
-            SELECT id, conversation_id, message_id, artifact_key,
-                   display_name, content_type, size_bytes, created_at
-            FROM reasoning.conversation_artifacts
-            ORDER BY created_at
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(rows
-            .iter()
-            .map(|a| {
-                serde_json::json!({
-                    "id": a.id,
-                    "conversation_id": a.conversation_id,
-                    "message_id": a.message_id,
-                    "artifact_key": a.artifact_key,
-                    "display_name": a.display_name,
-                    "content_type": a.content_type,
-                    "size_bytes": a.size_bytes,
-                    "created_at": a.created_at.to_string(),
                 })
             })
             .collect())

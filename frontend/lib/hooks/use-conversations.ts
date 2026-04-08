@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   ConversationSummary,
-  GetArtifactDownloadUrlResponse,
   GetConversationResponse,
+  GetWorkspaceFileResponse,
+  ListWorkspaceFilesResponse,
   SaveInsightFromConversationResponse,
 } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
@@ -17,6 +18,7 @@ export const conversationKeys = {
   all: ["conversations"] as const,
   list: () => [...conversationKeys.all, "list"] as const,
   detail: (id: string) => [...conversationKeys.all, "detail", id] as const,
+  workspaceFiles: (id: string) => [...conversationKeys.all, "workspaceFiles", id] as const,
 };
 
 export const useListConversations = (
@@ -39,15 +41,6 @@ export const useGetConversation = (
     queryKey: conversationKeys.detail(conversationId),
     queryFn: () => client.getConversation({ conversationId }),
     enabled: !!conversationId,
-  });
-
-export const useGetArtifactDownloadUrl = (): UseMutationResult<
-  GetArtifactDownloadUrlResponse,
-  Error,
-  string
-> =>
-  useMutation({
-    mutationFn: (artifactId: string) => client.getArtifactDownloadUrl({ artifactId }),
   });
 
 export const useDeleteConversation = (): UseMutationResult<object, Error, string> => {
@@ -96,3 +89,22 @@ export const useSaveInsightFromConversation = (): UseMutationResult<
     },
   });
 };
+
+export const useListWorkspaceFiles = (
+  conversationId: string,
+): UseQueryResult<ListWorkspaceFilesResponse, Error> =>
+  useQuery({
+    queryKey: conversationKeys.workspaceFiles(conversationId),
+    queryFn: () => client.listWorkspaceFiles({ conversationId }),
+    enabled: !!conversationId,
+    refetchInterval: 10_000,
+  });
+
+export const useGetWorkspaceFile = (): UseMutationResult<
+  GetWorkspaceFileResponse,
+  Error,
+  { conversationId: string; path: string }
+> =>
+  useMutation({
+    mutationFn: (req: { conversationId: string; path: string }) => client.getWorkspaceFile(req),
+  });

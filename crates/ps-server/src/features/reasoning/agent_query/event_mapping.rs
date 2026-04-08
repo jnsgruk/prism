@@ -89,22 +89,6 @@ fn map_thinking(
     })
 }
 
-fn map_artifact_uploaded(payload: &serde_json::Value) -> ask_question_response::Event {
-    ask_question_response::Event::ArtifactUploaded(
-        ps_proto::canonical::prism::v1::AgentArtifactUploaded {
-            artifact_id: json_str(payload, "artifact_id").to_string(),
-            display_name: json_str(payload, "display_name").to_string(),
-            content_type: payload
-                .get("content_type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("application/octet-stream")
-                .to_string(),
-            size_bytes: json_i64(payload, "size_bytes"),
-            download_url: String::new(),
-        },
-    )
-}
-
 fn map_token_usage(payload: &serde_json::Value) -> ask_question_response::Event {
     ask_question_response::Event::TokenUsage(AgentTokenUsage {
         input_tokens: json_i64(payload, "input_tokens"),
@@ -122,7 +106,6 @@ fn map_final_answer(payload: &serde_json::Value) -> ask_question_response::Event
         completion_tokens: json_i32(payload, "completion_tokens"),
         tool_call_count: json_i32(payload, "tool_call_count"),
         duration_ms: 0,
-        artifacts: vec![],
     })
 }
 
@@ -154,7 +137,6 @@ pub fn map_db_event_to_proto(
         "tool_call_completed" => map_tool_call_completed(payload, step_id, step_seq),
         "partial_answer" => map_partial_answer(payload),
         "thinking" => map_thinking(payload, step_id, step_seq),
-        "artifact_uploaded" => map_artifact_uploaded(payload),
         "token_usage" => map_token_usage(payload),
         "final_answer" => map_final_answer(payload),
         "error" => map_error(payload),
@@ -191,9 +173,6 @@ pub fn map_db_event_to_resume_proto(
         ask_question_response::Event::Thinking(v) => resume_stream_response::Event::Thinking(v),
         ask_question_response::Event::ContainerStatus(v) => {
             resume_stream_response::Event::ContainerStatus(v)
-        }
-        ask_question_response::Event::ArtifactUploaded(v) => {
-            resume_stream_response::Event::ArtifactUploaded(v)
         }
         ask_question_response::Event::TokenUsage(v) => resume_stream_response::Event::TokenUsage(v),
         ask_question_response::Event::ConversationCreated(_) => return None,
