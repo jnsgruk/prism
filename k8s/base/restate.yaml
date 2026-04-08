@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: restate
-          image: docker.io/restatedev/restate:1.5
+          image: docker.io/restatedev/restate:1.6
           ports:
             - containerPort: 8080
             - containerPort: 9070
