@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE reasoning.insight_snapshots SET conversation_id = NULL WHERE conversation_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4822873028a342288b475cb2b12868dbf3f0267dc0fec92905bd9dbfad2c9b8c"
+}
