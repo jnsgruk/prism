@@ -1,4 +1,4 @@
-import { Loader2, PanelRight, Plus } from "lucide-react";
+import { Loader2, PanelRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -111,31 +111,15 @@ const AskPage = (): React.ReactElement => {
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
   const headerActions = (
-    <div className="flex items-center gap-1.5">
-      {conversationId && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => {
-            reset();
-            navigate("/ask");
-          }}
-        >
-          <Plus className="size-4" />
-          New
-        </Button>
-      )}
-      <Button
-        variant={sidebarOpen ? "default" : "outline"}
-        size="icon"
-        className="size-8"
-        onClick={() => setSidebarOpen((v) => !v)}
-        title="Toggle workspace"
-      >
-        <PanelRight className="size-4" />
-      </Button>
-    </div>
+    <Button
+      variant={sidebarOpen ? "default" : "outline"}
+      size="icon"
+      className="size-8"
+      onClick={() => setSidebarOpen((v) => !v)}
+      title="Toggle workspace"
+    >
+      <PanelRight className="size-4" />
+    </Button>
   );
 
   return (

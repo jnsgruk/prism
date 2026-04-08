@@ -99,7 +99,7 @@ export const WorkspacePreviewDialog = ({
             src={state.url}
             title="PDF preview"
             sandbox="allow-same-origin"
-            className="h-[75vh] w-full rounded border-0"
+            className="h-[75vh] w-full rounded-md border"
           />
         )}
 
@@ -108,7 +108,7 @@ export const WorkspacePreviewDialog = ({
             code={state.textContent}
             fileName={state.artifact.displayName}
             contentType={state.contentType}
-            className="max-h-[75vh]"
+            className="max-h-[75vh] rounded-md border"
           />
         )}
 
