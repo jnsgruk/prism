@@ -356,28 +356,15 @@ impl ReasoningRepo {
         .await?
         .flatten();
 
-        // Cascade: events → artifacts → messages → conversation.
+        // Detach insight snapshots (nullable FK without ON DELETE CASCADE).
         sqlx::query!(
-            "DELETE FROM reasoning.conversation_events WHERE conversation_id = $1",
+            "UPDATE reasoning.insight_snapshots SET conversation_id = NULL WHERE conversation_id = $1",
             conversation_id,
         )
         .execute(&self.pool)
         .await?;
 
-        sqlx::query!(
-            "DELETE FROM reasoning.conversation_artifacts WHERE conversation_id = $1",
-            conversation_id,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        sqlx::query!(
-            "DELETE FROM reasoning.conversation_messages WHERE conversation_id = $1",
-            conversation_id,
-        )
-        .execute(&self.pool)
-        .await?;
-
+        // Delete conversation — child tables (events, messages) cascade automatically.
         sqlx::query!(
             "DELETE FROM reasoning.conversations WHERE id = $1 AND user_id = $2",
             conversation_id,
