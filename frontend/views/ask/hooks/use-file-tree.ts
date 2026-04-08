@@ -236,7 +236,16 @@ const buildWorkspaceTree = (files: WorkspaceFileDisplay[]): FileNode[] => {
   }
 
   const children = [...root.children.values()].map(toFileNode);
-  return sortNodes(children);
+  // Wrap everything under a top-level "workspace/" folder.
+  if (children.length === 0) return [];
+  return [
+    {
+      name: "workspace",
+      path: "",
+      isDirectory: true,
+      children: sortNodes(children),
+    },
+  ];
 };
 
 /** Build a hierarchical file tree from workspace file listing. */

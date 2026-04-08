@@ -215,9 +215,9 @@ export const WorkspaceTree = ({
 
   const allDirPaths = useMemo(() => collectDirPaths(roots), [roots]);
 
-  // Start with all directories collapsed; the user expands what they need.
+  // Start with only the top-level workspace/ folder expanded.
   // State persists while the component is mounted (sidebar open/close is CSS-only).
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set([""]));
 
   const toggleExpanded = useCallback((path: string) => {
     setExpandedPaths((prev) => {
