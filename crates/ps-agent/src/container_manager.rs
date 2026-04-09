@@ -46,6 +46,17 @@ pub struct ReapedPod {
     pub session_id: String,
 }
 
+/// Metadata for an active agent pod, used by the orphan reaper.
+#[derive(Debug, Clone)]
+pub struct ActivePod {
+    /// The K8s pod name.
+    pub pod_name: String,
+    /// The conversation/session ID from the pod label.
+    pub session_id: String,
+    /// The token session ID stored as an annotation.
+    pub token_session_id: String,
+}
+
 /// Status of an agent Pod.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PodStatus {
@@ -331,6 +342,60 @@ impl ContainerManager {
         }
 
         reaped_pods
+    }
+
+    /// List all active agent pods with their session metadata.
+    ///
+    /// Used by the orphan reaper to find pods whose conversations have been
+    /// deleted from the database.
+    pub async fn list_active_pods(&self) -> Vec<ActivePod> {
+        let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
+        let lp = ListParams::default().labels(&format!("app={LABEL_APP_VALUE}"));
+
+        let list = match pods.list(&lp).await {
+            Ok(l) => l,
+            Err(e) => {
+                error!(error = %e, "Failed to list agent pods");
+                return vec![];
+            }
+        };
+
+        list.items
+            .iter()
+            .filter_map(|pod| {
+                let name = pod.metadata.name.as_ref()?;
+                let labels = pod.metadata.labels.as_ref()?;
+                let session_id = labels.get(LABEL_SESSION)?;
+                let token_session_id = pod
+                    .metadata
+                    .annotations
+                    .as_ref()
+                    .and_then(|a| a.get(ANNOTATION_TOKEN_SESSION_ID))
+                    .cloned()
+                    .unwrap_or_default();
+                Some(ActivePod {
+                    pod_name: name.clone(),
+                    session_id: session_id.clone(),
+                    token_session_id,
+                })
+            })
+            .collect()
+    }
+
+    /// Delete agent pods by their K8s names. Returns the count of pods deleted.
+    pub async fn delete_pods_by_name(&self, names: &[String]) -> usize {
+        let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
+        let mut deleted = 0;
+        for name in names {
+            match pods.delete(name, &DeleteParams::default()).await {
+                Ok(_) => {
+                    info!(pod_name = %name, "Deleted orphaned agent pod");
+                    deleted += 1;
+                }
+                Err(e) => warn!(pod_name = %name, error = %e, "Failed to delete orphaned pod"),
+            }
+        }
+        deleted
     }
 
     /// Count currently active (Pending + Running) agent Pods.

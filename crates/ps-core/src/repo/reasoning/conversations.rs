@@ -405,6 +405,24 @@ impl ReasoningRepo {
         Ok(result.rows_affected())
     }
 
+    /// Return conversation IDs from the input that still exist in the database.
+    ///
+    /// Used by the orphan reaper to identify pods whose conversations have been
+    /// deleted and should be cleaned up.
+    pub async fn find_existing_conversation_ids(&self, ids: &[Uuid]) -> Result<Vec<Uuid>, Error> {
+        let rows = sqlx::query_scalar!(
+            r#"
+            SELECT id
+            FROM reasoning.conversations
+            WHERE id = ANY($1)
+            "#,
+            ids,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
     /// Rename a conversation (set its title).
     pub async fn rename_conversation(
         &self,

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use restate_sdk::prelude::*;
 use tracing::info;
 
@@ -23,6 +25,7 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
         info!("starting agent pod reaper");
 
         if let Some(ref cm) = self.state.container_manager {
+            // ── Phase 1: reap idle/expired pods ────────────────────────────
             let reaped_pods = cm.reap_idle_pods().await;
 
             if !reaped_pods.is_empty() {
@@ -60,6 +63,70 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
                         tracing::warn!(error = %e, "failed to mark conversations as reaped");
                     }
                 });
+            }
+
+            // ── Phase 2: reap orphaned pods (conversation deleted) ─────────
+            let already_reaped: HashSet<String> =
+                reaped_pods.iter().map(|p| p.session_id.clone()).collect();
+            let active_pods: Vec<_> = cm
+                .list_active_pods()
+                .await
+                .into_iter()
+                .filter(|p| !already_reaped.contains(&p.session_id))
+                .collect();
+
+            if !active_pods.is_empty() {
+                let candidate_ids: Vec<uuid::Uuid> = active_pods
+                    .iter()
+                    .filter_map(|p| p.session_id.parse::<uuid::Uuid>().ok())
+                    .collect();
+
+                let existing = repos
+                    .reasoning
+                    .find_existing_conversation_ids(&candidate_ids)
+                    .await
+                    .unwrap_or_default();
+                let existing_set: HashSet<uuid::Uuid> = existing.into_iter().collect();
+
+                let orphans: Vec<_> = active_pods
+                    .iter()
+                    .filter(|p| {
+                        p.session_id
+                            .parse::<uuid::Uuid>()
+                            .map(|id| !existing_set.contains(&id))
+                            .unwrap_or(false)
+                    })
+                    .collect();
+
+                if !orphans.is_empty() {
+                    info!(count = orphans.len(), "reaping orphaned agent pods");
+
+                    let orphan_names: Vec<String> =
+                        orphans.iter().map(|p| p.pod_name.clone()).collect();
+                    cm.delete_pods_by_name(&orphan_names).await;
+
+                    // Clean up auth sessions for orphaned pods.
+                    let orphan_token_sessions: Vec<String> =
+                        orphans.iter().map(|p| p.token_session_id.clone()).collect();
+                    journaled!(
+                        ctx,
+                        "cleanup_orphan_sessions",
+                        [repos, orphan_token_sessions],
+                        {
+                            for sid in &orphan_token_sessions {
+                                if let Ok(uuid) = sid.parse::<uuid::Uuid>()
+                                    && let Err(e) = repos.auth.delete_session(uuid).await
+                                {
+                                    tracing::warn!(
+                                        session_id = %sid,
+                                        error = %e,
+                                        "failed to delete orphaned agent token"
+                                    );
+                                }
+                            }
+                        }
+                    );
+                }
             }
         } else {
             info!("no container manager configured, skipping reap");
