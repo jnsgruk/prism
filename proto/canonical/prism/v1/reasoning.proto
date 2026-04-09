@@ -65,6 +65,9 @@ service ReasoningService {
   // DeleteConversation deletes a conversation and its messages and events.
   // If the conversation has an active container, it is also reaped.
   rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
+  // CancelQuery stops an in-flight agentic query, marking it as cancelled
+  // and cleaning up the agent pod. No-op if the query is already terminal.
+  rpc CancelQuery(CancelQueryRequest) returns (CancelQueryResponse);
   // RenameConversation sets a user-provided title on a conversation.
   rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
   // ListWorkspaceFiles returns the file listing of the agent container's /workspace
@@ -590,6 +593,12 @@ message RenameConversationRequest {
 }
 
 message RenameConversationResponse {}
+
+message CancelQueryRequest {
+  string conversation_id = 1;
+}
+
+message CancelQueryResponse {}
 
 // ---------------------------------------------------------------------------
 // Workspace file browsing

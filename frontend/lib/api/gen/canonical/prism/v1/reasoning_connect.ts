@@ -10,6 +10,8 @@
 import {
   AskQuestionRequest,
   AskQuestionResponse,
+  CancelQueryRequest,
+  CancelQueryResponse,
   DeleteConversationRequest,
   DeleteConversationResponse,
   DeleteEnrichmentsByTypeRequest,
@@ -298,6 +300,18 @@ export const ReasoningService = {
       name: "DeleteConversation",
       I: DeleteConversationRequest,
       O: DeleteConversationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CancelQuery stops an in-flight agentic query, marking it as cancelled
+     * and cleaning up the agent pod. No-op if the query is already terminal.
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.CancelQuery
+     */
+    cancelQuery: {
+      name: "CancelQuery",
+      I: CancelQueryRequest,
+      O: CancelQueryResponse,
       kind: MethodKind.Unary,
     },
     /**

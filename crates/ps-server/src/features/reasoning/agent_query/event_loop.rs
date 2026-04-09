@@ -19,13 +19,14 @@ pub struct EventLoopResult {
 /// the database (for `resume_stream`) and sending to the gRPC response channel.
 ///
 /// Returns when the session becomes idle, the stream closes, the timeout
-/// elapses, or the client disconnects.
+/// elapses, the client disconnects, or the `cancel_rx` signals cancellation.
 pub async fn run_event_loop(
     repos: &Repos,
     subscription: &mut ps_agent::opencode_sdk::sse::SseSubscription,
     conversation_id: Uuid,
     timeout: std::time::Duration,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
+    mut cancel_rx: tokio::sync::watch::Receiver<bool>,
 ) -> EventLoopResult {
     let deadline = tokio::time::Instant::now() + timeout;
     let mut answer_text = String::new();
@@ -42,12 +43,20 @@ pub async fn run_event_loop(
             break;
         }
 
-        let event = match tokio::time::timeout(remaining, subscription.recv()).await {
-            Ok(Some(event)) => event,
-            Ok(None) => break,
-            Err(_) => {
-                warn!("SSE stream timed out");
-                timed_out = true;
+        let event = tokio::select! {
+            result = tokio::time::timeout(remaining, subscription.recv()) => {
+                match result {
+                    Ok(Some(event)) => event,
+                    Ok(None) => break,
+                    Err(_) => {
+                        warn!("SSE stream timed out");
+                        timed_out = true;
+                        break;
+                    }
+                }
+            }
+            _ = cancel_rx.changed() => {
+                info!(conversation_id = %conversation_id, "query cancelled by user");
                 break;
             }
         };

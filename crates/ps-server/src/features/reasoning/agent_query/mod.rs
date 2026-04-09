@@ -67,18 +67,20 @@ pub async fn ask_question(
     let cid_str = conversation_id.to_string();
     let http_client = svc.http_client.clone();
     let repos = svc.repos.clone();
-    // If the user attached files, append a hint so the agent knows to read them.
+    // If the user attached files, append a system-style hint so the agent
+    // knows to read them. The hint is wrapped in XML-style tags to discourage
+    // the model from echoing it verbatim in its response.
     let question = if req.attached_files.is_empty() {
         req.question.clone()
     } else {
         let file_list = req
             .attached_files
             .iter()
-            .map(|f| format!("  - /workspace/{f}"))
+            .map(|f| format!("/workspace/{f}"))
             .collect::<Vec<_>>()
-            .join("\n");
+            .join(", ");
         format!(
-            "{}\n\n[The user attached the following files to their workspace:\n{file_list}\nYou can read them from the paths above.]",
+            "{}\n\n<system>The user uploaded files to the workspace. Read them from: {file_list}</system>",
             req.question
         )
     };
@@ -98,7 +100,18 @@ pub async fn ask_question(
         }))
         .await;
 
+    // Create a cancellation channel for this query.
+    let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+    let active_queries = svc.active_queries.clone();
+    {
+        let mut map = active_queries
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        map.insert(conversation_id, cancel_tx);
+    }
+
     // Spawn the streaming task.
+    let aq = active_queries.clone();
     tokio::spawn(async move {
         if let Err(e) = run_query_stream(
             &repos,
@@ -109,11 +122,15 @@ pub async fn ask_question(
             &question,
             &model_for_usage,
             &tx,
+            cancel_rx,
         )
         .await
         {
             handle_stream_failure(&repos, conversation_id, &cid_str, &*e, &tx).await;
         }
+        // Deregister from active queries.
+        let mut map = aq.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        map.remove(&conversation_id);
     });
 
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
@@ -269,6 +286,7 @@ async fn run_query_stream(
     question: &str,
     model_name: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
+    cancel_rx: tokio::sync::watch::Receiver<bool>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let conversation_id: Uuid = cid_str.parse()?;
     let stream_start = tokio::time::Instant::now();
@@ -337,9 +355,15 @@ async fn run_query_stream(
         .checked_sub(elapsed)
         .unwrap_or(std::time::Duration::from_secs(60));
 
-    let loop_result =
-        event_loop::run_event_loop(repos, &mut subscription, conversation_id, sse_timeout, tx)
-            .await;
+    let loop_result = event_loop::run_event_loop(
+        repos,
+        &mut subscription,
+        conversation_id,
+        sse_timeout,
+        tx,
+        cancel_rx,
+    )
+    .await;
 
     // Phase 3: Finalize.
     finalize_query(

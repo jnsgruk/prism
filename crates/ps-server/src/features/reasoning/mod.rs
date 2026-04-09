@@ -7,31 +7,40 @@ mod embeddings;
 mod enrichments;
 pub mod workspace;
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningService;
 use ps_proto::canonical::prism::v1::{
-    AskQuestionRequest, AskQuestionResponse, DeleteConversationRequest, DeleteConversationResponse,
-    DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, DownloadWorkspaceFileRequest,
-    FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse,
-    GetConversationRequest, GetConversationResponse, GetEmbeddingStatusRequest,
-    GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest,
-    GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest,
-    GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse,
-    GetUsageSummaryRequest, GetUsageSummaryResponse, GetWorkspaceFileRequest,
-    GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse, ListConversationsRequest,
-    ListConversationsResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse,
-    RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, RenameConversationRequest,
-    RenameConversationResponse, ResumeStreamRequest, ResumeStreamResponse,
-    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
-    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
-    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    AskQuestionRequest, AskQuestionResponse, CancelQueryRequest, CancelQueryResponse,
+    DeleteConversationRequest, DeleteConversationResponse, DeleteEnrichmentsByTypeRequest,
+    DeleteEnrichmentsByTypeResponse, DownloadWorkspaceFileRequest, FindSimilarRequest,
+    FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse, GetConversationRequest,
+    GetConversationResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse,
+    GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse,
+    GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse,
+    GetEnrichmentsRequest, GetEnrichmentsResponse, GetUsageSummaryRequest, GetUsageSummaryResponse,
+    GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse,
+    ListConversationsRequest, ListConversationsResponse, ListWorkspaceFilesRequest,
+    ListWorkspaceFilesResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse,
+    RenameConversationRequest, RenameConversationResponse, ResumeStreamRequest,
+    ResumeStreamResponse, SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
+    SearchByTextRequest, SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
+    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
     UploadWorkspaceFileRequest, UploadWorkspaceFileResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
+use uuid::Uuid;
 use zeroize::Zeroizing;
+
+/// Sender half of a cancellation channel for an in-flight query.
+/// Dropping the sender (or sending `true`) signals the event loop to stop.
+pub type CancelTx = tokio::sync::watch::Sender<bool>;
+
+/// Registry of in-flight queries that can be cancelled.
+pub type ActiveQueries = Arc<Mutex<HashMap<Uuid, CancelTx>>>;
 
 pub struct ReasoningServiceImpl {
     repos: Repos,
@@ -40,6 +49,7 @@ pub struct ReasoningServiceImpl {
     workspaces_path: Option<std::path::PathBuf>,
     restate_url: String,
     http_client: reqwest::Client,
+    active_queries: ActiveQueries,
 }
 
 impl ReasoningServiceImpl {
@@ -57,6 +67,7 @@ impl ReasoningServiceImpl {
             workspaces_path,
             restate_url,
             http_client: reqwest::Client::new(),
+            active_queries: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -249,5 +260,12 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<UploadWorkspaceFileRequest>,
     ) -> Result<Response<UploadWorkspaceFileResponse>, Status> {
         workspace::upload_workspace_file(self, request).await
+    }
+
+    async fn cancel_query(
+        &self,
+        request: Request<CancelQueryRequest>,
+    ) -> Result<Response<CancelQueryResponse>, Status> {
+        conversations::cancel_query(self, request).await
     }
 }

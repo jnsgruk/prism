@@ -1,5 +1,5 @@
 import { createClient } from "@connectrpc/connect";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
@@ -399,11 +399,32 @@ export const useAskQuestion = (): {
     [processStream, queryClient],
   );
 
+  // Track the current conversation ID so the stable `cancel` callback can
+  // reference it without closing over changing state.
+  const conversationIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (
+      meta.status === "streaming" ||
+      meta.status === "container_starting" ||
+      meta.status === "completed"
+    ) {
+      conversationIdRef.current = meta.conversationId;
+    }
+  }, [meta]);
+
   const cancel = useCallback(() => {
     abortRef.current?.abort();
+    const convId = conversationIdRef.current;
+    if (convId) {
+      client.cancelQuery({ conversationId: convId }).catch(() => {
+        // Fire-and-forget: the abort already cleaned up the local stream.
+        // If the RPC fails, the reaper will eventually clean up the pod.
+      });
+    }
     setMeta({ status: "idle" });
     setEvents([]);
-  }, []);
+    queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+  }, [queryClient]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();

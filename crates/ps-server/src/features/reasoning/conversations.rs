@@ -1,8 +1,8 @@
 use ps_proto::canonical::prism::v1::{
-    DeleteConversationRequest, DeleteConversationResponse, GetConversationRequest,
-    GetConversationResponse, ListConversationsRequest, ListConversationsResponse,
-    RenameConversationRequest, RenameConversationResponse, SaveInsightFromConversationRequest,
-    SaveInsightFromConversationResponse,
+    CancelQueryRequest, CancelQueryResponse, DeleteConversationRequest, DeleteConversationResponse,
+    GetConversationRequest, GetConversationResponse, ListConversationsRequest,
+    ListConversationsResponse, RenameConversationRequest, RenameConversationResponse,
+    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
@@ -206,6 +206,89 @@ pub async fn rename_conversation(
 
     info!(conversation_id = %conv_id, title = %req.title, "conversation renamed");
     Ok(Response::new(RenameConversationResponse {}))
+}
+
+pub async fn cancel_query(
+    svc: &ReasoningServiceImpl,
+    request: Request<CancelQueryRequest>,
+) -> Result<Response<CancelQueryResponse>, Status> {
+    let ctx = require_auth(&request)?;
+    let req = request.into_inner();
+
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+    // Verify conversation exists and belongs to this user.
+    let conv = svc
+        .repos
+        .reasoning
+        .get_conversation(conv_id)
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| Status::not_found("conversation not found"))?;
+
+    if conv.user_id != ctx.user_id {
+        return Err(Status::not_found("conversation not found"));
+    }
+
+    // No-op if query is already in a terminal state.
+    if conv
+        .query_status
+        .parse::<ps_core::models::QueryStatus>()
+        .is_ok_and(ps_core::models::QueryStatus::is_terminal)
+    {
+        return Ok(Response::new(CancelQueryResponse {}));
+    }
+
+    // Mark as cancelled in the database.
+    svc.repos
+        .reasoning
+        .update_query_status(conv_id, ps_core::models::QueryStatus::Cancelled)
+        .await
+        .map_err(db_err)?;
+
+    // Signal the in-process event loop to stop immediately.
+    if let Some(cancel_tx) = svc
+        .active_queries
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get(&conv_id)
+    {
+        let _ = cancel_tx.send(true);
+    }
+
+    // Fire-and-forget: cancel in Restate and clean up the pod.
+    let restate_url = svc.restate_url.clone();
+    let client = svc.http_client.clone();
+    tokio::spawn(async move {
+        let cancel_url = format!("{restate_url}/AgenticQueryHandler/{conv_id}/cancel/send");
+        if let Err(e) = client
+            .post(&cancel_url)
+            .header("content-type", "application/json")
+            .body("{}")
+            .send()
+            .await
+        {
+            warn!(error = %e, "failed to send cancel to Restate");
+        }
+
+        let cleanup_url =
+            format!("{restate_url}/AgenticQueryHandler/{conv_id}/cleanup_storage/send");
+        if let Err(e) = client
+            .post(&cleanup_url)
+            .header("content-type", "application/json")
+            .body("{}")
+            .send()
+            .await
+        {
+            warn!(error = %e, "failed to send cleanup_storage to Restate");
+        }
+    });
+
+    info!(conversation_id = %conv_id, "query cancelled");
+    Ok(Response::new(CancelQueryResponse {}))
 }
 
 pub async fn save_insight_from_conversation(
