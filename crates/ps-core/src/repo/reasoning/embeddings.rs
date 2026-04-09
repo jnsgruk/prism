@@ -292,7 +292,7 @@ impl ReasoningRepo {
                 c.state,
                 c.url AS external_url,
                 c.created_at,
-                p.display_name,
+                p.name AS display_name,
                 (e.embedding <=> $1::vector)::float8 as distance
             FROM reasoning.embeddings e
             JOIN activity.contributions c ON c.id = e.contribution_id
