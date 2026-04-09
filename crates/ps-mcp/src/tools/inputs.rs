@@ -28,6 +28,29 @@ pub struct QueryContributionsInput {
     pub search: Option<String>,
     /// Maximum results to return (default 50, max 100).
     pub limit: Option<i32>,
+    /// Page offset for pagination (0-based, default 0). Each page returns `limit` results.
+    pub offset: Option<i32>,
+}
+
+/// Input for querying a person's contributions directly.
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct GetPersonContributionsInput {
+    /// Person name (resolved to ID automatically).
+    pub person_name: String,
+    /// Start date in YYYY-MM-DD format.
+    pub period_start: Option<String>,
+    /// End date in YYYY-MM-DD format.
+    pub period_end: Option<String>,
+    /// Filter by platform (github, jira, discourse).
+    pub platform: Option<String>,
+    /// Filter by contribution type (`pull_request`, `pr_review`, `jira_ticket`, `discourse_topic`).
+    pub contribution_type: Option<String>,
+    /// Filter by state (open, merged, closed, `in_progress`, approved, done).
+    pub state: Option<String>,
+    /// Free-text search across title and repo.
+    pub search: Option<String>,
+    /// Maximum results to return (default 50, max 100).
+    pub limit: Option<i32>,
 }
 
 /// Input for comparing teams.

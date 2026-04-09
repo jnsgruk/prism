@@ -21,9 +21,9 @@ use format::{
     format_contribution, format_person_insights, format_similar_item, format_team_insights,
 };
 use inputs::{
-    CompareTeamsInput, GenerateImageInput, GetPersonProfileInput, ListPeopleInput, ListTeamsInput,
-    QueryContributionsInput, QueryEnrichmentsInput, QueryTeamMetricsInput, SearchByTextInput,
-    SearchSimilarInput,
+    CompareTeamsInput, GenerateImageInput, GetPersonContributionsInput, GetPersonProfileInput,
+    ListPeopleInput, ListTeamsInput, QueryContributionsInput, QueryEnrichmentsInput,
+    QueryTeamMetricsInput, SearchByTextInput, SearchSimilarInput,
 };
 
 /// MCP tool server providing Prism data query tools and image generation.
@@ -104,6 +104,7 @@ impl PrismTools {
             state: state_str_to_proto(input.state.as_deref()),
             platform: platform_str_to_proto(input.platform.as_deref()),
             page_size: input.limit.unwrap_or(50),
+            page_index: input.offset.unwrap_or(0),
             search: input.search,
             ..Default::default()
         };
@@ -326,6 +327,48 @@ impl PrismTools {
         serde_json::to_string_pretty(&teams).map_err(|e| format!("serialization error: {e}"))
     }
 
+    /// Query contributions for a specific person across all teams.
+    #[rmcp::tool(name = "get_person_contributions")]
+    async fn get_person_contributions(
+        &self,
+        Parameters(input): Parameters<GetPersonContributionsInput>,
+    ) -> Result<String, String> {
+        let person_id = self.resolve_person_id(&input.person_name).await?;
+
+        let req = proto::ListPersonContributionsRequest {
+            person_id,
+            contribution_type: contribution_type_str_to_proto(input.contribution_type.as_deref()),
+            state: state_str_to_proto(input.state.as_deref()),
+            platform: platform_str_to_proto(input.platform.as_deref()),
+            page_size: input.limit.unwrap_or(50),
+            since: input.period_start,
+            until: input.period_end,
+            search: input.search,
+            ..Default::default()
+        };
+
+        let resp = self
+            .client
+            .metrics
+            .clone()
+            .list_person_contributions(req)
+            .await
+            .map_err(|e| format!("gRPC error: {e}"))?;
+
+        let inner = resp.into_inner();
+        let contributions: Vec<_> = inner
+            .contributions
+            .iter()
+            .map(format_contribution)
+            .collect();
+
+        serde_json::to_string_pretty(&serde_json::json!({
+            "total_count": inner.total_count,
+            "contributions": contributions,
+        }))
+        .map_err(|e| format!("serialization error: {e}"))
+    }
+
     /// List people, optionally filtered by team or search term.
     #[rmcp::tool(name = "list_people")]
     async fn list_people(
@@ -488,8 +531,8 @@ mod tests {
         let tools = router.list_all();
         assert_eq!(
             tools.len(),
-            10,
-            "Expected 10 MCP tools, got {}",
+            11,
+            "Expected 11 MCP tools, got {}",
             tools.len()
         );
 
@@ -498,6 +541,7 @@ mod tests {
         assert!(names.contains(&"query_contributions"));
         assert!(names.contains(&"compare_teams"));
         assert!(names.contains(&"generate_image"));
+        assert!(names.contains(&"get_person_contributions"));
         assert!(names.contains(&"get_person_profile"));
         assert!(names.contains(&"search_similar"));
         assert!(names.contains(&"search_by_text"));
