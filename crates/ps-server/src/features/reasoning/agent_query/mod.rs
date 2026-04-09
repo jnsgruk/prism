@@ -686,7 +686,9 @@ fn build_system_hint(attached_files: &[String], mentions: &[Mention]) -> Option<
             .join(", ");
         parts.push(format!(
             "The user mentioned these people: {list}. \
-             Use list_people or resolve_person_id to look up their details."
+             You already have their names — pass them directly to tools like \
+             get_person_profile(person_name=...) or get_person_contributions(person_name=...). \
+             No need to call list_people to look them up."
         ));
     }
 
@@ -703,7 +705,9 @@ fn build_system_hint(attached_files: &[String], mentions: &[Mention]) -> Option<
             .join(", ");
         parts.push(format!(
             "The user mentioned these teams: {list}. \
-             Use list_teams or list_people with a team filter to look up their data."
+             You already have their names — pass them directly to tools like \
+             query_contributions(team_name=...) or query_team_metrics(team_name=...). \
+             No need to call list_teams to discover them."
         ));
     }
 

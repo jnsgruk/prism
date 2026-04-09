@@ -306,14 +306,12 @@ fn dir_size_sync(path: &std::path::Path) -> i64 {
     let mut total: u64 = 0;
     let mut stack = vec![path.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        let entries = match std::fs::read_dir(&dir) {
-            Ok(e) => e,
-            Err(_) => continue,
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
         };
         for entry in entries.flatten() {
-            let ft = match entry.file_type() {
-                Ok(ft) => ft,
-                Err(_) => continue,
+            let Ok(ft) = entry.file_type() else {
+                continue;
             };
             if ft.is_dir() {
                 stack.push(entry.path());
