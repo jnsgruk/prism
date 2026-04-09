@@ -18,6 +18,7 @@ pub struct Conversation {
     pub container_pod_name: Option<String>,
     pub container_status: String,
     pub opencode_session_id: Option<String>,
+    pub container_pod_ip: Option<String>,
     pub total_tool_calls: i32,
     pub total_prompt_tokens: i32,
     pub total_completion_tokens: i32,
@@ -44,6 +45,8 @@ pub struct ConversationSummary {
     pub status: String,
     pub model_name: String,
     pub container_status: String,
+    pub container_pod_name: Option<String>,
+    pub container_pod_ip: Option<String>,
     pub total_tool_calls: i32,
     pub total_prompt_tokens: i32,
     pub total_completion_tokens: i32,
@@ -101,6 +104,7 @@ impl ReasoningRepo {
             VALUES ($1, $2, $3)
             RETURNING id, user_id, title, status, model_name,
                       container_pod_name, container_status, opencode_session_id,
+                      container_pod_ip,
                       total_tool_calls, total_prompt_tokens, total_completion_tokens,
                       query_status, created_at, last_activity_at
             "#,
@@ -120,6 +124,7 @@ impl ReasoningRepo {
             r#"
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
+                   container_pod_ip,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
                    query_status, created_at, last_activity_at
             FROM reasoning.conversations
@@ -156,6 +161,7 @@ impl ReasoningRepo {
                     ConversationSummary,
                     r#"
                     SELECT c.id, c.title, c.status, c.model_name, c.container_status,
+                           c.container_pod_name, c.container_pod_ip,
                            c.total_tool_calls,
                            c.total_prompt_tokens, c.total_completion_tokens,
                            c.query_status, c.created_at, c.last_activity_at,
@@ -195,6 +201,7 @@ impl ReasoningRepo {
         pod_name: Option<&str>,
         container_status: &str,
         opencode_session_id: Option<&str>,
+        pod_ip: Option<&str>,
     ) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -202,6 +209,7 @@ impl ReasoningRepo {
             SET container_pod_name = COALESCE($2, container_pod_name),
                 container_status = $3,
                 opencode_session_id = COALESCE($4, opencode_session_id),
+                container_pod_ip = COALESCE($5, container_pod_ip),
                 last_activity_at = now()
             WHERE id = $1
             "#,
@@ -209,6 +217,7 @@ impl ReasoningRepo {
             pod_name,
             container_status,
             opencode_session_id,
+            pod_ip,
         )
         .execute(&self.pool)
         .await?;
@@ -376,6 +385,26 @@ impl ReasoningRepo {
         Ok(pod_name)
     }
 
+    /// Mark conversations as reaped after their agent pods have been deleted.
+    ///
+    /// Called by the pod reaper to update `container_status` so the frontend
+    /// no longer shows a green "active" dot.
+    pub async fn mark_conversations_reaped(&self, conversation_ids: &[Uuid]) -> Result<u64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE reasoning.conversations
+            SET container_status = 'reaped',
+                container_pod_ip = NULL,
+                last_activity_at = now()
+            WHERE id = ANY($1) AND container_status = 'active'
+            "#,
+            conversation_ids,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /// Rename a conversation (set its title).
     pub async fn rename_conversation(
         &self,
@@ -533,6 +562,7 @@ impl ReasoningRepo {
             r#"
             SELECT id, user_id, title, status, model_name,
                    container_pod_name, container_status, opencode_session_id,
+                   container_pod_ip,
                    total_tool_calls, total_prompt_tokens, total_completion_tokens,
                    query_status, created_at, last_activity_at
             FROM reasoning.conversations
@@ -554,6 +584,7 @@ impl ReasoningRepo {
                     "container_pod_name": c.container_pod_name,
                     "container_status": c.container_status,
                     "opencode_session_id": c.opencode_session_id,
+                    "container_pod_ip": c.container_pod_ip,
                     "total_tool_calls": c.total_tool_calls,
                     "total_prompt_tokens": c.total_prompt_tokens,
                     "total_completion_tokens": c.total_completion_tokens,

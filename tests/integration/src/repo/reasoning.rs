@@ -637,6 +637,7 @@ async fn conversation_container_status_transitions() {
             Some("prism-agent-abc123"),
             "active",
             Some("oc-session-xyz"),
+            Some("10.0.1.23"),
         )
         .await
         .unwrap();
@@ -660,7 +661,7 @@ async fn conversation_container_status_transitions() {
     // Transition: active → reaped.
     repos
         .reasoning
-        .update_container_status(conv.id, None, "reaped", None)
+        .update_container_status(conv.id, None, "reaped", None, None)
         .await
         .unwrap();
 
@@ -685,6 +686,7 @@ async fn conversation_container_status_transitions() {
             Some("prism-agent-def456"),
             "active",
             Some("oc-session-new"),
+            Some("10.0.1.42"),
         )
         .await
         .unwrap();

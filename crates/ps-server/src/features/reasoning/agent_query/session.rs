@@ -34,6 +34,7 @@ pub async fn resolve_or_create_session(
                             conv.container_pod_name.as_deref(),
                             "active",
                             None,
+                            None,
                         )
                         .await
                         .map_err(|e| format!("failed to clear stale session: {e}"))?;
@@ -54,6 +55,7 @@ pub async fn resolve_or_create_session(
             conv.container_pod_name.as_deref(),
             "active",
             Some(&session.id),
+            None,
         )
         .await?;
     Ok(session.id)

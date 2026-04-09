@@ -37,6 +37,15 @@ pub struct PodOverrides {
     pub default_image_model: Option<String>,
 }
 
+/// Information about a pod that was reaped by the idle/expiry reaper.
+#[derive(Debug, Clone)]
+pub struct ReapedPod {
+    /// The token session ID stored as an annotation (for auth session cleanup).
+    pub token_session_id: String,
+    /// The conversation/session ID from the pod label (for DB status update).
+    pub session_id: String,
+}
+
 /// Status of an agent Pod.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PodStatus {
@@ -229,9 +238,9 @@ impl ContainerManager {
 
     /// Reap idle and expired agent Pods. Intended to run on a timer (every 60s).
     ///
-    /// Returns the token session IDs from reaped pods so the caller can delete
-    /// the corresponding auth sessions.
-    pub async fn reap_idle_pods(&self) -> Vec<String> {
+    /// Returns information about each reaped pod so the caller can clean up
+    /// auth sessions and update conversation status in the database.
+    pub async fn reap_idle_pods(&self) -> Vec<ReapedPod> {
         let pods: Api<Pod> = Api::namespaced(self.kube.clone(), &self.namespace);
         let lp = ListParams::default().labels(&format!("app={LABEL_APP_VALUE}"));
 
@@ -244,7 +253,7 @@ impl ContainerManager {
         };
 
         let now = time::OffsetDateTime::now_utc();
-        let mut reaped_token_sessions = Vec::new();
+        let mut reaped_pods = Vec::new();
 
         for pod in &list.items {
             let name = match &pod.metadata.name {
@@ -295,20 +304,33 @@ impl ContainerManager {
             }
 
             if should_reap {
-                // Collect token session ID before deleting the pod.
-                if let Some(token_sid) = pod
+                // Collect token session ID and conversation ID before deleting.
+                let token_session_id = pod
                     .metadata
                     .annotations
                     .as_ref()
                     .and_then(|a| a.get(ANNOTATION_TOKEN_SESSION_ID))
-                {
-                    reaped_token_sessions.push(token_sid.clone());
+                    .cloned()
+                    .unwrap_or_default();
+                let session_id = pod
+                    .metadata
+                    .labels
+                    .as_ref()
+                    .and_then(|l| l.get(LABEL_SESSION))
+                    .cloned()
+                    .unwrap_or_default();
+
+                if !token_session_id.is_empty() || !session_id.is_empty() {
+                    reaped_pods.push(ReapedPod {
+                        token_session_id,
+                        session_id,
+                    });
                 }
                 let _ = pods.delete(&name, &DeleteParams::default()).await;
             }
         }
 
-        reaped_token_sessions
+        reaped_pods
     }
 
     /// Count currently active (Pending + Running) agent Pods.

@@ -23,16 +23,20 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
         info!("starting agent pod reaper");
 
         if let Some(ref cm) = self.state.container_manager {
-            let reaped_sessions = cm.reap_idle_pods().await;
+            let reaped_pods = cm.reap_idle_pods().await;
 
-            if !reaped_sessions.is_empty() {
-                info!(count = reaped_sessions.len(), "reaped idle agent pods");
+            if !reaped_pods.is_empty() {
+                info!(count = reaped_pods.len(), "reaped idle agent pods");
             }
 
             // Clean up auth sessions for reaped pods (journaled).
             let repos = &self.state.repos;
-            journaled!(ctx, "cleanup_sessions", [repos, reaped_sessions], {
-                for sid in &reaped_sessions {
+            let reaped_token_sessions: Vec<String> = reaped_pods
+                .iter()
+                .map(|p| p.token_session_id.clone())
+                .collect();
+            journaled!(ctx, "cleanup_sessions", [repos, reaped_token_sessions], {
+                for sid in &reaped_token_sessions {
                     if let Ok(uuid) = sid.parse::<uuid::Uuid>()
                         && let Err(e) = repos.auth.delete_session(uuid).await
                     {
@@ -44,6 +48,19 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
                     }
                 }
             });
+
+            // Mark reaped conversations so the frontend shows inactive status.
+            let conv_ids: Vec<uuid::Uuid> = reaped_pods
+                .iter()
+                .filter_map(|p| p.session_id.parse::<uuid::Uuid>().ok())
+                .collect();
+            if !conv_ids.is_empty() {
+                journaled!(ctx, "mark_conversations_reaped", [repos, conv_ids], {
+                    if let Err(e) = repos.reasoning.mark_conversations_reaped(&conv_ids).await {
+                        tracing::warn!(error = %e, "failed to mark conversations as reaped");
+                    }
+                });
+            }
         } else {
             info!("no container manager configured, skipping reap");
         }

@@ -43,6 +43,8 @@ pub async fn list_conversations(
             query_status: c.query_status,
             total_prompt_tokens: c.total_prompt_tokens,
             total_completion_tokens: c.total_completion_tokens,
+            container_pod_name: c.container_pod_name,
+            container_pod_ip: c.container_pod_ip,
         })
         .collect();
 
@@ -92,6 +94,8 @@ pub async fn get_conversation(
         query_status: conv.query_status,
         total_prompt_tokens: conv.total_prompt_tokens,
         total_completion_tokens: conv.total_completion_tokens,
+        container_pod_name: conv.container_pod_name,
+        container_pod_ip: conv.container_pod_ip,
     };
 
     let messages = messages_list

@@ -524,6 +524,9 @@ message ConversationSummary {
   // Cumulative token counts across all turns in this conversation.
   int32 total_prompt_tokens = 13;
   int32 total_completion_tokens = 14;
+  // Pod details — populated when container_status is "active".
+  optional string container_pod_name = 15;
+  optional string container_pod_ip = 16;
 }
 
 message GetConversationRequest {

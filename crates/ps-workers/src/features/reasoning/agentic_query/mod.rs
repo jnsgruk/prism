@@ -22,4 +22,5 @@ pub struct AgenticQueryRequest {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PrepareQueryResponse {
     pub pod_ip: String,
+    pub pod_name: String,
 }
