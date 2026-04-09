@@ -6,9 +6,12 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useAiModels } from "@/lib/hooks/use-ai-settings";
-import { useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
+import { useDownloadWorkspaceFile, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
 import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
 import { useGetConversation } from "@/lib/hooks/use-conversations";
+import { isTextContent } from "@/views/ask/hooks/use-file-tree";
+import type { PreviewState } from "@/views/ask/components/workspace-preview";
+import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
 import type { AttachedFileInfo } from "@/views/ask/components/file-attachment-chips";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
 import { QueryInput } from "@/views/ask/components/query-input";
@@ -24,6 +27,10 @@ const AskPage = (): React.ReactElement => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const uploadFile = useUploadWorkspaceFile();
+  const downloadFile = useDownloadWorkspaceFile();
+  const [filePreview, setFilePreview] = useState<PreviewState | null>(null);
+  const [filePreviewOpen, setFilePreviewOpen] = useState(false);
+  const previewBlobRef = useRef<string | null>(null);
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
@@ -129,6 +136,39 @@ const AskPage = (): React.ReactElement => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const handleFileClick = useCallback(
+    (path: string) => {
+      if (!conversationId) return;
+      if (previewBlobRef.current) {
+        URL.revokeObjectURL(previewBlobRef.current);
+        previewBlobRef.current = null;
+      }
+      downloadFile.mutate(
+        { conversationId, path },
+        {
+          onSuccess: async ({ blobUrl, contentType }) => {
+            previewBlobRef.current = blobUrl;
+            let textContent: string | undefined;
+            if (isTextContent(contentType)) {
+              const res = await fetch(blobUrl);
+              textContent = await res.text();
+            }
+            const name = path.split("/").pop() ?? path;
+            setFilePreview({
+              artifact: { id: path, displayName: name, contentType, sizeBytes: 0 },
+              url: blobUrl,
+              contentType,
+              textContent,
+            });
+            setFilePreviewOpen(true);
+          },
+          onError: (err) => toast.error(`Failed to preview: ${err.message}`),
+        },
+      );
+    },
+    [conversationId, downloadFile],
+  );
+
   const attachedFileInfos: AttachedFileInfo[] = useMemo(
     () => pendingFiles.map((f) => ({ name: f.name, size: f.size })),
     [pendingFiles],
@@ -208,6 +248,7 @@ const AskPage = (): React.ReactElement => {
                       state={state}
                       onRetry={handleAsk}
                       conversationId={conversationId}
+                      onFileClick={handleFileClick}
                     />
                   </div>
                 )}
@@ -240,6 +281,21 @@ const AskPage = (): React.ReactElement => {
           onClose={() => setSidebarOpen(false)}
         />
       </div>
+
+      {/* Preview dialog for clicking attached files */}
+      <WorkspacePreviewDialog
+        state={filePreview}
+        open={filePreviewOpen}
+        onOpenChange={setFilePreviewOpen}
+        onDownload={() => {
+          if (filePreview?.url) {
+            const a = document.createElement("a");
+            a.href = filePreview.url;
+            a.download = filePreview.artifact.displayName;
+            a.click();
+          }
+        }}
+      />
     </>
   );
 };

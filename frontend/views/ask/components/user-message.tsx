@@ -3,9 +3,11 @@ import { FileText } from "lucide-react";
 export const UserMessage = ({
   content,
   attachedFiles,
+  onFileClick,
 }: {
   content: string;
   attachedFiles?: string[];
+  onFileClick?: (path: string) => void;
 }): React.ReactElement => (
   <div className="flex flex-col items-end gap-1.5">
     {content && (
@@ -18,13 +20,15 @@ export const UserMessage = ({
         {attachedFiles.map((path) => {
           const name = path.split("/").pop() ?? path;
           return (
-            <span
+            <button
+              type="button"
               key={path}
-              className="inline-flex items-center gap-1.5 rounded-lg border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground"
+              onClick={() => onFileClick?.(path)}
+              className="inline-flex items-center gap-1.5 rounded-lg border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
             >
               <FileText className="size-3.5 shrink-0" />
               {name}
-            </span>
+            </button>
           );
         })}
       </div>

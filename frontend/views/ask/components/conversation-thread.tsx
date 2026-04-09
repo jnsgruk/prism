@@ -135,11 +135,13 @@ export const ConversationThread = ({
   state,
   onRetry,
   conversationId,
+  onFileClick,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
   onRetry?: (question: string) => void;
   conversationId?: string;
+  onFileClick?: (path: string) => void;
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +186,7 @@ export const ConversationThread = ({
             <UserMessage
               content={msg.content}
               attachedFiles={msg.attachedFiles.length > 0 ? [...msg.attachedFiles] : undefined}
+              onFileClick={onFileClick}
             />
           );
         } else if (msg.role === "error") {
