@@ -139,7 +139,12 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
           totalSizeBytes = Number(response.totalSizeBytes);
         }
         if (response.data.length > 0) {
-          chunks.push(response.data.buffer.slice(0) as ArrayBuffer);
+          chunks.push(
+            response.data.buffer.slice(
+              response.data.byteOffset,
+              response.data.byteOffset + response.data.byteLength,
+            ) as ArrayBuffer,
+          );
         }
       }
 
