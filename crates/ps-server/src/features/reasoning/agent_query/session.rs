@@ -70,6 +70,7 @@ pub async fn send_prompt_or_compact(
     conv: &Conversation,
     pod_ip: &str,
     question: &str,
+    file_hint: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let is_compact = question.trim().eq_ignore_ascii_case("/compact");
 
@@ -102,8 +103,11 @@ pub async fn send_prompt_or_compact(
         info!("compaction triggered");
     } else {
         info!("sending question to OpenCode");
-        let prompt = ps_agent::opencode_sdk::types::message::PromptRequest::text(question)
+        let mut prompt = ps_agent::opencode_sdk::types::message::PromptRequest::text(question)
             .with_agent("prism");
+        if let Some(hint) = file_hint {
+            prompt = prompt.with_system(hint);
+        }
         client
             .messages()
             .prompt_async(opencode_session_id, &prompt)

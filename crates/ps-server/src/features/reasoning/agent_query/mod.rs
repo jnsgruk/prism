@@ -67,11 +67,11 @@ pub async fn ask_question(
     let cid_str = conversation_id.to_string();
     let http_client = svc.http_client.clone();
     let repos = svc.repos.clone();
-    // If the user attached files, append a system-style hint so the agent
-    // knows to read them. The hint is wrapped in XML-style tags to discourage
-    // the model from echoing it verbatim in its response.
-    let question = if req.attached_files.is_empty() {
-        req.question.clone()
+    let question = req.question.clone();
+    // Build a system-level hint for referenced/attached files so the agent
+    // knows to read them without polluting the user's visible message text.
+    let file_hint: Option<String> = if req.attached_files.is_empty() {
+        None
     } else {
         let file_list = req
             .attached_files
@@ -79,10 +79,9 @@ pub async fn ask_question(
             .map(|f| format!("/workspace/{f}"))
             .collect::<Vec<_>>()
             .join(", ");
-        format!(
-            "{}\n\n<system>The user uploaded files to the workspace. Read them from: {file_list}</system>",
-            req.question
-        )
+        Some(format!(
+            "The user referenced files in the workspace. Read them from: {file_list}"
+        ))
     };
     let model_for_usage = model_name.clone();
     let (tx, rx) = tokio::sync::mpsc::channel(64);
@@ -120,6 +119,7 @@ pub async fn ask_question(
             &cid_str,
             &trigger_request,
             &question,
+            file_hint.as_deref(),
             &model_for_usage,
             &tx,
             cancel_rx,
@@ -284,6 +284,7 @@ async fn run_query_stream(
     cid_str: &str,
     trigger_request: &serde_json::Value,
     question: &str,
+    file_hint: Option<&str>,
     model_name: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
     cancel_rx: tokio::sync::watch::Receiver<bool>,
@@ -345,6 +346,7 @@ async fn run_query_stream(
         &conv,
         &pod_ip,
         question,
+        file_hint,
     )
     .await?;
 
