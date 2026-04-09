@@ -425,6 +425,7 @@ async fn conversation_create_and_get() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("Test conversation"),
             model_name: "anthropic/claude-sonnet-4-6",
@@ -469,6 +470,7 @@ async fn conversation_list_with_counts() {
         let conv = repos
             .reasoning
             .create_conversation(&CreateConversationParams {
+                id: None,
                 user_id,
                 title: Some(&format!("Conv {i}")),
                 model_name: "test-model",
@@ -531,6 +533,7 @@ async fn conversation_multi_turn_messages() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: None,
             model_name: "test-model",
@@ -626,6 +629,7 @@ async fn conversation_container_status_transitions() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("Container test"),
             model_name: "test-model",
@@ -722,6 +726,7 @@ async fn conversation_update_totals() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: None,
             model_name: "test-model",
@@ -771,6 +776,7 @@ async fn conversation_export_roundtrip() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("Export test"),
             model_name: "test-model",
@@ -853,6 +859,7 @@ async fn conversation_events_append_and_poll() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("test events"),
             model_name: "test-model",
@@ -912,6 +919,7 @@ async fn conversation_events_poll_empty() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("empty events"),
             model_name: "test-model",
@@ -935,6 +943,7 @@ async fn conversation_events_delete() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("delete events"),
             model_name: "test-model",
@@ -984,6 +993,7 @@ async fn conversation_events_cursor_ordering() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("ordering test"),
             model_name: "test-model",
@@ -1031,6 +1041,7 @@ async fn query_status_transitions() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("status transitions"),
             model_name: "test-model",
@@ -1075,6 +1086,7 @@ async fn conversation_events_step_identity() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("step identity test"),
             model_name: "test-model",
@@ -1145,6 +1157,7 @@ async fn query_status_cancel() {
     let conv = repos
         .reasoning
         .create_conversation(&CreateConversationParams {
+            id: None,
             user_id,
             title: Some("cancel test"),
             model_name: "test-model",

@@ -510,6 +510,7 @@ async fn list_and_get_conversations() {
     let c1 = repos
         .reasoning
         .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            id: None,
             user_id,
             title: Some("First question"),
             model_name: "test-model",
@@ -520,6 +521,7 @@ async fn list_and_get_conversations() {
     let c2 = repos
         .reasoning
         .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            id: None,
             user_id,
             title: Some("Second question"),
             model_name: "test-model",
@@ -663,6 +665,7 @@ async fn ask_question_rejects_concurrent_query() {
     let conv = repos
         .reasoning
         .create_conversation(&ps_core::repo::reasoning::CreateConversationParams {
+            id: None,
             user_id,
             title: Some("busy conv"),
             model_name: "test-model",

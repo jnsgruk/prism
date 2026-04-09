@@ -72,6 +72,9 @@ pub struct ConversationMessage {
 
 /// Parameters for creating a new conversation.
 pub struct CreateConversationParams<'a> {
+    /// When set, use this ID instead of generating one.
+    /// Used when the client has already uploaded files to a workspace keyed by this ID.
+    pub id: Option<Uuid>,
     pub user_id: Uuid,
     pub title: Option<&'a str>,
     pub model_name: &'a str,
@@ -99,17 +102,19 @@ impl ReasoningRepo {
         &self,
         params: &CreateConversationParams<'_>,
     ) -> Result<Conversation, Error> {
+        let id = params.id.unwrap_or_else(Uuid::now_v7);
         let row = sqlx::query_as!(
             Conversation,
             r#"
-            INSERT INTO reasoning.conversations (user_id, title, model_name)
-            VALUES ($1, $2, $3)
+            INSERT INTO reasoning.conversations (id, user_id, title, model_name)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, user_id, title, status, model_name,
                       container_pod_name, container_status, opencode_session_id,
                       container_pod_ip,
                       total_tool_calls, total_prompt_tokens, total_completion_tokens,
                       query_status, created_at, last_activity_at
             "#,
+            id,
             params.user_id,
             params.title,
             params.model_name,

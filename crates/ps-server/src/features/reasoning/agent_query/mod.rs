@@ -171,9 +171,17 @@ async fn setup_conversation(
     let conversation_id = if let Some(ref conv) = existing_conv {
         conv.id
     } else {
+        // When the client provides a conversation_id that doesn't exist yet
+        // (e.g. for file uploads before asking), adopt that ID so uploaded
+        // files in the workspace directory match the conversation.
+        let requested_id = req
+            .conversation_id
+            .as_ref()
+            .and_then(|id| id.parse::<Uuid>().ok());
         svc.repos
             .reasoning
             .create_conversation(&CreateConversationParams {
+                id: requested_id,
                 user_id,
                 title: Some(&req.question.chars().take(100).collect::<String>()),
                 model_name,
