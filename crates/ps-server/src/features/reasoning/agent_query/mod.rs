@@ -323,8 +323,24 @@ async fn run_query_stream(
     // The pod may be in K8s "Running" phase before OpenCode's HTTP server is
     // ready to accept connections. Retry session creation a few times with
     // backoff to bridge this gap.
-    let opencode_session_id =
+    let session_result =
         retry_session_create(repos, &client, conversation_id, &conv, question).await?;
+    let opencode_session_id = session_result.session_id;
+
+    // When a new session was created for an existing conversation, the prior
+    // turns are lost. Build a recap from the DB and prepend it to the system
+    // hint so the agent can resolve references like "they" or "their".
+    let merged_hint = if session_result.is_new {
+        let messages = repos.reasoning.list_messages(conversation_id).await?;
+        match (build_conversation_recap(&messages), system_hint) {
+            (Some(recap), Some(hint)) => Some(format!("{recap}\n\n{hint}")),
+            (Some(recap), None) => Some(recap),
+            (None, Some(hint)) => Some(hint.to_owned()),
+            (None, None) => None,
+        }
+    } else {
+        system_hint.map(str::to_owned)
+    };
 
     info!("subscribing to OpenCode events");
     let mut subscription = client.subscribe().await?;
@@ -337,7 +353,7 @@ async fn run_query_stream(
         &conv,
         &pod_ip,
         question,
-        system_hint,
+        merged_hint.as_deref(),
     )
     .await?;
 
@@ -600,7 +616,7 @@ async fn retry_session_create(
     conversation_id: Uuid,
     conv: &ps_core::repo::reasoning::Conversation,
     question: &str,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<session::SessionResult, Box<dyn std::error::Error + Send + Sync>> {
     let mut last_err: Box<dyn std::error::Error + Send + Sync> =
         "no attempts made".to_string().into();
     for attempt in 0..MAX_SESSION_RETRIES {
@@ -610,7 +626,7 @@ async fn retry_session_create(
         match session::resolve_or_create_session(repos, client, conversation_id, conv, question)
             .await
         {
-            Ok(sid) => return Ok(sid),
+            Ok(result) => return Ok(result),
             Err(e) => {
                 tracing::warn!(
                     attempt = attempt + 1,
@@ -622,6 +638,72 @@ async fn retry_session_create(
         }
     }
     Err(last_err)
+}
+
+/// Build a recap of prior conversation messages so a freshly-created session
+/// has enough context to resolve references from earlier turns.
+///
+/// Returns `None` when there are no prior assistant messages worth recapping.
+fn build_conversation_recap(
+    messages: &[ps_core::repo::reasoning::ConversationMessage],
+) -> Option<String> {
+    const MAX_ASSISTANT_CHARS: usize = 500;
+    const MAX_RECAP_CHARS: usize = 4000;
+
+    // Only include user and assistant messages (skip error messages).
+    let relevant: Vec<_> = messages
+        .iter()
+        .filter(|m| m.role == "user" || m.role == "assistant")
+        .collect();
+
+    // Nothing to recap if there are fewer than 2 messages (i.e. no prior
+    // assistant response — just the current user question).
+    if relevant.len() < 2 {
+        return None;
+    }
+
+    // Exclude the last message — it is the current user question that will be
+    // sent as the prompt itself.
+    let prior = relevant.get(..relevant.len() - 1).unwrap_or_default();
+    if prior.is_empty() {
+        return None;
+    }
+
+    let mut recap = String::from(
+        "## Prior conversation context\n\
+         This conversation was started earlier but the session was reset. \
+         Here is a summary of the prior exchanges so you can resolve \
+         references (\"they\", \"their\", \"this team\", etc.):\n\n",
+    );
+
+    for (i, msg) in prior.iter().enumerate() {
+        let entry = if msg.role == "user" {
+            format!("{}. **User:** {}\n", i + 1, msg.content)
+        } else {
+            let truncated = if msg.content.len() > MAX_ASSISTANT_CHARS {
+                // Find a char boundary at or before MAX_ASSISTANT_CHARS.
+                let end = msg
+                    .content
+                    .char_indices()
+                    .map(|(i, _)| i)
+                    .take_while(|&i| i <= MAX_ASSISTANT_CHARS)
+                    .last()
+                    .unwrap_or(0);
+                format!("{}…", &msg.content[..end])
+            } else {
+                msg.content.clone()
+            };
+            format!("{}. **Assistant:** {}\n", i + 1, truncated)
+        };
+
+        if recap.len() + entry.len() > MAX_RECAP_CHARS {
+            recap.push_str("\n(earlier messages truncated for brevity)\n");
+            break;
+        }
+        recap.push_str(&entry);
+    }
+
+    Some(recap)
 }
 
 /// Serialise proto `Mention` messages to a JSONB-compatible value for storage.
@@ -798,5 +880,76 @@ mod tests {
         assert_eq!(arr[0]["type"], "person");
         assert_eq!(arr[1]["type"], "team");
         assert_eq!(arr[2]["type"], "file");
+    }
+
+    // -- build_conversation_recap tests --
+
+    fn make_message(role: &str, content: &str) -> ps_core::repo::reasoning::ConversationMessage {
+        ps_core::repo::reasoning::ConversationMessage {
+            id: Uuid::new_v4(),
+            conversation_id: Uuid::new_v4(),
+            role: role.to_string(),
+            content: content.to_string(),
+            reasoning_trace: None,
+            supporting_data: None,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            created_at: time::OffsetDateTime::now_utc(),
+            attached_files: vec![],
+            mentions: serde_json::json!([]),
+        }
+    }
+
+    #[test]
+    fn recap_none_for_single_user_message() {
+        let messages = vec![make_message("user", "Tell me about Harry")];
+        assert!(build_conversation_recap(&messages).is_none());
+    }
+
+    #[test]
+    fn recap_none_for_empty() {
+        assert!(build_conversation_recap(&[]).is_none());
+    }
+
+    #[test]
+    fn recap_includes_prior_turns() {
+        let messages = vec![
+            make_message("user", "Tell me about Harry Pidcock"),
+            make_message("assistant", "Harry has 108 contributions and 68 reviews."),
+            make_message("user", "Draw a graph of their activity"),
+        ];
+        let recap = build_conversation_recap(&messages).unwrap();
+        assert!(recap.contains("Harry Pidcock"));
+        assert!(recap.contains("108 contributions"));
+        // Current question should NOT be in the recap.
+        assert!(!recap.contains("Draw a graph"));
+    }
+
+    #[test]
+    fn recap_truncates_long_assistant_content() {
+        let long_content = "x".repeat(1000);
+        let messages = vec![
+            make_message("user", "question"),
+            make_message("assistant", &long_content),
+            make_message("user", "follow-up"),
+        ];
+        let recap = build_conversation_recap(&messages).unwrap();
+        // Should be truncated with ellipsis.
+        assert!(recap.contains('…'));
+        assert!(recap.len() < 1000);
+    }
+
+    #[test]
+    fn recap_skips_error_messages() {
+        let messages = vec![
+            make_message("user", "Tell me about Harry"),
+            make_message("error", "something went wrong"),
+            make_message("user", "Try again"),
+        ];
+        // Only one user+assistant pair before current question — the error is
+        // skipped, leaving just the first user message as prior context.
+        let recap = build_conversation_recap(&messages).unwrap();
+        assert!(recap.contains("Harry"));
+        assert!(!recap.contains("something went wrong"));
     }
 }

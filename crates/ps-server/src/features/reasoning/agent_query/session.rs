@@ -3,6 +3,14 @@ use ps_core::repo::reasoning::Conversation;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+/// Result of resolving or creating an `OpenCode` session.
+pub struct SessionResult {
+    /// The `OpenCode` session ID.
+    pub session_id: String,
+    /// Whether a new session was created (vs reusing an existing one).
+    pub is_new: bool,
+}
+
 /// Resolve an existing `OpenCode` session or create a new one.
 ///
 /// If the conversation already has an `opencode_session_id` and the session
@@ -14,13 +22,16 @@ pub async fn resolve_or_create_session(
     conversation_id: Uuid,
     conv: &Conversation,
     question: &str,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<SessionResult, Box<dyn std::error::Error + Send + Sync>> {
     if let Some(ref oc_sid) = conv.opencode_session_id {
         // Verify the session is still alive.
         match client.messages().list(oc_sid).await {
             Ok(_) => {
                 info!(session_id = %oc_sid, "reusing existing OpenCode session");
-                return Ok(oc_sid.clone());
+                return Ok(SessionResult {
+                    session_id: oc_sid.clone(),
+                    is_new: false,
+                });
             }
             Err(e) => {
                 let err_str = e.to_string();
@@ -58,7 +69,10 @@ pub async fn resolve_or_create_session(
             None,
         )
         .await?;
-    Ok(session.id)
+    Ok(SessionResult {
+        session_id: session.id,
+        is_new: true,
+    })
 }
 
 /// Send the user's question to `OpenCode`, or trigger session compaction for
