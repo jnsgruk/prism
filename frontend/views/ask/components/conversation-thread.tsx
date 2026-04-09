@@ -136,12 +136,14 @@ export const ConversationThread = ({
   onRetry,
   conversationId,
   onFileClick,
+  submittedFiles,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
   onRetry?: (question: string) => void;
   conversationId?: string;
   onFileClick?: (path: string) => void;
+  submittedFiles?: string[];
 }): React.ReactElement => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -202,7 +204,13 @@ export const ConversationThread = ({
         <>
           {/* Show the user's question optimistically — it may not be in messages yet. */}
           {!messages.some((m) => m.role === "user" && m.content === state.question) && (
-            <UserMessage content={state.question} />
+            <UserMessage
+              content={state.question}
+              attachedFiles={
+                submittedFiles && submittedFiles.length > 0 ? submittedFiles : undefined
+              }
+              onFileClick={onFileClick}
+            />
           )}
         </>
       )}

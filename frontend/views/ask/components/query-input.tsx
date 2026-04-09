@@ -1,5 +1,5 @@
 import { ArrowUp, Plus, Square } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ContextIndicator } from "@/views/ask/components/context-indicator";
@@ -7,9 +7,13 @@ import {
   FileAttachmentChips,
   type AttachedFileInfo,
 } from "@/views/ask/components/file-attachment-chips";
+import { FileMentionPopover } from "@/views/ask/components/file-mention-popover";
 import { ModelSelector } from "@/views/ask/components/model-selector";
 import { PodStatusIndicator } from "@/views/ask/components/pod-status-indicator";
 import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
+import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
+import { useMentionPicker, extractContent } from "@/views/ask/hooks/use-mention-picker";
+import { useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
 import { cn } from "@ps/cn";
 
 export const QueryInput = ({
@@ -26,8 +30,9 @@ export const QueryInput = ({
   attachedFiles = [],
   onFilesAdded,
   onFileRemoved,
+  conversationId,
 }: {
-  onSubmit: (question: string) => void;
+  onSubmit: (question: string, mentionedFiles?: string[]) => void;
   onCancel: () => void;
   isStreaming: boolean;
   disabled?: boolean;
@@ -40,38 +45,115 @@ export const QueryInput = ({
   attachedFiles?: AttachedFileInfo[];
   onFilesAdded?: (files: File[]) => void;
   onFileRemoved?: (index: number) => void;
+  conversationId?: string;
 }): React.ReactElement => {
-  const [value, setValue] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [hasContent, setHasContent] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = useCallback(() => {
-    const trimmed = value.trim();
-    if ((!trimmed && attachedFiles.length === 0) || isStreaming) return;
-    onSubmit(trimmed);
-    setValue("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+  const { mentionQuery, mentionActive, detectMention, insertPill, closeMention } =
+    useMentionPicker();
+
+  // Workspace files for the @ mention picker
+  const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
+  const workspaceFiles: WorkspaceFileDisplay[] = useMemo(
+    () =>
+      (workspaceData?.files ?? []).map((f) => ({
+        path: f.path,
+        sizeBytes: Number(f.sizeBytes),
+        isDirectory: f.isDirectory,
+        contentType: f.contentType,
+      })),
+    [workspaceData],
+  );
+
+  const getEditorContent = useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return { text: "", mentionedFiles: [] };
+    return extractContent(el);
+  }, []);
+
+  const clearEditor = useCallback(() => {
+    const el = editorRef.current;
+    if (el) {
+      el.innerHTML = "";
+      setHasContent(false);
     }
-  }, [value, isStreaming, onSubmit, attachedFiles.length]);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (isStreaming) return;
+    const { text, mentionedFiles } = getEditorContent();
+    if (!text && attachedFiles.length === 0 && mentionedFiles.length === 0) return;
+    const mentionPaths = mentionedFiles.length > 0 ? mentionedFiles.map((f) => f.path) : undefined;
+    onSubmit(text, mentionPaths);
+    clearEditor();
+  }, [isStreaming, onSubmit, attachedFiles.length, getEditorContent, clearEditor]);
+
+  const handleMentionSelect = useCallback(
+    (path: string, name: string) => {
+      const el = editorRef.current;
+      if (!el) return;
+      insertPill(path, name, el);
+      el.focus();
+    },
+    [insertPill],
+  );
+
+  // Imperative handle for popover keyboard navigation
+  const popoverNav = useRef<{
+    moveUp: () => void;
+    moveDown: () => void;
+    selectCurrent: () => void;
+  } | null>(null);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // When mention picker is active, handle navigation
+      if (mentionActive) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeMention();
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          popoverNav.current?.moveUp();
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          popoverNav.current?.moveDown();
+          return;
+        }
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          popoverNav.current?.selectCurrent();
+          return;
+        }
+      }
+
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [handleSubmit],
+    [handleSubmit, mentionActive, closeMention],
   );
 
   const handleInput = useCallback(() => {
-    const el = textareaRef.current;
+    // Update hasContent state
+    const el = editorRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-  }, []);
+    const { text, mentionedFiles } = extractContent(el);
+    setHasContent(!!text || mentionedFiles.length > 0);
+
+    // Detect @ mentions only when a conversation exists
+    if (conversationId) {
+      detectMention();
+    }
+  }, [conversationId, detectMention]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -86,11 +168,20 @@ export const QueryInput = ({
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
-      if (!onFilesAdded) return;
-      const files = Array.from(e.clipboardData.files);
-      if (files.length > 0) {
-        e.preventDefault();
-        onFilesAdded(files);
+      // Handle file paste
+      if (onFilesAdded) {
+        const files = Array.from(e.clipboardData.files);
+        if (files.length > 0) {
+          e.preventDefault();
+          onFilesAdded(files);
+          return;
+        }
+      }
+      // For text paste, insert as plain text to avoid formatting
+      e.preventDefault();
+      const text = e.clipboardData.getData("text/plain");
+      if (text) {
+        document.execCommand("insertText", false, text);
       }
     },
     [onFilesAdded],
@@ -106,7 +197,7 @@ export const QueryInput = ({
     [onFilesAdded],
   );
 
-  const hasContent = !!value.trim() || attachedFiles.length > 0;
+  const enableSubmit = hasContent || attachedFiles.length > 0;
 
   return (
     <div
@@ -121,23 +212,37 @@ export const QueryInput = ({
       onDragLeave={() => setDragActive(false)}
       onDrop={handleDrop}
     >
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
-          handleInput();
-        }}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={
+      {/* @ mention popover — positioned above the input */}
+      {mentionActive && conversationId && (
+        <FileMentionPopover
+          query={mentionQuery ?? ""}
+          files={workspaceFiles}
+          onSelect={handleMentionSelect}
+          onClose={closeMention}
+          onNavigate={popoverNav}
+        />
+      )}
+
+      {/* contentEditable input with inline pill support */}
+      <div
+        ref={editorRef}
+        contentEditable={!disabled}
+        role="textbox"
+        aria-multiline
+        aria-placeholder={
           selectedModel?.startsWith("image:")
             ? "Describe an image..."
             : "Ask a question about your engineering data..."
         }
-        className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm outline-none placeholder:text-muted-foreground"
-        rows={1}
-        disabled={disabled}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        data-placeholder={
+          selectedModel?.startsWith("image:")
+            ? "Describe an image..."
+            : "Ask a question about your engineering data..."
+        }
+        className="min-h-[36px] max-h-[200px] w-full overflow-y-auto bg-transparent px-4 pt-3 pb-2 text-sm outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
       />
       <FileAttachmentChips files={attachedFiles} onRemove={onFileRemoved} />
       <div className="flex items-center justify-between px-2 pb-2">
@@ -186,7 +291,7 @@ export const QueryInput = ({
               size="icon"
               className="size-8"
               onClick={handleSubmit}
-              disabled={!hasContent || disabled}
+              disabled={!enableSubmit || disabled}
             >
               <ArrowUp className="size-4" />
             </Button>

@@ -14,18 +14,21 @@ const defaultProps = {
   contextUsage: undefined,
 };
 
+/** Helper to get the contentEditable editor element. */
+const getEditor = (): HTMLElement => screen.getByRole("textbox");
+
 setupCleanup();
 
 describe("QueryInput", () => {
-  it("renders textarea with placeholder", () => {
+  it("renders editor with placeholder", () => {
     renderWithProviders(<QueryInput {...defaultProps} />);
 
-    expect(
-      screen.getByPlaceholderText("Ask a question about your engineering data..."),
-    ).toBeInTheDocument();
+    const editor = getEditor();
+    expect(editor).toBeInTheDocument();
+    expect(editor.dataset.placeholder).toBe("Ask a question about your engineering data...");
   });
 
-  it("submit button is disabled when textarea is empty", () => {
+  it("submit button is disabled when editor is empty", () => {
     renderWithProviders(<QueryInput {...defaultProps} />);
 
     const buttons = screen.getAllByRole("button");
@@ -37,30 +40,32 @@ describe("QueryInput", () => {
     const onSubmit = vi.fn();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
-    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
-    fireEvent.change(textarea, { target: { value: "  What is the team velocity?  " } });
+    const editor = getEditor();
+    editor.textContent = "  What is the team velocity?  ";
+    fireEvent.input(editor);
 
     const buttons = screen.getAllByRole("button");
     const submitButton = buttons.find((b) => b.querySelector("svg.lucide-arrow-up"))!;
     fireEvent.click(submitButton);
 
-    expect(onSubmit).toHaveBeenCalledWith("What is the team velocity?");
+    expect(onSubmit).toHaveBeenCalledWith("What is the team velocity?", undefined);
   });
 
   it("calls onSubmit on Enter key (not Shift+Enter)", () => {
     const onSubmit = vi.fn();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
-    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
-    fireEvent.change(textarea, { target: { value: "Test question" } });
+    const editor = getEditor();
+    editor.textContent = "Test question";
+    fireEvent.input(editor);
 
     // Shift+Enter should not submit
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: true });
     expect(onSubmit).not.toHaveBeenCalled();
 
     // Enter without Shift should submit
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-    expect(onSubmit).toHaveBeenCalledWith("Test question");
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false });
+    expect(onSubmit).toHaveBeenCalledWith("Test question", undefined);
   });
 
   it("shows stop button when isStreaming is true", () => {
@@ -81,20 +86,18 @@ describe("QueryInput", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it("clears textarea after submit", () => {
+  it("clears editor after submit", () => {
     const onSubmit = vi.fn();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
-    const textarea = screen.getByPlaceholderText(
-      "Ask a question about your engineering data...",
-    ) as HTMLTextAreaElement;
-    fireEvent.change(textarea, { target: { value: "Hello" } });
-    expect(textarea.value).toBe("Hello");
+    const editor = getEditor();
+    editor.textContent = "Hello";
+    fireEvent.input(editor);
 
     // Submit via Enter
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false });
 
-    expect(textarea.value).toBe("");
+    expect(editor.innerHTML).toBe("");
   });
 
   it("renders plus button for file attachment when onFilesAdded provided", () => {
@@ -148,9 +151,8 @@ describe("QueryInput", () => {
 
   it("shows drag-active styling on dragover", () => {
     renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn()} />);
-    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
-    // The drop zone is the parent container of the textarea
-    const dropZone = textarea.closest("[class*='rounded-lg']")!;
+    const editor = getEditor();
+    const dropZone = editor.closest("[class*='rounded-lg']")!;
     fireEvent.dragOver(dropZone);
     expect(dropZone.className).toContain("ring-primary");
   });
@@ -158,9 +160,9 @@ describe("QueryInput", () => {
   it("does not intercept text-only paste", () => {
     const onFilesAdded = vi.fn();
     renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={onFilesAdded} />);
-    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
-    fireEvent.paste(textarea, {
-      clipboardData: { files: [] },
+    const editor = getEditor();
+    fireEvent.paste(editor, {
+      clipboardData: { files: [], getData: () => "plain text" },
     });
     expect(onFilesAdded).not.toHaveBeenCalled();
   });

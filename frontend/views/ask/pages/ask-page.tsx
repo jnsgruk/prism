@@ -31,6 +31,9 @@ const AskPage = (): React.ReactElement => {
   const [filePreview, setFilePreview] = useState<PreviewState | null>(null);
   const [filePreviewOpen, setFilePreviewOpen] = useState(false);
   const previewBlobRef = useRef<string | null>(null);
+  // Track files submitted with the current question so they appear immediately
+  // in the optimistic user message (before the DB message is loaded).
+  const [submittedFiles, setSubmittedFiles] = useState<string[]>([]);
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
@@ -90,7 +93,7 @@ const AskPage = (): React.ReactElement => {
   const pendingConvIdRef = useRef<string | undefined>(undefined);
 
   const handleAsk = useCallback(
-    async (question: string): Promise<void> => {
+    async (question: string, mentionedPaths?: string[]): Promise<void> => {
       const effectiveConvId = conversationId ?? pendingConvIdRef.current ?? crypto.randomUUID();
       if (!conversationId) {
         pendingConvIdRef.current = effectiveConvId;
@@ -122,8 +125,19 @@ const AskPage = (): React.ReactElement => {
         setPendingFiles([]);
       }
 
+      // Merge uploaded file paths with @-mentioned workspace file paths
+      const allFilePaths = [...attachedFilePaths, ...(mentionedPaths ?? [])];
+
+      // Store the submitted files so the optimistic user message can show them
+      setSubmittedFiles(allFilePaths);
+
       pendingConvIdRef.current = undefined;
-      ask(question, effectiveConvId, selectedModel, attachedFilePaths);
+      ask(
+        question,
+        effectiveConvId,
+        selectedModel,
+        allFilePaths.length > 0 ? allFilePaths : undefined,
+      );
     },
     [ask, conversationId, selectedModel, pendingFiles, uploadFile],
   );
@@ -249,6 +263,7 @@ const AskPage = (): React.ReactElement => {
                       onRetry={handleAsk}
                       conversationId={conversationId}
                       onFileClick={handleFileClick}
+                      submittedFiles={submittedFiles}
                     />
                   </div>
                 )}
@@ -268,6 +283,7 @@ const AskPage = (): React.ReactElement => {
                   attachedFiles={attachedFileInfos}
                   onFilesAdded={handleFilesAdded}
                   onFileRemoved={handleFileRemoved}
+                  conversationId={conversationId}
                 />
               </div>
             </>
