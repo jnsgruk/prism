@@ -114,7 +114,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(MetricsServiceServer::new(metrics_service))
         .add_service(HandlersServiceServer::new(handlers_service))
         .add_service(InsightsServiceServer::new(insights_service))
-        .add_service(ReasoningServiceServer::new(reasoning_service))
+        .add_service(
+            ReasoningServiceServer::new(reasoning_service)
+                .max_decoding_message_size(100 * 1024 * 1024),
+        )
         .serve(addr)
         .await?;
 
