@@ -116,7 +116,7 @@ impl MetricsRepo {
                   OR p.name ILIKE '%' || $8 || '%'
                   OR c.metadata->>'repo' ILIKE '%' || $8 || '%'
               ))
-              AND ($11::text IS NULL OR c.platform = $11 OR c.platform LIKE $11 || '-%')
+              AND ($11::text IS NULL OR c.platform ILIKE $11 OR c.platform ILIKE $11 || '-%')
             ORDER BY
               CASE WHEN $9 = 'person_name' AND NOT $10 THEN p.name END ASC NULLS LAST,
               CASE WHEN $9 = 'person_name' AND $10 THEN p.name END DESC NULLS LAST,

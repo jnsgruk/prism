@@ -517,7 +517,14 @@ impl MetricsService for MetricsServiceImpl {
         let period_start = parse_date(&period.start)?;
         let period_end = parse_date(&period.end)?;
 
-        let instance = req.instance.as_deref();
+        let instance = req.instance.map(|i| {
+            if i.starts_with("discourse") {
+                i
+            } else {
+                format!("discourse-{i}")
+            }
+        });
+        let instance = instance.as_deref();
 
         let (categories, trend, contributors) = tokio::try_join!(
             self.repos.metrics.get_discourse_category_distribution(

@@ -103,7 +103,10 @@ impl Source for DiscourseSource {
             .and_then(serde_json::Value::as_i64)
             .unwrap_or(0) as i32;
 
-        let instance = extract_instance(&ctx.source_config.name);
+        let instance = match &ctx.source_config.source_type {
+            ps_core::models::Platform::Discourse(inst) => inst.clone(),
+            _ => extract_instance(&ctx.source_config.name),
+        };
 
         let cursor = Cursor {
             watermark: plan.watermark.clone(),

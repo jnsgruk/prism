@@ -53,7 +53,7 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post')
-              AND ($4::text IS NULL OR c.platform = $4)
+              AND ($4::text IS NULL OR c.platform ILIKE $4)
             GROUP BY COALESCE(c.metrics->>'category', c.metadata->>'category', 'Uncategorized')
             ORDER BY "post_count!" DESC
             LIMIT 20
@@ -106,7 +106,7 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post', 'discourse_like')
-              AND ($4::text IS NULL OR c.platform = $4)
+              AND ($4::text IS NULL OR c.platform ILIKE $4)
             GROUP BY c.created_at::date
             ORDER BY "date!" ASC
             "#,
@@ -162,7 +162,7 @@ impl MetricsRepo {
               AND c.created_at >= $2::date::timestamptz
               AND c.created_at < ($3::date + INTERVAL '1 day')::timestamptz
               AND c.contribution_type IN ('discourse_topic', 'discourse_post')
-              AND ($4::text IS NULL OR c.platform = $4)
+              AND ($4::text IS NULL OR c.platform ILIKE $4)
             GROUP BY p.id, p.name
             ORDER BY (SUM(CASE WHEN c.contribution_type IN ('discourse_topic', 'discourse_post') THEN 1 ELSE 0 END)) DESC
             LIMIT 50

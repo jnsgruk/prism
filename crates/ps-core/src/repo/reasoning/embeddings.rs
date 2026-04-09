@@ -297,7 +297,7 @@ impl ReasoningRepo {
             FROM reasoning.embeddings e
             JOIN activity.contributions c ON c.id = e.contribution_id
             LEFT JOIN org.people p ON p.id = c.person_id
-            WHERE ($2::text IS NULL OR c.platform = $2 OR c.platform LIKE $2 || '-%')
+            WHERE ($2::text IS NULL OR c.platform ILIKE $2 OR c.platform ILIKE $2 || '-%')
               AND ($3::uuid IS NULL OR c.id != $3)
               AND e.embedding <=> $1::vector < 0.5
             ORDER BY e.embedding <=> $1::vector
