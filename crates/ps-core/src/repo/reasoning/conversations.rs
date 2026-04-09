@@ -458,8 +458,8 @@ impl ReasoningRepo {
     /// Returns `true` if the claim succeeded (status was not active),
     /// `false` if another request already claimed it.
     ///
-    /// Any terminal state (`idle`, `completed`, `failed`) is claimable.
-    /// Only `pending` and `running` block new queries.
+    /// Any non-active state (`idle`, `completed`, `failed`, `cancelled`) is
+    /// claimable.  Only `pending` and `running` block new queries.
     pub async fn try_claim_query(&self, conversation_id: Uuid) -> Result<bool, Error> {
         let result: sqlx::postgres::PgQueryResult = sqlx::query!(
             r#"
