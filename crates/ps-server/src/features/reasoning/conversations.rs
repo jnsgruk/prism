@@ -260,6 +260,15 @@ pub async fn cancel_query(
         let _ = cancel_tx.send(true);
     }
 
+    // Transition cancelled -> idle so the conversation is immediately
+    // claimable for a new query.  The cancel token has already been
+    // signalled, so the event loop will stop regardless of DB status.
+    svc.repos
+        .reasoning
+        .update_query_status(conv_id, ps_core::models::QueryStatus::Idle)
+        .await
+        .map_err(db_err)?;
+
     // Fire-and-forget: cancel in Restate and clean up the pod.
     let restate_url = svc.restate_url.clone();
     let client = svc.http_client.clone();

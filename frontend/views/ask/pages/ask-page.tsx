@@ -206,7 +206,10 @@ const AskPage = (): React.ReactElement => {
     [pendingFiles],
   );
 
-  const isActive = state.status === "streaming" || state.status === "container_starting";
+  const isActive =
+    state.status === "streaming" ||
+    state.status === "container_starting" ||
+    state.status === "cancelling";
 
   // Resolve context usage: prefer live streaming data, fall back to stored conversation totals.
   // Only show when the pod is active — once reaped, the context is gone and a new

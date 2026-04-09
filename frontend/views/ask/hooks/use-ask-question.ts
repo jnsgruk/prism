@@ -72,6 +72,7 @@ export type AgentState =
       durationMs: number;
       contextUsage?: ContextUsage;
     }
+  | { status: "cancelling"; conversationId?: string; question?: string }
   | { status: "error"; message: string; retryable: boolean };
 
 type StreamMeta =
@@ -94,6 +95,7 @@ type StreamMeta =
       durationMs: number;
       contextUsage?: ContextUsage;
     }
+  | { status: "cancelling"; conversationId?: string; question?: string }
   | { status: "error"; message: string; retryable: boolean };
 
 export const useAskQuestion = (): {
@@ -105,7 +107,7 @@ export const useAskQuestion = (): {
     attachedFiles?: string[],
     mentions?: MentionInit[],
   ) => Promise<void>;
-  cancel: () => void;
+  cancel: () => Promise<void>;
   reset: () => void;
   resume: (conversationId: string, question?: string) => Promise<void>;
 } => {
@@ -416,23 +418,26 @@ export const useAskQuestion = (): {
     if (
       meta.status === "streaming" ||
       meta.status === "container_starting" ||
-      meta.status === "completed"
+      meta.status === "completed" ||
+      meta.status === "cancelling"
     ) {
       conversationIdRef.current = meta.conversationId;
     }
   }, [meta]);
 
-  const cancel = useCallback(() => {
+  const cancel = useCallback(async () => {
     abortRef.current?.abort();
+    setEvents([]);
     const convId = conversationIdRef.current;
     if (convId) {
-      client.cancelQuery({ conversationId: convId }).catch(() => {
-        // Fire-and-forget: the abort already cleaned up the local stream.
+      setMeta({ status: "cancelling", conversationId: convId });
+      try {
+        await client.cancelQuery({ conversationId: convId });
+      } catch {
         // If the RPC fails, the reaper will eventually clean up the pod.
-      });
+      }
     }
     setMeta({ status: "idle" });
-    setEvents([]);
     queryClient.invalidateQueries({ queryKey: conversationKeys.all });
   }, [queryClient]);
 
