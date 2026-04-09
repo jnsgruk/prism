@@ -5,6 +5,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { MentionType } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import type { MentionItem } from "@/views/ask/hooks/use-mention-picker";
 import { useAiModels } from "@/lib/hooks/use-ai-settings";
 import { useDownloadWorkspaceFile, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
 import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
@@ -93,7 +95,7 @@ const AskPage = (): React.ReactElement => {
   const pendingConvIdRef = useRef<string | undefined>(undefined);
 
   const handleAsk = useCallback(
-    async (question: string, mentionedPaths?: string[]): Promise<void> => {
+    async (question: string, mentionItems?: MentionItem[]): Promise<void> => {
       const effectiveConvId = conversationId ?? pendingConvIdRef.current ?? crypto.randomUUID();
       if (!conversationId) {
         pendingConvIdRef.current = effectiveConvId;
@@ -125,8 +127,23 @@ const AskPage = (): React.ReactElement => {
         setPendingFiles([]);
       }
 
-      // Merge uploaded file paths with @-mentioned workspace file paths
-      const allFilePaths = [...attachedFilePaths, ...(mentionedPaths ?? [])];
+      // Separate file mentions from people/team mentions.
+      const fileMentionPaths = (mentionItems ?? [])
+        .filter((m) => m.type === "file")
+        .map((m) => m.id);
+      const allFilePaths = [...attachedFilePaths, ...fileMentionPaths];
+
+      // Build proto Mention objects for all @-mentions.
+      const typeMap = {
+        file: MentionType.FILE,
+        person: MentionType.PERSON,
+        team: MentionType.TEAM,
+      } as const;
+      const protoMentions = (mentionItems ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        type: typeMap[m.type],
+      }));
 
       // Store the submitted files so the optimistic user message can show them
       setSubmittedFiles(allFilePaths);
@@ -137,6 +154,7 @@ const AskPage = (): React.ReactElement => {
         effectiveConvId,
         selectedModel,
         allFilePaths.length > 0 ? allFilePaths : undefined,
+        protoMentions.length > 0 ? protoMentions : undefined,
       );
     },
     [ask, conversationId, selectedModel, pendingFiles, uploadFile],

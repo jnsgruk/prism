@@ -1,12 +1,17 @@
 import { FileText } from "lucide-react";
 
+import type { Mention } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { MentionType } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+
 export const UserMessage = ({
   content,
   attachedFiles,
+  mentions,
   onFileClick,
 }: {
   content: string;
   attachedFiles?: string[];
+  mentions?: Mention[];
   onFileClick?: (path: string) => void;
 }): React.ReactElement => {
   // Filter out files whose names appear inline in the message text
@@ -15,6 +20,12 @@ export const UserMessage = ({
     const name = path.split("/").pop() ?? path;
     return !content.includes(name);
   });
+
+  // People and team mentions (names already appear inline in the text,
+  // but we could display badges in the future if needed).
+  const _entityMentions = mentions?.filter(
+    (m) => m.type === MentionType.PERSON || m.type === MentionType.TEAM,
+  );
 
   return (
     <div className="flex flex-col items-end gap-1.5">

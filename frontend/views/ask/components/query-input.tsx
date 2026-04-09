@@ -7,13 +7,18 @@ import {
   FileAttachmentChips,
   type AttachedFileInfo,
 } from "@/views/ask/components/file-attachment-chips";
-import { FileMentionPopover } from "@/views/ask/components/file-mention-popover";
+import { MentionPopover, type NavigateHandle } from "@/views/ask/components/mention-popover";
 import { ModelSelector } from "@/views/ask/components/model-selector";
 import { PodStatusIndicator } from "@/views/ask/components/pod-status-indicator";
 import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
 import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
-import { useMentionPicker, extractContent } from "@/views/ask/hooks/use-mention-picker";
+import {
+  useMentionPicker,
+  extractContent,
+  type MentionItem,
+} from "@/views/ask/hooks/use-mention-picker";
 import { useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
+import { useListPeople, useListTeams } from "@/views/teams/hooks/use-teams";
 import { cn } from "@ps/cn";
 
 export const QueryInput = ({
@@ -32,7 +37,7 @@ export const QueryInput = ({
   onFileRemoved,
   conversationId,
 }: {
-  onSubmit: (question: string, mentionedFiles?: string[]) => void;
+  onSubmit: (question: string, mentions?: MentionItem[]) => void;
   onCancel: () => void;
   isStreaming: boolean;
   disabled?: boolean;
@@ -55,7 +60,7 @@ export const QueryInput = ({
   const { mentionQuery, mentionActive, detectMention, insertPill, closeMention } =
     useMentionPicker();
 
-  // Workspace files for the @ mention picker
+  // Workspace files for the @ mention picker (only when conversation exists)
   const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
   const workspaceFiles: WorkspaceFileDisplay[] = useMemo(
     () =>
@@ -68,9 +73,13 @@ export const QueryInput = ({
     [workspaceData],
   );
 
+  // People and teams for @ mention picker (always available)
+  const { data: people = [] } = useListPeople();
+  const { data: teams = [] } = useListTeams();
+
   const getEditorContent = useCallback(() => {
     const el = editorRef.current;
-    if (!el) return { text: "", mentionedFiles: [] };
+    if (!el) return { text: "", mentions: [] as MentionItem[] };
     return extractContent(el);
   }, []);
 
@@ -84,29 +93,24 @@ export const QueryInput = ({
 
   const handleSubmit = useCallback(() => {
     if (isStreaming) return;
-    const { text, mentionedFiles } = getEditorContent();
-    if (!text && attachedFiles.length === 0 && mentionedFiles.length === 0) return;
-    const mentionPaths = mentionedFiles.length > 0 ? mentionedFiles.map((f) => f.path) : undefined;
-    onSubmit(text, mentionPaths);
+    const { text, mentions } = getEditorContent();
+    if (!text && attachedFiles.length === 0 && mentions.length === 0) return;
+    onSubmit(text, mentions.length > 0 ? mentions : undefined);
     clearEditor();
   }, [isStreaming, onSubmit, attachedFiles.length, getEditorContent, clearEditor]);
 
   const handleMentionSelect = useCallback(
-    (path: string, name: string) => {
+    (id: string, name: string, type: "file" | "person" | "team") => {
       const el = editorRef.current;
       if (!el) return;
-      insertPill(path, name, el);
+      insertPill(id, name, type, el);
       el.focus();
     },
     [insertPill],
   );
 
   // Imperative handle for popover keyboard navigation
-  const popoverNav = useRef<{
-    moveUp: () => void;
-    moveDown: () => void;
-    selectCurrent: () => void;
-  } | null>(null);
+  const popoverNav = useRef<NavigateHandle | null>(null);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -146,14 +150,12 @@ export const QueryInput = ({
     // Update hasContent state
     const el = editorRef.current;
     if (!el) return;
-    const { text, mentionedFiles } = extractContent(el);
-    setHasContent(!!text || mentionedFiles.length > 0);
+    const { text, mentions } = extractContent(el);
+    setHasContent(!!text || mentions.length > 0);
 
-    // Detect @ mentions only when a conversation exists
-    if (conversationId) {
-      detectMention();
-    }
-  }, [conversationId, detectMention]);
+    // Detect @ mentions — people/teams always available, files need a conversation
+    detectMention();
+  }, [detectMention]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -213,10 +215,12 @@ export const QueryInput = ({
       onDrop={handleDrop}
     >
       {/* @ mention popover — positioned above the input */}
-      {mentionActive && conversationId && (
-        <FileMentionPopover
+      {mentionActive && (
+        <MentionPopover
           query={mentionQuery ?? ""}
-          files={workspaceFiles}
+          files={conversationId ? workspaceFiles : []}
+          people={people}
+          teams={teams}
           onSelect={handleMentionSelect}
           onClose={closeMention}
           onNavigate={popoverNav}

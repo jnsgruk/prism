@@ -1,12 +1,19 @@
 import { useCallback, useRef, useState } from "react";
 
-export type MentionedFile = {
-  path: string;
+export type MentionType = "file" | "person" | "team";
+
+export type MentionItem = {
+  id: string;
   name: string;
+  type: MentionType;
 };
 
-/** Data attribute used to identify pill elements in the contentEditable div. */
-export const PILL_ATTR = "data-mention-path";
+/** Data attributes used to identify pill elements in the contentEditable div. */
+export const PILL_ID_ATTR = "data-mention-id";
+export const PILL_TYPE_ATTR = "data-mention-type";
+
+/** @deprecated Kept for backward compatibility with legacy pills. */
+const LEGACY_PILL_ATTR = "data-mention-path";
 
 /**
  * Read the text content immediately before the cursor inside a contentEditable
@@ -32,19 +39,29 @@ const findMentionQuery = (textBefore: string): string | null => {
   return query;
 };
 
+const PILL_COLORS: Record<MentionType, string> = {
+  file: "bg-primary/10 text-primary",
+  person: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
+  team: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+};
+
 /**
- * Create a pill DOM element for a mentioned file.
+ * Create a pill DOM element for a mentioned entity.
  */
-export const createPillElement = (path: string, displayName: string): HTMLSpanElement => {
+export const createPillElement = (
+  id: string,
+  displayName: string,
+  type: MentionType,
+): HTMLSpanElement => {
   const pill = document.createElement("span");
-  pill.setAttribute(PILL_ATTR, path);
+  pill.setAttribute(PILL_ID_ATTR, id);
+  pill.setAttribute(PILL_TYPE_ATTR, type);
   pill.setAttribute("contenteditable", "false");
-  pill.className =
-    "inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs text-primary align-baseline mx-0.5 select-none";
+  pill.className = `inline-flex items-center gap-1 rounded-md ${PILL_COLORS[type]} px-1.5 py-0.5 text-xs align-baseline mx-0.5 select-none`;
   pill.textContent = displayName;
 
   const removeBtn = document.createElement("span");
-  removeBtn.className = "cursor-pointer ml-0.5 hover:text-primary/70";
+  removeBtn.className = "cursor-pointer ml-0.5 hover:opacity-70";
   removeBtn.textContent = "×";
   removeBtn.setAttribute("role", "button");
   removeBtn.setAttribute("aria-label", `Remove ${displayName}`);
@@ -59,14 +76,12 @@ export const createPillElement = (path: string, displayName: string): HTMLSpanEl
 };
 
 /**
- * Extract plain text and mentioned file paths from a contentEditable div.
- * Pills are replaced with empty string in the text output (their paths go
- * into the mentionedFiles array).
+ * Extract plain text and mentioned entities from a contentEditable div.
+ * Pills are replaced with their display names in the text output (their
+ * structured data goes into the mentions array).
  */
-export const extractContent = (
-  el: HTMLElement,
-): { text: string; mentionedFiles: MentionedFile[] } => {
-  const mentionedFiles: MentionedFile[] = [];
+export const extractContent = (el: HTMLElement): { text: string; mentions: MentionItem[] } => {
+  const mentions: MentionItem[] = [];
   let text = "";
 
   const walk = (node: Node): void => {
@@ -75,11 +90,20 @@ export const extractContent = (
       return;
     }
     if (node instanceof HTMLElement) {
-      const path = node.getAttribute(PILL_ATTR);
-      if (path) {
-        const name = node.firstChild?.textContent ?? path;
-        mentionedFiles.push({ path, name });
-        // Include the filename inline so the message text reads naturally
+      // New-style pill: data-mention-id + data-mention-type
+      const pillId = node.getAttribute(PILL_ID_ATTR);
+      if (pillId) {
+        const name = node.firstChild?.textContent ?? pillId;
+        const pillType = (node.getAttribute(PILL_TYPE_ATTR) ?? "file") as MentionType;
+        mentions.push({ id: pillId, name, type: pillType });
+        text += name;
+        return;
+      }
+      // Legacy pill: data-mention-path (treat as file)
+      const legacyPath = node.getAttribute(LEGACY_PILL_ATTR);
+      if (legacyPath) {
+        const name = node.firstChild?.textContent ?? legacyPath;
+        mentions.push({ id: legacyPath, name, type: "file" });
         text += name;
         return;
       }
@@ -99,14 +123,14 @@ export const extractContent = (
   };
 
   walk(el);
-  return { text: text.trim(), mentionedFiles };
+  return { text: text.trim(), mentions };
 };
 
 type MentionPickerState = {
   mentionQuery: string | null;
   mentionActive: boolean;
   detectMention: () => void;
-  insertPill: (path: string, name: string, editorEl: HTMLElement) => void;
+  insertPill: (id: string, name: string, type: MentionType, editorEl: HTMLElement) => void;
   closeMention: () => void;
   editorRef: React.RefObject<HTMLDivElement | null>;
 };
@@ -124,49 +148,52 @@ export const useMentionPicker = (): MentionPickerState => {
     setMentionQuery(findMentionQuery(textBefore));
   }, []);
 
-  const insertPill = useCallback((path: string, name: string, editorEl: HTMLElement) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+  const insertPill = useCallback(
+    (id: string, name: string, type: MentionType, editorEl: HTMLElement) => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
 
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return;
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return;
 
-    const textContent = node.textContent ?? "";
-    const cursorOffset = range.startOffset;
-    const textBefore = textContent.slice(0, cursorOffset);
-    const atIndex = textBefore.lastIndexOf("@");
-    if (atIndex === -1) return;
+      const textContent = node.textContent ?? "";
+      const cursorOffset = range.startOffset;
+      const textBefore = textContent.slice(0, cursorOffset);
+      const atIndex = textBefore.lastIndexOf("@");
+      if (atIndex === -1) return;
 
-    // Split the text node: [before @] [pill] [after cursor]
-    const before = textContent.slice(0, atIndex);
-    const after = textContent.slice(cursorOffset);
+      // Split the text node: [before @] [pill] [after cursor]
+      const before = textContent.slice(0, atIndex);
+      const after = textContent.slice(cursorOffset);
 
-    const parent = node.parentNode;
-    if (!parent) return;
+      const parent = node.parentNode;
+      if (!parent) return;
 
-    const beforeNode = document.createTextNode(before);
-    const pill = createPillElement(path, name);
-    // Add a trailing space so the cursor has somewhere to land
-    const afterNode = document.createTextNode(after || "\u00A0");
+      const beforeNode = document.createTextNode(before);
+      const pill = createPillElement(id, name, type);
+      // Add a trailing space so the cursor has somewhere to land
+      const afterNode = document.createTextNode(after || "\u00A0");
 
-    parent.insertBefore(beforeNode, node);
-    parent.insertBefore(pill, node);
-    parent.insertBefore(afterNode, node);
-    parent.removeChild(node);
+      parent.insertBefore(beforeNode, node);
+      parent.insertBefore(pill, node);
+      parent.insertBefore(afterNode, node);
+      parent.removeChild(node);
 
-    // Place cursor after the pill (in the afterNode)
-    const newRange = document.createRange();
-    newRange.setStart(afterNode, after ? 0 : 1);
-    newRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
+      // Place cursor after the pill (in the afterNode)
+      const newRange = document.createRange();
+      newRange.setStart(afterNode, after ? 0 : 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
 
-    setMentionQuery(null);
+      setMentionQuery(null);
 
-    // Trigger input event so React picks up the change
-    editorEl.dispatchEvent(new Event("input", { bubbles: true }));
-  }, []);
+      // Trigger input event so React picks up the change
+      editorEl.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    [],
+  );
 
   const closeMention = useCallback(() => {
     setMentionQuery(null);

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 import { QueryInput } from "./query-input";
+import { createPillElement } from "@/views/ask/hooks/use-mention-picker";
 
 const defaultProps = {
   onSubmit: vi.fn(),
@@ -165,5 +166,24 @@ describe("QueryInput", () => {
       clipboardData: { files: [], getData: () => "plain text" },
     });
     expect(onFilesAdded).not.toHaveBeenCalled();
+  });
+
+  it("calls onSubmit with mention items when pills present", () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
+
+    const editor = getEditor();
+    editor.appendChild(document.createTextNode("Compare "));
+    editor.appendChild(createPillElement("abc-123", "Alice", "person"));
+    editor.appendChild(document.createTextNode(" in "));
+    editor.appendChild(createPillElement("team-456", "Platform", "team"));
+    fireEvent.input(editor);
+
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false });
+
+    expect(onSubmit).toHaveBeenCalledWith("Compare Alice in Platform", [
+      { id: "abc-123", name: "Alice", type: "person" },
+      { id: "team-456", name: "Platform", type: "team" },
+    ]);
   });
 });

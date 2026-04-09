@@ -2,8 +2,15 @@ import { createClient } from "@connectrpc/connect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import { ReasoningService, type MentionType } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
+
+/** Plain mention shape accepted by the ask hook (avoids protobuf-es Message wrapper). */
+export type MentionInit = {
+  id: string;
+  name: string;
+  type: MentionType;
+};
 
 import { conversationKeys } from "@/lib/hooks/use-conversations";
 import { deriveSteps, type StreamEvent } from "@/views/ask/lib/derive-steps";
@@ -96,6 +103,7 @@ export const useAskQuestion = (): {
     conversationId?: string,
     modelOverride?: string,
     attachedFiles?: string[],
+    mentions?: MentionInit[],
   ) => Promise<void>;
   cancel: () => void;
   reset: () => void;
@@ -299,6 +307,7 @@ export const useAskQuestion = (): {
       conversationId?: string,
       modelOverride?: string,
       attachedFiles?: string[],
+      mentions?: MentionInit[],
     ) => {
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -329,6 +338,7 @@ export const useAskQuestion = (): {
             modelOverride: effectiveModelOverride,
             imageModel,
             attachedFiles: attachedFiles ?? [],
+            mentions: mentions ?? [],
           },
           { signal: abort.signal },
         );

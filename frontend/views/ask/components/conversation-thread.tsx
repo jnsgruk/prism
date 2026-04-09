@@ -188,6 +188,7 @@ export const ConversationThread = ({
             <UserMessage
               content={msg.content}
               attachedFiles={msg.attachedFiles.length > 0 ? [...msg.attachedFiles] : undefined}
+              mentions={msg.mentions.length > 0 ? [...msg.mentions] : undefined}
               onFileClick={onFileClick}
             />
           );
