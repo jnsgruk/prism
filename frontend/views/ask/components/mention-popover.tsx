@@ -8,10 +8,14 @@ import type { MentionType } from "@/views/ask/hooks/use-mention-picker";
 import { cn } from "@ps/cn";
 
 /** Simple fuzzy-ish match: all query characters appear in order in the target. */
+/** Normalise whitespace (contentEditable often inserts \u00A0) and trim. */
+const normalise = (s: string): string => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+/** Fuzzy match: all query characters appear in order in the target. */
 const matchesQuery = (target: string, query: string): boolean => {
-  if (!query) return true;
-  const lower = target.toLowerCase();
-  const q = query.toLowerCase();
+  const q = normalise(query);
+  if (!q) return true;
+  const lower = normalise(target);
   let qi = 0;
   for (let i = 0; i < lower.length && qi < q.length; i++) {
     if (lower[i] === q[qi]) qi++;
