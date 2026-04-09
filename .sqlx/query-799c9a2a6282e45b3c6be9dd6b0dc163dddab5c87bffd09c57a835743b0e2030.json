@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reasoning.conversations (user_id, title, model_name)\n            VALUES ($1, $2, $3)\n            RETURNING id, user_id, title, status, model_name,\n                      container_pod_name, container_status, opencode_session_id,\n                      container_pod_ip,\n                      total_tool_calls, total_prompt_tokens, total_completion_tokens,\n                      query_status, created_at, last_activity_at\n            ",
+  "query": "\n            INSERT INTO reasoning.conversations (id, user_id, title, model_name)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id, user_id, title, status, model_name,\n                      container_pod_name, container_status, opencode_session_id,\n                      container_pod_ip,\n                      total_tool_calls, total_prompt_tokens, total_completion_tokens,\n                      query_status, created_at, last_activity_at\n            ",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,7 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
         "Text",
         "Text"
       ]
@@ -104,5 +105,5 @@
       false
     ]
   },
-  "hash": "a7c996d54e1ee3a7fb43f9452bfcdda8306be63f77aba53d09987abb252b2476"
+  "hash": "799c9a2a6282e45b3c6be9dd6b0dc163dddab5c87bffd09c57a835743b0e2030"
 }
