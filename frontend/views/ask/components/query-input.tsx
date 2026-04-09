@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ContextIndicator } from "@/views/ask/components/context-indicator";
 import { ModelSelector } from "@/views/ask/components/model-selector";
+import { PodStatusIndicator } from "@/views/ask/components/pod-status-indicator";
 import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
 
 export const QueryInput = ({
@@ -14,6 +15,9 @@ export const QueryInput = ({
   selectedModel,
   onModelChange,
   contextUsage,
+  containerStatus,
+  podName,
+  podIp,
 }: {
   onSubmit: (question: string) => void;
   onCancel: () => void;
@@ -22,6 +26,9 @@ export const QueryInput = ({
   selectedModel: string | undefined;
   onModelChange: (modelId: string | undefined) => void;
   contextUsage?: ContextUsage;
+  containerStatus?: string;
+  podName?: string;
+  podIp?: string;
 }): React.ReactElement => {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -76,6 +83,14 @@ export const QueryInput = ({
         <ModelSelector value={selectedModel} onSelect={onModelChange} disabled={isStreaming} />
       </div>
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        {containerStatus && (
+          <PodStatusIndicator
+            containerStatus={containerStatus}
+            podName={podName}
+            podIp={podIp}
+            isStreaming={isStreaming}
+          />
+        )}
         {contextUsage && contextUsage.contextWindow > 0 && (
           <ContextIndicator contextUsage={contextUsage} onCompact={() => onSubmit("/compact")} />
         )}

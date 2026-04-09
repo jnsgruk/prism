@@ -84,18 +84,29 @@ const AskPage = (): React.ReactElement => {
   const isActive = state.status === "streaming" || state.status === "container_starting";
 
   // Resolve context usage: prefer live streaming data, fall back to stored conversation totals.
-  // Use a ref to persist the last known value so it doesn't disappear between turns.
+  // Only show when the pod is active — once reaped, the context is gone and a new
+  // query will start a fresh pod with an empty context window.
   const conv = conversationData?.conversation;
+  const podActive = conv?.containerStatus === "active";
   const { data: modelsResponse } = useAiModels(undefined, "tool_use");
   const lastContextUsage = useRef<ContextUsage | undefined>(undefined);
   const contextUsage = useMemo((): ContextUsage | undefined => {
+    if (!podActive && state.status !== "streaming" && state.status !== "completed") {
+      lastContextUsage.current = undefined;
+      return undefined;
+    }
     let usage: ContextUsage | undefined;
     // Live streaming data takes priority.
     if (state.status === "streaming" || state.status === "completed") {
       usage = state.contextUsage;
     }
-    // Fall back to stored conversation totals.
-    if (!usage && conv && (conv.totalPromptTokens > 0 || conv.totalCompletionTokens > 0)) {
+    // Fall back to stored conversation totals only while pod is active.
+    if (
+      !usage &&
+      podActive &&
+      conv &&
+      (conv.totalPromptTokens > 0 || conv.totalCompletionTokens > 0)
+    ) {
       const modelId = conv.modelName.split("/").slice(1).join("/");
       const model = modelsResponse?.models?.find((m) => m.id === modelId);
       usage = {
@@ -106,7 +117,7 @@ const AskPage = (): React.ReactElement => {
     }
     if (usage) lastContextUsage.current = usage;
     return usage ?? lastContextUsage.current;
-  }, [state, conv, modelsResponse]);
+  }, [state, conv, modelsResponse, podActive]);
 
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;
 
@@ -157,6 +168,9 @@ const AskPage = (): React.ReactElement => {
                   selectedModel={selectedModel}
                   onModelChange={setSelectedModel}
                   contextUsage={contextUsage}
+                  containerStatus={conv?.containerStatus}
+                  podName={conv?.containerPodName}
+                  podIp={conv?.containerPodIp}
                 />
               </div>
             </>
