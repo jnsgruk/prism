@@ -103,7 +103,7 @@ impl PrismTools {
             contribution_type: contribution_type_str_to_proto(input.contribution_type.as_deref()),
             state: state_str_to_proto(input.state.as_deref()),
             platform: platform_str_to_proto(input.platform.as_deref()),
-            page_size: input.limit.unwrap_or(25),
+            page_size: input.limit.unwrap_or(50),
             search: input.search,
             ..Default::default()
         };
@@ -199,7 +199,7 @@ impl PrismTools {
     ) -> Result<String, String> {
         let req = proto::FindSimilarRequest {
             contribution_id: input.contribution_id,
-            limit: input.limit.unwrap_or(10),
+            limit: input.limit.unwrap_or(50),
             platform: platform_str_to_proto(input.platform.as_deref()),
             ..Default::default()
         };
@@ -230,7 +230,7 @@ impl PrismTools {
     ) -> Result<String, String> {
         let req = proto::SearchByTextRequest {
             query_text: input.query,
-            limit: input.limit.unwrap_or(10),
+            limit: input.limit.unwrap_or(50),
             platform: platform_str_to_proto(input.platform.as_deref()),
             ..Default::default()
         };
@@ -357,11 +357,24 @@ impl PrismTools {
             .people
             .iter()
             .map(|p| {
+                let identities: Vec<_> = p
+                    .identities
+                    .iter()
+                    .map(|i| {
+                        let platform = proto::Platform::try_from(i.platform)
+                            .unwrap_or(proto::Platform::Unspecified);
+                        serde_json::json!({
+                            "platform": platform.display_str(),
+                            "username": &i.username,
+                        })
+                    })
+                    .collect();
                 serde_json::json!({
                     "id": &p.id,
                     "name": &p.name,
                     "team_name": &p.team_name,
                     "active": p.active,
+                    "identities": identities,
                 })
             })
             .collect();

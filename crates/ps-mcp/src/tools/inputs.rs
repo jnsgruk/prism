@@ -26,7 +26,7 @@ pub struct QueryContributionsInput {
     pub state: Option<String>,
     /// Free-text search across title, author, and repo.
     pub search: Option<String>,
-    /// Maximum results to return (default 25, max 100).
+    /// Maximum results to return (default 50, max 100).
     pub limit: Option<i32>,
 }
 
@@ -53,7 +53,7 @@ pub struct GetPersonProfileInput {
 pub struct SearchSimilarInput {
     /// Contribution ID to find similar items for.
     pub contribution_id: String,
-    /// Maximum results (default 10).
+    /// Maximum results (default 50).
     pub limit: Option<i32>,
     /// Filter by platform.
     pub platform: Option<String>,
@@ -64,7 +64,7 @@ pub struct SearchSimilarInput {
 pub struct SearchByTextInput {
     /// Free-text search query.
     pub query: String,
-    /// Maximum results (default 10).
+    /// Maximum results (default 50).
     pub limit: Option<i32>,
     /// Filter by platform.
     pub platform: Option<String>,
