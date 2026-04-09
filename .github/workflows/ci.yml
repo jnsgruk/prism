@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_TARGET_DIR: /mnt/target
   SQLX_OFFLINE: "true"
   RUSTFLAGS: "-D warnings"
 
@@ -19,8 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create cargo target dir on /mnt
-        run: sudo mkdir -p /mnt/target && sudo chown runner:runner /mnt/target
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: carve
 
       - uses: DeterminateSystems/nix-installer-action@main
 
