@@ -285,7 +285,7 @@
                 cargo-test = {
                   enable = true;
                   files = "\\.(rs|toml)$";
-                  entry = "cargo nextest run";
+                  entry = "bash -c 'cargo build --bin setup-test-db && cargo nextest run'";
                   pass_filenames = false;
                   stages = [ "pre-commit" ];
                 };
