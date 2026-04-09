@@ -491,6 +491,7 @@ async fn conversation_list_with_counts() {
                     prompt_tokens: 10,
                     completion_tokens: 0,
                     attached_files: &[],
+                    mentions: &serde_json::json!([]),
                 })
                 .await
                 .unwrap();
@@ -556,6 +557,7 @@ async fn conversation_multi_turn_messages() {
             prompt_tokens: 20,
             completion_tokens: 0,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -571,6 +573,7 @@ async fn conversation_multi_turn_messages() {
             prompt_tokens: 0,
             completion_tokens: 50,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -586,6 +589,7 @@ async fn conversation_multi_turn_messages() {
             prompt_tokens: 15,
             completion_tokens: 0,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -601,6 +605,7 @@ async fn conversation_multi_turn_messages() {
             prompt_tokens: 0,
             completion_tokens: 40,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -795,6 +800,7 @@ async fn conversation_export_roundtrip() {
             prompt_tokens: 25,
             completion_tokens: 0,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -810,6 +816,7 @@ async fn conversation_export_roundtrip() {
             prompt_tokens: 0,
             completion_tokens: 60,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();

@@ -7,7 +7,7 @@ mod trace;
 
 use ps_proto::canonical::prism::v1::{
     AgentConversationCreated, AgentError, AgentFinalAnswer, AskQuestionRequest,
-    AskQuestionResponse, ask_question_response,
+    AskQuestionResponse, Mention, MentionType, ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
@@ -37,8 +37,8 @@ pub async fn ask_question(
     let ctx = require_auth(&request)?;
     let req = request.into_inner();
 
-    // Validate question — allow empty text when files are attached.
-    if req.question.trim().is_empty() && req.attached_files.is_empty() {
+    // Validate question — allow empty text when files or mentions are attached.
+    if req.question.trim().is_empty() && req.attached_files.is_empty() && req.mentions.is_empty() {
         return Err(Status::invalid_argument("question must not be empty"));
     }
     if req.question.len() > 4000 {
@@ -48,7 +48,10 @@ pub async fn ask_question(
     }
 
     let (model_name, provider_keys, default_image_model) = resolve_model_config(svc, &req).await;
-    let conversation_id = setup_conversation(svc, ctx.user_id, &req, &model_name).await?;
+    let mentions_json = mentions_to_json(&req.mentions);
+    let system_hint = build_system_hint(&req.attached_files, &req.mentions);
+    let conversation_id =
+        setup_conversation(svc, ctx.user_id, &req, &model_name, &mentions_json).await?;
 
     // Per-query image_model takes priority over admin default.
     let effective_image_model = req.image_model.or(default_image_model);
@@ -68,21 +71,6 @@ pub async fn ask_question(
     let http_client = svc.http_client.clone();
     let repos = svc.repos.clone();
     let question = req.question.clone();
-    // Build a system-level hint for referenced/attached files so the agent
-    // knows to read them without polluting the user's visible message text.
-    let file_hint: Option<String> = if req.attached_files.is_empty() {
-        None
-    } else {
-        let file_list = req
-            .attached_files
-            .iter()
-            .map(|f| format!("/workspace/{f}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        Some(format!(
-            "The user referenced files in the workspace. Read them from: {file_list}"
-        ))
-    };
     let model_for_usage = model_name.clone();
     let (tx, rx) = tokio::sync::mpsc::channel(64);
 
@@ -119,7 +107,7 @@ pub async fn ask_question(
             &cid_str,
             &trigger_request,
             &question,
-            file_hint.as_deref(),
+            system_hint.as_deref(),
             &model_for_usage,
             &tx,
             cancel_rx,
@@ -169,6 +157,7 @@ async fn setup_conversation(
     user_id: Uuid,
     req: &AskQuestionRequest,
     model_name: &str,
+    mentions_json: &serde_json::Value,
 ) -> Result<Uuid, Status> {
     use ps_core::repo::reasoning::{CreateConversationParams, CreateMessageParams};
 
@@ -219,6 +208,7 @@ async fn setup_conversation(
             prompt_tokens: 0,
             completion_tokens: 0,
             attached_files: &req.attached_files,
+            mentions: mentions_json,
         })
         .await
         .map_err(db_err)?;
@@ -259,6 +249,7 @@ async fn handle_stream_failure(
             prompt_tokens: 0,
             completion_tokens: 0,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await;
     let _ = repos
@@ -284,7 +275,7 @@ async fn run_query_stream(
     cid_str: &str,
     trigger_request: &serde_json::Value,
     question: &str,
-    file_hint: Option<&str>,
+    system_hint: Option<&str>,
     model_name: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
     cancel_rx: tokio::sync::watch::Receiver<bool>,
@@ -346,7 +337,7 @@ async fn run_query_stream(
         &conv,
         &pod_ip,
         question,
-        file_hint,
+        system_hint,
     )
     .await?;
 
@@ -475,6 +466,7 @@ async fn finalize_query(
             prompt_tokens: input_tok,
             completion_tokens: output_tok,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await?;
 
@@ -630,4 +622,177 @@ async fn retry_session_create(
         }
     }
     Err(last_err)
+}
+
+/// Serialise proto `Mention` messages to a JSONB-compatible value for storage.
+fn mentions_to_json(mentions: &[Mention]) -> serde_json::Value {
+    serde_json::Value::Array(
+        mentions
+            .iter()
+            .map(|m| {
+                let type_str = match MentionType::try_from(m.r#type) {
+                    Ok(MentionType::Person) => "person",
+                    Ok(MentionType::Team) => "team",
+                    _ => "file",
+                };
+                serde_json::json!({
+                    "id": m.id,
+                    "name": m.name,
+                    "type": type_str,
+                })
+            })
+            .collect(),
+    )
+}
+
+/// Build a combined system hint from attached files and structured mentions.
+///
+/// The hint is injected as a system-level message so the agent knows about
+/// referenced entities without polluting the user's visible message text.
+fn build_system_hint(attached_files: &[String], mentions: &[Mention]) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+
+    // Collect file paths from both attached_files and file-type mentions,
+    // deduplicating so the same path is not listed twice.
+    let mut file_paths: Vec<String> = attached_files
+        .iter()
+        .map(|f| format!("/workspace/{f}"))
+        .collect();
+    for m in mentions {
+        if MentionType::try_from(m.r#type) == Ok(MentionType::File) {
+            let wp = format!("/workspace/{}", m.id);
+            if !file_paths.contains(&wp) {
+                file_paths.push(wp);
+            }
+        }
+    }
+    if !file_paths.is_empty() {
+        parts.push(format!(
+            "The user referenced files in the workspace. Read them from: {}",
+            file_paths.join(", ")
+        ));
+    }
+
+    // Person mentions.
+    let people: Vec<&Mention> = mentions
+        .iter()
+        .filter(|m| MentionType::try_from(m.r#type) == Ok(MentionType::Person))
+        .collect();
+    if !people.is_empty() {
+        let list = people
+            .iter()
+            .map(|m| format!("{} (ID: {})", m.name, m.id))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!(
+            "The user mentioned these people: {list}. \
+             Use list_people or resolve_person_id to look up their details."
+        ));
+    }
+
+    // Team mentions.
+    let teams: Vec<&Mention> = mentions
+        .iter()
+        .filter(|m| MentionType::try_from(m.r#type) == Ok(MentionType::Team))
+        .collect();
+    if !teams.is_empty() {
+        let list = teams
+            .iter()
+            .map(|m| format!("{} (ID: {})", m.name, m.id))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!(
+            "The user mentioned these teams: {list}. \
+             Use list_teams or list_people with a team filter to look up their data."
+        ));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("\n\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_mention(id: &str, name: &str, mention_type: MentionType) -> Mention {
+        Mention {
+            id: id.to_string(),
+            name: name.to_string(),
+            r#type: mention_type as i32,
+        }
+    }
+
+    #[test]
+    fn hint_none_when_empty() {
+        assert!(build_system_hint(&[], &[]).is_none());
+    }
+
+    #[test]
+    fn hint_file_only_from_attached_files() {
+        let hint = build_system_hint(&["src/main.rs".to_string()], &[]).unwrap();
+        assert!(hint.contains("/workspace/src/main.rs"));
+    }
+
+    #[test]
+    fn hint_person_only() {
+        let mentions = vec![make_mention("abc-123", "Alice", MentionType::Person)];
+        let hint = build_system_hint(&[], &mentions).unwrap();
+        assert!(hint.contains("Alice (ID: abc-123)"));
+        assert!(hint.contains("list_people"));
+    }
+
+    #[test]
+    fn hint_team_only() {
+        let mentions = vec![make_mention("team-456", "Platform", MentionType::Team)];
+        let hint = build_system_hint(&[], &mentions).unwrap();
+        assert!(hint.contains("Platform (ID: team-456)"));
+        assert!(hint.contains("list_teams"));
+    }
+
+    #[test]
+    fn hint_mixed_mentions() {
+        let mentions = vec![
+            make_mention("abc-123", "Alice", MentionType::Person),
+            make_mention("team-456", "Platform", MentionType::Team),
+        ];
+        let hint = build_system_hint(&["README.md".to_string()], &mentions).unwrap();
+        assert!(hint.contains("/workspace/README.md"));
+        assert!(hint.contains("Alice"));
+        assert!(hint.contains("Platform"));
+    }
+
+    #[test]
+    fn hint_file_mention_deduplicates() {
+        let mentions = vec![make_mention("src/main.rs", "main.rs", MentionType::File)];
+        let hint = build_system_hint(&["src/main.rs".to_string()], &mentions).unwrap();
+        // Should only appear once.
+        let count = hint.matches("/workspace/src/main.rs").count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn hint_file_mention_without_attached_files() {
+        let mentions = vec![make_mention("src/lib.rs", "lib.rs", MentionType::File)];
+        let hint = build_system_hint(&[], &mentions).unwrap();
+        assert!(hint.contains("/workspace/src/lib.rs"));
+    }
+
+    #[test]
+    fn mentions_to_json_round_trip() {
+        let mentions = vec![
+            make_mention("abc", "Alice", MentionType::Person),
+            make_mention("team-1", "Core", MentionType::Team),
+            make_mention("src/main.rs", "main.rs", MentionType::File),
+        ];
+        let json = mentions_to_json(&mentions);
+        let arr = json.as_array().unwrap();
+        assert_eq!(arr.len(), 3);
+        assert_eq!(arr[0]["type"], "person");
+        assert_eq!(arr[1]["type"], "team");
+        assert_eq!(arr[2]["type"], "file");
+    }
 }

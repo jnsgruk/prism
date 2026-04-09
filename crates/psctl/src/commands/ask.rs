@@ -14,6 +14,7 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
         model_override: None,
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
     };
 
     let resp = clients.reasoning.ask_question(req).await?;

@@ -68,6 +68,7 @@ pub struct ConversationMessage {
     pub completion_tokens: i32,
     pub created_at: OffsetDateTime,
     pub attached_files: Vec<String>,
+    pub mentions: serde_json::Value,
 }
 
 /// Parameters for creating a new conversation.
@@ -90,6 +91,7 @@ pub struct CreateMessageParams<'a> {
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
     pub attached_files: &'a [String],
+    pub mentions: &'a serde_json::Value,
 }
 
 impl ReasoningRepo {
@@ -529,11 +531,11 @@ impl ReasoningRepo {
             r#"
             INSERT INTO reasoning.conversation_messages
                 (conversation_id, role, content, reasoning_trace, supporting_data,
-                 prompt_tokens, completion_tokens, attached_files)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 prompt_tokens, completion_tokens, attached_files, mentions)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id, conversation_id, role, content, reasoning_trace,
                       supporting_data, prompt_tokens, completion_tokens, created_at,
-                      attached_files
+                      attached_files, mentions
             "#,
             params.conversation_id,
             params.role,
@@ -543,6 +545,7 @@ impl ReasoningRepo {
             params.prompt_tokens,
             params.completion_tokens,
             params.attached_files,
+            params.mentions,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -559,7 +562,7 @@ impl ReasoningRepo {
             r#"
             SELECT id, conversation_id, role, content, reasoning_trace,
                    supporting_data, prompt_tokens, completion_tokens, created_at,
-                   attached_files
+                   attached_files, mentions
             FROM reasoning.conversation_messages
             WHERE conversation_id = $1
             ORDER BY created_at ASC
@@ -632,7 +635,7 @@ impl ReasoningRepo {
             SELECT id, conversation_id, role, content,
                    reasoning_trace, supporting_data,
                    prompt_tokens, completion_tokens, created_at,
-                   attached_files
+                   attached_files, mentions
             FROM reasoning.conversation_messages
             ORDER BY created_at
             "#,

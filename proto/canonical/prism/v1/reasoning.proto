@@ -349,6 +349,24 @@ message GetEmbeddingStatusResponse {
 // Agentic query interface
 // ---------------------------------------------------------------------------
 
+// Type of entity referenced in an @-mention.
+enum MentionType {
+  MENTION_TYPE_UNSPECIFIED = 0;
+  MENTION_TYPE_FILE = 1;
+  MENTION_TYPE_PERSON = 2;
+  MENTION_TYPE_TEAM = 3;
+}
+
+// A structured @-mention referencing a file, person, or team.
+message Mention {
+  // Entity identifier: workspace-relative path (file), person UUID, or team UUID.
+  string id = 1;
+  // Human-readable display name shown in the pill.
+  string name = 2;
+  // What kind of entity this mention refers to.
+  MentionType type = 3;
+}
+
 message AskQuestionRequest {
   // The natural-language question.
   string question = 1;
@@ -363,6 +381,8 @@ message AskQuestionRequest {
   // Workspace-relative paths of files attached to this message.
   // Files must already exist in the workspace (uploaded via UploadWorkspaceFile).
   repeated string attached_files = 5;
+  // Structured @-mentions of files, people, or teams.
+  repeated Mention mentions = 6;
 }
 
 message ResumeStreamRequest {
@@ -564,6 +584,8 @@ message ConversationMessage {
   google.protobuf.Timestamp created_at = 8;
   // Workspace-relative paths of files the user attached to this message.
   repeated string attached_files = 9;
+  // Structured @-mentions associated with this message.
+  repeated Mention mentions = 10;
 }
 
 message SaveInsightFromConversationRequest {

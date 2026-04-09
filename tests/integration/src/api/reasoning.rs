@@ -541,6 +541,7 @@ async fn list_and_get_conversations() {
             prompt_tokens: 10,
             completion_tokens: 0,
             attached_files: &[],
+            mentions: &serde_json::json!([]),
         })
         .await
         .unwrap();
@@ -682,6 +683,7 @@ async fn ask_question_rejects_concurrent_query() {
     let mut req = Request::new(AskQuestionRequest {
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
         question: "Should be rejected".into(),
         conversation_id: Some(conv.id.to_string()),
         model_override: None,
@@ -706,6 +708,7 @@ async fn ask_question_streams_conversation_created() {
     let mut req = Request::new(AskQuestionRequest {
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
         question: "What is the meaning of life?".into(),
         conversation_id: None,
         model_override: None,
@@ -737,6 +740,7 @@ async fn ask_question_streams_error_when_restate_unavailable() {
     let mut req = Request::new(AskQuestionRequest {
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
         question: "Will this fail?".into(),
         conversation_id: None,
         model_override: None,
@@ -778,6 +782,7 @@ async fn ask_question_validates_empty_question() {
     let mut req = Request::new(AskQuestionRequest {
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
         question: "   ".into(),
         conversation_id: None,
         model_override: None,
@@ -804,6 +809,7 @@ async fn ask_question_validates_long_question() {
     let mut req = Request::new(AskQuestionRequest {
         image_model: None,
         attached_files: vec![],
+        mentions: vec![],
         question: "x".repeat(4001),
         conversation_id: None,
         model_override: None,
@@ -830,6 +836,7 @@ async fn ask_question_requires_auth() {
         .ask_question(AskQuestionRequest {
             image_model: None,
             attached_files: vec![],
+            mentions: vec![],
             question: "Hello".into(),
             conversation_id: None,
             model_override: None,

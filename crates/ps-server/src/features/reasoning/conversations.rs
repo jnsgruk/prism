@@ -110,6 +110,7 @@ pub async fn get_conversation(
             completion_tokens: m.completion_tokens,
             created_at: Some(to_timestamp(m.created_at)),
             attached_files: m.attached_files,
+            mentions: mentions_from_json(&m.mentions),
         })
         .collect();
 
@@ -289,6 +290,26 @@ pub async fn cancel_query(
 
     info!(conversation_id = %conv_id, "query cancelled");
     Ok(Response::new(CancelQueryResponse {}))
+}
+
+/// Deserialise the JSONB `mentions` column into proto `Mention` messages.
+fn mentions_from_json(val: &serde_json::Value) -> Vec<ps_proto::canonical::prism::v1::Mention> {
+    let Some(arr) = val.as_array() else {
+        return Vec::new();
+    };
+    arr.iter()
+        .filter_map(|entry| {
+            let id = entry.get("id")?.as_str()?.to_string();
+            let name = entry.get("name")?.as_str()?.to_string();
+            let type_str = entry.get("type")?.as_str().unwrap_or("file");
+            let r#type = match type_str {
+                "person" => ps_proto::canonical::prism::v1::MentionType::Person as i32,
+                "team" => ps_proto::canonical::prism::v1::MentionType::Team as i32,
+                _ => ps_proto::canonical::prism::v1::MentionType::File as i32,
+            };
+            Some(ps_proto::canonical::prism::v1::Mention { id, name, r#type })
+        })
+        .collect()
 }
 
 pub async fn save_insight_from_conversation(
