@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE reasoning.conversations\n            SET container_pod_name = COALESCE($2, container_pod_name),\n                container_status = $3,\n                opencode_session_id = COALESCE($4, opencode_session_id),\n                container_pod_ip = COALESCE($5, container_pod_ip),\n                last_activity_at = now()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c3d11c7e0c6cd5fd93ab0570f1a354b9e34d77da86b4de728520669a1784671e"
+}

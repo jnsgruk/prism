@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE reasoning.conversations\n            SET container_status = 'reaped',\n                container_pod_ip = NULL,\n                last_activity_at = now()\n            WHERE id = ANY($1) AND container_status = 'active'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ff849bd8791a6af210ec8849ccbe55fc9631b6d9d2689660b8bb04cbc8e2e2c"
+}
