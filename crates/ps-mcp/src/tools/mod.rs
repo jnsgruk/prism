@@ -363,8 +363,14 @@ impl PrismTools {
                     .map(|i| {
                         let platform = proto::Platform::try_from(i.platform)
                             .unwrap_or(proto::Platform::Unspecified);
+                        let platform_name = match i.platform_instance.as_deref() {
+                            Some(inst) if !inst.is_empty() => {
+                                format!("{}-{inst}", platform.display_str())
+                            }
+                            _ => platform.display_str().to_string(),
+                        };
                         serde_json::json!({
-                            "platform": platform.display_str(),
+                            "platform": platform_name,
                             "username": &i.username,
                         })
                     })
