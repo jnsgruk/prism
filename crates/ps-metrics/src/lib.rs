@@ -417,7 +417,7 @@ mod tests {
     #[test]
     fn test_percentile_basic() {
         // 10 values: 1..=10
-        let data: Vec<f32> = (1..=10).map(|i| i as f32).collect();
+        let data: Vec<f32> = (1..=10).map(|i: i16| f32::from(i)).collect();
         assert!((percentile(&data, 75.0) - 8.0).abs() < f32::EPSILON);
         assert!((percentile(&data, 90.0) - 10.0).abs() < f32::EPSILON);
         assert!((percentile(&data, 99.0) - 10.0).abs() < f32::EPSILON);

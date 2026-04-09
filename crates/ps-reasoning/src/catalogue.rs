@@ -171,9 +171,9 @@ mod tests {
     /// Helper to compute capabilities for a Google model given its ID and
     /// supported generation methods (mirrors the logic in `fetch_google_models`).
     fn google_caps(id: &str, methods: &[&str]) -> Vec<String> {
-        let has_generate = methods.iter().any(|s| *s == "generateContent");
-        let has_embed = methods.iter().any(|s| *s == "embedContent");
-        let has_predict = methods.iter().any(|s| *s == "predict");
+        let has_generate = methods.contains(&"generateContent");
+        let has_embed = methods.contains(&"embedContent");
+        let has_predict = methods.contains(&"predict");
         let is_imagen = has_predict && (id.contains("imagen") || id.contains("-generate-"));
         let is_gemini_image_gen = has_generate && id.split('-').any(|seg| seg == "image");
 

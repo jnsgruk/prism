@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn discourse_build_progress_with_rate_limit() {
-        let cursor = r#"{}"#;
+        let cursor = "{}";
         let rl = RateLimitInfo {
             remaining: 50,
             limit: 100,

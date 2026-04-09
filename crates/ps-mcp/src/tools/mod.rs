@@ -556,7 +556,7 @@ mod tests {
         let tools = router.list_all();
         let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
         let mut sorted = names.clone();
-        sorted.sort();
+        sorted.sort_unstable();
         assert_eq!(names, sorted);
     }
 

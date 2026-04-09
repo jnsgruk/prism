@@ -966,10 +966,9 @@ mod tests {
 
     #[test]
     fn ai_provider_roundtrip() {
-        for variant in [AiProvider::Google] {
-            let s = variant.to_string();
-            assert_eq!(s.parse::<AiProvider>().unwrap(), variant);
-        }
+        let variant = AiProvider::Google;
+        let s = variant.to_string();
+        assert_eq!(s.parse::<AiProvider>().unwrap(), variant);
     }
 
     #[test]
