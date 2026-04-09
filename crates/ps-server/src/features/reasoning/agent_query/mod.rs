@@ -250,7 +250,7 @@ async fn run_query_stream(
     let stream_start = tokio::time::Instant::now();
 
     // Phase 1: Call Restate prepare_query synchronously.
-    let pod_ip = prepare_and_poll(
+    let (pod_ip, pod_name) = prepare_and_poll(
         repos,
         http_client,
         restate_url,
@@ -260,6 +260,18 @@ async fn run_query_stream(
         tx,
     )
     .await?;
+
+    // Store pod details so the frontend can display them.
+    repos
+        .reasoning
+        .update_container_status(
+            conversation_id,
+            Some(&pod_name),
+            "active",
+            None,
+            Some(&pod_ip),
+        )
+        .await?;
 
     // Phase 2: Connect to OpenCode and stream events.
     let conv = repos
@@ -274,9 +286,11 @@ async fn run_query_stream(
         .timeout_secs(120)
         .build()?;
 
+    // The pod may be in K8s "Running" phase before OpenCode's HTTP server is
+    // ready to accept connections. Retry session creation a few times with
+    // backoff to bridge this gap.
     let opencode_session_id =
-        session::resolve_or_create_session(repos, &client, conversation_id, &conv, question)
-            .await?;
+        retry_session_create(repos, &client, conversation_id, &conv, question).await?;
 
     info!("subscribing to OpenCode events");
     let mut subscription = client.subscribe().await?;
@@ -456,7 +470,7 @@ async fn finalize_query(
 }
 
 /// Call Restate `prepare_query` synchronously while polling for container
-/// status events to forward to the client.
+/// status events to forward to the client. Returns `(pod_ip, pod_name)`.
 async fn prepare_and_poll(
     repos: &ps_core::repo::Repos,
     http_client: &reqwest::Client,
@@ -465,7 +479,7 @@ async fn prepare_and_poll(
     trigger_request: &serde_json::Value,
     conversation_id: Uuid,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(String, String), Box<dyn std::error::Error + Send + Sync>> {
     let url = format!("{restate_url}/AgenticQueryHandler/{cid_str}/prepare_query");
     let body = serde_json::to_string(trigger_request)?;
 
@@ -491,8 +505,13 @@ async fn prepare_and_poll(
             .and_then(|v| v.as_str())
             .ok_or("prepare_query response missing pod_ip")?
             .to_string();
+        let pod_name = response
+            .get("pod_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
 
-        Ok::<String, Box<dyn std::error::Error + Send + Sync>>(pod_ip)
+        Ok::<(String, String), Box<dyn std::error::Error + Send + Sync>>((pod_ip, pod_name))
     };
 
     let poll_fut = async {
@@ -524,4 +543,40 @@ async fn prepare_and_poll(
         result = prepare_fut => result,
         () = poll_fut => Err("event poll loop ended unexpectedly".into()),
     }
+}
+
+/// Retry `resolve_or_create_session` up to 5 times with linear backoff.
+///
+/// The K8s pod reaches "Running" phase before the `OpenCode` HTTP server
+/// inside it is ready to accept connections. This bridges that gap.
+const MAX_SESSION_RETRIES: u32 = 5;
+
+async fn retry_session_create(
+    repos: &ps_core::repo::Repos,
+    client: &ps_agent::opencode_sdk::Client,
+    conversation_id: Uuid,
+    conv: &ps_core::repo::reasoning::Conversation,
+    question: &str,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let mut last_err: Box<dyn std::error::Error + Send + Sync> =
+        "no attempts made".to_string().into();
+    for attempt in 0..MAX_SESSION_RETRIES {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_secs(u64::from(attempt))).await;
+        }
+        match session::resolve_or_create_session(repos, client, conversation_id, conv, question)
+            .await
+        {
+            Ok(sid) => return Ok(sid),
+            Err(e) => {
+                tracing::warn!(
+                    attempt = attempt + 1,
+                    error = %e,
+                    "OpenCode session creation failed, retrying"
+                );
+                last_err = e;
+            }
+        }
+    }
+    Err(last_err)
 }
