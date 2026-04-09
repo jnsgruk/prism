@@ -35,7 +35,9 @@ const findMentionQuery = (textBefore: string): string | null => {
   if (atIndex === -1) return null;
   if (atIndex > 0 && !/\s/.test(textBefore[atIndex - 1]!)) return null;
   const query = textBefore.slice(atIndex + 1);
-  if (/\s/.test(query)) return null;
+  // Allow spaces so multi-word names ("Alice Smith", "Platform Team") work.
+  // The picker closes on Escape, selection, or when the user deletes back
+  // past the @.
   return query;
 };
 
