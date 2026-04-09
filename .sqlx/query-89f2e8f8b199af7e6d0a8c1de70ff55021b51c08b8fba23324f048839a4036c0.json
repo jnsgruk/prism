@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reasoning.conversation_messages\n                (conversation_id, role, content, reasoning_trace, supporting_data,\n                 prompt_tokens, completion_tokens)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING id, conversation_id, role, content, reasoning_trace,\n                      supporting_data, prompt_tokens, completion_tokens, created_at\n            ",
+  "query": "\n            SELECT id, conversation_id, role, content, reasoning_trace,\n                   supporting_data, prompt_tokens, completion_tokens, created_at,\n                   attached_files\n            FROM reasoning.conversation_messages\n            WHERE conversation_id = $1\n            ORDER BY created_at ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -47,17 +47,16 @@
         "ordinal": 8,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "attached_files",
+        "type_info": "TextArray"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Jsonb",
-        "Jsonb",
-        "Int4",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -69,8 +68,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "e05c5d06c0d5c9a39f53d307e06c977ef87e0df18247b4324daee908a03aa86f"
+  "hash": "89f2e8f8b199af7e6d0a8c1de70ff55021b51c08b8fba23324f048839a4036c0"
 }
