@@ -55,6 +55,7 @@ impl QueryWatchdogHandler for QueryWatchdogHandlerImpl {
                         supporting_data: None,
                         prompt_tokens: 0,
                         completion_tokens: 0,
+                        attached_files: &[],
                     })
                     .await;
                 let _ = repos.reasoning.delete_events(*conv_id).await;

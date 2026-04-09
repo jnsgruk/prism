@@ -8,6 +8,7 @@ import type {
   GetWorkspaceFileResponse,
   ListWorkspaceFilesResponse,
   SaveInsightFromConversationResponse,
+  UploadWorkspaceFileResponse,
 } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
@@ -153,3 +154,28 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
       return { blobUrl, contentType, totalSizeBytes };
     },
   });
+
+export const useUploadWorkspaceFile = (): UseMutationResult<
+  UploadWorkspaceFileResponse,
+  Error,
+  { conversationId: string; path: string; file: File }
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { conversationId: string; path: string; file: File }) => {
+      const buffer = await params.file.arrayBuffer();
+      return client.uploadWorkspaceFile({
+        conversationId: params.conversationId,
+        path: params.path,
+        contentType: params.file.type || "application/octet-stream",
+        data: new Uint8Array(buffer),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: conversationKeys.workspaceFiles(variables.conversationId),
+      });
+    },
+  });
+};

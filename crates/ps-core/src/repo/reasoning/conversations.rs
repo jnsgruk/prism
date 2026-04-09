@@ -67,6 +67,7 @@ pub struct ConversationMessage {
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
     pub created_at: OffsetDateTime,
+    pub attached_files: Vec<String>,
 }
 
 /// Parameters for creating a new conversation.
@@ -85,6 +86,7 @@ pub struct CreateMessageParams<'a> {
     pub supporting_data: Option<&'a serde_json::Value>,
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
+    pub attached_files: &'a [String],
 }
 
 impl ReasoningRepo {
@@ -522,10 +524,11 @@ impl ReasoningRepo {
             r#"
             INSERT INTO reasoning.conversation_messages
                 (conversation_id, role, content, reasoning_trace, supporting_data,
-                 prompt_tokens, completion_tokens)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 prompt_tokens, completion_tokens, attached_files)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id, conversation_id, role, content, reasoning_trace,
-                      supporting_data, prompt_tokens, completion_tokens, created_at
+                      supporting_data, prompt_tokens, completion_tokens, created_at,
+                      attached_files
             "#,
             params.conversation_id,
             params.role,
@@ -534,6 +537,7 @@ impl ReasoningRepo {
             params.supporting_data,
             params.prompt_tokens,
             params.completion_tokens,
+            params.attached_files,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -549,7 +553,8 @@ impl ReasoningRepo {
             ConversationMessage,
             r#"
             SELECT id, conversation_id, role, content, reasoning_trace,
-                   supporting_data, prompt_tokens, completion_tokens, created_at
+                   supporting_data, prompt_tokens, completion_tokens, created_at,
+                   attached_files
             FROM reasoning.conversation_messages
             WHERE conversation_id = $1
             ORDER BY created_at ASC
@@ -621,7 +626,8 @@ impl ReasoningRepo {
             r#"
             SELECT id, conversation_id, role, content,
                    reasoning_trace, supporting_data,
-                   prompt_tokens, completion_tokens, created_at
+                   prompt_tokens, completion_tokens, created_at,
+                   attached_files
             FROM reasoning.conversation_messages
             ORDER BY created_at
             "#,

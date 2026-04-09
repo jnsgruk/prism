@@ -180,7 +180,12 @@ export const ConversationThread = ({
 
         let content: React.ReactNode;
         if (msg.role === "user") {
-          content = <UserMessage content={msg.content} />;
+          content = (
+            <UserMessage
+              content={msg.content}
+              attachedFiles={msg.attachedFiles.length > 0 ? [...msg.attachedFiles] : undefined}
+            />
+          );
         } else if (msg.role === "error") {
           content = <InlineError content={msg.content} onRetry={retryHandler} />;
         } else {

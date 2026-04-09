@@ -488,6 +488,7 @@ async fn conversation_list_with_counts() {
                     supporting_data: None,
                     prompt_tokens: 10,
                     completion_tokens: 0,
+                    attached_files: &[],
                 })
                 .await
                 .unwrap();
@@ -551,6 +552,7 @@ async fn conversation_multi_turn_messages() {
             supporting_data: None,
             prompt_tokens: 20,
             completion_tokens: 0,
+            attached_files: &[],
         })
         .await
         .unwrap();
@@ -565,6 +567,7 @@ async fn conversation_multi_turn_messages() {
             supporting_data: Some(&citations),
             prompt_tokens: 0,
             completion_tokens: 50,
+            attached_files: &[],
         })
         .await
         .unwrap();
@@ -579,6 +582,7 @@ async fn conversation_multi_turn_messages() {
             supporting_data: None,
             prompt_tokens: 15,
             completion_tokens: 0,
+            attached_files: &[],
         })
         .await
         .unwrap();
@@ -593,6 +597,7 @@ async fn conversation_multi_turn_messages() {
             supporting_data: None,
             prompt_tokens: 0,
             completion_tokens: 40,
+            attached_files: &[],
         })
         .await
         .unwrap();
@@ -783,6 +788,7 @@ async fn conversation_export_roundtrip() {
             supporting_data: None,
             prompt_tokens: 25,
             completion_tokens: 0,
+            attached_files: &[],
         })
         .await
         .unwrap();
@@ -797,6 +803,7 @@ async fn conversation_export_roundtrip() {
             supporting_data: None,
             prompt_tokens: 0,
             completion_tokens: 60,
+            attached_files: &[],
         })
         .await
         .unwrap();

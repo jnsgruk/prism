@@ -56,6 +56,8 @@ import {
   TestProviderResponse,
   UpdateAiSettingsRequest,
   UpdateAiSettingsResponse,
+  UploadWorkspaceFileRequest,
+  UploadWorkspaceFileResponse,
 } from "./reasoning_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
@@ -345,6 +347,18 @@ export const ReasoningService = {
       I: DownloadWorkspaceFileRequest,
       O: DownloadWorkspaceFileResponse,
       kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * UploadWorkspaceFile writes a file to the workspace directory.
+     * The entire file content is sent in a single request (max 100MB).
+     *
+     * @generated from rpc canonical.prism.v1.ReasoningService.UploadWorkspaceFile
+     */
+    uploadWorkspaceFile: {
+      name: "UploadWorkspaceFile",
+      I: UploadWorkspaceFileRequest,
+      O: UploadWorkspaceFileResponse,
+      kind: MethodKind.Unary,
     },
   },
 } as const;

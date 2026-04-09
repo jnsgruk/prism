@@ -27,6 +27,7 @@ use ps_proto::canonical::prism::v1::{
     SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
     SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
     TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    UploadWorkspaceFileRequest, UploadWorkspaceFileResponse,
 };
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
@@ -241,5 +242,12 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<DownloadWorkspaceFileRequest>,
     ) -> Result<Response<Self::DownloadWorkspaceFileStream>, Status> {
         workspace::download_workspace_file(self, request).await
+    }
+
+    async fn upload_workspace_file(
+        &self,
+        request: Request<UploadWorkspaceFileRequest>,
+    ) -> Result<Response<UploadWorkspaceFileResponse>, Status> {
+        workspace::upload_workspace_file(self, request).await
     }
 }

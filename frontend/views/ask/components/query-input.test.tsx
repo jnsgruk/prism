@@ -96,4 +96,72 @@ describe("QueryInput", () => {
 
     expect(textarea.value).toBe("");
   });
+
+  it("renders plus button for file attachment when onFilesAdded provided", () => {
+    const { container } = renderWithProviders(
+      <QueryInput {...defaultProps} onFilesAdded={vi.fn()} />,
+    );
+    const plusIcon = container.querySelector("svg.lucide-plus");
+    expect(plusIcon).toBeInTheDocument();
+  });
+
+  it("submit enabled with files but no text", () => {
+    renderWithProviders(
+      <QueryInput
+        {...defaultProps}
+        attachedFiles={[{ name: "file.pdf", size: 1000 }]}
+        onFilesAdded={vi.fn()}
+      />,
+    );
+    const buttons = screen.getAllByRole("button");
+    const submitButton = buttons.find((b) => b.querySelector("svg.lucide-arrow-up"));
+    expect(submitButton).not.toBeDisabled();
+  });
+
+  it("shows file chips when files attached", () => {
+    renderWithProviders(
+      <QueryInput
+        {...defaultProps}
+        attachedFiles={[{ name: "report.pdf", size: 42000 }]}
+        onFilesAdded={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("report.pdf")).toBeInTheDocument();
+  });
+
+  it("calls onFileRemoved when chip X clicked", () => {
+    const onFileRemoved = vi.fn();
+    renderWithProviders(
+      <QueryInput
+        {...defaultProps}
+        attachedFiles={[
+          { name: "first.txt", size: 100 },
+          { name: "second.txt", size: 200 },
+        ]}
+        onFilesAdded={vi.fn()}
+        onFileRemoved={onFileRemoved}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Remove second.txt"));
+    expect(onFileRemoved).toHaveBeenCalledWith(1);
+  });
+
+  it("shows drag-active styling on dragover", () => {
+    renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn()} />);
+    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
+    // The drop zone is the parent container of the textarea
+    const dropZone = textarea.closest("[class*='rounded-lg']")!;
+    fireEvent.dragOver(dropZone);
+    expect(dropZone.className).toContain("ring-primary");
+  });
+
+  it("does not intercept text-only paste", () => {
+    const onFilesAdded = vi.fn();
+    renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={onFilesAdded} />);
+    const textarea = screen.getByPlaceholderText("Ask a question about your engineering data...");
+    fireEvent.paste(textarea, {
+      clipboardData: { files: [] },
+    });
+    expect(onFilesAdded).not.toHaveBeenCalled();
+  });
 });

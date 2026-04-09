@@ -2,7 +2,7 @@ use base64::Engine;
 use ps_proto::canonical::prism::v1::{
     DownloadWorkspaceFileRequest, DownloadWorkspaceFileResponse, GetWorkspaceFileRequest,
     GetWorkspaceFileResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse,
-    WorkspaceFileInfo,
+    UploadWorkspaceFileRequest, UploadWorkspaceFileResponse, WorkspaceFileInfo,
 };
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncReadExt;
@@ -299,6 +299,9 @@ pub async fn get_workspace_file(
     }))
 }
 
+/// Maximum upload file size (100 MB).
+const MAX_UPLOAD_SIZE: usize = 100 * 1024 * 1024;
+
 /// Stream file content in ~64KB chunks.
 const CHUNK_SIZE: usize = 65_536;
 
@@ -420,4 +423,176 @@ pub async fn download_workspace_file(
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
         rx,
     )))
+}
+
+fn write_upload_to_workspace(
+    workspaces_path: &Path,
+    conv_id: &str,
+    path: &str,
+    data: &[u8],
+) -> Result<WorkspaceFileInfo, String> {
+    let ws_root = workspace_dir(workspaces_path, conv_id);
+    let file_path = ws_root.join(path);
+
+    // Create parent directories (including the workspace root if it
+    // does not exist yet — this supports uploading before the agent
+    // container has started).
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create directories: {e}"))?;
+    }
+
+    // Validate that the resolved path is inside the workspace root.
+    // We canonicalize the parent (which now exists) and check containment.
+    let parent = file_path
+        .parent()
+        .ok_or_else(|| "invalid file path".to_string())?;
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|e| format!("canonicalize parent failed: {e}"))?;
+    let canonical_root = ws_root
+        .canonicalize()
+        .map_err(|e| format!("canonicalize root failed: {e}"))?;
+    if !canonical_parent.starts_with(&canonical_root) {
+        return Err("invalid path".to_string());
+    }
+
+    // Write to a temp file then rename for atomicity.
+    let temp_path = file_path.with_extension("upload.tmp");
+    std::fs::write(&temp_path, data).map_err(|e| format!("write failed: {e}"))?;
+    std::fs::rename(&temp_path, &file_path).map_err(|e| format!("rename failed: {e}"))?;
+
+    let metadata = std::fs::metadata(&file_path).map_err(|e| format!("metadata failed: {e}"))?;
+
+    #[allow(clippy::cast_possible_wrap)]
+    Ok(WorkspaceFileInfo {
+        path: path.to_string(),
+        size_bytes: metadata.len() as i64,
+        is_directory: false,
+        modified_unix: modified_time(&metadata),
+        content_type: Some(guess_content_type(&file_path.to_string_lossy()).to_string()),
+    })
+}
+
+pub async fn upload_workspace_file(
+    svc: &ReasoningServiceImpl,
+    request: Request<UploadWorkspaceFileRequest>,
+) -> Result<Response<UploadWorkspaceFileResponse>, Status> {
+    let _ctx = require_auth(&request)?;
+    let req = request.into_inner();
+
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+
+    if req.path.is_empty() {
+        return Err(Status::invalid_argument("path is required"));
+    }
+    if req.path.contains("..") || req.path.starts_with('/') {
+        return Err(Status::invalid_argument("invalid path"));
+    }
+    if !req.path.starts_with("uploads/") {
+        return Err(Status::invalid_argument(
+            "uploaded files must be under uploads/",
+        ));
+    }
+    if req.data.len() > MAX_UPLOAD_SIZE {
+        return Err(Status::invalid_argument(format!(
+            "file exceeds maximum size of {MAX_UPLOAD_SIZE} bytes"
+        )));
+    }
+
+    let workspaces_path = svc
+        .workspaces_path
+        .as_ref()
+        .ok_or_else(|| Status::unavailable("workspace storage not configured"))?
+        .clone();
+
+    let path = req.path.clone();
+    let data = req.data;
+
+    let file_info = tokio::task::spawn_blocking(move || {
+        write_upload_to_workspace(&workspaces_path, &conv_id.to_string(), &path, &data)
+    })
+    .await
+    .map_err(|_| Status::internal("task failed"))?
+    .map_err(Status::internal)?;
+
+    debug!(
+        conversation_id = %conv_id,
+        path = %file_info.path,
+        size = file_info.size_bytes,
+        "uploaded workspace file"
+    );
+
+    Ok(Response::new(UploadWorkspaceFileResponse {
+        file: Some(file_info),
+    }))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn upload_creates_file() {
+        let tmp = TempDir::new().unwrap();
+        let result =
+            write_upload_to_workspace(tmp.path(), "conv-1", "uploads/report.pdf", b"hello world");
+        let info = result.unwrap();
+        assert_eq!(info.path, "uploads/report.pdf");
+        assert_eq!(info.size_bytes, 11);
+        assert!(!info.is_directory);
+
+        let on_disk = std::fs::read(tmp.path().join("conv-1/uploads/report.pdf")).unwrap();
+        assert_eq!(on_disk, b"hello world");
+    }
+
+    #[test]
+    fn upload_creates_nested_directories() {
+        let tmp = TempDir::new().unwrap();
+        let result = write_upload_to_workspace(
+            tmp.path(),
+            "conv-2",
+            "uploads/nested/deep/file.txt",
+            b"content",
+        );
+        assert!(result.is_ok());
+        assert!(
+            tmp.path()
+                .join("conv-2/uploads/nested/deep/file.txt")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn upload_overwrites_existing_file() {
+        let tmp = TempDir::new().unwrap();
+        write_upload_to_workspace(tmp.path(), "conv-3", "uploads/data.csv", b"old").unwrap();
+        write_upload_to_workspace(tmp.path(), "conv-3", "uploads/data.csv", b"new").unwrap();
+
+        let on_disk = std::fs::read(tmp.path().join("conv-3/uploads/data.csv")).unwrap();
+        assert_eq!(on_disk, b"new");
+    }
+
+    #[test]
+    fn upload_returns_correct_content_type() {
+        let tmp = TempDir::new().unwrap();
+        let info = write_upload_to_workspace(tmp.path(), "conv-4", "uploads/image.png", b"\x89PNG")
+            .unwrap();
+        assert_eq!(info.content_type.as_deref(), Some("image/png"));
+    }
+
+    #[test]
+    fn guess_content_type_common_extensions() {
+        assert_eq!(guess_content_type("file.json"), "application/json");
+        assert_eq!(guess_content_type("file.py"), "text/x-python");
+        assert_eq!(guess_content_type("file.rs"), "text/x-rust");
+        assert_eq!(guess_content_type("file.pdf"), "application/pdf");
+        assert_eq!(guess_content_type("Dockerfile"), "text/plain");
+        assert_eq!(guess_content_type(".gitignore"), "text/plain");
+    }
 }

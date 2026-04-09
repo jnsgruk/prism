@@ -6,12 +6,15 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { useAiModels } from "@/lib/hooks/use-ai-settings";
+import { useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
 import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
 import { useGetConversation } from "@/lib/hooks/use-conversations";
+import type { AttachedFileInfo } from "@/views/ask/components/file-attachment-chips";
 import { ConversationThread } from "@/views/ask/components/conversation-thread";
 import { QueryInput } from "@/views/ask/components/query-input";
 import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
 import { WorkspaceSidebar } from "@/views/ask/components/workspace-sidebar";
+import { toast } from "sonner";
 
 const AskPage = (): React.ReactElement => {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -19,6 +22,8 @@ const AskPage = (): React.ReactElement => {
   const { state, ask, cancel, reset, resume } = useAskQuestion();
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const uploadFile = useUploadWorkspaceFile();
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
@@ -74,11 +79,59 @@ const AskPage = (): React.ReactElement => {
     hasResumed.current = false;
   }, [conversationId]);
 
+  // Generate a stable conversation ID for uploads when creating a new conversation.
+  const pendingConvIdRef = useRef<string | undefined>(undefined);
+
   const handleAsk = useCallback(
-    (question: string): void => {
-      ask(question, conversationId, selectedModel);
+    async (question: string): Promise<void> => {
+      const effectiveConvId = conversationId ?? pendingConvIdRef.current ?? crypto.randomUUID();
+      if (!conversationId) {
+        pendingConvIdRef.current = effectiveConvId;
+      }
+
+      let attachedFilePaths: string[] = [];
+      if (pendingFiles.length > 0) {
+        const results = await Promise.allSettled(
+          pendingFiles.map((file) =>
+            uploadFile.mutateAsync({
+              conversationId: effectiveConvId,
+              path: `uploads/${file.name}`,
+              file,
+            }),
+          ),
+        );
+        attachedFilePaths = results
+          .filter(
+            (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadFile.mutateAsync>>> =>
+              r.status === "fulfilled",
+          )
+          .map((r) => r.value.file?.path ?? "")
+          .filter(Boolean);
+
+        const failures = results.filter((r) => r.status === "rejected");
+        if (failures.length > 0) {
+          toast.error(`${failures.length} file${failures.length > 1 ? "s" : ""} failed to upload`);
+        }
+        setPendingFiles([]);
+      }
+
+      pendingConvIdRef.current = undefined;
+      ask(question, effectiveConvId, selectedModel, attachedFilePaths);
     },
-    [ask, conversationId, selectedModel],
+    [ask, conversationId, selectedModel, pendingFiles, uploadFile],
+  );
+
+  const handleFilesAdded = useCallback((files: File[]) => {
+    setPendingFiles((prev) => [...prev, ...files]);
+  }, []);
+
+  const handleFileRemoved = useCallback((index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const attachedFileInfos: AttachedFileInfo[] = useMemo(
+    () => pendingFiles.map((f) => ({ name: f.name, size: f.size })),
+    [pendingFiles],
   );
 
   const isActive = state.status === "streaming" || state.status === "container_starting";
@@ -171,6 +224,9 @@ const AskPage = (): React.ReactElement => {
                   containerStatus={conv?.containerStatus}
                   podName={conv?.containerPodName}
                   podIp={conv?.containerPodIp}
+                  attachedFiles={attachedFileInfos}
+                  onFilesAdded={handleFilesAdded}
+                  onFileRemoved={handleFileRemoved}
                 />
               </div>
             </>

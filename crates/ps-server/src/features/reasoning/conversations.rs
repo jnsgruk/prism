@@ -109,6 +109,7 @@ pub async fn get_conversation(
             prompt_tokens: m.prompt_tokens,
             completion_tokens: m.completion_tokens,
             created_at: Some(to_timestamp(m.created_at)),
+            attached_files: m.attached_files,
         })
         .collect();
 

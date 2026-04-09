@@ -91,7 +91,12 @@ type StreamMeta =
 
 export const useAskQuestion = (): {
   state: AgentState;
-  ask: (question: string, conversationId?: string, modelOverride?: string) => Promise<void>;
+  ask: (
+    question: string,
+    conversationId?: string,
+    modelOverride?: string,
+    attachedFiles?: string[],
+  ) => Promise<void>;
   cancel: () => void;
   reset: () => void;
   resume: (conversationId: string, question?: string) => Promise<void>;
@@ -289,7 +294,12 @@ export const useAskQuestion = (): {
   );
 
   const ask = useCallback(
-    async (question: string, conversationId?: string, modelOverride?: string) => {
+    async (
+      question: string,
+      conversationId?: string,
+      modelOverride?: string,
+      attachedFiles?: string[],
+    ) => {
       abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
@@ -313,7 +323,13 @@ export const useAskQuestion = (): {
         }
 
         const stream = client.askQuestion(
-          { question, conversationId, modelOverride: effectiveModelOverride, imageModel },
+          {
+            question,
+            conversationId,
+            modelOverride: effectiveModelOverride,
+            imageModel,
+            attachedFiles: attachedFiles ?? [],
+          },
           { signal: abort.signal },
         );
         await processStream(stream, abort, question, conversationId);

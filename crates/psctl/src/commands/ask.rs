@@ -13,6 +13,7 @@ pub async fn ask(clients: &mut Clients, question: &str, json: bool) -> Result<()
         conversation_id: None,
         model_override: None,
         image_model: None,
+        attached_files: vec![],
     };
 
     let resp = clients.reasoning.ask_question(req).await?;

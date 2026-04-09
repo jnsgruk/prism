@@ -37,8 +37,8 @@ pub async fn ask_question(
     let ctx = require_auth(&request)?;
     let req = request.into_inner();
 
-    // Validate question.
-    if req.question.trim().is_empty() {
+    // Validate question — allow empty text when files are attached.
+    if req.question.trim().is_empty() && req.attached_files.is_empty() {
         return Err(Status::invalid_argument("question must not be empty"));
     }
     if req.question.len() > 4000 {
@@ -67,7 +67,21 @@ pub async fn ask_question(
     let cid_str = conversation_id.to_string();
     let http_client = svc.http_client.clone();
     let repos = svc.repos.clone();
-    let question = req.question.clone();
+    // If the user attached files, append a hint so the agent knows to read them.
+    let question = if req.attached_files.is_empty() {
+        req.question.clone()
+    } else {
+        let file_list = req
+            .attached_files
+            .iter()
+            .map(|f| format!("  - /workspace/{f}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            "{}\n\n[The user attached the following files to their workspace:\n{file_list}\nYou can read them from the paths above.]",
+            req.question
+        )
+    };
     let model_for_usage = model_name.clone();
     let (tx, rx) = tokio::sync::mpsc::channel(64);
 
@@ -179,6 +193,7 @@ async fn setup_conversation(
             supporting_data: None,
             prompt_tokens: 0,
             completion_tokens: 0,
+            attached_files: &req.attached_files,
         })
         .await
         .map_err(db_err)?;
@@ -218,6 +233,7 @@ async fn handle_stream_failure(
             supporting_data: None,
             prompt_tokens: 0,
             completion_tokens: 0,
+            attached_files: &[],
         })
         .await;
     let _ = repos
@@ -424,6 +440,7 @@ async fn finalize_query(
             supporting_data: None,
             prompt_tokens: input_tok,
             completion_tokens: output_tok,
+            attached_files: &[],
         })
         .await?;
 

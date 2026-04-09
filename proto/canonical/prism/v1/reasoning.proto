@@ -77,6 +77,9 @@ service ReasoningService {
   // First message includes content_type and total_size_bytes; subsequent
   // messages carry only the data field (~64KB per chunk).
   rpc DownloadWorkspaceFile(DownloadWorkspaceFileRequest) returns (stream DownloadWorkspaceFileResponse);
+  // UploadWorkspaceFile writes a file to the workspace directory.
+  // The entire file content is sent in a single request (max 100MB).
+  rpc UploadWorkspaceFile(UploadWorkspaceFileRequest) returns (UploadWorkspaceFileResponse);
 }
 
 // AiTaskConfig specifies the provider and model for a single AI task type.
@@ -354,6 +357,9 @@ message AskQuestionRequest {
   // When set, the agent should use this model for image generation.
   // Format: "provider/model_id" (e.g. "google/imagen-3").
   optional string image_model = 4;
+  // Workspace-relative paths of files attached to this message.
+  // Files must already exist in the workspace (uploaded via UploadWorkspaceFile).
+  repeated string attached_files = 5;
 }
 
 message ResumeStreamRequest {
@@ -553,6 +559,8 @@ message ConversationMessage {
   int32 prompt_tokens = 6;
   int32 completion_tokens = 7;
   google.protobuf.Timestamp created_at = 8;
+  // Workspace-relative paths of files the user attached to this message.
+  repeated string attached_files = 9;
 }
 
 message SaveInsightFromConversationRequest {
@@ -640,5 +648,21 @@ message DownloadWorkspaceFileResponse {
   int64 total_size_bytes = 2;
   // File content chunk (~64KB per message).
   bytes data = 3;
+}
+
+message UploadWorkspaceFileRequest {
+  // Conversation ID for the workspace to upload into.
+  string conversation_id = 1;
+  // File path relative to the workspace root (e.g. "uploads/report.pdf").
+  string path = 2;
+  // MIME type of the file.
+  string content_type = 3;
+  // File content (max 100MB).
+  bytes data = 4;
+}
+
+message UploadWorkspaceFileResponse {
+  // Metadata for the uploaded file.
+  WorkspaceFileInfo file = 1;
 }
 

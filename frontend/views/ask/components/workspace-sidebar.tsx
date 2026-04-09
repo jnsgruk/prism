@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { zipSync } from "fflate";
-import { Download, FolderOpen, Loader2, X } from "lucide-react";
+import { Download, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useDownloadWorkspaceFile, useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
+import {
+  useDownloadWorkspaceFile,
+  useListWorkspaceFiles,
+  useUploadWorkspaceFile,
+} from "@/lib/hooks/use-conversations";
 
 import {
   type ArtifactDisplay,
@@ -35,6 +39,30 @@ export const WorkspaceSidebar = ({
   onClose: () => void;
 }): React.ReactElement => {
   const downloadFile = useDownloadWorkspaceFile();
+  const uploadFile = useUploadWorkspaceFile();
+  const [sidebarDragActive, setSidebarDragActive] = useState(false);
+
+  const handleSidebarDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSidebarDragActive(false);
+      if (!conversationId) {
+        toast.error("Start a conversation first to upload files to the workspace");
+        return;
+      }
+      const files = Array.from(e.dataTransfer.files);
+      for (const file of files) {
+        uploadFile.mutate(
+          { conversationId, path: `uploads/${file.name}`, file },
+          {
+            onError: (err) => toast.error(`Failed to upload ${file.name}: ${err.message}`),
+          },
+        );
+      }
+    },
+    [conversationId, uploadFile],
+  );
 
   const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
   const workspaceFiles: WorkspaceFileDisplay[] = useMemo(
@@ -249,52 +277,71 @@ export const WorkspaceSidebar = ({
           </Button>
         </div>
 
-        {/* Content */}
-        {workspaceRoots.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1 p-8">
-            <FolderOpen className="size-10 text-muted-foreground" />
-            <p className="font-medium">No files yet</p>
-            <p className="text-center text-sm text-muted-foreground">
-              Files created by the agent will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col">
-            {/* File tree */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <WorkspaceTree
-                roots={workspaceRoots}
-                selectedPath={selectedPath}
-                onPreview={handlePreview}
-                onDownload={handleDownload}
-              />
+        {/* Content — drop zone for direct workspace uploads */}
+        <div
+          className="relative flex min-h-0 flex-1 flex-col"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setSidebarDragActive(true);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            setSidebarDragActive(false);
+          }}
+          onDrop={handleSidebarDrop}
+        >
+          {sidebarDragActive && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center rounded-md border-2 border-dashed border-primary bg-primary/5">
+              <p className="text-sm font-medium text-primary">Drop to upload to workspace</p>
             </div>
-
-            {/* Preview pane with drag handle on top edge */}
-            {showPreview && (
-              <div
-                ref={previewRef}
-                className="relative shrink-0 border-t"
-                style={{ height: `${previewHeight}px` }}
-              >
-                {/* Drag handle — top edge of preview */}
-                <div
-                  className="absolute top-0 right-0 left-0 z-20 h-1 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"
-                  onPointerDown={onPreviewDragDown}
-                  data-current-size={previewHeight}
+          )}
+          {workspaceRoots.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-8">
+              <Upload className="size-10 text-muted-foreground" />
+              <p className="font-medium">Drop files here</p>
+              <p className="text-center text-sm text-muted-foreground">
+                to add to workspace, or drag into chat to attach
+              </p>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {/* File tree */}
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <WorkspaceTree
+                  roots={workspaceRoots}
+                  selectedPath={selectedPath}
+                  onPreview={handlePreview}
+                  onDownload={handleDownload}
                 />
-                <div className="h-full overflow-auto">
-                  <WorkspacePreview
-                    state={previewState}
-                    isLoading={previewLoading}
-                    onExpand={() => setDialogOpen(true)}
-                    onClose={closePreview}
-                  />
-                </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Preview pane with drag handle on top edge */}
+              {showPreview && (
+                <div
+                  ref={previewRef}
+                  className="relative shrink-0 border-t"
+                  style={{ height: `${previewHeight}px` }}
+                >
+                  {/* Drag handle — top edge of preview */}
+                  <div
+                    className="absolute top-0 right-0 left-0 z-20 h-1 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"
+                    onPointerDown={onPreviewDragDown}
+                    data-current-size={previewHeight}
+                  />
+                  <div className="h-full overflow-auto">
+                    <WorkspacePreview
+                      state={previewState}
+                      isLoading={previewLoading}
+                      onExpand={() => setDialogOpen(true)}
+                      onClose={closePreview}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Full-size preview dialog */}
