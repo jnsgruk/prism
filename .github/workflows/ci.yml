@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_TARGET_DIR: /mnt/target
   SQLX_OFFLINE: "true"
   RUSTFLAGS: "-D warnings"
 
