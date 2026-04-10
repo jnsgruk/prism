@@ -1,6 +1,40 @@
 use ps_core::ingestion::{ContributionInput, SkippedDiff};
 use ps_core::models::RateLimitInfo;
 
+/// Journaled decision from each `fetch_store_loop` iteration.
+///
+/// `fetch_batch()` is not journaled (large responses), but its result
+/// controls which journaled operations run next. By journaling this small
+/// decision enum, the journal sequence becomes deterministic on replay
+/// regardless of what `fetch_batch()` returns after a pod restart.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum BatchAction {
+    /// Rate limit exhausted, no items — sleep then retry same cursor.
+    SleepForRateLimit {
+        wait_secs: u64,
+        /// Etag cursor update (Jira/Discourse) to apply before sleeping.
+        #[serde(default)]
+        etag_cursor: Option<String>,
+    },
+    /// Normal processing path.
+    Process {
+        item_count: usize,
+        has_watermark: bool,
+        next_cursor: Option<String>,
+        #[serde(default)]
+        etag_cursor: Option<String>,
+        skipped_diffs: SkippedDiffAction,
+    },
+}
+
+/// Sub-decision for handling PR diffs skipped due to REST rate limiting.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum SkippedDiffAction {
+    None,
+    RetryOnly,
+    SleepThenRetry { wait_secs: u64 },
+}
+
 /// Serialisable fetch result for Restate journaling.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SerFetchResult {

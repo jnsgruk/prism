@@ -14,7 +14,9 @@ use super::finalise::{
     diff_rate_limit_sleep_duration, extract_failed_items, extract_watermark, finalise_run,
     retry_skipped_diffs,
 };
-use super::progress::{IngestionSpec, ProgressTracker, SerFetchResult};
+use super::progress::{
+    BatchAction, IngestionSpec, ProgressTracker, SerFetchResult, SkippedDiffAction,
+};
 
 /// Best-effort progress update (not journaled).
 macro_rules! update_progress {
@@ -343,6 +345,59 @@ pub async fn advance_watermark(
     Ok(())
 }
 
+/// Compute the branching decision from a fetch result.
+///
+/// The returned [`BatchAction`] is journaled so that Restate replays always
+/// follow the same code path, regardless of what `fetch_batch()` returns
+/// after a pod restart.
+fn compute_batch_action(
+    batch: &SerFetchResult,
+    cursor: &str,
+    watermark_field: ps_core::models::WatermarkField,
+) -> BatchAction {
+    let etag_cursor = batch.etag.clone();
+
+    // Rate limit exhausted with no items — sleep and retry same cursor.
+    if batch.items.is_empty()
+        && batch.next_cursor.is_some()
+        && let Some(ref rl) = batch.rate_limit
+        && rl.remaining == 0
+    {
+        let wait = diff_rate_limit_sleep_duration(rl);
+        return BatchAction::SleepForRateLimit {
+            wait_secs: wait.as_secs(),
+            etag_cursor,
+        };
+    }
+
+    // Pre-compute watermark availability so extract_watermark() isn't called
+    // with potentially different cursor state on replay.
+    let effective_cursor = etag_cursor.as_deref().unwrap_or(cursor);
+    let has_watermark =
+        extract_watermark(effective_cursor, watermark_field).is_some_and(|wm| !wm.is_empty());
+
+    let skipped_diffs = if batch.skipped_diffs.is_empty() {
+        SkippedDiffAction::None
+    } else if let Some(ref rl) = batch.rate_limit
+        && rl.remaining == 0
+    {
+        let wait = diff_rate_limit_sleep_duration(rl);
+        SkippedDiffAction::SleepThenRetry {
+            wait_secs: wait.as_secs(),
+        }
+    } else {
+        SkippedDiffAction::RetryOnly
+    };
+
+    BatchAction::Process {
+        item_count: batch.items.len(),
+        has_watermark,
+        next_cursor: batch.next_cursor.clone(),
+        etag_cursor,
+        skipped_diffs,
+    }
+}
+
 /// Unified fetch-store loop shared by all three ingestion handlers.
 ///
 /// Fetches batches from the source, stores them via journaled `ctx.run()`,
@@ -362,15 +417,10 @@ pub async fn fetch_store_loop(
     let mut last_progress_log = std::time::Instant::now();
 
     loop {
+        // Step 1: Fetch batch (NOT journaled — external API, large response).
         let batch = fetch_batch_catch_panic(ing_ctx, &cursor).await??;
 
-        // Update cursor from etag if present (Jira/Discourse pattern),
-        // which carries watermark state even when next_cursor is None.
-        if let Some(ref latest) = batch.etag {
-            cursor = latest.clone();
-        }
-
-        // Rate limit warning
+        // Best-effort rate limit warning (not journaled).
         if let Some(ref rl) = batch.rate_limit
             && rl.remaining < 100
         {
@@ -381,76 +431,96 @@ pub async fn fetch_store_loop(
             );
         }
 
-        // If rate limit is exhausted and no items returned, sleep durably
-        // until reset then retry the same cursor (GraphQL rate limit case).
-        if batch.items.is_empty()
-            && batch.next_cursor.is_some()
-            && let Some(ref rl) = batch.rate_limit
-            && rl.remaining == 0
-        {
-            let wait = diff_rate_limit_sleep_duration(rl);
-            tracing::info!(
-                wait_secs = wait.as_secs(),
-                "rate limit exhausted, sleeping durably before retry"
-            );
+        // Step 2: Compute and journal the branching decision.
+        //
+        // fetch_batch() is not journaled, so its results can differ on
+        // replay (e.g. rate limit resets between pod restarts). By
+        // journaling this small decision, the sequence of downstream
+        // ctx.run()/ctx.sleep() calls becomes deterministic on replay.
+        let action = compute_batch_action(&batch, &cursor, watermark_field);
+        let action = journaled_value!(ctx, "batch_action", [action], { action });
 
-            // Update progress before sleeping so the UI reflects the
-            // exhausted rate limit rather than showing a stale snapshot.
-            update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
-            ctx.sleep(wait).await?;
-            // Don't advance cursor — retry the same position after sleep.
-            continue;
-        }
+        // Step 3: Execute based on the journaled decision.
+        match action {
+            BatchAction::SleepForRateLimit {
+                wait_secs,
+                etag_cursor,
+            } => {
+                if let Some(ref latest) = etag_cursor {
+                    cursor = latest.clone();
+                }
 
-        if !batch.items.is_empty() {
-            let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
-            total_items += stored;
-            tracker.count_batch(&batch.items, stored);
-            batches += 1;
-
-            // Advance watermark incrementally after each batch so retries
-            // don't re-fetch already-stored data.
-            if let Some(wm) = extract_watermark(&cursor, watermark_field)
-                && !wm.is_empty()
-            {
-                advance_watermark(ctx, ing_ctx, &cursor, total_items, watermark_field).await?;
-            }
-
-            tracing::debug!(batch_stored = stored, total_items, "stored batch");
-        }
-
-        // If diffs were skipped due to rate limiting, sleep durably then retry.
-        if !batch.skipped_diffs.is_empty() {
-            if let Some(ref rl) = batch.rate_limit
-                && rl.remaining == 0
-            {
-                let wait = diff_rate_limit_sleep_duration(rl);
                 tracing::info!(
-                    wait_secs = wait.as_secs(),
-                    skipped = batch.skipped_diffs.len(),
-                    "sleeping for REST rate limit reset before retrying diffs"
+                    wait_secs,
+                    "rate limit exhausted, sleeping durably before retry"
                 );
-                ctx.sleep(wait).await?;
+
+                update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
+                ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
+                // Don't advance cursor — retry the same position after sleep.
             }
+            BatchAction::Process {
+                item_count,
+                has_watermark,
+                next_cursor,
+                etag_cursor,
+                skipped_diffs,
+            } => {
+                // Apply etag cursor update (Jira/Discourse pattern).
+                if let Some(ref latest) = etag_cursor {
+                    cursor = latest.clone();
+                }
 
-            retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs).await?;
+                if item_count > 0 {
+                    let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
+                    total_items += stored;
+                    tracker.count_batch(&batch.items, stored);
+                    batches += 1;
+
+                    // Advance watermark incrementally after each batch so
+                    // retries don't re-fetch already-stored data.
+                    if has_watermark {
+                        advance_watermark(ctx, ing_ctx, &cursor, total_items, watermark_field)
+                            .await?;
+                    }
+
+                    tracing::debug!(batch_stored = stored, total_items, "stored batch");
+                }
+
+                // Handle skipped diffs (GitHub REST rate limiting).
+                match skipped_diffs {
+                    SkippedDiffAction::None => {}
+                    SkippedDiffAction::SleepThenRetry { wait_secs } => {
+                        tracing::info!(
+                            wait_secs,
+                            skipped = batch.skipped_diffs.len(),
+                            "sleeping for REST rate limit reset before retrying diffs"
+                        );
+                        ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
+                        retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
+                            .await?;
+                    }
+                    SkippedDiffAction::RetryOnly => {
+                        retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
+                            .await?;
+                    }
+                }
+
+                update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
+
+                // Periodic progress log at info level for long-running backfills.
+                if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {
+                    tracing::info!(total_items, batches, "progress");
+                    last_progress_log = std::time::Instant::now();
+                }
+
+                // Advance cursor or break.
+                let Some(nc) = next_cursor else {
+                    break;
+                };
+                cursor = nc;
+            }
         }
-
-        update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
-
-        // Periodic progress log at info level for long-running backfills
-        if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {
-            tracing::info!(total_items, batches, "progress");
-            last_progress_log = std::time::Instant::now();
-        }
-
-        let Some(next_cursor) = batch.next_cursor else {
-            break;
-        };
-        // For GitHub, cursor comes from next_cursor. For Jira/Discourse,
-        // cursor was already updated from etag above. In all cases, if
-        // next_cursor is Some, that's the authoritative next position.
-        cursor = next_cursor;
     }
 
     // Final progress
