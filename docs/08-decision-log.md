@@ -4,6 +4,21 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-04-10 — Journal Branching Decisions in fetch_store_loop for Restate Determinism
+
+**Context:** `fetch_batch()` in the ingestion orchestration loop is deliberately not journaled (large API responses). However, its result determines whether the next Restate journal entry is a `ctx.sleep()` (rate limit) or a `store_batch` via `ctx.run()`. After a pod restart, Restate replays the journal but re-executes `fetch_batch()` against the live API — if the rate limit has reset, the fetch returns different results, producing a different journal sequence and triggering Restate error 570. This caused an infinite retry loop that burned through GitHub API quota every cycle.
+
+**Decision:** Introduce a `BatchAction` enum that captures the branching decision (sleep vs process, with pre-computed sleep durations and cursor state). This is journaled via `journaled_value!` after each `fetch_batch()`. All downstream branching uses the journaled decision, making the journal sequence deterministic on replay regardless of what the API returns.
+
+**Rationale:**
+- Journaling the full fetch response is impractical (megabytes of PR data per batch)
+- The `BatchAction` enum serializes to tens of bytes — negligible journal overhead
+- On replay, `ctx.run()` closures for `store_batch`/`advance_watermark` return previously journaled results without re-executing, so it's safe that the batch data may differ on replay
+- Pre-computing `wait_secs` avoids non-deterministic `now_utc()` calls during replay
+- Applies to all three ingestion sources (GitHub, Jira, Discourse) via the shared `fetch_store_loop`
+
+---
+
 ## 2026-04-08 — Remove RustFS, Use Shared PVC for Workspace Storage
 
 **Context:** RustFS (S3-compatible object storage) was deployed but never actively used. Workspace files were already stored on a shared ReadWriteMany PVC (`prism-workspaces`). The ArtifactStore code, S3 env vars, and RustFS deployment were dead weight.
