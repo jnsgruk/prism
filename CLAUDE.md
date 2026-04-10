@@ -7,19 +7,23 @@ Prism is an engineering insights platform for understanding team and individual 
 ## Build & Test Commands
 
 ```bash
+mise install                              # Install all dev tools (one-time setup)
+prek install                              # Install git hooks (one-time setup)
 prek run -av                              # All lints, tests, formatters — run before finishing any task
+mise run fmt                              # Format all files (rustfmt, oxfmt via vp)
+mise run check                            # Full CI validation (fmt + clippy + lint + typecheck)
+mise run test                             # Run all tests (Rust + frontend)
+mise run fix                              # Auto-fix all code (format + clippy fix + lint fix)
+mise run generate                         # Generate all derived files (proto + sqlx)
 cargo build                               # Build all crates
 cargo nextest run                         # Run all Rust tests (unit + integration)
 cargo nextest run -p ps-integration       # Run integration tests only
-cargo clippy --allow-dirty --fix          # Lint + auto-fix
-nix fmt                                   # Format all files (treefmt: rustfmt, nixfmt, deadnix, oxfmt, shfmt)
 buf lint                                  # Lint proto files
 buf generate                              # Generate Rust + TypeScript code from protos
 cargo sqlx prepare --workspace            # Update offline query cache (.sqlx/)
 sqlx migrate add <name>                   # Create new migration in migrations/
 bun install                               # Install frontend dependencies (run from frontend/)
 bun dev                                   # Start frontend dev server (run from frontend/)
-bun run test                              # Run frontend tests via vitest (run from frontend/)
 ```
 
 ## Local Dev Services (Tilt)
@@ -31,7 +35,7 @@ Tilt port-forwards all infrastructure to localhost. Use these for troubleshootin
 | PostgreSQL | `5432` | `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism` |
 | Restate Admin API | `9070` | `curl http://localhost:9070/...` — manage invocations, deployments, state |
 
-For sqlx query cache updates: `DATABASE_URL=postgres://prism:prism-dev-password@localhost:5432/prism cargo sqlx prepare --workspace`
+For sqlx query cache updates: `mise run generate:sqlx`
 
 Useful Restate commands:
 - List invocations: `restate invocations list`
@@ -43,7 +47,7 @@ Useful Restate commands:
 **Before finishing any task**, always:
 
 1. Run `prek run -av`
-2. Ensure **zero warnings** from `cargo clippy` and `nix fmt` — lints must be 100% clean before committing
+2. Ensure **zero warnings** from `cargo clippy` and `mise run fmt` — lints must be 100% clean before committing
 3. Consider if the test coverage needs updating
 4. If the change affects architecture, technology choices, or key conventions, update the relevant file in `docs/` to reflect the current state
 5. If the change represents a significant decision or reversal of a previous decision, add a dated entry to `docs/08-decision-log.md` with context, decision, and rationale
@@ -169,5 +173,5 @@ When working on specific subsystems, read the relevant doc for full architecture
 | Ingestion handlers, Restate, Source trait | `docs/03-ingestion.md` |
 | AI enrichment, embeddings, agentic query | `docs/04-ai-reasoning.md` |
 | Frontend UI, state, components | `docs/05-frontend.md` |
-| Nix, containers, K8s, proto tooling | `docs/06-infrastructure.md` |
+| Containers, K8s, proto tooling | `docs/06-infrastructure.md` |
 | Tests, test contexts, naming conventions | `docs/07-development.md` |

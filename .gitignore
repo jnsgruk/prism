@@ -1,10 +1,8 @@
 # Rust
 target/
 
-# Nix / direnv
-.direnv/
-result
-.pre-commit-config.yaml
+# mise local overrides
+.mise.local.toml
 
 # Database
 *.db

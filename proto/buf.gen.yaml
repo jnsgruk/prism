@@ -2,11 +2,11 @@ version: v2
 plugins:
   # TypeScript Connect clients for the frontend
   - remote: buf.build/connectrpc/es
-    out: frontend/lib/api/gen
+    out: ../frontend/lib/api/gen
     opt:
       - target=ts
   # TypeScript message types
   - remote: buf.build/bufbuild/es
-    out: frontend/lib/api/gen
+    out: ../frontend/lib/api/gen
     opt:
       - target=ts

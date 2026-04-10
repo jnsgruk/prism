@@ -1,0 +1,126 @@
+[tools]
+rust = "1.94"
+bun = "latest"
+node = "latest"
+"cargo:cargo-nextest" = "latest"
+"cargo:cargo-watch" = "latest"
+"cargo:sqlx-cli" = "latest"
+buf = "latest"
+protoc = "latest"
+prek = "latest"
+vp = "latest"
+tilt = "latest"
+kubectl = "latest"
+kubectx = "latest"
+helm = "3"
+
+[env]
+# SQLX_OFFLINE=true globally so all cargo commands use the committed .sqlx cache
+# by default (matches prod Dockerfile and CI). generate:sqlx overrides to false
+# because `cargo sqlx prepare` must compile against a live DB to discover queries.
+SQLX_OFFLINE = "true"
+DATABASE_URL = "postgres://prism:prism-dev-password@localhost:5432/prism"
+
+# ── fmt: fix formatting ─────────────────────────────────────────────────
+
+[tasks.fmt]
+description = "Format all code"
+depends = ["fmt:rs", "fmt:ts"]
+
+[tasks."fmt:rs"]
+description = "Format Rust"
+run = "cargo fmt"
+
+[tasks."fmt:ts"]
+description = "Format TypeScript/JS/JSON (oxfmt)"
+dir = "frontend"
+run = "vp fmt"
+
+# ── lint: report issues (read-only) ─────────────────────────────────────
+
+[tasks.lint]
+description = "Lint all code (read-only)"
+depends = ["lint:rs", "lint:ts", "lint:proto"]
+
+[tasks."lint:rs"]
+description = "Lint Rust (clippy)"
+run = "SQLX_OFFLINE=true cargo clippy --lib --bins -- -D warnings"
+
+[tasks."lint:ts"]
+description = "Lint TypeScript (oxlint + typecheck)"
+dir = "frontend"
+run = "vp lint --type-aware"
+
+[tasks."lint:proto"]
+description = "Lint protobuf definitions"
+dir = "proto"
+run = "buf lint"
+
+# ── fix: auto-fix everything ────────────────────────────────────────────
+
+[tasks.fix]
+description = "Auto-fix all code (format + lint fixes)"
+depends = ["fmt", "fix:rs", "fix:ts"]
+
+[tasks."fix:rs"]
+description = "Auto-fix Rust (clippy fix)"
+run = "SQLX_OFFLINE=true cargo clippy --lib --bins --fix --allow-dirty --allow-staged -- -D warnings"
+
+[tasks."fix:ts"]
+description = "Auto-fix TypeScript (format + lint fix)"
+dir = "frontend"
+run = ["vp fmt", "vp lint --type-aware --fix"]
+
+# ── check: full validation (read-only) ──────────────────────────────────
+
+[tasks.check]
+description = "Full CI validation (read-only)"
+depends = ["check:rs", "check:ts", "check:proto"]
+
+[tasks."check:rs"]
+description = "Validate Rust (fmt + clippy)"
+run = ["cargo fmt -- --check", "SQLX_OFFLINE=true cargo clippy --lib --bins -- -D warnings"]
+
+[tasks."check:ts"]
+description = "Validate TypeScript (fmt + lint + typecheck)"
+dir = "frontend"
+run = ["vp fmt --check", "vp lint --type-aware", "vp lint --type-check"]
+
+[tasks."check:proto"]
+description = "Validate protobuf definitions"
+dir = "proto"
+run = "buf lint"
+
+[tasks."check:sqlx"]
+description = "Verify SQLx offline cache is up to date"
+run = "SQLX_OFFLINE=true cargo sqlx prepare --workspace --check"
+
+# ── test: run tests ─────────────────────────────────────────────────────
+
+[tasks.test]
+description = "Run all tests"
+depends = ["test:rs", "test:ts"]
+
+[tasks."test:rs"]
+description = "Run Rust tests"
+run = "cargo build --bin setup-test-db && cargo nextest run"
+
+[tasks."test:ts"]
+description = "Run frontend tests"
+dir = "frontend"
+run = "bun run test"
+
+# ── generate: create derived files ──────────────────────────────────────
+
+[tasks.generate]
+description = "Generate all derived files"
+depends = ["generate:proto", "generate:sqlx"]
+
+[tasks."generate:proto"]
+description = "Generate protobuf types"
+dir = "proto"
+run = "buf generate"
+
+[tasks."generate:sqlx"]
+description = "Regenerate SQLx offline cache (requires running database)"
+run = "SQLX_OFFLINE=false cargo sqlx prepare --workspace"

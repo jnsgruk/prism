@@ -18,25 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: wimpysworld/nothing-but-nix@main
-        with:
-          hatchet-protocol: carve
+      - uses: jdx/mise-action@v2
 
-      - uses: DeterminateSystems/nix-installer-action@main
-
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang mold pkg-config libssl-dev
 
       - name: Install frontend dependencies
-        run: nix develop --command bash -c "cd frontend && bun install --frozen-lockfile"
+        run: cd frontend && bun install --frozen-lockfile
 
       - name: Fetch Cargo dependencies
-        run: nix develop --command cargo fetch
+        run: cargo fetch
 
       - name: Run prek (format, lint, test)
-        run: nix develop --command prek run -av
+        run: prek run -av
 
   buf-breaking:
     name: Proto Breaking Changes
@@ -45,31 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
-
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - uses: jdx/mise-action@v2
 
       - name: Check for breaking changes
-        run: nix develop --command buf breaking --against '.git#branch=${{ github.base_ref }}'
-
-  nix-build:
-    name: Nix Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: DeterminateSystems/nix-installer-action@main
-
-      - uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-
-      - name: Build all packages
-        run: nix build .#ps-server .#ps-workers .#ps-migrate .#psctl
-
-      - name: Check flake
-        run: nix flake check
+        run: cd proto && buf breaking --against '.git#branch=${{ github.base_ref }}'

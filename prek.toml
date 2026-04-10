@@ -1,0 +1,75 @@
+#:schema https://www.schemastore.org/prek.json
+
+# All hooks run at pre-commit stage for immediate feedback.
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "fmt-check"
+name = "fmt-check"
+entry = "bash -c 'mise exec -- cargo fmt -- --check && cd frontend && mise exec -- vp fmt --check'"
+language = "system"
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "clippy"
+name = "clippy"
+entry = "mise run lint:rs"
+language = "system"
+files = '\.rs$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "buf-lint"
+name = "buf-lint"
+entry = "mise run lint:proto"
+language = "system"
+files = '\.proto$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "frontend-lint"
+name = "frontend-lint"
+entry = "bash -c 'cd frontend && mise exec -- vp lint --type-aware'"
+language = "system"
+files = '\.(ts|tsx|js|jsx)$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "frontend-typecheck"
+name = "frontend-typecheck"
+entry = "bash -c 'cd frontend && mise exec -- vp lint --type-check'"
+language = "system"
+files = '\.(ts|tsx)$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "frontend-test"
+name = "frontend-test"
+entry = "mise run test:ts"
+language = "system"
+files = '\.(ts|tsx)$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "cargo-test"
+name = "cargo-test"
+entry = "mise run test:rs"
+language = "system"
+files = '\.(rs|toml)$'
+pass_filenames = false
+fail_fast = true
+stages = ["pre-commit"]
