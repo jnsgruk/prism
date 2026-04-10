@@ -19,7 +19,9 @@ helm = "3"
 # by default (matches prod Dockerfile and CI). generate:sqlx overrides to false
 # because `cargo sqlx prepare` must compile against a live DB to discover queries.
 SQLX_OFFLINE = "true"
-DATABASE_URL = "postgres://prism:prism-dev-password@localhost:5432/prism"
+# DATABASE_URL is intentionally NOT set globally — the integration test setup
+# script (setup-test-db) uses its absence to spin up an isolated Docker
+# container. Tasks that need the Tilt DB (e.g. generate:sqlx) set it explicitly.
 
 # ── fmt: fix formatting ─────────────────────────────────────────────────
 
@@ -126,4 +128,4 @@ run = "buf generate"
 
 [tasks."generate:sqlx"]
 description = "Regenerate SQLx offline cache (requires running database)"
-run = "SQLX_OFFLINE=false cargo sqlx prepare --workspace"
+run = "SQLX_OFFLINE=false DATABASE_URL='postgres://prism:prism-dev-password@localhost:5432/prism' cargo sqlx prepare --workspace"
