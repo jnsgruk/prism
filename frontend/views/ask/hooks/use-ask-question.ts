@@ -121,53 +121,53 @@ export const useAskQuestion = (): {
   const steps = useMemo(() => deriveSteps(events), [events]);
 
   // Helper to append a step event from a proto response.
-  const appendStepEvent = useCallback(
-    (eventCase: string, value: { stepId?: string; stepSeq?: number; [key: string]: unknown }): void => {
-      let stepId = "";
-      let stepSeq = 0;
-      let eventType = "";
-      let payload: Record<string, unknown> = {};
+  const appendStepEvent = useCallback((eventCase: string, value: Record<string, unknown>): void => {
+    const str = (v: unknown): string => (typeof v === "string" ? v : "");
+    const num = (v: unknown): number => (typeof v === "number" ? v : 0);
 
-      switch (eventCase) {
-        case "thinking":
-          stepId = (value.stepId as string) ?? "";
-          stepSeq = (value.stepSeq as number) ?? 0;
-          eventType = "thinking";
-          payload = { text: value.text, part_index: value.partIndex };
-          break;
-        case "toolCallStarted":
-          stepId = (value.stepId as string) ?? "";
-          stepSeq = (value.stepSeq as number) ?? 0;
-          eventType = "tool_call_started";
-          payload = {
-            tool_name: value.toolName,
-            arguments_json: value.argumentsJson,
-            call_id: value.callId,
-          };
-          break;
-        case "toolCallCompleted":
-          stepId = (value.stepId as string) ?? "";
-          stepSeq = (value.stepSeq as number) ?? 0;
-          eventType = "tool_call_completed";
-          payload = {
-            tool_name: value.toolName,
-            result_summary: value.resultSummary,
-            duration_ms: value.durationMs,
-            success: value.success,
-            call_id: value.callId,
-          };
-          break;
-        default:
-          return;
-      }
+    let stepId = "";
+    let stepSeq = 0;
+    let eventType = "";
+    let payload: Record<string, unknown> = {};
 
-      if (!stepId) return;
+    switch (eventCase) {
+      case "thinking":
+        stepId = str(value.stepId);
+        stepSeq = num(value.stepSeq);
+        eventType = "thinking";
+        payload = { text: value.text, part_index: value.partIndex };
+        break;
+      case "toolCallStarted":
+        stepId = str(value.stepId);
+        stepSeq = num(value.stepSeq);
+        eventType = "tool_call_started";
+        payload = {
+          tool_name: value.toolName,
+          arguments_json: value.argumentsJson,
+          call_id: value.callId,
+        };
+        break;
+      case "toolCallCompleted":
+        stepId = str(value.stepId);
+        stepSeq = num(value.stepSeq);
+        eventType = "tool_call_completed";
+        payload = {
+          tool_name: value.toolName,
+          result_summary: value.resultSummary,
+          duration_ms: value.durationMs,
+          success: value.success,
+          call_id: value.callId,
+        };
+        break;
+      default:
+        return;
+    }
 
-      const id = nextEventId.current++;
-      setEvents((prev) => [...prev, { id, eventType, stepId, stepSeq, payload }]);
-    },
-    [],
-  );
+    if (!stepId) return;
+
+    const id = nextEventId.current++;
+    setEvents((prev) => [...prev, { id, eventType, stepId, stepSeq, payload }]);
+  }, []);
 
   /** Process a stream of AskQuestion/ResumeStream responses. */
   const processStream = useCallback(
@@ -180,16 +180,21 @@ export const useAskQuestion = (): {
       let partialAnswer = "";
       let streamConversationId: string | undefined = initialConversationId;
 
+      const str = (v: unknown): string => (typeof v === "string" ? v : "");
+      const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+      const bool = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
+      const bigintToNum = (v: unknown): number => (typeof v === "bigint" ? Number(v) : num(v));
+
       for await (const response of stream) {
         if (abort.signal.aborted) break;
 
         const { event } = response;
-        if (!event.case) continue;
+        if (!event.case || !event.value) continue;
+        const v = event.value;
 
         switch (event.case) {
           case "conversationCreated": {
-            const v = event.value as { conversationId: string };
-            streamConversationId = v.conversationId;
+            streamConversationId = str(v.conversationId);
             queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
             setMeta((prev) =>
               prev.status === "container_starting" ? { ...prev, conversationId: streamConversationId } : prev,
@@ -198,10 +203,9 @@ export const useAskQuestion = (): {
           }
 
           case "containerStatus": {
-            const v = event.value as { message: string };
             setMeta({
               status: "container_starting",
-              message: v.message,
+              message: str(v.message),
               question,
               conversationId: streamConversationId,
             });
@@ -209,8 +213,7 @@ export const useAskQuestion = (): {
           }
 
           case "partialAnswer": {
-            const v = event.value as { text: string };
-            partialAnswer = v.text;
+            partialAnswer = str(v.text);
             setMeta({
               status: "streaming",
               question,
@@ -221,55 +224,41 @@ export const useAskQuestion = (): {
           }
 
           case "finalAnswer": {
-            const v = event.value as {
-              answer: string;
-              conversationId: string;
-              supportingDataJson: string;
-              promptTokens: number;
-              completionTokens: number;
-              estimatedCostUsd: number;
-              durationMs: number;
-            };
             setMeta({
               status: "completed",
               question,
-              answer: v.answer,
-              conversationId: v.conversationId,
-              supportingData: v.supportingDataJson,
+              answer: str(v.answer),
+              conversationId: str(v.conversationId),
+              supportingData: str(v.supportingDataJson),
               tokenUsage: {
-                promptTokens: v.promptTokens,
-                completionTokens: v.completionTokens,
-                estimatedCostUsd: v.estimatedCostUsd,
+                promptTokens: num(v.promptTokens),
+                completionTokens: num(v.completionTokens),
+                estimatedCostUsd: num(v.estimatedCostUsd),
               },
-              durationMs: v.durationMs,
+              durationMs: num(v.durationMs),
             });
             queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
-            if (v.conversationId) {
+            const convId = str(v.conversationId);
+            if (convId) {
               queryClient.invalidateQueries({
-                queryKey: conversationKeys.detail(v.conversationId),
+                queryKey: conversationKeys.detail(convId),
               });
             }
             break;
           }
 
           case "tokenUsage": {
-            const v = event.value as {
-              inputTokens: bigint;
-              outputTokens: bigint;
-              contextWindow: bigint;
-            };
             const usage: ContextUsage = {
-              inputTokens: Number(v.inputTokens),
-              outputTokens: Number(v.outputTokens),
-              contextWindow: Number(v.contextWindow),
+              inputTokens: bigintToNum(v.inputTokens),
+              outputTokens: bigintToNum(v.outputTokens),
+              contextWindow: bigintToNum(v.contextWindow),
             };
             setMeta((prev) => (prev.status === "streaming" ? { ...prev, contextUsage: usage } : prev));
             break;
           }
 
           case "error": {
-            const v = event.value as { message: string; retryable: boolean };
-            setMeta({ status: "error", message: v.message, retryable: v.retryable });
+            setMeta({ status: "error", message: str(v.message), retryable: bool(v.retryable) });
             break;
           }
 
@@ -287,7 +276,7 @@ export const useAskQuestion = (): {
                   }
                 : prev,
             );
-            appendStepEvent(event.case, event.value as Record<string, unknown>);
+            appendStepEvent(event.case, v);
             break;
           }
         }

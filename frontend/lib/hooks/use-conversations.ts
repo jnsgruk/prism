@@ -25,7 +25,7 @@ export const conversationKeys = {
 export const useListConversations = (
   page = 1,
   pageSize = 25,
-): UseQueryResult<{ conversations: ConversationSummary[]; totalCount: number }, Error> =>
+): UseQueryResult<{ conversations: ConversationSummary[]; totalCount: number }> =>
   useQuery({
     queryKey: [...conversationKeys.list(), page, pageSize],
     queryFn: () => client.listConversations({ page, pageSize }),
@@ -35,7 +35,7 @@ export const useListConversations = (
     }),
   });
 
-export const useGetConversation = (conversationId: string): UseQueryResult<GetConversationResponse, Error> =>
+export const useGetConversation = (conversationId: string): UseQueryResult<GetConversationResponse> =>
   useQuery({
     queryKey: conversationKeys.detail(conversationId),
     queryFn: () => client.getConversation({ conversationId }),
@@ -89,7 +89,7 @@ export const useSaveInsightFromConversation = (): UseMutationResult<
   });
 };
 
-export const useListWorkspaceFiles = (conversationId: string): UseQueryResult<ListWorkspaceFilesResponse, Error> =>
+export const useListWorkspaceFiles = (conversationId: string): UseQueryResult<ListWorkspaceFilesResponse> =>
   useQuery({
     queryKey: conversationKeys.workspaceFiles(conversationId),
     queryFn: () => client.listWorkspaceFiles({ conversationId }),
@@ -124,7 +124,7 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
 > =>
   useMutation({
     mutationFn: async (req: { conversationId: string; path: string }): Promise<DownloadedFile> => {
-      const chunks: ArrayBuffer[] = [];
+      const chunks: BlobPart[] = [];
       let contentType = "application/octet-stream";
       let totalSizeBytes = 0;
 
@@ -136,12 +136,7 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
           totalSizeBytes = Number(response.totalSizeBytes);
         }
         if (response.data.length > 0) {
-          chunks.push(
-            response.data.buffer.slice(
-              response.data.byteOffset,
-              response.data.byteOffset + response.data.byteLength,
-            ) as ArrayBuffer,
-          );
+          chunks.push(new Uint8Array(response.data));
         }
       }
 

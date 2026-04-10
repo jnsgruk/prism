@@ -92,7 +92,8 @@ export const extractContent = (el: HTMLElement): { text: string; mentions: Menti
       const pillId = node.getAttribute(PILL_ID_ATTR);
       if (pillId) {
         const name = node.firstChild?.textContent ?? pillId;
-        const pillType = (node.getAttribute(PILL_TYPE_ATTR) ?? "file") as MentionType;
+        const rawType = node.getAttribute(PILL_TYPE_ATTR) ?? "file";
+        const pillType: MentionType = rawType === "person" || rawType === "team" ? rawType : "file";
         mentions.push({ id: pillId, name, type: pillType });
         text += name;
         return;

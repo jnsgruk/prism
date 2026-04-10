@@ -38,11 +38,14 @@ export type ProgressDetail = {
   statusMessage?: string;
 };
 
+const isRunProgress = (v: unknown): v is RunProgress => typeof v === "object" && v !== null;
+
 /** Parse the raw progressJson string into a typed object. Returns null on failure. */
 export const parseProgress = (json: string | undefined): RunProgress | null => {
   if (!json) return null;
   try {
-    return JSON.parse(json) as RunProgress;
+    const parsed: unknown = JSON.parse(json);
+    return isRunProgress(parsed) ? parsed : null;
   } catch {
     return null;
   }

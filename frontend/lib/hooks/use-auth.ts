@@ -20,14 +20,14 @@ export const authKeys = {
   currentUser: (): readonly ["auth", "currentUser"] => [...authKeys.all, "currentUser"] as const,
 };
 
-export const useSetupStatus = (): UseQueryResult<boolean, Error> =>
+export const useSetupStatus = (): UseQueryResult<boolean> =>
   useQuery({
     queryKey: authKeys.setupStatus(),
     queryFn: () => authClient.getSetupStatus({}),
     select: (data): boolean => data.setupComplete,
   });
 
-export const useCurrentUser = (): UseQueryResult<GetCurrentUserResponse, Error> =>
+export const useCurrentUser = (): UseQueryResult<GetCurrentUserResponse> =>
   useQuery({
     queryKey: authKeys.currentUser(),
     queryFn: () => authClient.getCurrentUser({}),

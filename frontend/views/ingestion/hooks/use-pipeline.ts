@@ -25,7 +25,7 @@ type RefetchInterval =
 
 export const usePipelineStatus = (options?: {
   refetchInterval?: RefetchInterval;
-}): UseQueryResult<GetPipelineStatusResponse, Error> =>
+}): UseQueryResult<GetPipelineStatusResponse> =>
   useQuery({
     queryKey: pipelineKeys.status(),
     queryFn: () => client.getPipelineStatus({}),

@@ -10,10 +10,13 @@ import { StageNode, type StageNodeData } from "./stage-node";
 
 type StagesMap = Record<string, StageData>;
 
+const isStagesMap = (v: unknown): v is StagesMap => typeof v === "object" && v !== null;
+
 const parseStages = (pipeline: PipelineInfo | undefined): StagesMap => {
   if (!pipeline?.stagesJson) return {};
   try {
-    return JSON.parse(pipeline.stagesJson) as StagesMap;
+    const parsed: unknown = JSON.parse(pipeline.stagesJson);
+    return isStagesMap(parsed) ? parsed : {};
   } catch {
     return {};
   }

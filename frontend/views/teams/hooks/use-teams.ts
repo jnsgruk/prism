@@ -29,27 +29,27 @@ export const orgKeys = {
   mappingSuggestions: () => [...orgKeys.all, "mapping-suggestions"] as const,
 };
 
-export const useListTeams = (parentTeamId?: string): UseQueryResult<Team[], Error> =>
+export const useListTeams = (parentTeamId?: string): UseQueryResult<Team[]> =>
   useQuery({
     queryKey: orgKeys.teams(parentTeamId),
     queryFn: () => orgClient.listTeams({ parentTeamId }),
     select: (data): Team[] => data.teams,
   });
 
-export const useGetTeamTree = (): UseQueryResult<GetTeamTreeResponse, Error> =>
+export const useGetTeamTree = (): UseQueryResult<GetTeamTreeResponse> =>
   useQuery({
     queryKey: orgKeys.tree(),
     queryFn: () => orgClient.getTeamTree({}),
   });
 
-export const useGetTeam = (teamId: string): UseQueryResult<GetTeamResponse, Error> =>
+export const useGetTeam = (teamId: string): UseQueryResult<GetTeamResponse> =>
   useQuery({
     queryKey: orgKeys.team(teamId),
     queryFn: () => orgClient.getTeam({ teamId }),
     enabled: !!teamId,
   });
 
-export const useListPeople = (): UseQueryResult<Person[], Error> =>
+export const useListPeople = (): UseQueryResult<Person[]> =>
   useQuery({
     queryKey: orgKeys.people(),
     queryFn: () => orgClient.listPeople({}),
@@ -66,7 +66,7 @@ export interface PeopleQueryParams {
   sortDesc?: boolean;
 }
 
-export const usePaginatedPeople = (params: PeopleQueryParams): UseQueryResult<ListPeopleResponse, Error> =>
+export const usePaginatedPeople = (params: PeopleQueryParams): UseQueryResult<ListPeopleResponse> =>
   useQuery({
     queryKey: [...orgKeys.people(), params] as const,
     queryFn: () =>
@@ -141,7 +141,7 @@ export const teamTypeBadgeVariant = (t: TeamType): "default" | "secondary" | "ou
   }
 };
 
-export const useListGithubTeams = (search?: string, githubOrg?: string): UseQueryResult<GitHubTeam[], Error> =>
+export const useListGithubTeams = (search?: string, githubOrg?: string): UseQueryResult<GitHubTeam[]> =>
   useQuery({
     queryKey: orgKeys.githubTeams(search, githubOrg),
     queryFn: () =>
@@ -152,7 +152,7 @@ export const useListGithubTeams = (search?: string, githubOrg?: string): UseQuer
     select: (data): GitHubTeam[] => data.teams,
   });
 
-export const useListTeamGithubTeams = (teamId: string): UseQueryResult<GitHubTeam[], Error> =>
+export const useListTeamGithubTeams = (teamId: string): UseQueryResult<GitHubTeam[]> =>
   useQuery({
     queryKey: orgKeys.teamGithubTeams(teamId),
     queryFn: () => orgClient.listTeamGithubTeams({ teamId }),
@@ -160,7 +160,7 @@ export const useListTeamGithubTeams = (teamId: string): UseQueryResult<GitHubTea
     enabled: !!teamId,
   });
 
-export const useGetTeamMappingSuggestions = (): UseQueryResult<TeamMappingSuggestion[], Error> =>
+export const useGetTeamMappingSuggestions = (): UseQueryResult<TeamMappingSuggestion[]> =>
   useQuery({
     queryKey: orgKeys.mappingSuggestions(),
     queryFn: () => orgClient.getTeamMappingSuggestions({}),

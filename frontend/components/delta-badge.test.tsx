@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 
 import { DeltaBadge } from "./delta-badge";
 
+const getSpan = (container: HTMLElement): HTMLSpanElement => {
+  const el = container.querySelector("span");
+  if (!el) throw new Error("Expected span element");
+  return el;
+};
+
 describe("DeltaBadge", () => {
   it("returns null for zero delta", () => {
     const { container } = render(<DeltaBadge delta={0} />);
@@ -11,27 +17,27 @@ describe("DeltaBadge", () => {
 
   it("shows positive delta with up arrow and green color", () => {
     const { container } = render(<DeltaBadge delta={1.5} />);
-    const span = container.firstChild as HTMLElement;
+    const span = getSpan(container);
     expect(span.textContent).toContain("1.50");
     expect(span.className).toContain("text-emerald-600");
   });
 
   it("shows negative delta with down arrow and red color", () => {
     const { container } = render(<DeltaBadge delta={-2.3} />);
-    const span = container.firstChild as HTMLElement;
+    const span = getSpan(container);
     expect(span.textContent).toContain("2.30");
     expect(span.className).toContain("text-red-600");
   });
 
   it("inverts colors when invert=true (positive becomes red)", () => {
     const { container } = render(<DeltaBadge delta={1.5} invert />);
-    const span = container.firstChild as HTMLElement;
+    const span = getSpan(container);
     expect(span.className).toContain("text-red-600");
   });
 
   it("inverts colors when invert=true (negative becomes green)", () => {
     const { container } = render(<DeltaBadge delta={-1.5} invert />);
-    const span = container.firstChild as HTMLElement;
+    const span = getSpan(container);
     expect(span.className).toContain("text-emerald-600");
   });
 

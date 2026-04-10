@@ -39,7 +39,7 @@ const formatShortDate = (ts?: Timestamp): string => {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
-const topicTitleColumn: ColumnDef<Contribution, unknown> = {
+const topicTitleColumn: ColumnDef<Contribution> = {
   accessorKey: "title",
   header: "Title",
   cell: ({ row }) => {
@@ -66,7 +66,7 @@ const topicTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const topicTypeColumn: ColumnDef<Contribution, unknown> = {
+const topicTypeColumn: ColumnDef<Contribution> = {
   id: "type",
   header: "Type",
   cell: ({ row }) => (
@@ -77,14 +77,14 @@ const topicTypeColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
+const topicInstanceColumn: ColumnDef<Contribution> = {
   id: "instance",
   header: "Instance",
   cell: ({ row }) => <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>,
   enableSorting: false,
 };
 
-const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
+const topicAuthorColumn: ColumnDef<Contribution> = {
   id: "person_name",
   accessorKey: "personName",
   header: "Author",
@@ -96,7 +96,7 @@ const topicAuthorColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
+const topicCreatedColumn: ColumnDef<Contribution> = {
   id: "created_at",
   accessorKey: "createdAt",
   header: "Created",
@@ -106,7 +106,7 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution, unknown>[] => [
+const buildTopicColumns = (showInstance: boolean): ColumnDef<Contribution>[] => [
   topicTitleColumn,
   topicTypeColumn,
   ...(showInstance ? [topicInstanceColumn] : []),
@@ -214,7 +214,7 @@ const DiscourseTopicsTable = ({
 // Contributor table columns + sorting helper
 // ---------------------------------------------------------------------------
 
-const nameColumn: ColumnDef<TopContributor, unknown> = {
+const nameColumn: ColumnDef<TopContributor> = {
   id: "name",
   accessorKey: "name",
   header: "Name",
@@ -226,7 +226,7 @@ const nameColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const contributorTopicsColumn: ColumnDef<TopContributor, unknown> = {
+const contributorTopicsColumn: ColumnDef<TopContributor> = {
   id: "topics",
   accessorKey: "topics",
   header: "Topics",
@@ -234,7 +234,7 @@ const contributorTopicsColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const contributorPostsColumn: ColumnDef<TopContributor, unknown> = {
+const contributorPostsColumn: ColumnDef<TopContributor> = {
   id: "posts",
   accessorKey: "posts",
   header: "Posts",
@@ -242,7 +242,7 @@ const contributorPostsColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const likesColumn: ColumnDef<TopContributor, unknown> = {
+const likesColumn: ColumnDef<TopContributor> = {
   id: "likes_received",
   accessorKey: "likesReceived",
   header: "Likes Received",
@@ -250,7 +250,7 @@ const likesColumn: ColumnDef<TopContributor, unknown> = {
   enableSorting: true,
 };
 
-const contributorColumns: ColumnDef<TopContributor, unknown>[] = [
+const contributorColumns: ColumnDef<TopContributor>[] = [
   nameColumn,
   contributorTopicsColumn,
   contributorPostsColumn,

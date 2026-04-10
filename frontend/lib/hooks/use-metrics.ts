@@ -73,7 +73,7 @@ export interface ContributionFilters {
   platformInstance?: string;
 }
 
-export const useCompareTeams = (teamIds: string[], period: Period): UseQueryResult<TeamMetrics[], Error> =>
+export const useCompareTeams = (teamIds: string[], period: Period): UseQueryResult<TeamMetrics[]> =>
   useQuery({
     queryKey: metricsKeys.compare(teamIds, period),
     queryFn: () => metricsClient.compareTeams({ teamIds, period }),
@@ -81,7 +81,7 @@ export const useCompareTeams = (teamIds: string[], period: Period): UseQueryResu
     enabled: teamIds.length > 0,
   });
 
-export const useListPeriods = (): UseQueryResult<Period[], Error> =>
+export const useListPeriods = (): UseQueryResult<Period[]> =>
   useQuery({
     queryKey: metricsKeys.periods(),
     queryFn: () => metricsClient.listPeriods({}),
@@ -92,7 +92,7 @@ export const useListTeamContributions = (
   teamId: string,
   period: Period,
   filters: ContributionFilters,
-): UseQueryResult<ListTeamContributionsResponse, Error> =>
+): UseQueryResult<ListTeamContributionsResponse> =>
   useQuery({
     queryKey: metricsKeys.contributions(teamId, period, filters),
     queryFn: () =>
@@ -113,7 +113,7 @@ export const useListTeamContributions = (
     placeholderData: keepPreviousData,
   });
 
-export const useGetFlowMetrics = (teamId: string, period: Period): UseQueryResult<GetFlowMetricsResponse, Error> =>
+export const useGetFlowMetrics = (teamId: string, period: Period): UseQueryResult<GetFlowMetricsResponse> =>
   useQuery({
     queryKey: metricsKeys.flow(teamId, period),
     queryFn: () => metricsClient.getFlowMetrics({ teamId, period }),
@@ -137,7 +137,7 @@ export interface PersonContributionFilters {
 export const useGetIndividualProfile = (
   personId: string,
   period: Period,
-): UseQueryResult<GetIndividualProfileResponse, Error> =>
+): UseQueryResult<GetIndividualProfileResponse> =>
   useQuery({
     queryKey: metricsKeys.individual(personId, period),
     queryFn: () => metricsClient.getIndividualProfile({ personId, period }),
@@ -147,7 +147,7 @@ export const useGetIndividualProfile = (
 export const useListPersonContributions = (
   personId: string,
   filters: PersonContributionFilters,
-): UseQueryResult<ListPersonContributionsResponse, Error> =>
+): UseQueryResult<ListPersonContributionsResponse> =>
   useQuery({
     queryKey: metricsKeys.personContributions(personId, filters),
     queryFn: () =>
@@ -174,7 +174,7 @@ export const useTeamContributionCount = (
   teamId: string,
   period: Period,
   filters: Omit<ContributionFilters, "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc">,
-): UseQueryResult<number, Error> => {
+): UseQueryResult<number> => {
   const full: ContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
   return useQuery({
     queryKey: metricsKeys.contributions(teamId, period, full),
@@ -198,7 +198,7 @@ export const useTeamContributionCount = (
 export const usePersonContributionCount = (
   personId: string,
   filters: Omit<PersonContributionFilters, "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc">,
-): UseQueryResult<number, Error> => {
+): UseQueryResult<number> => {
   const full: PersonContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
   return useQuery({
     queryKey: metricsKeys.personContributions(personId, full),
@@ -219,7 +219,7 @@ export const usePersonContributionCount = (
   });
 };
 
-export const useContribution = (contributionId: string): UseQueryResult<Contribution, Error> =>
+export const useContribution = (contributionId: string): UseQueryResult<Contribution> =>
   useQuery({
     queryKey: [...metricsKeys.all, "contribution", contributionId] as const,
     queryFn: () => metricsClient.getContribution({ contributionId }),

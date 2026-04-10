@@ -64,7 +64,9 @@ export const CreateTokenDialog = (): React.ReactElement => {
                   readOnly
                   value={createToken.data.token}
                   className="font-mono text-xs"
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  onClick={(e) => {
+                    if (e.target instanceof HTMLInputElement) e.target.select();
+                  }}
                 />
                 <Button
                   variant="outline"

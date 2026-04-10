@@ -37,7 +37,8 @@ export const useResize = ({
   const onPointerDown = useCallback<React.PointerEventHandler>(
     (e) => {
       e.preventDefault();
-      const el = e.currentTarget as HTMLElement;
+      const el = e.currentTarget;
+      if (!(el instanceof HTMLElement)) return;
       el.setPointerCapture(e.pointerId);
 
       startPos.current = axis === "horizontal" ? e.clientX : e.clientY;

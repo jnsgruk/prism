@@ -48,7 +48,7 @@ const extractNumber = (platformId: string): string | null => {
   return last && /^\d+$/.test(last) ? last : null;
 };
 
-const prTitleColumn: ColumnDef<Contribution, unknown> = {
+const prTitleColumn: ColumnDef<Contribution> = {
   accessorKey: "title",
   header: "PR",
   cell: ({ row }) => {
@@ -77,7 +77,7 @@ const prTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const reviewTitleColumn: ColumnDef<Contribution, unknown> = {
+const reviewTitleColumn: ColumnDef<Contribution> = {
   accessorKey: "title",
   header: "Title",
   cell: ({ row }) => (
@@ -101,7 +101,7 @@ const reviewTitleColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const authorColumn: ColumnDef<Contribution, unknown> = {
+const authorColumn: ColumnDef<Contribution> = {
   id: "person_name",
   accessorKey: "personName",
   header: "Author",
@@ -113,7 +113,7 @@ const authorColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const repoColumn: ColumnDef<Contribution, unknown> = {
+const repoColumn: ColumnDef<Contribution> = {
   id: "repo",
   accessorKey: "repo",
   header: "Repo",
@@ -125,7 +125,7 @@ const repoColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const prStateColumn: ColumnDef<Contribution, unknown> = {
+const prStateColumn: ColumnDef<Contribution> = {
   id: "state",
   accessorKey: "state",
   header: "State",
@@ -140,7 +140,7 @@ const prStateColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const reviewStateColumn: ColumnDef<Contribution, unknown> = {
+const reviewStateColumn: ColumnDef<Contribution> = {
   id: "state",
   accessorKey: "state",
   header: "State",
@@ -155,7 +155,7 @@ const reviewStateColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const createdAtColumn: ColumnDef<Contribution, unknown> = {
+const createdAtColumn: ColumnDef<Contribution> = {
   id: "created_at",
   accessorKey: "createdAt",
   header: "Created",
@@ -165,7 +165,7 @@ const createdAtColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: true,
 };
 
-const prStatsColumn: ColumnDef<Contribution, unknown> = {
+const prStatsColumn: ColumnDef<Contribution> = {
   id: "stats",
   header: "Stats",
   cell: ({ row }) => {
@@ -185,7 +185,7 @@ const prStatsColumn: ColumnDef<Contribution, unknown> = {
 // Discourse columns
 // ---------------------------------------------------------------------------
 
-const discourseTitleColumn: ColumnDef<Contribution, unknown> = {
+const discourseTitleColumn: ColumnDef<Contribution> = {
   accessorKey: "title",
   header: "Title",
   cell: ({ row }) => {
@@ -218,7 +218,7 @@ const discourseTypeLabel = (ct: ContributionType): string => {
   return "Post";
 };
 
-const discourseTypeColumn: ColumnDef<Contribution, unknown> = {
+const discourseTypeColumn: ColumnDef<Contribution> = {
   id: "type",
   header: "Type",
   cell: ({ row }) => (
@@ -229,7 +229,7 @@ const discourseTypeColumn: ColumnDef<Contribution, unknown> = {
   enableSorting: false,
 };
 
-const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
+const discourseInstanceColumn: ColumnDef<Contribution> = {
   id: "instance",
   header: "Instance",
   cell: ({ row }) => <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>,
@@ -297,7 +297,7 @@ export const ContributionTable = ({
   );
 
   const isPersonMode = !!personId;
-  const columns = useMemo((): ColumnDef<Contribution, unknown>[] => {
+  const columns = useMemo((): ColumnDef<Contribution>[] => {
     if (isDiscourse) {
       return isPersonMode
         ? [discourseTitleColumn, discourseTypeColumn, discourseInstanceColumn, createdAtColumn]

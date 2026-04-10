@@ -28,7 +28,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+import type { AiModelInfo, AiTaskConfig } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 const TASK_TYPES = [
   {
@@ -79,12 +79,16 @@ export const AiProviderDialog = ({
 
   const secretButtonLabel = isKeySet ? "Change" : "Set key";
 
+  const taskConfigMap: Record<string, AiTaskConfig | undefined> = {
+    enrichment: settings?.enrichment,
+    agentic: settings?.agentic,
+    embeddings: settings?.embeddings,
+    imageGeneration: settings?.imageGeneration,
+  };
+
   const getTaskConfig = (key: string): { provider: AiProvider; model: string } => {
-    if (!settings) return { provider: AiProvider.GOOGLE, model: "" };
-    const cfg = settings[key as keyof typeof settings];
-    if (cfg && typeof cfg === "object" && "provider" in cfg) {
-      return cfg as unknown as { provider: AiProvider; model: string };
-    }
+    const cfg = taskConfigMap[key];
+    if (cfg) return { provider: cfg.provider, model: cfg.model };
     return { provider: AiProvider.GOOGLE, model: "" };
   };
 

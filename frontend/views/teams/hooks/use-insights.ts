@@ -37,7 +37,7 @@ export const useTeamInsights = (
   teamId: string,
   periodKey: string,
   includeDescendants: boolean,
-): UseQueryResult<TeamInsights | undefined, Error> => {
+): UseQueryResult<TeamInsights | undefined> => {
   const period = periodKeyToInsightsPeriod(periodKey);
   return useQuery({
     queryKey: insightsKeys.team(teamId, period, includeDescendants),

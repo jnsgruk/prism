@@ -13,6 +13,9 @@ import * as React from "react";
 import { cn } from "@ps/cn";
 import { useIsMobile } from "@ps/hooks/use-mobile";
 
+/** Helper to allow CSS custom properties without an unsafe `as CSSProperties` cast. */
+const cssVars = (vars: Record<string, string | number | undefined>): React.CSSProperties => vars as React.CSSProperties;
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
@@ -115,13 +118,11 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
+        style={cssVars({
+          "--sidebar-width": SIDEBAR_WIDTH,
+          "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+          ...style,
+        })}
         className={cn("group/sidebar-wrapper flex h-svh w-full has-data-[variant=inset]:bg-sidebar", className)}
         {...props}
       >
@@ -167,11 +168,9 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={cssVars({
+            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+          })}
           side={side}
         >
           <SheetHeader className="sr-only">
@@ -578,11 +577,9 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={cssVars({
+          "--skeleton-width": width,
+        })}
       />
     </div>
   );

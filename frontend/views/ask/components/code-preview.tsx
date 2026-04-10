@@ -1,7 +1,7 @@
 import { resolveLanguage } from "@/views/ask/hooks/use-file-tree";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { type BundledLanguage, type Highlighter, createHighlighter } from "shiki";
+import { type BundledLanguage, bundledLanguagesInfo, type Highlighter, createHighlighter } from "shiki";
 
 // ---------------------------------------------------------------------------
 // Singleton highlighter — lazily initialised once
@@ -21,10 +21,17 @@ const getHighlighter = (): Promise<Highlighter> => {
   return highlighterPromise;
 };
 
+const bundledLangIds = new Set<string>(bundledLanguagesInfo.flatMap((l) => [l.id, ...(l.aliases ?? [])]));
+const isBundledLanguage = (lang: string): lang is BundledLanguage => bundledLangIds.has(lang);
+
 const ensureLanguage = async (highlighter: Highlighter, lang: string): Promise<void> => {
   if (loadedLanguages.has(lang) || failedLanguages.has(lang)) return;
+  if (!isBundledLanguage(lang)) {
+    failedLanguages.add(lang);
+    return;
+  }
   try {
-    await highlighter.loadLanguage(lang as BundledLanguage);
+    await highlighter.loadLanguage(lang);
     loadedLanguages.add(lang);
   } catch {
     // Language not available — track separately so codeToHtml falls back to "text".

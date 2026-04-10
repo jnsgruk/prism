@@ -21,7 +21,7 @@ describe("FileAttachmentChips", () => {
 
   it("renders remove button when onRemove is provided", () => {
     const files: AttachedFileInfo[] = [{ name: "file.txt", size: 100 }];
-    render(<FileAttachmentChips files={files} onRemove={vi.fn()} />);
+    render(<FileAttachmentChips files={files} onRemove={vi.fn<(index: number) => void>()} />);
     expect(screen.getByLabelText("Remove file.txt")).toBeInTheDocument();
   });
 
@@ -32,7 +32,7 @@ describe("FileAttachmentChips", () => {
   });
 
   it("calls onRemove with correct index", () => {
-    const onRemove = vi.fn();
+    const onRemove = vi.fn<(index: number) => void>();
     const files: AttachedFileInfo[] = [
       { name: "first.txt", size: 100 },
       { name: "second.txt", size: 200 },

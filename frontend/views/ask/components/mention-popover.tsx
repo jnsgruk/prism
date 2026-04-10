@@ -157,7 +157,7 @@ export const MentionPopover = ({
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent): void => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
         onClose();
       }
     };

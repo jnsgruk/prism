@@ -20,6 +20,10 @@ export type StreamEvent = {
  * Thinking updates (cumulative) replace text but never change position.
  * Tool completions update an existing started step in-place.
  */
+const str = (v: unknown): string => (typeof v === "string" ? v : "");
+const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+const bool = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
+
 export const deriveSteps = (events: StreamEvent[]): AgentStep[] => {
   const stepMap = new Map<string, { seq: number; step: AgentStep }>();
 
@@ -29,50 +33,44 @@ export const deriveSteps = (events: StreamEvent[]): AgentStep[] => {
     switch (event.eventType) {
       case "thinking": {
         const existing = stepMap.get(event.stepId);
-        const text = (event.payload.text as string) ?? "";
-        const partIndex = (event.payload.part_index as number) ?? 0;
+        const text = str(event.payload.text);
+        const partIndex = num(event.payload.part_index);
+        const reasoningStep: ReasoningStep = { kind: "reasoning", text, partIndex, stepId: event.stepId };
 
         if (existing && existing.step.kind === "reasoning") {
           // Cumulative update -- replace text, keep position.
-          stepMap.set(event.stepId, {
-            seq: existing.seq,
-            step: { kind: "reasoning", text, partIndex, stepId: event.stepId } as ReasoningStep,
-          });
+          stepMap.set(event.stepId, { seq: existing.seq, step: reasoningStep });
         } else {
-          stepMap.set(event.stepId, {
-            seq: event.stepSeq,
-            step: { kind: "reasoning", text, partIndex, stepId: event.stepId } as ReasoningStep,
-          });
+          stepMap.set(event.stepId, { seq: event.stepSeq, step: reasoningStep });
         }
         break;
       }
 
       case "tool_call_started": {
-        stepMap.set(event.stepId, {
-          seq: event.stepSeq,
-          step: {
-            kind: "tool",
-            callId: (event.payload.call_id as string) ?? "",
-            toolName: (event.payload.tool_name as string) ?? "",
-            argumentsJson: (event.payload.arguments_json as string) ?? "{}",
-            status: "running",
-            stepId: event.stepId,
-          } as ToolCallStep,
-        });
+        const toolStep: ToolCallStep = {
+          kind: "tool",
+          callId: str(event.payload.call_id),
+          toolName: str(event.payload.tool_name),
+          argumentsJson: str(event.payload.arguments_json) || "{}",
+          status: "running",
+          stepId: event.stepId,
+        };
+        stepMap.set(event.stepId, { seq: event.stepSeq, step: toolStep });
         break;
       }
 
       case "tool_call_completed": {
         const existing = stepMap.get(event.stepId);
         if (existing && existing.step.kind === "tool") {
+          const success = bool(event.payload.success);
           stepMap.set(event.stepId, {
             seq: existing.seq,
             step: {
               ...existing.step,
-              resultSummary: event.payload.result_summary as string,
-              durationMs: event.payload.duration_ms as number,
-              success: event.payload.success as boolean,
-              status: (event.payload.success as boolean) ? "completed" : "error",
+              resultSummary: str(event.payload.result_summary),
+              durationMs: num(event.payload.duration_ms),
+              success,
+              status: success ? "completed" : "error",
             },
           });
         }

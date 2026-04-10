@@ -15,7 +15,7 @@ import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 type RunHistoryCardProps = {
   /** All runs (pre-filtered by entity if applicable). */
   runs: HandlerRun[];
-  columns: ColumnDef<HandlerRun, unknown>[];
+  columns: ColumnDef<HandlerRun>[];
   /** Entity filter dropdown rendered in the filter bar. */
   entityDropdown?: React.ReactNode;
   /** Current entity filter value — used to reset pagination when it changes. */

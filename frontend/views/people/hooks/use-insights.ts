@@ -15,10 +15,7 @@ export const personInsightsKeys = {
   person: (personId: string, period: InsightPeriod) => [...personInsightsKeys.all, personId, period] as const,
 };
 
-export const usePersonInsights = (
-  personId: string,
-  periodKey: string,
-): UseQueryResult<PersonInsights | undefined, Error> => {
+export const usePersonInsights = (personId: string, periodKey: string): UseQueryResult<PersonInsights | undefined> => {
   const period = periodKeyToInsightsPeriod(periodKey);
   return useQuery({
     queryKey: personInsightsKeys.person(personId, period),

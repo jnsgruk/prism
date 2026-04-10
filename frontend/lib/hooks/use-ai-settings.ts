@@ -23,7 +23,7 @@ export const aiKeys = {
   usage: (days: number) => [...aiKeys.all, "usage", days] as const,
 };
 
-export const useAiSettings = (): UseQueryResult<AiSettings | undefined, Error> =>
+export const useAiSettings = (): UseQueryResult<AiSettings | undefined> =>
   useQuery({
     queryKey: aiKeys.settings(),
     queryFn: () => client.getAiSettings({}),
@@ -68,10 +68,7 @@ export const useTestProvider = (): UseMutationResult<TestProviderResponse, Error
     mutationFn: (req) => client.testProvider(req),
   });
 
-export const useAiModels = (
-  provider?: AiProvider,
-  capability: string = "",
-): UseQueryResult<ListAiModelsResponse, Error> =>
+export const useAiModels = (provider?: AiProvider, capability: string = ""): UseQueryResult<ListAiModelsResponse> =>
   useQuery({
     queryKey: aiKeys.models(String(provider ?? ""), capability),
     queryFn: () => client.listAiModels({ provider, capability }),

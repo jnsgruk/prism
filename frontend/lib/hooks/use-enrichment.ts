@@ -20,14 +20,14 @@ export const enrichmentKeys = {
   forContributions: (ids: string[]) => [...enrichmentKeys.all, "contributions", ...ids] as const,
 };
 
-export const useEnrichmentPipelineStatus = (): UseQueryResult<GetEnrichmentPipelineStatusResponse, Error> =>
+export const useEnrichmentPipelineStatus = (): UseQueryResult<GetEnrichmentPipelineStatusResponse> =>
   useQuery({
     queryKey: enrichmentKeys.pipelineStatus(),
     queryFn: () => client.getEnrichmentPipelineStatus({}),
     refetchInterval: 60_000,
   });
 
-export const useEnrichments = (contributionId: string): UseQueryResult<Enrichment[], Error> =>
+export const useEnrichments = (contributionId: string): UseQueryResult<Enrichment[]> =>
   useQuery({
     queryKey: enrichmentKeys.forContribution(contributionId),
     queryFn: () => client.getEnrichments({ contributionId }),
@@ -35,7 +35,7 @@ export const useEnrichments = (contributionId: string): UseQueryResult<Enrichmen
     enabled: !!contributionId,
   });
 
-export const useEnrichmentsByContributions = (contributionIds: string[]): UseQueryResult<Enrichment[], Error> =>
+export const useEnrichmentsByContributions = (contributionIds: string[]): UseQueryResult<Enrichment[]> =>
   useQuery({
     queryKey: enrichmentKeys.forContributions(contributionIds),
     queryFn: () => client.getEnrichmentsByContributions({ contributionIds }),

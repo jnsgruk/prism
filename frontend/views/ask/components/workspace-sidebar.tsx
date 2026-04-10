@@ -206,7 +206,7 @@ export const WorkspaceSidebar = ({
       );
 
       const zipped = zipSync(entries);
-      const blob = new Blob([zipped.buffer as ArrayBuffer], { type: "application/zip" });
+      const blob = new Blob([new Uint8Array(zipped) as BlobPart], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

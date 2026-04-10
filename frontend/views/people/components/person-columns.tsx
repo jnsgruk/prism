@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import type { Person } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
-export const personNameColumn: ColumnDef<Person, unknown> = {
+export const personNameColumn: ColumnDef<Person> = {
   accessorKey: "name",
   header: "Name",
   enableSorting: true,
@@ -19,7 +19,7 @@ export const personNameColumn: ColumnDef<Person, unknown> = {
   ),
 };
 
-export const personTeamColumn: ColumnDef<Person, unknown> = {
+export const personTeamColumn: ColumnDef<Person> = {
   accessorKey: "team_name",
   header: "Team",
   enableSorting: true,
@@ -31,7 +31,7 @@ export const personTeamColumn: ColumnDef<Person, unknown> = {
     ),
 };
 
-export const personIdentitiesColumn: ColumnDef<Person, unknown> = {
+export const personIdentitiesColumn: ColumnDef<Person> = {
   id: "identities",
   header: "Identities",
   enableSorting: false,

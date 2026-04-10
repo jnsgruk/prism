@@ -32,14 +32,14 @@ export const adminKeys = {
   systemInfo: () => [...adminKeys.all, "system-info"] as const,
 };
 
-export const useSystemInfo = (): UseQueryResult<GetSystemInfoResponse, Error> =>
+export const useSystemInfo = (): UseQueryResult<GetSystemInfoResponse> =>
   useQuery({
     queryKey: adminKeys.systemInfo(),
     queryFn: () => adminClient.getSystemInfo({}),
     refetchInterval: 60_000,
   });
 
-export const useListApiTokens = (): UseQueryResult<ApiTokenInfo[], Error> =>
+export const useListApiTokens = (): UseQueryResult<ApiTokenInfo[]> =>
   useQuery({
     queryKey: adminKeys.tokens(),
     queryFn: () => adminClient.listApiTokens({}),
@@ -210,7 +210,7 @@ export const useRemovePersonFromTeam = (): UseMutationResult<void, Error, { pers
   });
 };
 
-export const useListUnassignedPeople = (): UseQueryResult<Person[], Error> =>
+export const useListUnassignedPeople = (): UseQueryResult<Person[]> =>
   useQuery({
     queryKey: [...orgKeys.all, "unassigned"] as const,
     queryFn: () => orgClient.listUnassignedPeople({}),

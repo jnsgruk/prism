@@ -9,7 +9,7 @@ import { transport } from "@ps/api/transport";
 
 const client = createClient(ReasoningService, transport);
 
-export const useUsageSummary = (days = 7): UseQueryResult<GetUsageSummaryResponse, Error> =>
+export const useUsageSummary = (days = 7): UseQueryResult<GetUsageSummaryResponse> =>
   useQuery({
     queryKey: aiKeys.usage(days),
     queryFn: () => client.getUsageSummary({ days }),

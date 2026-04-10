@@ -13,7 +13,7 @@ export const useDiscourseActivity = (
   period: Period,
   enabled = true,
   instance?: string,
-): UseQueryResult<GetDiscourseActivityResponse, Error> =>
+): UseQueryResult<GetDiscourseActivityResponse> =>
   useQuery({
     queryKey: ["discourse-activity", teamId, `${period.type}-${period.start}`, instance ?? "all"],
     queryFn: () =>

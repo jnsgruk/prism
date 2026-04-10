@@ -8,6 +8,9 @@ import * as React from "react";
 
 import { cn } from "@ps/cn";
 
+/** Helper to allow CSS custom properties without an unsafe `as CSSProperties` cast. */
+const cssVars = (vars: Record<string, string | number | undefined>): React.CSSProperties => vars as React.CSSProperties;
+
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number;
@@ -40,7 +43,7 @@ function ToggleGroup({
       data-size={size}
       data-spacing={spacing}
       data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      style={cssVars({ "--gap": spacing })}
       className={cn(
         "group/toggle-group flex w-full flex-row items-center gap-[--spacing(var(--gap))] rounded-lg data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-vertical:flex-col data-vertical:items-stretch",
         className,

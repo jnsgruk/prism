@@ -54,38 +54,41 @@ const ENRICHMENT_LABELS: Record<string, string> = {
   topic: "Topic",
 };
 
+const isSentimentValue = (v: unknown): v is SentimentValue => typeof v === "object" && v !== null && "sentiment" in v;
+
+const isSignificanceValue = (v: unknown): v is SignificanceValue =>
+  typeof v === "object" && v !== null && "significance" in v;
+
+const isReviewDepthValue = (v: unknown): v is ReviewDepthValue => typeof v === "object" && v !== null && "score" in v;
+
+const isTopicValue = (v: unknown): v is TopicValue => typeof v === "object" && v !== null && "primary_category" in v;
+
 const badgeVariant = (enrichmentType: string, value: unknown): "default" | "secondary" | "destructive" | "outline" => {
-  if (enrichmentType === "sentiment") {
-    const v = value as SentimentValue;
-    if (v.sentiment === "hostile") return "destructive";
-    if (v.sentiment === "constructive") return "default";
+  if (enrichmentType === "sentiment" && isSentimentValue(value)) {
+    if (value.sentiment === "hostile") return "destructive";
+    if (value.sentiment === "constructive") return "default";
     return "outline";
   }
-  if (enrichmentType === "significance") {
-    const v = value as SignificanceValue;
-    if (v.significance === "significant") return "default";
-    if (v.significance === "notable") return "secondary";
+  if (enrichmentType === "significance" && isSignificanceValue(value)) {
+    if (value.significance === "significant") return "default";
+    if (value.significance === "notable") return "secondary";
     return "outline";
   }
   return "secondary";
 };
 
 const badgeLabel = (enrichmentType: string, value: unknown): string => {
-  if (enrichmentType === "review_depth") {
-    const v = value as ReviewDepthValue;
-    return `${v.score}/5`;
+  if (enrichmentType === "review_depth" && isReviewDepthValue(value)) {
+    return `${value.score}/5`;
   }
-  if (enrichmentType === "sentiment") {
-    const v = value as SentimentValue;
-    return v.sentiment;
+  if (enrichmentType === "sentiment" && isSentimentValue(value)) {
+    return value.sentiment;
   }
-  if (enrichmentType === "significance") {
-    const v = value as SignificanceValue;
-    return v.significance;
+  if (enrichmentType === "significance" && isSignificanceValue(value)) {
+    return value.significance;
   }
-  if (enrichmentType === "topic") {
-    const v = value as TopicValue;
-    return v.primary_category;
+  if (enrichmentType === "topic" && isTopicValue(value)) {
+    return value.primary_category;
   }
   return enrichmentType;
 };
@@ -100,14 +103,14 @@ interface EnrichmentBadgeProps {
 
 /** A clickable badge that shows enrichment score/label, with a popover for provenance. */
 const EnrichmentBadge = ({ enrichment }: EnrichmentBadgeProps): React.ReactElement => {
-  const parsed = JSON.parse(enrichment.valueJson || "{}") as Record<string, unknown>;
+  const parsed: Record<string, unknown> = JSON.parse(enrichment.valueJson || "{}");
   const etKey = enrichmentTypeKey(enrichment.enrichmentType);
   const icon = ENRICHMENT_ICONS[etKey] ?? <Brain className="size-3" />;
   const label = ENRICHMENT_LABELS[etKey] ?? etLabel(enrichment.enrichmentType);
   const displayLabel = badgeLabel(etKey, parsed);
   const variant = badgeVariant(etKey, parsed);
-  const confidence = (parsed.confidence as number) ?? 0;
-  const rationale = (parsed.rationale as string) ?? "";
+  const confidence = typeof parsed.confidence === "number" ? parsed.confidence : 0;
+  const rationale = typeof parsed.rationale === "string" ? parsed.rationale : "";
 
   return (
     <Popover>

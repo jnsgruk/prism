@@ -1,7 +1,7 @@
 [tools]
 rust = "1.94"
 bun = "latest"
-node = "latest"
+node = "24"
 "cargo:cargo-nextest" = "latest"
 "cargo:cargo-watch" = "latest"
 "cargo:sqlx-cli" = "latest"
@@ -79,12 +79,15 @@ depends = ["check:rs", "check:ts", "check:proto"]
 
 [tasks."check:rs"]
 description = "Validate Rust (fmt + clippy)"
-run = ["cargo fmt -- --check", "SQLX_OFFLINE=true cargo clippy --lib --bins -- -D warnings"]
+run = [
+  "cargo fmt -- --check",
+  "SQLX_OFFLINE=true cargo clippy --lib --bins -- -D warnings",
+]
 
 [tasks."check:ts"]
 description = "Validate TypeScript (fmt + lint + typecheck)"
 dir = "frontend"
-run = ["vp fmt --check", "vp lint --type-aware", "vp lint --type-check"]
+run = ["vp fmt --check", "vp lint --type-aware", "vp lint --type-aware --type-check"]
 
 [tasks."check:proto"]
 description = "Validate protobuf definitions"

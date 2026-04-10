@@ -27,7 +27,7 @@ export const useEmbeddingSimilar = (
     platform?: Platform;
     enabled?: boolean;
   },
-): UseQueryResult<FindSimilarResponse, Error> =>
+): UseQueryResult<FindSimilarResponse> =>
   useQuery({
     queryKey: embeddingKeys.similar(contributionId, options?.platform),
     queryFn: () =>
@@ -46,7 +46,7 @@ export const useEmbeddingSearch = (): ReturnType<
     mutationFn: (params) => client.searchByText(params),
   });
 
-export const useEmbeddingStatus = (): UseQueryResult<GetEmbeddingStatusResponse, Error> =>
+export const useEmbeddingStatus = (): UseQueryResult<GetEmbeddingStatusResponse> =>
   useQuery({
     queryKey: embeddingKeys.status(),
     queryFn: () => client.getEmbeddingStatus({}),

@@ -134,7 +134,7 @@ export const DeliveryPanel = ({
         }
         for (const [rawKey, count] of Object.entries(t.bySource)) {
           const grouped = groupKey(rawKey);
-          point[grouped] = (point[grouped] as number) + count;
+          point[grouped] = (typeof point[grouped] === "number" ? point[grouped] : 0) + count;
         }
       }
       return point;
@@ -200,7 +200,7 @@ export const DeliveryPanel = ({
                         dataKey={key}
                         name={sourceLabel(key)}
                         stackId="throughput"
-                        fill={SOURCE_COLORS[i % SOURCE_COLORS.length]!}
+                        fill={SOURCE_COLORS[i % SOURCE_COLORS.length]}
                         radius={i === sourceKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                       />
                     ))

@@ -10,12 +10,12 @@ interface TestRow {
   value: number;
 }
 
-const columns: ColumnDef<TestRow, unknown>[] = [
+const columns: ColumnDef<TestRow>[] = [
   { accessorKey: "name", header: "Name" },
   { accessorKey: "value", header: "Value" },
 ];
 
-const sortableColumns: ColumnDef<TestRow, unknown>[] = [
+const sortableColumns: ColumnDef<TestRow>[] = [
   { accessorKey: "name", header: "Name", enableSorting: true },
   { accessorKey: "value", header: "Value", enableSorting: true },
 ];
@@ -46,7 +46,7 @@ describe("DataTable", () => {
   });
 
   it("fires row click callback", () => {
-    const onClick = vi.fn();
+    const onClick = vi.fn<(row: TestRow) => void>();
     const { container } = render(<DataTable columns={columns} data={data} onRowClick={onClick} />);
 
     // Click on the table row containing Alice
@@ -56,7 +56,7 @@ describe("DataTable", () => {
   });
 
   it("calls onSortingChange when sortable header is clicked", () => {
-    const onSortingChange = vi.fn();
+    const onSortingChange = vi.fn<() => void>();
     const { container } = render(
       <DataTable columns={sortableColumns} data={data} sorting={[]} onSortingChange={onSortingChange} />,
     );
@@ -73,7 +73,7 @@ describe("DataTable", () => {
         columns={sortableColumns}
         data={data}
         sorting={[{ id: "name", desc: false }]}
-        onSortingChange={vi.fn()}
+        onSortingChange={vi.fn<() => void>()}
       />,
     );
 

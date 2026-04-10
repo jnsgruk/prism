@@ -40,7 +40,8 @@ describe("createPillElement", () => {
     container.appendChild(pill);
     expect(container.children.length).toBe(1);
 
-    const removeBtn = pill.querySelector("[role=button]") as HTMLElement;
+    const removeBtn = pill.querySelector<HTMLElement>("[role=button]");
+    if (!removeBtn) throw new Error("Expected remove button");
     removeBtn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     expect(container.children.length).toBe(0);
   });

@@ -14,13 +14,15 @@ const toolIcon = (toolName: string): LucideIcon => {
   return Terminal;
 };
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+
 /** Try to parse argumentsJson, handling double-encoded strings. */
 const parseArgs = (json: string): Record<string, unknown> | null => {
   try {
-    let parsed = JSON.parse(json);
+    let parsed: unknown = JSON.parse(json);
     // Handle double-encoded JSON (string containing JSON).
     if (typeof parsed === "string") parsed = JSON.parse(parsed);
-    return typeof parsed === "object" && parsed !== null ? parsed : null;
+    return isRecord(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -34,27 +36,29 @@ const toolLabel = (step: ToolCallStep): string => {
 
   if (!args) return name;
 
+  const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+
   switch (step.toolName) {
     case "bash": {
-      const cmd = (args.command ?? args.cmd ?? args.input) as string | undefined;
+      const cmd = str(args.command) ?? str(args.cmd) ?? str(args.input);
       return cmd ? truncLabel(cmd) : "bash";
     }
     case "write":
     case "read":
     case "edit":
     case "patch": {
-      const path = (args.file_path ?? args.filePath ?? args.path) as string | undefined;
+      const path = str(args.file_path) ?? str(args.filePath) ?? str(args.path);
       if (!path) return name;
       // Show just the filename for short labels.
       const filename = path.split("/").pop() ?? path;
       return `${name} ${filename}`;
     }
     case "glob": {
-      const pattern = (args.pattern ?? args.glob) as string | undefined;
+      const pattern = str(args.pattern) ?? str(args.glob);
       return pattern ? `glob ${truncLabel(pattern, 60)}` : name;
     }
     case "grep": {
-      const pattern = (args.pattern ?? args.regex) as string | undefined;
+      const pattern = str(args.pattern) ?? str(args.regex);
       return pattern ? `grep ${truncLabel(pattern, 60)}` : name;
     }
     default:

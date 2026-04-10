@@ -18,7 +18,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
 
 const displaySourceName = (name: string): string => SOURCE_DISPLAY_NAMES[name] ?? name;
 
-const columns: ColumnDef<HandlerRun, unknown>[] = [
+const columns: ColumnDef<HandlerRun>[] = [
   {
     accessorKey: "sourceName",
     header: "Source",
@@ -66,7 +66,7 @@ export const RunHistoryPanel = ({
   sourceNames: string[];
 }): React.ReactElement => {
   const cancelRun = useCancelHandlerRun();
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
 
   const handleCancel = useCallback(
     (runId: string) => {

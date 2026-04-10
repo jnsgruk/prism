@@ -19,7 +19,7 @@ vi.mock("@/views/admin/components/system-tab", () => ({
 
 // Mock react-router useSearchParams
 let mockSearchParams = new URLSearchParams();
-const mockSetSearchParams = vi.fn();
+const mockSetSearchParams = vi.fn<() => void>();
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");

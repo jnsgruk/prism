@@ -47,7 +47,7 @@ stages = ["pre-commit"]
 [[repos.hooks]]
 id = "frontend-typecheck"
 name = "frontend-typecheck"
-entry = "bash -c 'cd frontend && mise exec -- vp lint --type-check'"
+entry = "bash -c 'cd frontend && mise exec -- vp lint --type-aware --type-check'"
 language = "system"
 files = '\.(ts|tsx)$'
 pass_filenames = false

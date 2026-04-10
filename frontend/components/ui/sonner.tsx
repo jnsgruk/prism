@@ -1,6 +1,9 @@
 import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
+/** Helper to allow CSS custom properties without an unsafe `as CSSProperties` cast. */
+const cssVars = (vars: Record<string, string | number | undefined>): React.CSSProperties => vars as React.CSSProperties;
+
 const Toaster = (props: ToasterProps): React.ReactElement => (
   <Sonner
     position="top-center"
@@ -22,14 +25,12 @@ const Toaster = (props: ToasterProps): React.ReactElement => (
         info: "!bg-blue-50 !text-blue-800 !border-blue-200 dark:!bg-blue-950 dark:!text-blue-200 dark:!border-blue-900",
       },
     }}
-    style={
-      {
-        "--normal-bg": "var(--popover)",
-        "--normal-text": "var(--popover-foreground)",
-        "--normal-border": "var(--border)",
-        "--border-radius": "var(--radius)",
-      } as React.CSSProperties
-    }
+    style={cssVars({
+      "--normal-bg": "var(--popover)",
+      "--normal-text": "var(--popover-foreground)",
+      "--normal-border": "var(--border)",
+      "--border-radius": "var(--radius)",
+    })}
     {...props}
   />
 );

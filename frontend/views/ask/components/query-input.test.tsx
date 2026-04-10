@@ -7,11 +7,11 @@ import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 import { QueryInput } from "./query-input";
 
 const defaultProps = {
-  onSubmit: vi.fn(),
-  onCancel: vi.fn(),
+  onSubmit: vi.fn<(question: string, mentions?: unknown[]) => void>(),
+  onCancel: vi.fn<() => void>(),
   isStreaming: false,
   selectedModel: undefined,
-  onModelChange: vi.fn(),
+  onModelChange: vi.fn<(modelId: string | undefined) => void>(),
   contextUsage: undefined,
 };
 
@@ -38,7 +38,7 @@ describe("QueryInput", () => {
   });
 
   it("calls onSubmit with trimmed text when submit button clicked", () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn<(question: string, mentions?: unknown[]) => void>();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
     const editor = getEditor();
@@ -53,7 +53,7 @@ describe("QueryInput", () => {
   });
 
   it("calls onSubmit on Enter key (not Shift+Enter)", () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn<(question: string, mentions?: unknown[]) => void>();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
     const editor = getEditor();
@@ -77,7 +77,7 @@ describe("QueryInput", () => {
   });
 
   it("calls onCancel when stop button clicked", () => {
-    const onCancel = vi.fn();
+    const onCancel = vi.fn<() => void>();
     renderWithProviders(<QueryInput {...defaultProps} onCancel={onCancel} isStreaming={true} />);
 
     const buttons = screen.getAllByRole("button");
@@ -88,7 +88,7 @@ describe("QueryInput", () => {
   });
 
   it("clears editor after submit", () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn<(question: string, mentions?: unknown[]) => void>();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
     const editor = getEditor();
@@ -102,14 +102,20 @@ describe("QueryInput", () => {
   });
 
   it("renders plus button for file attachment when onFilesAdded provided", () => {
-    const { container } = renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn()} />);
+    const { container } = renderWithProviders(
+      <QueryInput {...defaultProps} onFilesAdded={vi.fn<(files: File[]) => void>()} />,
+    );
     const plusIcon = container.querySelector("svg.lucide-plus");
     expect(plusIcon).toBeInTheDocument();
   });
 
   it("submit enabled with files but no text", () => {
     renderWithProviders(
-      <QueryInput {...defaultProps} attachedFiles={[{ name: "file.pdf", size: 1000 }]} onFilesAdded={vi.fn()} />,
+      <QueryInput
+        {...defaultProps}
+        attachedFiles={[{ name: "file.pdf", size: 1000 }]}
+        onFilesAdded={vi.fn<(files: File[]) => void>()}
+      />,
     );
     const buttons = screen.getAllByRole("button");
     const submitButton = buttons.find((b) => b.querySelector("svg.lucide-arrow-up"));
@@ -118,13 +124,17 @@ describe("QueryInput", () => {
 
   it("shows file chips when files attached", () => {
     renderWithProviders(
-      <QueryInput {...defaultProps} attachedFiles={[{ name: "report.pdf", size: 42000 }]} onFilesAdded={vi.fn()} />,
+      <QueryInput
+        {...defaultProps}
+        attachedFiles={[{ name: "report.pdf", size: 42000 }]}
+        onFilesAdded={vi.fn<(files: File[]) => void>()}
+      />,
     );
     expect(screen.getByText("report.pdf")).toBeInTheDocument();
   });
 
   it("calls onFileRemoved when chip X clicked", () => {
-    const onFileRemoved = vi.fn();
+    const onFileRemoved = vi.fn<(index: number) => void>();
     renderWithProviders(
       <QueryInput
         {...defaultProps}
@@ -132,7 +142,7 @@ describe("QueryInput", () => {
           { name: "first.txt", size: 100 },
           { name: "second.txt", size: 200 },
         ]}
-        onFilesAdded={vi.fn()}
+        onFilesAdded={vi.fn<(files: File[]) => void>()}
         onFileRemoved={onFileRemoved}
       />,
     );
@@ -141,7 +151,7 @@ describe("QueryInput", () => {
   });
 
   it("shows drag-active styling on dragover", () => {
-    renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn()} />);
+    renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn<(files: File[]) => void>()} />);
     const editor = getEditor();
     const dropZone = editor.closest("[class*='rounded-lg']")!;
     fireEvent.dragOver(dropZone);
@@ -149,7 +159,7 @@ describe("QueryInput", () => {
   });
 
   it("does not intercept text-only paste", () => {
-    const onFilesAdded = vi.fn();
+    const onFilesAdded = vi.fn<(files: File[]) => void>();
     renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={onFilesAdded} />);
     const editor = getEditor();
     fireEvent.paste(editor, {
@@ -159,7 +169,7 @@ describe("QueryInput", () => {
   });
 
   it("calls onSubmit with mention items when pills present", () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn<(question: string, mentions?: unknown[]) => void>();
     renderWithProviders(<QueryInput {...defaultProps} onSubmit={onSubmit} />);
 
     const editor = getEditor();

@@ -26,9 +26,7 @@ export const handlersKeys = {
   handlers: (): readonly ["handlers", "handlers"] => [...handlersKeys.all, "handlers"] as const,
 };
 
-export const useIngestionStatus = (options?: {
-  refetchInterval?: RefetchInterval;
-}): UseQueryResult<SourceStatus[], Error> =>
+export const useIngestionStatus = (options?: { refetchInterval?: RefetchInterval }): UseQueryResult<SourceStatus[]> =>
   useQuery({
     queryKey: handlersKeys.status(),
     queryFn: () => handlersClient.getStatus({}),
@@ -39,7 +37,7 @@ export const useIngestionStatus = (options?: {
 export const useListRuns = (
   sourceName?: string,
   options?: { refetchInterval?: number | false; handlerName?: string; ingestionOnly?: boolean },
-): UseQueryResult<HandlerRun[], Error> =>
+): UseQueryResult<HandlerRun[]> =>
   useQuery({
     queryKey: handlersKeys.runs(sourceName, options?.handlerName),
     queryFn: () =>

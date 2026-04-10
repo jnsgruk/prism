@@ -25,7 +25,7 @@ const PeopleListPage = (): React.ReactElement => {
   const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
-  const [pageTokens, setPageTokens] = useState<string[]>([""]);
+  const [pageTokens, setPageTokens] = useState([""]);
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
 
   const { data: treeData } = useGetTeamTree();

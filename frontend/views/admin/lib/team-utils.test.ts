@@ -1,12 +1,13 @@
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 
-import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
+import { TeamSchema, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 import { flattenTeams } from "./team-utils";
 
 const makeTeam = (id: string, children: Team[] = []): Team =>
-  ({
+  create(TeamSchema, {
     id,
     name: `Team ${id}`,
     orgName: "test",
@@ -14,7 +15,7 @@ const makeTeam = (id: string, children: Team[] = []): Team =>
     teamType: TeamType.TEAM,
     totalMemberCount: 0,
     children,
-  }) as Team;
+  });
 
 describe("flattenTeams", () => {
   it("returns empty array for empty input", () => {

@@ -23,14 +23,14 @@ export const configKeys = {
   source: (sourceId: string): readonly ["config", "source", string] => [...configKeys.all, "source", sourceId] as const,
 };
 
-export const useListSources = (): UseQueryResult<SourceConfig[], Error> =>
+export const useListSources = (): UseQueryResult<SourceConfig[]> =>
   useQuery({
     queryKey: configKeys.sources(),
     queryFn: () => configClient.listSources({}),
     select: (data): SourceConfig[] => data.sources,
   });
 
-export const useGetSource = (sourceId: string): UseQueryResult<SourceConfig | undefined, Error> =>
+export const useGetSource = (sourceId: string): UseQueryResult<SourceConfig | undefined> =>
   useQuery({
     queryKey: configKeys.source(sourceId),
     queryFn: () => configClient.getSource({ sourceId }),

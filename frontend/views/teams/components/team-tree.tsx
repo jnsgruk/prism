@@ -193,7 +193,7 @@ export const TeamTree = ({
     return ids;
   }, [roots]);
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(defaultExpanded);
+  const [expandedIds, setExpandedIds] = useState(defaultExpanded);
 
   const allIds = useMemo(() => collectIds(roots), [roots]);
 

@@ -12,7 +12,7 @@ import { ArrowUpDown } from "lucide-react";
 const coreRowModel = createCoreRowModel();
 
 interface DataTableProps<TData> {
-  columns: ColumnDef<TData, unknown>[];
+  columns: ColumnDef<TData>[];
   data: TData[];
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;

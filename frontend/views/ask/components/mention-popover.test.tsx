@@ -1,7 +1,9 @@
 import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
+import { create } from "@bufbuild/protobuf";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { PersonSchema, TeamSchema } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
@@ -10,19 +12,17 @@ import { MentionPopover } from "./mention-popover";
 setupCleanup();
 
 const makePerson = (id: string, name: string, teamName?: string): Person =>
-  ({
+  create(PersonSchema, {
     id,
     name,
     email: `${name.toLowerCase()}@example.com`,
     active: true,
-    teamName: teamName ?? null,
-    teamId: null,
-    level: null,
+    teamName: teamName ?? undefined,
     identities: [],
-  }) as unknown as Person;
+  });
 
 const makeTeam = (id: string, name: string, memberCount = 5): Team =>
-  ({
+  create(TeamSchema, {
     id,
     name,
     orgName: "Org",
@@ -30,7 +30,7 @@ const makeTeam = (id: string, name: string, memberCount = 5): Team =>
     totalMemberCount: memberCount,
     teamType: 0,
     children: [],
-  }) as unknown as Team;
+  });
 
 const makeFile = (path: string, sizeBytes = 1000): WorkspaceFileDisplay => ({
   path,
@@ -48,8 +48,8 @@ const defaultProps = {
   files,
   people,
   teams,
-  onSelect: vi.fn(),
-  onClose: vi.fn(),
+  onSelect: vi.fn<(id: string, name: string, type: string) => void>(),
+  onClose: vi.fn<() => void>(),
 };
 
 describe("MentionPopover", () => {
@@ -129,7 +129,7 @@ describe("MentionPopover", () => {
 
   describe("selection", () => {
     it("clicking a person calls onSelect with person type", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       renderWithProviders(<MentionPopover {...defaultProps} onSelect={onSelect} query="ali" />);
       const button = screen.getByText("Alice Smith").closest("button")!;
       fireEvent.mouseDown(button);
@@ -137,7 +137,7 @@ describe("MentionPopover", () => {
     });
 
     it("clicking a team calls onSelect with team type", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       renderWithProviders(<MentionPopover {...defaultProps} people={[]} files={[]} onSelect={onSelect} query="" />);
       const button = screen.getByText("Platform").closest("button")!;
       fireEvent.mouseDown(button);
@@ -145,7 +145,7 @@ describe("MentionPopover", () => {
     });
 
     it("clicking a file calls onSelect with file type", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       renderWithProviders(<MentionPopover {...defaultProps} people={[]} teams={[]} onSelect={onSelect} query="" />);
       const button = screen.getByText("src/main.rs").closest("button")!;
       fireEvent.mouseDown(button);
@@ -153,7 +153,7 @@ describe("MentionPopover", () => {
     });
 
     it("selectCurrent imperative call selects highlighted item", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       const navRef = { current: null } as React.RefObject<{
         moveUp: () => void;
         moveDown: () => void;
@@ -168,7 +168,7 @@ describe("MentionPopover", () => {
 
   describe("keyboard navigation", () => {
     it("moveDown crosses category boundary", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       const navRef = { current: null } as React.RefObject<{
         moveUp: () => void;
         moveDown: () => void;
@@ -183,7 +183,7 @@ describe("MentionPopover", () => {
     });
 
     it("moveUp wraps from first to last item", () => {
-      const onSelect = vi.fn();
+      const onSelect = vi.fn<(id: string, name: string, type: string) => void>();
       const navRef = { current: null } as React.RefObject<{
         moveUp: () => void;
         moveDown: () => void;
