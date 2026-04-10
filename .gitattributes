@@ -1,3 +1,0 @@
-# Mark sqlx offline cache as generated — collapsed in GitHub diffs,
-# excluded from language stats, and uses a minimal diff driver.
-/.sqlx/*.json linguist-generated=true diff=json
