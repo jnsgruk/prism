@@ -1,4 +1,11 @@
+config.define_bool("canonical-k8s")
+cfg = config.parse()
+
 allow_k8s_contexts("docker-desktop")
+allow_k8s_contexts("k8s")
+
+if cfg.get("canonical-k8s", False):
+    default_registry("localhost:30500")
 
 # ---------------------------------------------------------------------------
 # Envoy Gateway — must come first so CRDs are available for base manifests
