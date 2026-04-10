@@ -2,8 +2,8 @@
 rust = { version = "1.94", components = "rustfmt,clippy,rust-analyzer,rust-src" }
 bun = "latest"
 node = "24"
-"cargo:cargo-nextest" = "latest"
-"cargo:cargo-watch" = "latest"
+"github:nextest-rs/nextest" = "latest"
+"github:watchexec/cargo-watch" = "latest"
 "cargo:sqlx-cli" = "latest"
 buf = "latest"
 protoc = "latest"
