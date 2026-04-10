@@ -3,12 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useSetSecret } from "@ps/hooks/use-config";
-
-import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 
 const SECRET_LABELS: Record<string, string> = {
   api_token: "API Token",
@@ -100,9 +99,7 @@ export const BufferedSecretForm = ({
   const secretKeys = SECRET_KEYS_BY_TYPE[sourceType] ?? ["api_token"];
 
   if (secretKeys.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No credentials required for this source type.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No credentials required for this source type.</p>;
   }
 
   return (

@@ -50,11 +50,7 @@ const PILL_COLORS: Record<MentionType, string> = {
 /**
  * Create a pill DOM element for a mentioned entity.
  */
-export const createPillElement = (
-  id: string,
-  displayName: string,
-  type: MentionType,
-): HTMLSpanElement => {
+export const createPillElement = (id: string, displayName: string, type: MentionType): HTMLSpanElement => {
   const pill = document.createElement("span");
   pill.setAttribute(PILL_ID_ATTR, id);
   pill.setAttribute(PILL_TYPE_ATTR, type);
@@ -150,52 +146,49 @@ export const useMentionPicker = (): MentionPickerState => {
     setMentionQuery(findMentionQuery(textBefore));
   }, []);
 
-  const insertPill = useCallback(
-    (id: string, name: string, type: MentionType, editorEl: HTMLElement) => {
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) return;
+  const insertPill = useCallback((id: string, name: string, type: MentionType, editorEl: HTMLElement) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
 
-      const range = sel.getRangeAt(0);
-      const node = range.startContainer;
-      if (node.nodeType !== Node.TEXT_NODE) return;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return;
 
-      const textContent = node.textContent ?? "";
-      const cursorOffset = range.startOffset;
-      const textBefore = textContent.slice(0, cursorOffset);
-      const atIndex = textBefore.lastIndexOf("@");
-      if (atIndex === -1) return;
+    const textContent = node.textContent ?? "";
+    const cursorOffset = range.startOffset;
+    const textBefore = textContent.slice(0, cursorOffset);
+    const atIndex = textBefore.lastIndexOf("@");
+    if (atIndex === -1) return;
 
-      // Split the text node: [before @] [pill] [after cursor]
-      const before = textContent.slice(0, atIndex);
-      const after = textContent.slice(cursorOffset);
+    // Split the text node: [before @] [pill] [after cursor]
+    const before = textContent.slice(0, atIndex);
+    const after = textContent.slice(cursorOffset);
 
-      const parent = node.parentNode;
-      if (!parent) return;
+    const parent = node.parentNode;
+    if (!parent) return;
 
-      const beforeNode = document.createTextNode(before);
-      const pill = createPillElement(id, name, type);
-      // Add a trailing space so the cursor has somewhere to land
-      const afterNode = document.createTextNode(after || "\u00A0");
+    const beforeNode = document.createTextNode(before);
+    const pill = createPillElement(id, name, type);
+    // Add a trailing space so the cursor has somewhere to land
+    const afterNode = document.createTextNode(after || "\u00A0");
 
-      parent.insertBefore(beforeNode, node);
-      parent.insertBefore(pill, node);
-      parent.insertBefore(afterNode, node);
-      parent.removeChild(node);
+    parent.insertBefore(beforeNode, node);
+    parent.insertBefore(pill, node);
+    parent.insertBefore(afterNode, node);
+    parent.removeChild(node);
 
-      // Place cursor after the pill (in the afterNode)
-      const newRange = document.createRange();
-      newRange.setStart(afterNode, after ? 0 : 1);
-      newRange.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(newRange);
+    // Place cursor after the pill (in the afterNode)
+    const newRange = document.createRange();
+    newRange.setStart(afterNode, after ? 0 : 1);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
 
-      setMentionQuery(null);
+    setMentionQuery(null);
 
-      // Trigger input event so React picks up the change
-      editorEl.dispatchEvent(new Event("input", { bubbles: true }));
-    },
-    [],
-  );
+    // Trigger input event so React picks up the change
+    editorEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }, []);
 
   const closeMention = useCallback(() => {
     setMentionQuery(null);

@@ -5,9 +5,7 @@ import { SentimentBar } from "./sentiment-bar";
 
 describe("SentimentBar", () => {
   it("returns null when all counts are zero", () => {
-    const { container } = render(
-      <SentimentBar constructive={0} neutral={0} critical={0} hostile={0} />,
-    );
+    const { container } = render(<SentimentBar constructive={0} neutral={0} critical={0} hostile={0} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -37,9 +35,7 @@ describe("SentimentBar", () => {
   });
 
   it("omits zero-count segments from the bar and legend", () => {
-    const { container } = render(
-      <SentimentBar constructive={5} neutral={0} critical={0} hostile={0} />,
-    );
+    const { container } = render(<SentimentBar constructive={5} neutral={0} critical={0} hostile={0} />);
 
     // Only one segment should be rendered in the bar
     const barSegments = container.querySelectorAll(".h-full");

@@ -1,4 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  type ArtifactDisplay,
+  type FileNode,
+  canPreview,
+  formatSize,
+  getFileIcon,
+} from "@/views/ask/hooks/use-file-tree";
 import {
   ChevronDown,
   ChevronRight,
@@ -10,18 +19,7 @@ import {
   FolderOpen,
   Search,
 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-import {
-  type ArtifactDisplay,
-  type FileNode,
-  canPreview,
-  formatSize,
-  getFileIcon,
-} from "@/views/ask/hooks/use-file-tree";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -143,23 +141,15 @@ const FileTreeNode = ({
             >
               {canPreview(node.artifact.contentType) && (
                 <Tooltip>
-                  <TooltipTrigger
-                    render={<Button variant="ghost" size="icon" className="size-5" />}
-                  >
-                    <Eye
-                      className="size-3"
-                      onClick={() => node.artifact && onPreview(node.artifact)}
-                    />
+                  <TooltipTrigger render={<Button variant="ghost" size="icon" className="size-5" />}>
+                    <Eye className="size-3" onClick={() => node.artifact && onPreview(node.artifact)} />
                   </TooltipTrigger>
                   <TooltipContent>Preview</TooltipContent>
                 </Tooltip>
               )}
               <Tooltip>
                 <TooltipTrigger render={<Button variant="ghost" size="icon" className="size-5" />}>
-                  <Download
-                    className="size-3"
-                    onClick={() => node.artifact && onDownload(node.artifact)}
-                  />
+                  <Download className="size-3" onClick={() => node.artifact && onDownload(node.artifact)} />
                 </TooltipTrigger>
                 <TooltipContent>Download</TooltipContent>
               </Tooltip>
@@ -249,22 +239,10 @@ export const WorkspaceTree = ({
             className="h-7 pl-7 text-xs"
           />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          title="Expand all"
-          onClick={expandAll}
-        >
+        <Button variant="ghost" size="icon" className="size-6" title="Expand all" onClick={expandAll}>
           <ChevronsUpDown className="size-3" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          title="Collapse all"
-          onClick={collapseAll}
-        >
+        <Button variant="ghost" size="icon" className="size-6" title="Collapse all" onClick={collapseAll}>
           <ChevronsDownUp className="size-3" />
         </Button>
       </div>

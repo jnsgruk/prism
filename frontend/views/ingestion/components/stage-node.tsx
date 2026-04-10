@@ -24,17 +24,13 @@ const NO_SOURCE: Set<StageKey> = new Set(["insights", "identity_resolution"]);
 
 export const StageNode = ({ data }: { data: StageNodeData }): React.ReactElement => (
   <div>
-    {!NO_TARGET.has(data.stageKey) && (
-      <Handle type="target" position={Position.Left} style={handleStyle} />
-    )}
+    {!NO_TARGET.has(data.stageKey) && <Handle type="target" position={Position.Left} style={handleStyle} />}
     <PipelineStage
       stageKey={data.stageKey}
       stage={data.stage}
       isCurrentStage={data.isCurrentStage}
       sourceStatuses={data.sourceStatuses}
     />
-    {!NO_SOURCE.has(data.stageKey) && (
-      <Handle type="source" position={Position.Right} style={handleStyle} />
-    )}
+    {!NO_SOURCE.has(data.stageKey) && <Handle type="source" position={Position.Right} style={handleStyle} />}
   </div>
 );

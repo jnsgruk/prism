@@ -1,8 +1,7 @@
+import { resolveLanguage } from "@/views/ask/hooks/use-file-tree";
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { type BundledLanguage, type Highlighter, createHighlighter } from "shiki";
-import { Loader2 } from "lucide-react";
-
-import { resolveLanguage } from "@/views/ask/hooks/use-file-tree";
 
 // ---------------------------------------------------------------------------
 // Singleton highlighter — lazily initialised once

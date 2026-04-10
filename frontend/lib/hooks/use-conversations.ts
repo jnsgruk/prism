@@ -35,9 +35,7 @@ export const useListConversations = (
     }),
   });
 
-export const useGetConversation = (
-  conversationId: string,
-): UseQueryResult<GetConversationResponse, Error> =>
+export const useGetConversation = (conversationId: string): UseQueryResult<GetConversationResponse, Error> =>
   useQuery({
     queryKey: conversationKeys.detail(conversationId),
     queryFn: () => client.getConversation({ conversationId }),
@@ -91,9 +89,7 @@ export const useSaveInsightFromConversation = (): UseMutationResult<
   });
 };
 
-export const useListWorkspaceFiles = (
-  conversationId: string,
-): UseQueryResult<ListWorkspaceFilesResponse, Error> =>
+export const useListWorkspaceFiles = (conversationId: string): UseQueryResult<ListWorkspaceFilesResponse, Error> =>
   useQuery({
     queryKey: conversationKeys.workspaceFiles(conversationId),
     queryFn: () => client.listWorkspaceFiles({ conversationId }),

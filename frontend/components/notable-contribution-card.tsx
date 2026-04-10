@@ -14,11 +14,7 @@ const enrichmentLabel = (type: string): string => {
   }
 };
 
-export const NotableContributionCard = ({
-  item,
-}: {
-  item: NotableContribution;
-}): React.ReactElement => (
+export const NotableContributionCard = ({ item }: { item: NotableContribution }): React.ReactElement => (
   <div className="rounded-lg border bg-muted/30 p-4">
     <div className="mb-2 flex flex-wrap items-center gap-2">
       <Badge variant="secondary" className="text-[10px] uppercase">
@@ -30,9 +26,7 @@ export const NotableContributionCard = ({
         </span>
       )}
     </div>
-    <p className="mb-2 text-sm italic text-muted-foreground leading-relaxed">
-      &ldquo;{item.rationale}&rdquo;
-    </p>
+    <p className="mb-2 text-sm italic text-muted-foreground leading-relaxed">&ldquo;{item.rationale}&rdquo;</p>
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span className="font-medium text-foreground">{item.personName}</span>
       {item.title && (

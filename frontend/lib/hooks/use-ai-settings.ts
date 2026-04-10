@@ -19,8 +19,7 @@ const client = createClient(ReasoningService, transport);
 export const aiKeys = {
   all: ["ai"] as const,
   settings: () => [...aiKeys.all, "settings"] as const,
-  models: (provider: string, capability: string) =>
-    [...aiKeys.all, "models", provider, capability] as const,
+  models: (provider: string, capability: string) => [...aiKeys.all, "models", provider, capability] as const,
   usage: (days: number) => [...aiKeys.all, "usage", days] as const,
 };
 
@@ -64,11 +63,7 @@ export const useSetProviderSecret = (): UseMutationResult<
   });
 };
 
-export const useTestProvider = (): UseMutationResult<
-  TestProviderResponse,
-  Error,
-  { provider: AiProvider }
-> =>
+export const useTestProvider = (): UseMutationResult<TestProviderResponse, Error, { provider: AiProvider }> =>
   useMutation({
     mutationFn: (req) => client.testProvider(req),
   });
@@ -83,11 +78,7 @@ export const useAiModels = (
     staleTime: 5 * 60 * 1_000,
   });
 
-export const useRefreshModelCatalogue = (): UseMutationResult<
-  RefreshModelCatalogueResponse,
-  Error,
-  void
-> => {
+export const useRefreshModelCatalogue = (): UseMutationResult<RefreshModelCatalogueResponse, Error, void> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => client.refreshModelCatalogue({}),

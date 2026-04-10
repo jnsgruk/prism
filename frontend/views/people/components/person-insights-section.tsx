@@ -1,12 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CategoryTags } from "@/components/category-tags";
 import { CoverageIndicator } from "@/components/coverage-indicator";
 import { DepthHistogram } from "@/components/depth-histogram";
 import { NotableContributionCard } from "@/components/notable-contribution-card";
 import { SentimentBar } from "@/components/sentiment-bar";
 import { SignificanceBreakdown } from "@/components/significance-breakdown";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, Loader2, Sparkles } from "lucide-react";
 
 import type { PersonInsights } from "@ps/api/gen/canonical/prism/v1/insights_pb";
@@ -82,9 +82,7 @@ export const PersonInsightsSection = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Failed to load insights: {error.message}
-            </p>
+            <p className="text-sm text-muted-foreground">Failed to load insights: {error.message}</p>
           </CardContent>
         </Card>
       );
@@ -101,13 +99,11 @@ export const PersonInsightsSection = ({
 
   const hasReviewerData = reviewer && reviewer.totalReviewsGiven >= 5;
   const hasReceivedData = received && received.totalReviewsReceived >= 5;
-  const hasSignificanceData =
-    sig && sig.significantCount + sig.notableCount + sig.routineCount >= 3;
+  const hasSignificanceData = sig && sig.significantCount + sig.notableCount + sig.routineCount >= 3;
   const hasTopicData = topics && topics.totalClassified >= 5;
   const hasHighlights = highlights.length > 0;
 
-  const hasAnyData =
-    hasReviewerData || hasReceivedData || hasSignificanceData || hasTopicData || hasHighlights;
+  const hasAnyData = hasReviewerData || hasReceivedData || hasSignificanceData || hasTopicData || hasHighlights;
 
   if (!hasAnyData && (!coverage || coverage.totalContributions === 0)) return null;
 
@@ -129,9 +125,7 @@ export const PersonInsightsSection = ({
               </Badge>
             )}
           </div>
-          <CardDescription>
-            AI-powered analysis of review quality, PR impact, and content
-          </CardDescription>
+          <CardDescription>AI-powered analysis of review quality, PR impact, and content</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -140,8 +134,8 @@ export const PersonInsightsSection = ({
               <Sparkles className="mx-auto mb-2 size-8 text-muted-foreground" />
               <p className="mb-1 text-sm font-medium">Insights are building up</p>
               <p className="text-sm text-muted-foreground">
-                {coveragePct}% of contributions enriched so far. Insights will appear here as the
-                pipeline processes more data.
+                {coveragePct}% of contributions enriched so far. Insights will appear here as the pipeline processes
+                more data.
               </p>
               {coverage && <CoverageIndicator byType={coverage.byType} className="mt-4" />}
             </div>
@@ -177,8 +171,7 @@ export const PersonInsightsSection = ({
 
                   <DepthHistogram distribution={reviewer.depthDistribution} />
 
-                  {reviewer.constructiveCount + reviewer.neutralCount + reviewer.criticalCount >
-                    0 && (
+                  {reviewer.constructiveCount + reviewer.neutralCount + reviewer.criticalCount > 0 && (
                     <SentimentBar
                       constructive={reviewer.constructiveCount}
                       neutral={reviewer.neutralCount}

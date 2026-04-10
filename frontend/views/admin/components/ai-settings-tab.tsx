@@ -1,18 +1,15 @@
-import { useState } from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useAiSettings, useTestProvider } from "@/lib/hooks/use-ai-settings";
+import { aiProviderKey } from "@/lib/proto-display";
+import { AiCostSection } from "@/views/admin/components/ai-cost-tab";
+import { AiProviderDialog } from "@/views/admin/components/ai-provider-dialog";
 import { Key, Loader2, Plug, Settings2 } from "lucide-react";
-
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { aiProviderKey } from "@/lib/proto-display";
-import { useAiSettings, useTestProvider } from "@/lib/hooks/use-ai-settings";
-
-import { AiCostSection } from "@/views/admin/components/ai-cost-tab";
-import { AiProviderDialog } from "@/views/admin/components/ai-provider-dialog";
 
 export const AiSettingsTab = (): React.ReactElement => {
   const { data: settings, isLoading } = useAiSettings();
@@ -59,12 +56,7 @@ export const AiSettingsTab = (): React.ReactElement => {
           </div>
 
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setShowDialog(true)}
-              title="Edit settings"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={() => setShowDialog(true)} title="Edit settings">
               <Settings2 className="size-4" />
             </Button>
             <Button
@@ -79,18 +71,13 @@ export const AiSettingsTab = (): React.ReactElement => {
                       if (res.success) toast.success("Connection OK");
                       else toast.error(res.errorMessage || "Connection failed");
                     },
-                    onError: (err) =>
-                      toast.error(err instanceof Error ? err.message : "Test failed"),
+                    onError: (err) => toast.error(err instanceof Error ? err.message : "Test failed"),
                   },
                 )
               }
               title="Test connection"
             >
-              {testProvider.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Plug className="size-4" />
-              )}
+              {testProvider.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
             </Button>
           </div>
         </div>

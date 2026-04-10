@@ -1,14 +1,14 @@
+import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
+import { MetricsRow } from "@/views/teams/components/metrics-row";
+import { SortableHeader } from "@/views/teams/components/sortable-header";
+import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
-import { MetricsRow } from "@/views/teams/components/metrics-row";
-import { SortableHeader } from "@/views/teams/components/sortable-header";
-import type { SortDir, SortField } from "@/views/teams/components/sortable-header";
 
 export const ComparisonTable = ({
   childMetrics,
@@ -77,47 +77,22 @@ export const ComparisonTable = ({
                 <SortableHeader field="name" current={sortField} dir={sortDir} onSort={toggleSort}>
                   Team
                 </SortableHeader>
-                <SortableHeader
-                  field="throughput"
-                  current={sortField}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                >
+                <SortableHeader field="throughput" current={sortField} dir={sortDir} onSort={toggleSort}>
                   Throughput
                 </SortableHeader>
-                <SortableHeader
-                  field="reviewP75"
-                  current={sortField}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                >
+                <SortableHeader field="reviewP75" current={sortField} dir={sortDir} onSort={toggleSort}>
                   Review P75
                 </SortableHeader>
-                <SortableHeader
-                  field="cycleTime"
-                  current={sortField}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                >
+                <SortableHeader field="cycleTime" current={sortField} dir={sortDir} onSort={toggleSort}>
                   Cycle Time
                 </SortableHeader>
                 {hasDiscourse && (
-                  <SortableHeader
-                    field="discourseTopics"
-                    current={sortField}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  >
+                  <SortableHeader field="discourseTopics" current={sortField} dir={sortDir} onSort={toggleSort}>
                     Topics
                   </SortableHeader>
                 )}
                 {hasDiscourse && (
-                  <SortableHeader
-                    field="discoursePosts"
-                    current={sortField}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  >
+                  <SortableHeader field="discoursePosts" current={sortField} dir={sortDir} onSort={toggleSort}>
                     Posts
                   </SortableHeader>
                 )}
@@ -151,12 +126,7 @@ export const ComparisonTable = ({
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                 <YAxis allowDecimals={false} className="fill-muted-foreground" />
                 <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-                <Bar
-                  dataKey="throughput"
-                  name="Merged PRs"
-                  fill="hsl(var(--primary))"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="throughput" name="Merged PRs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

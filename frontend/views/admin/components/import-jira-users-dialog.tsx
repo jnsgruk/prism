@@ -1,12 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useImportJiraUsers } from "@/views/admin/hooks/use-admin";
 import { AlertCircle, Upload } from "lucide-react";
 import { useState } from "react";
@@ -49,8 +43,8 @@ export const ImportJiraUsersDialog = ({
         <DialogHeader>
           <DialogTitle>Import Jira Users</DialogTitle>
           <DialogDescription>
-            Upload a CSV export from Jira Cloud admin (Organization &rarr; Users &rarr; Export
-            users) to map Jira account IDs to people by email address.
+            Upload a CSV export from Jira Cloud admin (Organization &rarr; Users &rarr; Export users) to map Jira
+            account IDs to people by email address.
           </DialogDescription>
         </DialogHeader>
 
@@ -68,9 +62,7 @@ export const ImportJiraUsersDialog = ({
         >
           <Upload className="mb-2 size-8 text-muted-foreground" />
           <p className="mb-1 text-sm font-medium">Drop a CSV file here</p>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Expected columns: User id, email, User name, User status
-          </p>
+          <p className="mb-3 text-xs text-muted-foreground">Expected columns: User id, email, User name, User status</p>
           <Button render={<label className="cursor-pointer" />}>
             Browse Files
             <input type="file" accept=".csv" onChange={handleFileInput} className="hidden" />
@@ -81,9 +73,7 @@ export const ImportJiraUsersDialog = ({
 
         {importJiraUsers.isSuccess && (
           <div className="rounded border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">
-              Import complete
-            </p>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">Import complete</p>
             <ul className="mt-1 text-xs text-green-700 dark:text-green-300">
               <li>{importJiraUsers.data.identitiesMapped} identities mapped</li>
               <li>{importJiraUsers.data.unmatchedUsers} users unmatched</li>
@@ -104,9 +94,7 @@ export const ImportJiraUsersDialog = ({
         {importJiraUsers.isError && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            {importJiraUsers.error instanceof Error
-              ? importJiraUsers.error.message
-              : "Import failed"}
+            {importJiraUsers.error instanceof Error ? importJiraUsers.error.message : "Import failed"}
           </Alert>
         )}
       </DialogContent>

@@ -1,12 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ArrowUpDown } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   type ColumnDef,
   type OnChangeFn,
@@ -15,6 +7,7 @@ import {
   getCoreRowModel as createCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
 
 const coreRowModel = createCoreRowModel();
 
@@ -61,17 +54,11 @@ export const DataTable = <TData,>({
                       {rendered}
                       <ArrowUpDown
                         className={`size-3 ${
-                          header.column.getIsSorted()
-                            ? "text-foreground"
-                            : "text-muted-foreground/50"
+                          header.column.getIsSorted() ? "text-foreground" : "text-muted-foreground/50"
                         }`}
                       />
-                      {header.column.getIsSorted() === "asc" && (
-                        <span className="text-xs">&uarr;</span>
-                      )}
-                      {header.column.getIsSorted() === "desc" && (
-                        <span className="text-xs">&darr;</span>
-                      )}
+                      {header.column.getIsSorted() === "asc" && <span className="text-xs">&uarr;</span>}
+                      {header.column.getIsSorted() === "desc" && <span className="text-xs">&darr;</span>}
                     </button>
                   );
                 })()}
@@ -95,9 +82,7 @@ export const DataTable = <TData,>({
               onClick={() => onRowClick?.(row.original)}
             >
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
+                <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
               ))}
             </TableRow>
           ))

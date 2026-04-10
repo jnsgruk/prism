@@ -1,11 +1,11 @@
+import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 import { MentionPopover } from "./mention-popover";
-import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 
 setupCleanup();
 
@@ -78,9 +78,7 @@ describe("MentionPopover", () => {
     });
 
     it("shows No results when nothing matches across all categories", () => {
-      renderWithProviders(
-        <MentionPopover {...defaultProps} people={[]} teams={[]} files={[]} query="xyz" />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} people={[]} teams={[]} files={[]} query="xyz" />);
       expect(screen.getByText("No results")).toBeInTheDocument();
     });
   });
@@ -140,9 +138,7 @@ describe("MentionPopover", () => {
 
     it("clicking a team calls onSelect with team type", () => {
       const onSelect = vi.fn();
-      renderWithProviders(
-        <MentionPopover {...defaultProps} people={[]} files={[]} onSelect={onSelect} query="" />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} people={[]} files={[]} onSelect={onSelect} query="" />);
       const button = screen.getByText("Platform").closest("button")!;
       fireEvent.mouseDown(button);
       expect(onSelect).toHaveBeenCalledWith("t1", "Platform", "team");
@@ -150,9 +146,7 @@ describe("MentionPopover", () => {
 
     it("clicking a file calls onSelect with file type", () => {
       const onSelect = vi.fn();
-      renderWithProviders(
-        <MentionPopover {...defaultProps} people={[]} teams={[]} onSelect={onSelect} query="" />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} people={[]} teams={[]} onSelect={onSelect} query="" />);
       const button = screen.getByText("src/main.rs").closest("button")!;
       fireEvent.mouseDown(button);
       expect(onSelect).toHaveBeenCalledWith("src/main.rs", "main.rs", "file");
@@ -165,9 +159,7 @@ describe("MentionPopover", () => {
         moveDown: () => void;
         selectCurrent: () => void;
       } | null>;
-      renderWithProviders(
-        <MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />);
       // First item (Alice) should be selected by default
       navRef.current!.selectCurrent();
       expect(onSelect).toHaveBeenCalledWith("p1", "Alice Smith", "person");
@@ -182,9 +174,7 @@ describe("MentionPopover", () => {
         moveDown: () => void;
         selectCurrent: () => void;
       } | null>;
-      renderWithProviders(
-        <MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />);
       // Move past all people (2), into teams
       act(() => navRef.current!.moveDown());
       act(() => navRef.current!.moveDown());
@@ -199,9 +189,7 @@ describe("MentionPopover", () => {
         moveDown: () => void;
         selectCurrent: () => void;
       } | null>;
-      renderWithProviders(
-        <MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />,
-      );
+      renderWithProviders(<MentionPopover {...defaultProps} onSelect={onSelect} onNavigate={navRef} />);
       // Move up from first item should wrap to last
       act(() => navRef.current!.moveUp());
       act(() => navRef.current!.selectCurrent());

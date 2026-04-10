@@ -45,11 +45,7 @@ const buildSummary = (metrics: TeamMetrics): string => {
   return parts.join(". ") + ".";
 };
 
-export const FlowPanel = ({
-  metrics,
-}: {
-  metrics: TeamMetrics | undefined;
-}): React.ReactElement | null => {
+export const FlowPanel = ({ metrics }: { metrics: TeamMetrics | undefined }): React.ReactElement | null => {
   if (!metrics) return null;
 
   const cycleTime = metrics.avgCycleTimeHours;

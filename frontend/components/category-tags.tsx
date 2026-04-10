@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@ps/cn";
 
 import type { TopicCategoryCount } from "@ps/api/gen/canonical/prism/v1/insights_pb";
+import { cn } from "@ps/cn";
 
 export const CategoryTags = ({
   categories,

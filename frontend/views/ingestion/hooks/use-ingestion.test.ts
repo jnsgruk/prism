@@ -4,6 +4,7 @@ import { createRouterTransport } from "@connectrpc/connect";
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   CancelHandlerRunResponseSchema,
   CancelPipelineResponseSchema,
@@ -22,7 +23,6 @@ import {
   TriggerRunResponseSchema,
   TriggerTeamSyncResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { TestWrapper } from "@ps/test-utils";
 
 const mockSources = [

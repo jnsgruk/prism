@@ -3,8 +3,8 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EnrichmentSchema } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { EnrichmentType } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { EnrichmentSchema } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 import { EnrichmentBadge, EnrichmentBadgeList } from "./enrichment-badge";
 

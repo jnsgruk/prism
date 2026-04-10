@@ -1,26 +1,14 @@
-import { useState } from "react";
+import type { AgentStep, ToolCallStep } from "@/views/ask/hooks/use-ask-question";
 import type { LucideIcon } from "lucide-react";
-import {
-  Check,
-  ChevronRight,
-  Database,
-  FileText,
-  FolderSearch,
-  Loader2,
-  Search,
-  Terminal,
-  X,
-} from "lucide-react";
+import { Check, ChevronRight, Database, FileText, FolderSearch, Loader2, Search, Terminal, X } from "lucide-react";
+import { useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
-import type { AgentStep, ToolCallStep } from "@/views/ask/hooks/use-ask-question";
 
 const toolIcon = (toolName: string): LucideIcon => {
   if (toolName.startsWith("mcp_prism") || toolName.startsWith("prism_")) return Database;
   if (toolName === "bash") return Terminal;
-  if (toolName === "read" || toolName === "write" || toolName === "edit" || toolName === "patch")
-    return FileText;
+  if (toolName === "read" || toolName === "write" || toolName === "edit" || toolName === "patch") return FileText;
   if (toolName === "glob") return FolderSearch;
   if (toolName === "grep") return Search;
   return Terminal;
@@ -106,9 +94,7 @@ const ToolStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
         {statusIcon(step.status)}
         {step.durationMs != null && step.status !== "running" && (
           <span className="shrink-0 text-xs text-muted-foreground">
-            {step.durationMs < 1000
-              ? `${step.durationMs}ms`
-              : `${(step.durationMs / 1000).toFixed(1)}s`}
+            {step.durationMs < 1000 ? `${step.durationMs}ms` : `${(step.durationMs / 1000).toFixed(1)}s`}
           </span>
         )}
         {hasDetails && (

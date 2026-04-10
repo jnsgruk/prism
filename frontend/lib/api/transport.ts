@@ -12,7 +12,6 @@ const authInterceptor: Interceptor = (next) => async (req) => {
 };
 
 export const transport = createGrpcWebTransport({
-  baseUrl:
-    typeof window !== "undefined" ? "/api" : (process.env.API_URL ?? "http://localhost:8080"),
+  baseUrl: typeof window !== "undefined" ? "/api" : (process.env.API_URL ?? "http://localhost:8080"),
   interceptors: [authInterceptor],
 });

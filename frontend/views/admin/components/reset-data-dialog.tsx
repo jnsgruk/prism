@@ -12,10 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useResetData } from "@/views/admin/hooks/use-admin";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
-
-import { useResetData } from "@/views/admin/hooks/use-admin";
 
 export const ResetDataDialog = (): React.ReactElement => {
   const resetData = useResetData();
@@ -54,8 +53,8 @@ export const ResetDataDialog = (): React.ReactElement => {
           <DialogHeader>
             <DialogTitle>Reset All Data</DialogTitle>
             <DialogDescription>
-              This will permanently delete all ingested contributions, imported teams, people,
-              platform identities, and metric snapshots. Source configurations will be preserved.
+              This will permanently delete all ingested contributions, imported teams, people, platform identities, and
+              metric snapshots. Source configurations will be preserved.
             </DialogDescription>
           </DialogHeader>
 
@@ -75,8 +74,8 @@ export const ResetDataDialog = (): React.ReactElement => {
 
             {resetData.isSuccess && (
               <Alert>
-                Deleted {resetData.data.contributionsDeleted} contributions,{" "}
-                {resetData.data.peopleDeleted} people, {resetData.data.teamsDeleted} teams.
+                Deleted {resetData.data.contributionsDeleted} contributions, {resetData.data.peopleDeleted} people,{" "}
+                {resetData.data.teamsDeleted} teams.
               </Alert>
             )}
 
@@ -89,11 +88,7 @@ export const ResetDataDialog = (): React.ReactElement => {
 
           <DialogFooter className="mt-4">
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={!confirmed || resetData.isPending}
-            >
+            <Button type="submit" variant="destructive" disabled={!confirmed || resetData.isPending}>
               {resetData.isPending ? "Resetting..." : "Reset All Data"}
             </Button>
           </DialogFooter>

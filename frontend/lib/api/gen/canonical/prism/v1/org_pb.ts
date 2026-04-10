@@ -6,17 +6,12 @@
 // @generated from file canonical/prism/v1/org.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type {
-  PaginationRequest,
-  PaginationResponse,
-  PersonFilter,
-  Platform,
-  SortOrder,
-} from "./common_pb";
+
+import type { PaginationRequest, PaginationResponse, PersonFilter, Platform, SortOrder } from "./common_pb";
 import { file_canonical_prism_v1_common } from "./common_pb";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/org.proto.
@@ -99,10 +94,7 @@ export type Team = Message<"canonical.prism.v1.Team"> & {
  * Describes the message canonical.prism.v1.Team.
  * Use `create(TeamSchema)` to create a new message.
  */
-export const TeamSchema: GenMessage<Team> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_org,
-  0,
-);
+export const TeamSchema: GenMessage<Team> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 0);
 
 /**
  * Person represents an individual contributor tracked by Prism.
@@ -163,10 +155,7 @@ export type Person = Message<"canonical.prism.v1.Person"> & {
  * Describes the message canonical.prism.v1.Person.
  * Use `create(PersonSchema)` to create a new message.
  */
-export const PersonSchema: GenMessage<Person> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_org,
-  1,
-);
+export const PersonSchema: GenMessage<Person> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 1);
 
 /**
  * PlatformIdentity links a person to an external platform account.
@@ -570,8 +559,10 @@ export type ImportDirectoryRequest = Message<"canonical.prism.v1.ImportDirectory
  * Describes the message canonical.prism.v1.ImportDirectoryRequest.
  * Use `create(ImportDirectoryRequestSchema)` to create a new message.
  */
-export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 17);
+export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  17,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportDirectoryResponse
@@ -621,8 +612,10 @@ export type ImportDirectoryResponse = Message<"canonical.prism.v1.ImportDirector
  * Describes the message canonical.prism.v1.ImportDirectoryResponse.
  * Use `create(ImportDirectoryResponseSchema)` to create a new message.
  */
-export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 18);
+export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  18,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdatePersonRequest
@@ -672,8 +665,10 @@ export type UpdatePersonResponse = Message<"canonical.prism.v1.UpdatePersonRespo
  * Describes the message canonical.prism.v1.UpdatePersonResponse.
  * Use `create(UpdatePersonResponseSchema)` to create a new message.
  */
-export const UpdatePersonResponseSchema: GenMessage<UpdatePersonResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 20);
+export const UpdatePersonResponseSchema: GenMessage<UpdatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  20,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeactivatePersonRequest
@@ -689,8 +684,10 @@ export type DeactivatePersonRequest = Message<"canonical.prism.v1.DeactivatePers
  * Describes the message canonical.prism.v1.DeactivatePersonRequest.
  * Use `create(DeactivatePersonRequestSchema)` to create a new message.
  */
-export const DeactivatePersonRequestSchema: GenMessage<DeactivatePersonRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 21);
+export const DeactivatePersonRequestSchema: GenMessage<DeactivatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  21,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeactivatePersonResponse
@@ -701,8 +698,10 @@ export type DeactivatePersonResponse = Message<"canonical.prism.v1.DeactivatePer
  * Describes the message canonical.prism.v1.DeactivatePersonResponse.
  * Use `create(DeactivatePersonResponseSchema)` to create a new message.
  */
-export const DeactivatePersonResponseSchema: GenMessage<DeactivatePersonResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 22);
+export const DeactivatePersonResponseSchema: GenMessage<DeactivatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  22,
+);
 
 /**
  * @generated from message canonical.prism.v1.ReactivatePersonRequest
@@ -718,8 +717,10 @@ export type ReactivatePersonRequest = Message<"canonical.prism.v1.ReactivatePers
  * Describes the message canonical.prism.v1.ReactivatePersonRequest.
  * Use `create(ReactivatePersonRequestSchema)` to create a new message.
  */
-export const ReactivatePersonRequestSchema: GenMessage<ReactivatePersonRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 23);
+export const ReactivatePersonRequestSchema: GenMessage<ReactivatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  23,
+);
 
 /**
  * @generated from message canonical.prism.v1.ReactivatePersonResponse
@@ -730,8 +731,10 @@ export type ReactivatePersonResponse = Message<"canonical.prism.v1.ReactivatePer
  * Describes the message canonical.prism.v1.ReactivatePersonResponse.
  * Use `create(ReactivatePersonResponseSchema)` to create a new message.
  */
-export const ReactivatePersonResponseSchema: GenMessage<ReactivatePersonResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 24);
+export const ReactivatePersonResponseSchema: GenMessage<ReactivatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  24,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignPersonToTeamRequest
@@ -752,88 +755,95 @@ export type AssignPersonToTeamRequest = Message<"canonical.prism.v1.AssignPerson
  * Describes the message canonical.prism.v1.AssignPersonToTeamRequest.
  * Use `create(AssignPersonToTeamRequestSchema)` to create a new message.
  */
-export const AssignPersonToTeamRequestSchema: GenMessage<AssignPersonToTeamRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 25);
+export const AssignPersonToTeamRequestSchema: GenMessage<AssignPersonToTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  25,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignPersonToTeamResponse
  */
-export type AssignPersonToTeamResponse =
-  Message<"canonical.prism.v1.AssignPersonToTeamResponse"> & {};
+export type AssignPersonToTeamResponse = Message<"canonical.prism.v1.AssignPersonToTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.AssignPersonToTeamResponse.
  * Use `create(AssignPersonToTeamResponseSchema)` to create a new message.
  */
-export const AssignPersonToTeamResponseSchema: GenMessage<AssignPersonToTeamResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 26);
+export const AssignPersonToTeamResponseSchema: GenMessage<AssignPersonToTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  26,
+);
 
 /**
  * @generated from message canonical.prism.v1.RemovePersonFromTeamRequest
  */
-export type RemovePersonFromTeamRequest =
-  Message<"canonical.prism.v1.RemovePersonFromTeamRequest"> & {
-    /**
-     * @generated from field: string person_id = 1;
-     */
-    personId: string;
+export type RemovePersonFromTeamRequest = Message<"canonical.prism.v1.RemovePersonFromTeamRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
 
-    /**
-     * @generated from field: string team_id = 2;
-     */
-    teamId: string;
-  };
+  /**
+   * @generated from field: string team_id = 2;
+   */
+  teamId: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.RemovePersonFromTeamRequest.
  * Use `create(RemovePersonFromTeamRequestSchema)` to create a new message.
  */
-export const RemovePersonFromTeamRequestSchema: GenMessage<RemovePersonFromTeamRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 27);
+export const RemovePersonFromTeamRequestSchema: GenMessage<RemovePersonFromTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  27,
+);
 
 /**
  * @generated from message canonical.prism.v1.RemovePersonFromTeamResponse
  */
-export type RemovePersonFromTeamResponse =
-  Message<"canonical.prism.v1.RemovePersonFromTeamResponse"> & {};
+export type RemovePersonFromTeamResponse = Message<"canonical.prism.v1.RemovePersonFromTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.RemovePersonFromTeamResponse.
  * Use `create(RemovePersonFromTeamResponseSchema)` to create a new message.
  */
-export const RemovePersonFromTeamResponseSchema: GenMessage<RemovePersonFromTeamResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 28);
+export const RemovePersonFromTeamResponseSchema: GenMessage<RemovePersonFromTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  28,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListUnassignedPeopleRequest
  */
-export type ListUnassignedPeopleRequest =
-  Message<"canonical.prism.v1.ListUnassignedPeopleRequest"> & {};
+export type ListUnassignedPeopleRequest = Message<"canonical.prism.v1.ListUnassignedPeopleRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListUnassignedPeopleRequest.
  * Use `create(ListUnassignedPeopleRequestSchema)` to create a new message.
  */
-export const ListUnassignedPeopleRequestSchema: GenMessage<ListUnassignedPeopleRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 29);
+export const ListUnassignedPeopleRequestSchema: GenMessage<ListUnassignedPeopleRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  29,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListUnassignedPeopleResponse
  */
-export type ListUnassignedPeopleResponse =
-  Message<"canonical.prism.v1.ListUnassignedPeopleResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.Person people = 1;
-     */
-    people: Person[];
-  };
+export type ListUnassignedPeopleResponse = Message<"canonical.prism.v1.ListUnassignedPeopleResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.Person people = 1;
+   */
+  people: Person[];
+};
 
 /**
  * Describes the message canonical.prism.v1.ListUnassignedPeopleResponse.
  * Use `create(ListUnassignedPeopleResponseSchema)` to create a new message.
  */
-export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeopleResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 30);
+export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeopleResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  30,
+);
 
 /**
  * GitHubTeam represents a team synced from a GitHub organisation.
@@ -893,10 +903,7 @@ export type GitHubTeam = Message<"canonical.prism.v1.GitHubTeam"> & {
  * Describes the message canonical.prism.v1.GitHubTeam.
  * Use `create(GitHubTeamSchema)` to create a new message.
  */
-export const GitHubTeamSchema: GenMessage<GitHubTeam> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_org,
-  31,
-);
+export const GitHubTeamSchema: GenMessage<GitHubTeam> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 31);
 
 /**
  * TeamMappingSuggestion is an auto-detected mapping between a GitHub team and a
@@ -961,8 +968,10 @@ export type TeamMappingSuggestion = Message<"canonical.prism.v1.TeamMappingSugge
  * Describes the message canonical.prism.v1.TeamMappingSuggestion.
  * Use `create(TeamMappingSuggestionSchema)` to create a new message.
  */
-export const TeamMappingSuggestionSchema: GenMessage<TeamMappingSuggestion> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 32);
+export const TeamMappingSuggestionSchema: GenMessage<TeamMappingSuggestion> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  32,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListGithubTeamsRequest
@@ -987,8 +996,10 @@ export type ListGithubTeamsRequest = Message<"canonical.prism.v1.ListGithubTeams
  * Describes the message canonical.prism.v1.ListGithubTeamsRequest.
  * Use `create(ListGithubTeamsRequestSchema)` to create a new message.
  */
-export const ListGithubTeamsRequestSchema: GenMessage<ListGithubTeamsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 33);
+export const ListGithubTeamsRequestSchema: GenMessage<ListGithubTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  33,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListGithubTeamsResponse
@@ -1004,44 +1015,48 @@ export type ListGithubTeamsResponse = Message<"canonical.prism.v1.ListGithubTeam
  * Describes the message canonical.prism.v1.ListGithubTeamsResponse.
  * Use `create(ListGithubTeamsResponseSchema)` to create a new message.
  */
-export const ListGithubTeamsResponseSchema: GenMessage<ListGithubTeamsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 34);
+export const ListGithubTeamsResponseSchema: GenMessage<ListGithubTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  34,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamGithubTeamsRequest
  */
-export type ListTeamGithubTeamsRequest =
-  Message<"canonical.prism.v1.ListTeamGithubTeamsRequest"> & {
-    /**
-     * @generated from field: string team_id = 1;
-     */
-    teamId: string;
-  };
+export type ListTeamGithubTeamsRequest = Message<"canonical.prism.v1.ListTeamGithubTeamsRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListTeamGithubTeamsRequest.
  * Use `create(ListTeamGithubTeamsRequestSchema)` to create a new message.
  */
-export const ListTeamGithubTeamsRequestSchema: GenMessage<ListTeamGithubTeamsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 35);
+export const ListTeamGithubTeamsRequestSchema: GenMessage<ListTeamGithubTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  35,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamGithubTeamsResponse
  */
-export type ListTeamGithubTeamsResponse =
-  Message<"canonical.prism.v1.ListTeamGithubTeamsResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.GitHubTeam teams = 1;
-     */
-    teams: GitHubTeam[];
-  };
+export type ListTeamGithubTeamsResponse = Message<"canonical.prism.v1.ListTeamGithubTeamsResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.GitHubTeam teams = 1;
+   */
+  teams: GitHubTeam[];
+};
 
 /**
  * Describes the message canonical.prism.v1.ListTeamGithubTeamsResponse.
  * Use `create(ListTeamGithubTeamsResponseSchema)` to create a new message.
  */
-export const ListTeamGithubTeamsResponseSchema: GenMessage<ListTeamGithubTeamsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 36);
+export const ListTeamGithubTeamsResponseSchema: GenMessage<ListTeamGithubTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  36,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignGithubTeamRequest
@@ -1062,8 +1077,10 @@ export type AssignGithubTeamRequest = Message<"canonical.prism.v1.AssignGithubTe
  * Describes the message canonical.prism.v1.AssignGithubTeamRequest.
  * Use `create(AssignGithubTeamRequestSchema)` to create a new message.
  */
-export const AssignGithubTeamRequestSchema: GenMessage<AssignGithubTeamRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 37);
+export const AssignGithubTeamRequestSchema: GenMessage<AssignGithubTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  37,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignGithubTeamResponse
@@ -1074,8 +1091,10 @@ export type AssignGithubTeamResponse = Message<"canonical.prism.v1.AssignGithubT
  * Describes the message canonical.prism.v1.AssignGithubTeamResponse.
  * Use `create(AssignGithubTeamResponseSchema)` to create a new message.
  */
-export const AssignGithubTeamResponseSchema: GenMessage<AssignGithubTeamResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 38);
+export const AssignGithubTeamResponseSchema: GenMessage<AssignGithubTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  38,
+);
 
 /**
  * @generated from message canonical.prism.v1.UnassignGithubTeamRequest
@@ -1096,27 +1115,29 @@ export type UnassignGithubTeamRequest = Message<"canonical.prism.v1.UnassignGith
  * Describes the message canonical.prism.v1.UnassignGithubTeamRequest.
  * Use `create(UnassignGithubTeamRequestSchema)` to create a new message.
  */
-export const UnassignGithubTeamRequestSchema: GenMessage<UnassignGithubTeamRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 39);
+export const UnassignGithubTeamRequestSchema: GenMessage<UnassignGithubTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  39,
+);
 
 /**
  * @generated from message canonical.prism.v1.UnassignGithubTeamResponse
  */
-export type UnassignGithubTeamResponse =
-  Message<"canonical.prism.v1.UnassignGithubTeamResponse"> & {};
+export type UnassignGithubTeamResponse = Message<"canonical.prism.v1.UnassignGithubTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.UnassignGithubTeamResponse.
  * Use `create(UnassignGithubTeamResponseSchema)` to create a new message.
  */
-export const UnassignGithubTeamResponseSchema: GenMessage<UnassignGithubTeamResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 40);
+export const UnassignGithubTeamResponseSchema: GenMessage<UnassignGithubTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  40,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamMappingSuggestionsRequest
  */
-export type GetTeamMappingSuggestionsRequest =
-  Message<"canonical.prism.v1.GetTeamMappingSuggestionsRequest"> & {};
+export type GetTeamMappingSuggestionsRequest = Message<"canonical.prism.v1.GetTeamMappingSuggestionsRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetTeamMappingSuggestionsRequest.
@@ -1128,13 +1149,12 @@ export const GetTeamMappingSuggestionsRequestSchema: GenMessage<GetTeamMappingSu
 /**
  * @generated from message canonical.prism.v1.GetTeamMappingSuggestionsResponse
  */
-export type GetTeamMappingSuggestionsResponse =
-  Message<"canonical.prism.v1.GetTeamMappingSuggestionsResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.TeamMappingSuggestion suggestions = 1;
-     */
-    suggestions: TeamMappingSuggestion[];
-  };
+export type GetTeamMappingSuggestionsResponse = Message<"canonical.prism.v1.GetTeamMappingSuggestionsResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.TeamMappingSuggestion suggestions = 1;
+   */
+  suggestions: TeamMappingSuggestion[];
+};
 
 /**
  * Describes the message canonical.prism.v1.GetTeamMappingSuggestionsResponse.
@@ -1146,18 +1166,17 @@ export const GetTeamMappingSuggestionsResponseSchema: GenMessage<GetTeamMappingS
 /**
  * @generated from message canonical.prism.v1.DismissTeamMappingSuggestionRequest
  */
-export type DismissTeamMappingSuggestionRequest =
-  Message<"canonical.prism.v1.DismissTeamMappingSuggestionRequest"> & {
-    /**
-     * @generated from field: string team_id = 1;
-     */
-    teamId: string;
+export type DismissTeamMappingSuggestionRequest = Message<"canonical.prism.v1.DismissTeamMappingSuggestionRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
 
-    /**
-     * @generated from field: string github_team_id = 2;
-     */
-    githubTeamId: string;
-  };
+  /**
+   * @generated from field: string github_team_id = 2;
+   */
+  githubTeamId: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.DismissTeamMappingSuggestionRequest.
@@ -1202,8 +1221,10 @@ export type ImportJiraUsersRequest = Message<"canonical.prism.v1.ImportJiraUsers
  * Describes the message canonical.prism.v1.ImportJiraUsersRequest.
  * Use `create(ImportJiraUsersRequestSchema)` to create a new message.
  */
-export const ImportJiraUsersRequestSchema: GenMessage<ImportJiraUsersRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 45);
+export const ImportJiraUsersRequestSchema: GenMessage<ImportJiraUsersRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  45,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportJiraUsersResponse
@@ -1233,8 +1254,10 @@ export type ImportJiraUsersResponse = Message<"canonical.prism.v1.ImportJiraUser
  * Describes the message canonical.prism.v1.ImportJiraUsersResponse.
  * Use `create(ImportJiraUsersResponseSchema)` to create a new message.
  */
-export const ImportJiraUsersResponseSchema: GenMessage<ImportJiraUsersResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_org, 46);
+export const ImportJiraUsersResponseSchema: GenMessage<ImportJiraUsersResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  46,
+);
 
 /**
  * TeamType classifies teams in the organisational hierarchy from broad (org) to
@@ -1272,10 +1295,7 @@ export enum TeamType {
 /**
  * Describes the enum canonical.prism.v1.TeamType.
  */
-export const TeamTypeSchema: GenEnum<TeamType> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_org,
-  0,
-);
+export const TeamTypeSchema: GenEnum<TeamType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_org, 0);
 
 /**
  * OrgService manages the organisational hierarchy — teams, people, platform

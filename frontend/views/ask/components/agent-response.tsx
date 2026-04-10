@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { Sparkles } from "lucide-react";
 
-import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { AnswerContent } from "./answer-content";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
@@ -31,9 +31,7 @@ export const AgentResponse = ({
         <Sparkles className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5">
-        {steps.length > 0 && (
-          <ThinkingSteps steps={steps} defaultOpen={state.status === "streaming"} />
-        )}
+        {steps.length > 0 && <ThinkingSteps steps={steps} defaultOpen={state.status === "streaming"} />}
 
         {state.status === "streaming" && !displayAnswer && steps.length === 0 && (
           <Badge variant="secondary" className="animate-pulse">
@@ -43,9 +41,7 @@ export const AgentResponse = ({
 
         {displayAnswer && <AnswerContent content={displayAnswer} conversationId={conversationId} />}
 
-        {state.status === "completed" && supportingData && (
-          <EvidencePanel supportingData={supportingData} />
-        )}
+        {state.status === "completed" && supportingData && <EvidencePanel supportingData={supportingData} />}
       </div>
     </div>
   );

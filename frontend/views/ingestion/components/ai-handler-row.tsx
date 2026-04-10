@@ -7,15 +7,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatRelativeTime } from "@/lib/format";
+import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
+import { useEnrichmentPipelineStatus } from "@/lib/hooks/use-enrichment";
+import { useCancelHandlerRun, useListRuns, useTriggerHandler } from "@/lib/hooks/use-ingestion";
 import { MoreHorizontal, Play, Square } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
 import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { formatRelativeTime } from "@/lib/format";
-import { useEmbeddingStatus } from "@/lib/hooks/use-embeddings";
-import { useEnrichmentPipelineStatus } from "@/lib/hooks/use-enrichment";
-import { useCancelHandlerRun, useListRuns, useTriggerHandler } from "@/lib/hooks/use-ingestion";
 
 // ---------------------------------------------------------------------------
 // Shared handler action hook
@@ -45,8 +45,7 @@ const useHandlerActions = (
       { handlerName, method, key: "" },
       {
         onSuccess: () => toast.success(`${handlerName} started`),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : `Failed to trigger ${handlerName}`),
+        onError: (err) => toast.error(err instanceof Error ? err.message : `Failed to trigger ${handlerName}`),
       },
     );
   }, [triggerHandler, handlerName, method]);
@@ -72,11 +71,7 @@ const useHandlerActions = (
 // Shared overflow menu for AI handler rows
 // ---------------------------------------------------------------------------
 
-const AiHandlerMenu = ({
-  actions,
-}: {
-  actions: ReturnType<typeof useHandlerActions>;
-}): React.ReactElement => (
+const AiHandlerMenu = ({ actions }: { actions: ReturnType<typeof useHandlerActions> }): React.ReactElement => (
   <div className="flex shrink-0 items-center justify-end">
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -115,9 +110,7 @@ export const EnrichmentRow = (): React.ReactElement => {
   const { data: status } = useEnrichmentPipelineStatus();
   const actions = useHandlerActions("EnrichmentHandler", "run_cycle");
 
-  const lastRunLabel = status?.lastEnrichmentAt
-    ? formatRelativeTime(status.lastEnrichmentAt)
-    : undefined;
+  const lastRunLabel = status?.lastEnrichmentAt ? formatRelativeTime(status.lastEnrichmentAt) : undefined;
 
   return (
     <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]">
@@ -130,18 +123,14 @@ export const EnrichmentRow = (): React.ReactElement => {
 
       {/* Stats */}
       <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        {status && Number(status.pendingCount) > 0 && (
-          <Stat label="queued" value={status.pendingCount.toString()} />
-        )}
+        {status && Number(status.pendingCount) > 0 && <Stat label="queued" value={status.pendingCount.toString()} />}
         {actions.isRunning && actions.activeRun && (
           <>
             {status && Number(status.pendingCount) > 0 && DOT_SEP}
             <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
           </>
         )}
-        {!actions.isRunning && lastRunLabel && (
-          <span className="text-xs text-muted-foreground">{lastRunLabel}</span>
-        )}
+        {!actions.isRunning && lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
       </div>
 
       {/* Actions */}
@@ -158,9 +147,7 @@ export const EmbeddingRow = (): React.ReactElement => {
   const { data: embStatus } = useEmbeddingStatus();
   const actions = useHandlerActions("EmbeddingHandler", "run_cycle");
 
-  const lastRunLabel = embStatus?.lastEmbeddedAt
-    ? formatRelativeTime(embStatus.lastEmbeddedAt)
-    : undefined;
+  const lastRunLabel = embStatus?.lastEmbeddedAt ? formatRelativeTime(embStatus.lastEmbeddedAt) : undefined;
 
   const coverage = embStatus ? Math.round(embStatus.coveragePercent) : null;
 
@@ -182,9 +169,7 @@ export const EmbeddingRow = (): React.ReactElement => {
             <Stat label="queued" value={embStatus.queuedCount.toString()} />
           </>
         )}
-        {!actions.isRunning && lastRunLabel && (
-          <span className="text-xs text-muted-foreground">{lastRunLabel}</span>
-        )}
+        {!actions.isRunning && lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
       </div>
 
       {/* Actions */}

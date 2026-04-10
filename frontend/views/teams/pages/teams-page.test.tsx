@@ -1,3 +1,4 @@
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { create } from "@bufbuild/protobuf";
 import { createRouterTransport } from "@connectrpc/connect";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -5,7 +6,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
-import { SidebarProvider } from "@/components/ui/sidebar";
+import {
+  GetPersonInsightsResponseSchema,
+  GetTeamInsightsResponseSchema,
+  InsightsService,
+} from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import {
   CompareTeamsResponseSchema,
   GetFlowMetricsResponseSchema,
@@ -19,11 +24,6 @@ import {
   OrgService,
   TeamType,
 } from "@ps/api/gen/canonical/prism/v1/org_pb";
-import {
-  GetPersonInsightsResponseSchema,
-  GetTeamInsightsResponseSchema,
-  InsightsService,
-} from "@ps/api/gen/canonical/prism/v1/insights_pb";
 import { createTestQueryClient, setupCleanup } from "@ps/test-utils";
 
 const mockTeamTree = {

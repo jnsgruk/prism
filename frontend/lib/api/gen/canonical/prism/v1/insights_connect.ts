@@ -7,13 +7,14 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   GetPersonInsightsRequest,
   GetPersonInsightsResponse,
   GetTeamInsightsRequest,
   GetTeamInsightsResponse,
 } from "./insights_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * InsightsService provides aggregated views over AI enrichment data at

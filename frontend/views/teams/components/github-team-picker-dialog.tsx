@@ -1,19 +1,13 @@
-import { useState } from "react";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import type { GitHubTeam } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { GitBranch, Plus } from "lucide-react";
-
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useAssignGithubTeam } from "@/views/admin/hooks/use-admin";
 import { useListGithubTeams } from "@/views/teams/hooks/use-teams";
+import { GitBranch, Plus } from "lucide-react";
+import { useState } from "react";
+
+import type { GitHubTeam } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 export const GithubTeamPickerDialog = ({
   teamId,
@@ -43,16 +37,12 @@ export const GithubTeamPickerDialog = ({
         <DialogHeader>
           <DialogTitle>Link GitHub Team</DialogTitle>
           <DialogDescription>
-            Search and select a GitHub team to link to this Prism team. Linked teams scope which
-            repositories are ingested.
+            Search and select a GitHub team to link to this Prism team. Linked teams scope which repositories are
+            ingested.
           </DialogDescription>
         </DialogHeader>
 
-        <Input
-          placeholder="Search GitHub teams..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <Input placeholder="Search GitHub teams..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
         <TeamList isLoading={isLoading} teams={available} search={search} onAssign={handleAssign} />
       </DialogContent>
@@ -78,9 +68,7 @@ const TeamList = ({
   if (teams.length === 0) {
     return (
       <p className="py-4 text-center text-sm text-muted-foreground">
-        {search
-          ? "No matching teams found."
-          : "No GitHub teams discovered yet. Run a team sync first."}
+        {search ? "No matching teams found." : "No GitHub teams discovered yet. Run a team sync first."}
       </p>
     );
   }

@@ -10,10 +10,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useRevokeApiToken } from "@/views/admin/hooks/use-admin";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
-
-import { useRevokeApiToken } from "@/views/admin/hooks/use-admin";
 
 export const RevokeTokenDialog = ({
   tokenId,
@@ -45,17 +44,14 @@ export const RevokeTokenDialog = ({
         <DialogHeader>
           <DialogTitle>Revoke API Token</DialogTitle>
           <DialogDescription>
-            Are you sure you want to revoke{" "}
-            <span className="font-medium text-foreground">{tokenName}</span>? Any applications using
-            this token will lose access immediately.
+            Are you sure you want to revoke <span className="font-medium text-foreground">{tokenName}</span>? Any
+            applications using this token will lose access immediately.
           </DialogDescription>
         </DialogHeader>
 
         {revokeToken.isError && (
           <Alert variant="destructive" className="mt-4">
-            {revokeToken.error instanceof Error
-              ? revokeToken.error.message
-              : "Failed to revoke token"}
+            {revokeToken.error instanceof Error ? revokeToken.error.message : "Failed to revoke token"}
           </Alert>
         )}
 

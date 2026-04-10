@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  createPillElement,
-  extractContent,
-  PILL_ID_ATTR,
-  PILL_TYPE_ATTR,
-} from "./use-mention-picker";
+import { createPillElement, extractContent, PILL_ID_ATTR, PILL_TYPE_ATTR } from "./use-mention-picker";
 
 describe("createPillElement", () => {
   it("creates pill with correct data attributes for file type", () => {

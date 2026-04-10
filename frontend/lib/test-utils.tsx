@@ -30,8 +30,7 @@ export const TestWrapper = ({ children }: { children: React.ReactNode }): React.
 export const renderWithProviders = (
   ui: React.ReactElement,
   options?: Omit<RenderOptions, "wrapper">,
-): RenderResult<typeof queries, HTMLElement, HTMLElement> =>
-  render(ui, { wrapper: TestWrapper, ...options });
+): RenderResult<typeof queries, HTMLElement, HTMLElement> => render(ui, { wrapper: TestWrapper, ...options });
 
 /** Call in describe() blocks to auto-cleanup after each test. */
 export const setupCleanup = (): void => {

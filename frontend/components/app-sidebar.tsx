@@ -1,3 +1,4 @@
+import { PrismLogo } from "@/components/prism-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useListConversations } from "@/lib/hooks/use-conversations";
 import {
   Activity,
   ChevronsUpDown,
@@ -30,9 +32,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { PrismLogo } from "@/components/prism-logo";
 import { useLogout } from "@ps/hooks/use-auth";
-import { useListConversations } from "@/lib/hooks/use-conversations";
 
 type User = {
   displayName: string;
@@ -136,11 +136,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link to="/ask" />}
-                  isActive={pathname === "/ask"}
-                  tooltip="New Chat"
-                >
+                <SidebarMenuButton render={<Link to="/ask" />} isActive={pathname === "/ask"} tooltip="New Chat">
                   <Sparkles />
                   <span>New Chat</span>
                 </SidebarMenuButton>
@@ -156,21 +152,13 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link to="/teams" />}
-                  isActive={isActive("/teams")}
-                  tooltip="Teams"
-                >
+                <SidebarMenuButton render={<Link to="/teams" />} isActive={isActive("/teams")} tooltip="Teams">
                   <Users />
                   <span>Teams</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link to="/people" />}
-                  isActive={isActive("/people")}
-                  tooltip="People"
-                >
+                <SidebarMenuButton render={<Link to="/people" />} isActive={isActive("/people")} tooltip="People">
                   <UserRound />
                   <span>People</span>
                 </SidebarMenuButton>
@@ -223,9 +211,7 @@ export const AppSidebar = ({ user }: { user: User }): React.ReactElement => {
                   Admin
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => logout.mutate(undefined, { onSettled: () => navigate("/login") })}
-                >
+                <DropdownMenuItem onClick={() => logout.mutate(undefined, { onSettled: () => navigate("/login") })}>
                   <LogOut className="mr-2 size-4" />
                   Log out
                 </DropdownMenuItem>

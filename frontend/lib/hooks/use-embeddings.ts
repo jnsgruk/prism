@@ -40,17 +40,9 @@ export const useEmbeddingSimilar = (
   });
 
 export const useEmbeddingSearch = (): ReturnType<
-  typeof useMutation<
-    SearchByTextResponse,
-    Error,
-    { queryText: string; limit?: number; platform?: Platform }
-  >
+  typeof useMutation<SearchByTextResponse, Error, { queryText: string; limit?: number; platform?: Platform }>
 > =>
-  useMutation<
-    SearchByTextResponse,
-    Error,
-    { queryText: string; limit?: number; platform?: Platform }
-  >({
+  useMutation<SearchByTextResponse, Error, { queryText: string; limit?: number; platform?: Platform }>({
     mutationFn: (params) => client.searchByText(params),
   });
 

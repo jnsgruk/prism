@@ -7,6 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   CompleteSetupRequest,
   CompleteSetupResponse,
@@ -23,7 +25,6 @@ import {
   RestoreBackupRequest,
   RestoreBackupResponse,
 } from "./auth_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * AuthService handles authentication, session management, and the initial

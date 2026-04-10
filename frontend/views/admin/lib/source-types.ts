@@ -1,5 +1,6 @@
-import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { platformKey } from "@/lib/proto-display";
+
+import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 export const SOURCE_TYPES = [
   { value: "github", label: "GitHub", platform: Platform.GITHUB },

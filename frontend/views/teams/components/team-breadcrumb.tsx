@@ -1,29 +1,12 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { flattenTree, getAncestors, teamTypeBadgeVariant, teamTypeLabel } from "@/views/teams/hooks/use-teams";
 import { ChevronsUpDown, Users } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
-import {
-  flattenTree,
-  getAncestors,
-  teamTypeBadgeVariant,
-  teamTypeLabel,
-} from "@/views/teams/hooks/use-teams";
 
 export const TeamBreadcrumb = ({
   roots,
@@ -45,10 +28,7 @@ export const TeamBreadcrumb = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-muted"
-          />
+          <button type="button" className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-muted" />
         }
       >
         <Breadcrumb>
@@ -56,9 +36,7 @@ export const TeamBreadcrumb = ({
             {ancestors.map((team, i) => (
               <Fragment key={team.id}>
                 {i > 0 && <BreadcrumbSeparator />}
-                <BreadcrumbItem className="text-sm font-medium text-foreground">
-                  {team.name}
-                </BreadcrumbItem>
+                <BreadcrumbItem className="text-sm font-medium text-foreground">{team.name}</BreadcrumbItem>
               </Fragment>
             ))}
           </BreadcrumbList>
@@ -71,9 +49,7 @@ export const TeamBreadcrumb = ({
           <CommandList>
             <CommandEmpty>No teams found.</CommandEmpty>
             {flat
-              .filter(
-                ({ team }) => !search || team.name.toLowerCase().includes(search.toLowerCase()),
-              )
+              .filter(({ team }) => !search || team.name.toLowerCase().includes(search.toLowerCase()))
               .map(({ team, depth }) => (
                 <CommandItem
                   key={team.id}
@@ -85,15 +61,9 @@ export const TeamBreadcrumb = ({
                     setSearch("");
                   }}
                 >
-                  <span
-                    className="flex items-center gap-2 truncate"
-                    style={{ paddingLeft: `${depth * 0.75}rem` }}
-                  >
+                  <span className="flex items-center gap-2 truncate" style={{ paddingLeft: `${depth * 0.75}rem` }}>
                     <span className="truncate">{team.name}</span>
-                    <Badge
-                      variant={teamTypeBadgeVariant(team.teamType)}
-                      className="shrink-0 text-[10px]"
-                    >
+                    <Badge variant={teamTypeBadgeVariant(team.teamType)} className="shrink-0 text-[10px]">
                       {teamTypeLabel(team.teamType)}
                     </Badge>
                     <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">

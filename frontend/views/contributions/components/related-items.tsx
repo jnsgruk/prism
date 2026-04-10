@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEmbeddingSimilar } from "@/lib/hooks/use-embeddings";
 import { contributionTypeLabel, platformLabel } from "@/lib/proto-display";
-import type { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import type { SimilarItem } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { Layers, Link2 } from "lucide-react";
 import { Link } from "react-router";
+
+import type { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { SimilarItem } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 const distanceLabel = (distance: number): { text: string; className: string } => {
   if (distance < 0.15) return { text: "Very similar", className: "text-green-600" };

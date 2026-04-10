@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { useCancelPipeline, useTriggerPipeline } from "@/views/ingestion/hooks/use-pipeline";
 import { Loader2, Play, Square } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
-
-import { useCancelPipeline, useTriggerPipeline } from "@/views/ingestion/hooks/use-pipeline";
 
 export const PipelineActions = ({
   pipelineId,
@@ -23,8 +22,7 @@ export const PipelineActions = ({
         toast.success("Pipeline started");
         onAction();
       },
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to start pipeline"),
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to start pipeline"),
     });
   }, [trigger, onAction]);
 
@@ -35,8 +33,7 @@ export const PipelineActions = ({
         toast.success("Pipeline cancellation requested");
         onAction();
       },
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to cancel pipeline"),
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel pipeline"),
     });
   }, [cancel, pipelineId, onAction]);
 
@@ -60,18 +57,8 @@ export const PipelineActions = ({
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="h-7"
-      onClick={handleRun}
-      disabled={trigger.isPending}
-    >
-      {trigger.isPending ? (
-        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-      ) : (
-        <Play className="mr-1.5 size-3.5" />
-      )}
+    <Button variant="outline" size="sm" className="h-7" onClick={handleRun} disabled={trigger.isPending}>
+      {trigger.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Play className="mr-1.5 size-3.5" />}
       Run Pipeline
     </Button>
   );

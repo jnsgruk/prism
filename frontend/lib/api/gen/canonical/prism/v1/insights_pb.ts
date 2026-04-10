@@ -6,11 +6,12 @@
 // @generated from file canonical/prism/v1/insights.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+
 import type { InsightPeriod } from "./common_pb";
 import { file_canonical_prism_v1_common } from "./common_pb";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/insights.proto.
@@ -164,8 +165,10 @@ export type ReviewQualitySummary = Message<"canonical.prism.v1.ReviewQualitySumm
  * Describes the message canonical.prism.v1.ReviewQualitySummary.
  * Use `create(ReviewQualitySummarySchema)` to create a new message.
  */
-export const ReviewQualitySummarySchema: GenMessage<ReviewQualitySummary> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 2);
+export const ReviewQualitySummarySchema: GenMessage<ReviewQualitySummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  2,
+);
 
 /**
  * ReviewerDepth identifies a reviewer and their average review depth.
@@ -260,8 +263,10 @@ export type TopicCategorySummary = Message<"canonical.prism.v1.TopicCategorySumm
  * Describes the message canonical.prism.v1.TopicCategorySummary.
  * Use `create(TopicCategorySummarySchema)` to create a new message.
  */
-export const TopicCategorySummarySchema: GenMessage<TopicCategorySummary> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 5);
+export const TopicCategorySummarySchema: GenMessage<TopicCategorySummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  5,
+);
 
 /**
  * TopicCategoryCount is a single topic category and its count.
@@ -492,8 +497,10 @@ export type GetTeamInsightsRequest = Message<"canonical.prism.v1.GetTeamInsights
  * Describes the message canonical.prism.v1.GetTeamInsightsRequest.
  * Use `create(GetTeamInsightsRequestSchema)` to create a new message.
  */
-export const GetTeamInsightsRequestSchema: GenMessage<GetTeamInsightsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 10);
+export const GetTeamInsightsRequestSchema: GenMessage<GetTeamInsightsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamInsightsResponse
@@ -509,8 +516,10 @@ export type GetTeamInsightsResponse = Message<"canonical.prism.v1.GetTeamInsight
  * Describes the message canonical.prism.v1.GetTeamInsightsResponse.
  * Use `create(GetTeamInsightsResponseSchema)` to create a new message.
  */
-export const GetTeamInsightsResponseSchema: GenMessage<GetTeamInsightsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 11);
+export const GetTeamInsightsResponseSchema: GenMessage<GetTeamInsightsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  11,
+);
 
 /**
  * TeamInsights bundles all enrichment-derived insights for a team.
@@ -584,8 +593,10 @@ export type GetPersonInsightsRequest = Message<"canonical.prism.v1.GetPersonInsi
  * Describes the message canonical.prism.v1.GetPersonInsightsRequest.
  * Use `create(GetPersonInsightsRequestSchema)` to create a new message.
  */
-export const GetPersonInsightsRequestSchema: GenMessage<GetPersonInsightsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 13);
+export const GetPersonInsightsRequestSchema: GenMessage<GetPersonInsightsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPersonInsightsResponse
@@ -601,8 +612,10 @@ export type GetPersonInsightsResponse = Message<"canonical.prism.v1.GetPersonIns
  * Describes the message canonical.prism.v1.GetPersonInsightsResponse.
  * Use `create(GetPersonInsightsResponseSchema)` to create a new message.
  */
-export const GetPersonInsightsResponseSchema: GenMessage<GetPersonInsightsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 14);
+export const GetPersonInsightsResponseSchema: GenMessage<GetPersonInsightsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  14,
+);
 
 /**
  * PersonInsights bundles all enrichment-derived insights for an individual.
@@ -743,8 +756,10 @@ export type ReviewsReceivedSummary = Message<"canonical.prism.v1.ReviewsReceived
  * Describes the message canonical.prism.v1.ReviewsReceivedSummary.
  * Use `create(ReviewsReceivedSummarySchema)` to create a new message.
  */
-export const ReviewsReceivedSummarySchema: GenMessage<ReviewsReceivedSummary> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_insights, 17);
+export const ReviewsReceivedSummarySchema: GenMessage<ReviewsReceivedSummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  17,
+);
 
 /**
  * InsightsService provides aggregated views over AI enrichment data at

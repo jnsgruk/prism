@@ -1,23 +1,14 @@
 "use client";
 
-import * as React from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import { Command as CommandPrimitive } from "cmdk";
+import { SearchIcon, CheckIcon } from "lucide-react";
+import * as React from "react";
 
 import { cn } from "@ps/cn";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
-import { SearchIcon, CheckIcon } from "lucide-react";
 
-function Command({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive>): React.ReactElement {
+function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>): React.ReactElement {
   return (
     <CommandPrimitive
       data-slot="command"
@@ -69,10 +60,7 @@ function CommandInput({
       <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <CommandPrimitive.Input
           data-slot="command-input"
-          className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-            className,
-          )}
+          className={cn("w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50", className)}
           {...props}
         />
         <InputGroupAddon>
@@ -83,17 +71,11 @@ function CommandInput({
   );
 }
 
-function CommandList({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.List>): React.ReactElement {
+function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>): React.ReactElement {
   return (
     <CommandPrimitive.List
       data-slot="command-list"
-      className={cn(
-        "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
-        className,
-      )}
+      className={cn("no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none", className)}
       {...props}
     />
   );
@@ -161,10 +143,7 @@ function CommandItem({
   );
 }
 
-function CommandShortcut({
-  className,
-  ...props
-}: React.ComponentProps<"span">): React.ReactElement {
+function CommandShortcut({ className, ...props }: React.ComponentProps<"span">): React.ReactElement {
   return (
     <span
       data-slot="command-shortcut"

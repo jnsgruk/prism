@@ -1,21 +1,14 @@
+import { RunHistoryCard } from "@/components/run-history-card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatDuration, formatTimestamp } from "@/lib/format";
+import { defaultStatus, statusConfig } from "@/lib/run-status";
+import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-
-import { RunHistoryCard } from "@/components/run-history-card";
-import { formatDuration, formatTimestamp } from "@/lib/format";
-import { defaultStatus, statusConfig } from "@/lib/run-status";
-import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   _enrichment: "Enrichment",
@@ -29,9 +22,7 @@ const columns: ColumnDef<HandlerRun, unknown>[] = [
   {
     accessorKey: "sourceName",
     header: "Source",
-    cell: ({ row }) => (
-      <span className="font-medium">{displaySourceName(row.original.sourceName)}</span>
-    ),
+    cell: ({ row }) => <span className="font-medium">{displaySourceName(row.original.sourceName)}</span>,
   },
   {
     accessorKey: "startedAt",
@@ -42,18 +33,14 @@ const columns: ColumnDef<HandlerRun, unknown>[] = [
     id: "duration",
     header: "Duration",
     cell: ({ row }) => (
-      <span className="text-xs">
-        {formatDuration(row.original.startedAt, row.original.completedAt)}
-      </span>
+      <span className="text-xs">{formatDuration(row.original.startedAt, row.original.completedAt)}</span>
     ),
   },
   {
     accessorKey: "itemsCollected",
     header: () => <span className="block text-right">Items</span>,
     cell: ({ row }) => (
-      <span className="block text-right tabular-nums">
-        {row.original.itemsCollected.toLocaleString()}
-      </span>
+      <span className="block text-right tabular-nums">{row.original.itemsCollected.toLocaleString()}</span>
     ),
   },
   {

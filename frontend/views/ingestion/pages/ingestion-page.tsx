@@ -1,29 +1,20 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { formatRelativeTime } from "@/lib/format";
+import { useListSources, useUpdateSource } from "@/lib/hooks/use-config";
+import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
+import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
+import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
+import { PipelineDAG, StatusBadge, usePipelineState } from "@/views/ingestion/components/pipeline-graph";
+import { SourceList, type SourceConfigInfo } from "@/views/ingestion/components/source-list";
+import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
+import { POLL_INTERVAL_ACTIVE, POLL_INTERVAL_BURST, POLL_INTERVAL_IDLE } from "@/views/ingestion/lib/constants";
 import { Activity, ChevronRight, GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { useListSources, useUpdateSource } from "@/lib/hooks/use-config";
-
-import { formatRelativeTime } from "@/lib/format";
-import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
-import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
-import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
-import {
-  PipelineDAG,
-  StatusBadge,
-  usePipelineState,
-} from "@/views/ingestion/components/pipeline-graph";
-import { SourceList, type SourceConfigInfo } from "@/views/ingestion/components/source-list";
-import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
-import {
-  POLL_INTERVAL_ACTIVE,
-  POLL_INTERVAL_BURST,
-  POLL_INTERVAL_IDLE,
-} from "@/views/ingestion/lib/constants";
 import { cn } from "@ps/cn";
 
 const BURST_DURATION = 10_000;
@@ -52,9 +43,7 @@ const IngestionPage = (): React.ReactElement => {
     refetchInterval: (query) => {
       if (isBursting) return POLL_INTERVAL_BURST;
       const data = query.state.data?.sources;
-      const hasActive = data?.some(
-        (s) => s.state === SourceState.COLLECTING || s.state === SourceState.WAITING,
-      );
+      const hasActive = data?.some((s) => s.state === SourceState.COLLECTING || s.state === SourceState.WAITING);
       return hasActive || pipelineRunning ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
     },
   });
@@ -87,8 +76,7 @@ const IngestionPage = (): React.ReactElement => {
         { sourceId, enabled },
         {
           onSuccess: () => toast.success(enabled ? "Source enabled" : "Source disabled"),
-          onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Failed to update source"),
+          onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update source"),
         },
       );
     },
@@ -160,18 +148,12 @@ const IngestionPage = (): React.ReactElement => {
                   {/* DAG toggle — only when not running (auto-expanded when running) */}
                   {!pipelineRunning && currentPipeline && (
                     <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                      <ChevronRight
-                        className={cn("size-3.5 transition-transform", dagExpanded && "rotate-90")}
-                      />
+                      <ChevronRight className={cn("size-3.5 transition-transform", dagExpanded && "rotate-90")} />
                       <span className="hidden sm:inline">{dagExpanded ? "Hide" : "Show"}</span>
                     </CollapsibleTrigger>
                   )}
                 </div>
-                <PipelineActions
-                  pipelineId={currentPipeline?.id}
-                  isRunning={pipelineRunning}
-                  onAction={triggerBurst}
-                />
+                <PipelineActions pipelineId={currentPipeline?.id} isRunning={pipelineRunning} onAction={triggerBurst} />
               </div>
             </CardHeader>
 

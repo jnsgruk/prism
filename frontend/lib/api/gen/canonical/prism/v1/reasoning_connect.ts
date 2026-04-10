@@ -7,6 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   AskQuestionRequest,
   AskQuestionResponse,
@@ -61,7 +63,6 @@ import {
   UploadWorkspaceFileRequest,
   UploadWorkspaceFileResponse,
 } from "./reasoning_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * ReasoningService manages the AI reasoning pipeline — provider configuration,

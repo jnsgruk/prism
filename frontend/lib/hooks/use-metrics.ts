@@ -2,11 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import type {
-  ContributionState,
-  ContributionType,
-  Platform,
-} from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { ContributionState, ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   Contribution,
   GetFlowMetricsResponse,
@@ -44,8 +40,7 @@ export const metricsKeys = {
       filters.platform ?? "",
       filters.platformInstance ?? "",
     ] as const,
-  flow: (teamId: string, period: Period) =>
-    [...metricsKeys.all, "flow", teamId, periodKey(period)] as const,
+  flow: (teamId: string, period: Period) => [...metricsKeys.all, "flow", teamId, periodKey(period)] as const,
   individual: (personId: string, period: Period) =>
     [...metricsKeys.all, "individual", personId, periodKey(period)] as const,
   personContributions: (personId: string, filters: PersonContributionFilters) =>
@@ -78,10 +73,7 @@ export interface ContributionFilters {
   platformInstance?: string;
 }
 
-export const useCompareTeams = (
-  teamIds: string[],
-  period: Period,
-): UseQueryResult<TeamMetrics[], Error> =>
+export const useCompareTeams = (teamIds: string[], period: Period): UseQueryResult<TeamMetrics[], Error> =>
   useQuery({
     queryKey: metricsKeys.compare(teamIds, period),
     queryFn: () => metricsClient.compareTeams({ teamIds, period }),
@@ -121,10 +113,7 @@ export const useListTeamContributions = (
     placeholderData: keepPreviousData,
   });
 
-export const useGetFlowMetrics = (
-  teamId: string,
-  period: Period,
-): UseQueryResult<GetFlowMetricsResponse, Error> =>
+export const useGetFlowMetrics = (teamId: string, period: Period): UseQueryResult<GetFlowMetricsResponse, Error> =>
   useQuery({
     queryKey: metricsKeys.flow(teamId, period),
     queryFn: () => metricsClient.getFlowMetrics({ teamId, period }),
@@ -184,10 +173,7 @@ export const useListPersonContributions = (
 export const useTeamContributionCount = (
   teamId: string,
   period: Period,
-  filters: Omit<
-    ContributionFilters,
-    "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc"
-  >,
+  filters: Omit<ContributionFilters, "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc">,
 ): UseQueryResult<number, Error> => {
   const full: ContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
   return useQuery({
@@ -211,10 +197,7 @@ export const useTeamContributionCount = (
 /** Lightweight hook that fetches only the totalCount for person contributions. */
 export const usePersonContributionCount = (
   personId: string,
-  filters: Omit<
-    PersonContributionFilters,
-    "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc"
-  >,
+  filters: Omit<PersonContributionFilters, "pageSize" | "pageIndex" | "search" | "sortField" | "sortDesc">,
 ): UseQueryResult<number, Error> => {
   const full: PersonContributionFilters = { ...filters, pageSize: 1, pageIndex: 0 };
   return useQuery({

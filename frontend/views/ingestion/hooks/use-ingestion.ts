@@ -15,18 +15,14 @@ import type {
 import { HandlersService } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { transport } from "@ps/api/transport";
 
-type RefetchInterval =
-  | number
-  | false
-  | ((query: { state: { data: GetStatusResponse | undefined } }) => number | false);
+type RefetchInterval = number | false | ((query: { state: { data: GetStatusResponse | undefined } }) => number | false);
 
 const handlersClient = createClient(HandlersService, transport);
 
 export const handlersKeys = {
   all: ["handlers"] as const,
   status: (): readonly ["handlers", "status"] => [...handlersKeys.all, "status"] as const,
-  runs: (sourceName?: string, handlerName?: string) =>
-    [...handlersKeys.all, "runs", sourceName, handlerName] as const,
+  runs: (sourceName?: string, handlerName?: string) => [...handlersKeys.all, "runs", sourceName, handlerName] as const,
   handlers: (): readonly ["handlers", "handlers"] => [...handlersKeys.all, "handlers"] as const,
 };
 
@@ -76,8 +72,7 @@ export const useTriggerBackfill = (): UseMutationResult<
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: { sourceName: string; sinceDate: string }) =>
-      handlersClient.triggerBackfill(req),
+    mutationFn: (req: { sourceName: string; sinceDate: string }) => handlersClient.triggerBackfill(req),
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
       await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
@@ -115,11 +110,7 @@ export const useTriggerHandler = (): UseMutationResult<
   });
 };
 
-export const useCancelHandlerRun = (): UseMutationResult<
-  CancelHandlerRunResponse,
-  Error,
-  string
-> => {
+export const useCancelHandlerRun = (): UseMutationResult<CancelHandlerRunResponse, Error, string> => {
   const queryClient = useQueryClient();
 
   return useMutation({

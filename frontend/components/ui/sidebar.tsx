@@ -1,13 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { mergeProps } from "@base-ui/react/merge-props";
@@ -16,8 +10,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 
-import { useIsMobile } from "@ps/hooks/use-mobile";
 import { cn } from "@ps/cn";
+import { useIsMobile } from "@ps/hooks/use-mobile";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -128,10 +122,7 @@ function SidebarProvider({
             ...style,
           } as React.CSSProperties
         }
-        className={cn(
-          "group/sidebar-wrapper flex h-svh w-full has-data-[variant=inset]:bg-sidebar",
-          className,
-        )}
+        className={cn("group/sidebar-wrapper flex h-svh w-full has-data-[variant=inset]:bg-sidebar", className)}
         {...props}
       >
         {children}
@@ -159,10 +150,7 @@ function Sidebar({
     return (
       <div
         data-slot="sidebar"
-        className={cn(
-          "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
-          className,
-        )}
+        className={cn("flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground", className)}
         {...props}
       >
         {children}
@@ -242,11 +230,7 @@ function Sidebar({
   );
 }
 
-function SidebarTrigger({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button>): React.ReactElement {
+function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>): React.ReactElement {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -306,10 +290,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">): Re
   );
 }
 
-function SidebarInput({
-  className,
-  ...props
-}: React.ComponentProps<typeof Input>): React.ReactElement {
+function SidebarInput({ className, ...props }: React.ComponentProps<typeof Input>): React.ReactElement {
   return (
     <Input
       data-slot="sidebar-input"
@@ -342,10 +323,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">): Re
   );
 }
 
-function SidebarSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof Separator>): React.ReactElement {
+function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof Separator>): React.ReactElement {
   return (
     <Separator
       data-slot="sidebar-separator"
@@ -429,10 +407,7 @@ function SidebarGroupAction({
   });
 }
 
-function SidebarGroupContent({
-  className,
-  ...props
-}: React.ComponentProps<"div">): React.ReactElement {
+function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
   return (
     <div
       data-slot="sidebar-group-content"
@@ -531,12 +506,7 @@ function SidebarMenuButton({
   return (
     <Tooltip>
       {comp}
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
+      <TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile} {...tooltip} />
     </Tooltip>
   );
 }
@@ -571,10 +541,7 @@ function SidebarMenuAction({
   });
 }
 
-function SidebarMenuBadge({
-  className,
-  ...props
-}: React.ComponentProps<"div">): React.ReactElement {
+function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
   return (
     <div
       data-slot="sidebar-menu-badge"
@@ -635,10 +602,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">): Re
   );
 }
 
-function SidebarMenuSubItem({
-  className,
-  ...props
-}: React.ComponentProps<"li">): React.ReactElement {
+function SidebarMenuSubItem({ className, ...props }: React.ComponentProps<"li">): React.ReactElement {
   return (
     <li
       data-slot="sidebar-menu-sub-item"

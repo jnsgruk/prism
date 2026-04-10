@@ -2,14 +2,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,12 +92,7 @@ const TeamHeader = ({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Clear selection"
-            onClick={() => onSelectTeam(null)}
-          >
+          <Button variant="ghost" size="icon-sm" title="Clear selection" onClick={() => onSelectTeam(null)}>
             <X className="size-3.5" />
           </Button>
         </div>
@@ -130,16 +118,11 @@ const LinkedTeamsCard = ({ teamId }: { teamId: string }): React.ReactElement => 
         </Button>
       </div>
       {ghCount === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No GitHub teams linked. Link a team to scope ingestion.
-        </p>
+        <p className="text-sm text-muted-foreground">No GitHub teams linked. Link a team to scope ingestion.</p>
       ) : (
         <div className="space-y-2">
           {githubTeams?.map((gt) => (
-            <div
-              key={gt.id}
-              className="flex items-center justify-between gap-2 rounded border px-3 py-2"
-            >
+            <div key={gt.id} className="flex items-center justify-between gap-2 rounded border px-3 py-2">
               <div className="flex min-w-0 items-center gap-2">
                 <GitBranch className="size-3.5 shrink-0 text-muted-foreground" />
                 <span className="truncate text-sm">
@@ -150,11 +133,7 @@ const LinkedTeamsCard = ({ teamId }: { teamId: string }): React.ReactElement => 
                 <span className="text-xs text-muted-foreground">
                   {Number(gt.memberCount)} members · {Number(gt.repoCount)} repos
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => unassign.mutate({ teamId, githubTeamId: gt.id })}
-                >
+                <Button variant="ghost" size="icon-sm" onClick={() => unassign.mutate({ teamId, githubTeamId: gt.id })}>
                   <X className="size-3" />
                 </Button>
               </div>
@@ -292,12 +271,8 @@ export const OrgPeoplePanel = ({
       {/* Mobile-only team picker (hidden on md+) */}
       <div className="md:hidden">
         <Popover open={teamPickerOpen} onOpenChange={setTeamPickerOpen}>
-          <PopoverTrigger
-            render={<Button variant="outline" size="sm" className="h-8 w-full justify-between" />}
-          >
-            <span className="truncate">
-              {isUnassigned ? "Unassigned" : (selectedTeam?.name ?? "All teams")}
-            </span>
+          <PopoverTrigger render={<Button variant="outline" size="sm" className="h-8 w-full justify-between" />}>
+            <span className="truncate">{isUnassigned ? "Unassigned" : (selectedTeam?.name ?? "All teams")}</span>
             {teamId ? (
               <X
                 className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
@@ -374,9 +349,7 @@ export const OrgPeoplePanel = ({
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
           <Users className="mb-3 size-10 text-muted-foreground" />
           <p className="mb-1 font-medium">No team members</p>
-          <p className="text-sm text-muted-foreground">
-            People will appear here once they are assigned to this team.
-          </p>
+          <p className="text-sm text-muted-foreground">People will appear here once they are assigned to this team.</p>
         </div>
       ) : (
         <div className="space-y-4 rounded-lg border p-4">

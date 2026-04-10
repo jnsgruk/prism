@@ -9,22 +9,7 @@ const formatSize = (bytes: number): string => {
 const getFileIcon = (name: string): React.ReactElement => {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"];
-  const codeExts = [
-    "ts",
-    "tsx",
-    "js",
-    "jsx",
-    "py",
-    "rs",
-    "go",
-    "java",
-    "rb",
-    "sh",
-    "sql",
-    "c",
-    "cpp",
-    "h",
-  ];
+  const codeExts = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "rb", "sh", "sql", "c", "cpp", "h"];
   const textExts = ["txt", "md", "csv", "log", "json", "yaml", "yml", "toml", "xml", "html", "css"];
 
   if (imageExts.includes(ext)) return <Image className="size-3.5 shrink-0" />;

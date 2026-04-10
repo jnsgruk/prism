@@ -1,14 +1,12 @@
-import { Database, HardDrive } from "lucide-react";
-
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-
-import { useSystemInfo } from "@/views/admin/hooks/use-admin";
 import { ApiTokensSection } from "@/views/admin/components/api-tokens-section";
 import { ResetDataDialog } from "@/views/admin/components/reset-data-dialog";
+import { useSystemInfo } from "@/views/admin/hooks/use-admin";
+import { Database, HardDrive } from "lucide-react";
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 B";
@@ -34,9 +32,7 @@ const StorageSection = (): React.ReactElement => {
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>
-          {error instanceof Error ? error.message : "Failed to load system info"}
-        </AlertDescription>
+        <AlertDescription>{error instanceof Error ? error.message : "Failed to load system info"}</AlertDescription>
       </Alert>
     );
   }
@@ -115,8 +111,8 @@ export const SystemTab = (): React.ReactElement => (
         <div>
           <p className="text-sm font-medium">Reset all data</p>
           <p className="text-sm text-muted-foreground">
-            Permanently delete all contributions, teams, people, and metric snapshots. Source
-            configurations will be preserved.
+            Permanently delete all contributions, teams, people, and metric snapshots. Source configurations will be
+            preserved.
           </p>
         </div>
         <ResetDataDialog />

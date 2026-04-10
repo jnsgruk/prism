@@ -11,19 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useSetSecret } from "@ps/hooks/use-config";
-
-import { SECRET_KEYS_BY_TYPE, baseSourceType } from "@/views/admin/lib/source-types";
 
 export const SetSecretDialog = ({
   source,
@@ -81,9 +74,7 @@ export const SetSecretDialog = ({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="secret-value">
-                {secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}
-              </Label>
+              <Label htmlFor="secret-value">{secretKeys.length <= 1 ? `Value (${selectedKey})` : "Value"}</Label>
               <Input
                 id="secret-value"
                 type="password"
@@ -97,9 +88,7 @@ export const SetSecretDialog = ({
 
             {setSecret.isError && (
               <Alert variant="destructive">
-                {setSecret.error instanceof Error
-                  ? setSecret.error.message
-                  : "Failed to set secret"}
+                {setSecret.error instanceof Error ? setSecret.error.message : "Failed to set secret"}
               </Alert>
             )}
           </div>

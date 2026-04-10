@@ -1,11 +1,4 @@
-export {
-  useSetupStatus,
-  useCurrentUser,
-  useCompleteSetup,
-  useLogin,
-  useLogout,
-  authKeys,
-} from "./use-auth";
+export { useSetupStatus, useCurrentUser, useCompleteSetup, useLogin, useLogout, authKeys } from "./use-auth";
 export {
   useListSources,
   useGetSource,
@@ -35,12 +28,7 @@ export type {
 } from "./use-metrics";
 export { useIsMobile } from "./use-mobile";
 export { useDebouncedValue } from "./use-debounced-value";
-export {
-  useEmbeddingSimilar,
-  useEmbeddingSearch,
-  useEmbeddingStatus,
-  embeddingKeys,
-} from "./use-embeddings";
+export { useEmbeddingSimilar, useEmbeddingSearch, useEmbeddingStatus, embeddingKeys } from "./use-embeddings";
 export {
   useAiSettings,
   useUpdateAiSettings,

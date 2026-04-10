@@ -1,7 +1,6 @@
-import { Activity } from "lucide-react";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Activity } from "lucide-react";
 
 export const MetricCard = ({
   label,

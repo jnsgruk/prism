@@ -3,40 +3,24 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  GitPullRequest,
-  Loader2,
-  Users,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
-
-import { ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import {
-  useCompareTeams,
-  useGetFlowMetrics,
-  useTeamContributionCount,
-} from "@/lib/hooks/use-metrics";
-import { useTeamInsights } from "@/views/teams/hooks/use-insights";
+import { useCompareTeams, useGetFlowMetrics, useTeamContributionCount } from "@/lib/hooks/use-metrics";
 import { CommunityPanel } from "@/views/teams/components/community-panel";
 import { ComparisonTable } from "@/views/teams/components/comparison-table";
 import { ContributionTable } from "@/views/teams/components/contribution-table";
 import { DeliveryPanel } from "@/views/teams/components/delivery-panel";
 import { DiscourseActivitySection } from "@/views/teams/components/discourse-activity-section";
 import { FlowPanel } from "@/views/teams/components/flow-panel";
-import {
-  buildPeriod,
-  defaultPeriodKey,
-  PeriodSelector,
-} from "@/views/teams/components/period-selector";
+import { buildPeriod, defaultPeriodKey, PeriodSelector } from "@/views/teams/components/period-selector";
 import { ReviewDistribution } from "@/views/teams/components/review-distribution";
 import { TeamBreadcrumb } from "@/views/teams/components/team-breadcrumb";
 import { TeamInsightsSection } from "@/views/teams/components/team-insights-section";
+import { useTeamInsights } from "@/views/teams/hooks/use-insights";
 import { findTeam, useGetTeam, useGetTeamTree } from "@/views/teams/hooks/use-teams";
+import { AlertCircle, ChevronDown, ChevronRight, Clock, GitPullRequest, Loader2, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
+
+import { ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 const TeamsPage = (): React.ReactElement => {
   const { teamId } = useParams<{ teamId: string }>();
@@ -73,11 +57,7 @@ const TeamsPage = (): React.ReactElement => {
 
   // Fetch children metrics for comparison table
   const childIds = useMemo(() => selectedTeam?.children.map((c) => c.id) ?? [], [selectedTeam]);
-  const {
-    data: childMetrics,
-    isLoading: metricsLoading,
-    error: metricsError,
-  } = useCompareTeams(childIds, period);
+  const { data: childMetrics, isLoading: metricsLoading, error: metricsError } = useCompareTeams(childIds, period);
 
   // Fetch the selected team's own metrics
   const teamIdArray = useMemo(() => (effectiveTeamId ? [effectiveTeamId] : []), [effectiveTeamId]);
@@ -123,16 +103,13 @@ const TeamsPage = (): React.ReactElement => {
   const discourseRef = useRef<HTMLDivElement>(null);
   const membersRef = useRef<HTMLDivElement>(null);
 
-  const scrollToAndOpen = useCallback(
-    (ref: React.RefObject<HTMLDivElement | null>, setOpen: (v: boolean) => void) => {
-      setOpen(true);
-      // Allow collapsible to open before scrolling
-      requestAnimationFrame(() => {
-        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    },
-    [],
-  );
+  const scrollToAndOpen = useCallback((ref: React.RefObject<HTMLDivElement | null>, setOpen: (v: boolean) => void) => {
+    setOpen(true);
+    // Allow collapsible to open before scrolling
+    requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   return (
     <>
@@ -178,11 +155,7 @@ const TeamsPage = (): React.ReactElement => {
         )}
 
         {selectedTeam && (
-          <TeamInsightsSection
-            insights={teamInsights}
-            isLoading={insightsLoading}
-            error={insightsError}
-          />
+          <TeamInsightsSection insights={teamInsights} isLoading={insightsLoading} error={insightsError} />
         )}
 
         {selectedTeam && <FlowPanel metrics={currentMetrics} />}
@@ -208,11 +181,7 @@ const TeamsPage = (): React.ReactElement => {
         {/* Discourse Activity — collapsible, lazy-loaded */}
         {selectedTeam && (
           <div ref={discourseRef}>
-            <DiscourseActivitySection
-              teamId={effectiveTeamId}
-              period={period}
-              metrics={currentMetrics}
-            />
+            <DiscourseActivitySection teamId={effectiveTeamId} period={period} metrics={currentMetrics} />
           </div>
         )}
 
@@ -223,15 +192,9 @@ const TeamsPage = (): React.ReactElement => {
               <Card>
                 <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
                   <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
+                    render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                   >
-                    {prsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
+                    {prsOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
                     {prTotalCount !== undefined && prTotalCount > 0 && (
@@ -262,15 +225,9 @@ const TeamsPage = (): React.ReactElement => {
               <Card>
                 <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
                   <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
+                    render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                   >
-                    {reviewsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
+                    {reviewsOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
                     {reviewTotalCount !== undefined && reviewTotalCount > 0 && (
@@ -302,9 +259,7 @@ const TeamsPage = (): React.ReactElement => {
               <Card>
                 <CardHeader className="cursor-pointer" onClick={() => setMembersOpen(!membersOpen)}>
                   <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
+                    render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                   >
                     {hasChildren && membersOpen && <ChevronDown className="size-4" />}
                     {hasChildren && !membersOpen && <ChevronRight className="size-4" />}
@@ -324,16 +279,11 @@ const TeamsPage = (): React.ReactElement => {
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{person.name}</p>
-                            {person.email && (
-                              <p className="truncate text-xs text-muted-foreground">
-                                {person.email}
-                              </p>
-                            )}
+                            {person.email && <p className="truncate text-xs text-muted-foreground">{person.email}</p>}
                           </div>
                           {person.identities.length > 0 && (
                             <Badge variant="secondary">
-                              {person.identities.length}{" "}
-                              {person.identities.length === 1 ? "identity" : "identities"}
+                              {person.identities.length} {person.identities.length === 1 ? "identity" : "identities"}
                             </Badge>
                           )}
                         </button>

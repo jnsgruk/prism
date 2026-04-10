@@ -15,11 +15,7 @@ const formatMetricValue = (name: string, value: number): string => {
   return fmtFloat(value);
 };
 
-export const PeerContextPanel = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement | null => {
+export const PeerContextPanel = ({ profile }: { profile: GetIndividualProfileResponse }): React.ReactElement | null => {
   const peer = profile.peerContext;
   if (!peer || peer.peerCount === 0) return null;
 
@@ -34,15 +30,10 @@ export const PeerContextPanel = ({
       <CardContent>
         <div className="space-y-2">
           {Object.entries(peer.metrics).map(([name, p]) => (
-            <div
-              key={name}
-              className="flex items-center justify-between rounded-md border px-3 py-2"
-            >
+            <div key={name} className="flex items-center justify-between rounded-md border px-3 py-2">
               <span className="text-sm">{metricLabels[name] ?? name.replace(/_/g, " ")}</span>
               <div className="flex items-center gap-2">
-                <span className="tabular-nums text-sm font-medium">
-                  {formatMetricValue(name, p.value)}
-                </span>
+                <span className="tabular-nums text-sm font-medium">{formatMetricValue(name, p.value)}</span>
                 <Badge variant="secondary" className="text-[10px]">
                   {fmtPercent(p.percentile)} percentile
                 </Badge>

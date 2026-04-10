@@ -10,15 +10,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
-
-import type { JsonObject } from "@bufbuild/protobuf";
-import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
-import { useUpdateSource } from "@ps/hooks/use-config";
-
 import { SecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
 import { baseSourceType } from "@/views/admin/lib/source-types";
+import type { JsonObject } from "@bufbuild/protobuf";
+import { useEffect, useState } from "react";
+
+import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
+import { useUpdateSource } from "@ps/hooks/use-config";
 
 export const EditSourceDialog = ({
   source,
@@ -64,9 +63,7 @@ export const EditSourceDialog = ({
           {SettingsForm ? (
             <SettingsForm settings={settings} onChange={setSettings} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No configurable settings for this source type.
-            </p>
+            <p className="text-sm text-muted-foreground">No configurable settings for this source type.</p>
           )}
 
           <Separator />
@@ -79,9 +76,7 @@ export const EditSourceDialog = ({
 
         {updateSource.isError && (
           <Alert variant="destructive">
-            {updateSource.error instanceof Error
-              ? updateSource.error.message
-              : "Failed to update source"}
+            {updateSource.error instanceof Error ? updateSource.error.message : "Failed to update source"}
           </Alert>
         )}
 

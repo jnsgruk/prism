@@ -6,6 +6,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
@@ -20,7 +22,6 @@ import {
   RevokeApiTokenRequest,
   RevokeApiTokenResponse,
 } from "./admin_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * AdminService provides privileged operations for instance administrators

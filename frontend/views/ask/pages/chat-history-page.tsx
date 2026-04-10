@@ -1,27 +1,15 @@
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useDeleteConversation, useListConversations, useRenameConversation } from "@/lib/hooks/use-conversations";
 import { Check, MessageSquare, Pencil, Search, Trash2, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import type { ConversationSummary } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-
-import {
-  useDeleteConversation,
-  useListConversations,
-  useRenameConversation,
-} from "@/lib/hooks/use-conversations";
 
 const formatRelative = (ts?: { seconds: bigint }): string => {
   if (!ts) return "";
@@ -69,9 +57,7 @@ const ConversationRow = ({
 
   return (
     <div className="group flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50">
-      <span
-        className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`}
-      />
+      <span className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`} />
       <div className="min-w-0 flex-1">
         {isEditing ? (
           <div className="flex items-center gap-2">
@@ -94,11 +80,7 @@ const ConversationRow = ({
             >
               <Check className="size-3.5 text-green-600" />
             </button>
-            <button
-              type="button"
-              className="shrink-0 rounded p-1 hover:bg-accent"
-              onClick={onRenameCancel}
-            >
+            <button type="button" className="shrink-0 rounded p-1 hover:bg-accent" onClick={onRenameCancel}>
               <X className="size-3.5 text-muted-foreground" />
             </button>
           </div>
@@ -117,18 +99,10 @@ const ConversationRow = ({
       </div>
       {!isEditing && (
         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
-            className="rounded p-1.5 hover:bg-accent"
-            onClick={() => onRenameStart(conv.id)}
-          >
+          <button type="button" className="rounded p-1.5 hover:bg-accent" onClick={() => onRenameStart(conv.id)}>
             <Pencil className="size-3.5 text-muted-foreground" />
           </button>
-          <button
-            type="button"
-            className="rounded p-1.5 hover:bg-destructive/10"
-            onClick={() => onDelete(conv.id)}
-          >
+          <button type="button" className="rounded p-1.5 hover:bg-destructive/10" onClick={() => onDelete(conv.id)}>
             <Trash2 className="size-3.5 text-destructive" />
           </button>
         </div>
@@ -158,16 +132,14 @@ const ChatHistoryPage = (): React.ReactElement => {
   };
 
   const conversations = (data?.conversations ?? []).filter(
-    (c) =>
-      !debouncedSearch || (c.title ?? "").toLowerCase().includes(debouncedSearch.toLowerCase()),
+    (c) => !debouncedSearch || (c.title ?? "").toLowerCase().includes(debouncedSearch.toLowerCase()),
   );
 
   const handleDelete = useCallback(
     (id: string) => {
       deleteMutation.mutate(id, {
         onSuccess: () => toast.success("Conversation deleted"),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to delete conversation"),
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to delete conversation"),
       });
     },
     [deleteMutation],
@@ -193,8 +165,7 @@ const ChatHistoryPage = (): React.ReactElement => {
             toast.success("Conversation renamed");
             setEditingId(null);
           },
-          onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Failed to rename conversation"),
+          onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to rename conversation"),
         },
       );
     },
@@ -234,13 +205,9 @@ const ChatHistoryPage = (): React.ReactElement => {
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
             <MessageSquare className="size-10 text-muted-foreground" />
-            <p className="mb-1 font-medium">
-              {debouncedSearch ? "No matching conversations" : "No conversations yet"}
-            </p>
+            <p className="mb-1 font-medium">{debouncedSearch ? "No matching conversations" : "No conversations yet"}</p>
             <p className="text-sm text-muted-foreground">
-              {debouncedSearch
-                ? "Try a different search term"
-                : "Start a conversation from the Ask page"}
+              {debouncedSearch ? "Try a different search term" : "Start a conversation from the Ask page"}
             </p>
           </div>
         ) : (
@@ -267,8 +234,7 @@ const ChatHistoryPage = (): React.ReactElement => {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This will permanently delete {data?.totalCount ?? 0} conversation
-            {(data?.totalCount ?? 0) !== 1 ? "s" : ""} and reap their containers. This action cannot
-            be undone.
+            {(data?.totalCount ?? 0) !== 1 ? "s" : ""} and reap their containers. This action cannot be undone.
           </p>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>

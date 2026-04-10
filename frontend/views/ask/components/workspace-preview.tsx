@@ -1,9 +1,7 @@
-import { Loader2, Maximize2, X } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
-
-import { type ArtifactDisplay, formatSize, isTextContent } from "@/views/ask/hooks/use-file-tree";
 import { CodePreview } from "@/views/ask/components/code-preview";
+import { type ArtifactDisplay, formatSize, isTextContent } from "@/views/ask/hooks/use-file-tree";
+import { Loader2, Maximize2, X } from "lucide-react";
 
 type PreviewState = {
   artifact: ArtifactDisplay;
@@ -16,11 +14,7 @@ const PreviewContent = ({ state }: { state: PreviewState }): React.ReactElement 
   if (state.contentType.startsWith("image/")) {
     return (
       <div className="flex items-center justify-center p-2">
-        <img
-          src={state.url}
-          alt={state.artifact.displayName}
-          className="max-h-full rounded object-contain"
-        />
+        <img src={state.url} alt={state.artifact.displayName} className="max-h-full rounded object-contain" />
       </div>
     );
   }
@@ -45,11 +39,7 @@ const PreviewContent = ({ state }: { state: PreviewState }): React.ReactElement 
     );
   }
 
-  return (
-    <p className="py-4 text-center text-xs text-muted-foreground">
-      Preview not available for this file type.
-    </p>
-  );
+  return <p className="py-4 text-center text-xs text-muted-foreground">Preview not available for this file type.</p>;
 };
 
 export const WorkspacePreview = ({
@@ -81,12 +71,8 @@ export const WorkspacePreview = ({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-1.5 border-b px-2 py-1.5">
-        <span className="min-w-0 flex-1 truncate text-xs font-medium">
-          {state.artifact.displayName}
-        </span>
-        <span className="shrink-0 text-[10px] text-muted-foreground">
-          {formatSize(state.artifact.sizeBytes)}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium">{state.artifact.displayName}</span>
+        <span className="shrink-0 text-[10px] text-muted-foreground">{formatSize(state.artifact.sizeBytes)}</span>
         <Button variant="ghost" size="icon" className="size-5 shrink-0" onClick={onExpand}>
           <Maximize2 className="size-3" />
         </Button>

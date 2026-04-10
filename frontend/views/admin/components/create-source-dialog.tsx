@@ -12,25 +12,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Plus } from "lucide-react";
-import { useState } from "react";
-
-import type { JsonObject } from "@bufbuild/protobuf";
-import { useCreateSource, useSetSecret } from "@ps/hooks/use-config";
 import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
-
-import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { BufferedSecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
 import { SECRET_KEYS_BY_TYPE, SOURCE_TYPES } from "@/views/admin/lib/source-types";
+import type { JsonObject } from "@bufbuild/protobuf";
+import { ArrowLeft, Plus } from "lucide-react";
+import { useState } from "react";
+
+import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import { useCreateSource, useSetSecret } from "@ps/hooks/use-config";
 
 type Step = "basics" | "configure";
 
@@ -92,8 +85,7 @@ export const CreateSourceDialog = (): React.ReactElement => {
     try {
       // Create the source with settings
       const settingsPayload = Object.keys(settings).length > 0 ? settings : undefined;
-      const platformEnum =
-        SOURCE_TYPES.find((t) => t.value === sourceType)?.platform ?? Platform.GITHUB;
+      const platformEnum = SOURCE_TYPES.find((t) => t.value === sourceType)?.platform ?? Platform.GITHUB;
       const result = await createSource.mutateAsync({
         sourceType: platformEnum,
         name,
@@ -154,9 +146,7 @@ export const CreateSourceDialog = (): React.ReactElement => {
                 <Label htmlFor="source-type">Type</Label>
                 <Select value={sourceType} onValueChange={(v) => v !== null && handleTypeChange(v)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue>
-                      {SOURCE_TYPES.find((t) => t.value === sourceType)?.label ?? sourceType}
-                    </SelectValue>
+                    <SelectValue>{SOURCE_TYPES.find((t) => t.value === sourceType)?.label ?? sourceType}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {SOURCE_TYPES.map((t) => (
@@ -196,11 +186,7 @@ export const CreateSourceDialog = (): React.ReactElement => {
               {secretKeys.length > 0 && (
                 <div>
                   <p className="mb-3 text-sm font-medium">Credentials</p>
-                  <BufferedSecretForm
-                    sourceType={sourceType}
-                    secrets={secrets}
-                    onSecretsChange={setSecrets}
-                  />
+                  <BufferedSecretForm sourceType={sourceType} secrets={secrets} onSecretsChange={setSecrets} />
                 </div>
               )}
             </div>
@@ -212,12 +198,7 @@ export const CreateSourceDialog = (): React.ReactElement => {
             )}
 
             <DialogFooter className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep("basics")}
-                disabled={creating}
-              >
+              <Button type="button" variant="outline" onClick={() => setStep("basics")} disabled={creating}>
                 <ArrowLeft className="size-4" />
                 Back
               </Button>

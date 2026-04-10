@@ -5,11 +5,7 @@ import { cn } from "@ps/cn";
 function Table({ className, ...props }: React.ComponentProps<"table">): React.ReactElement {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+      <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );
 }
@@ -19,13 +15,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">): Re
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">): React.ReactElement {
-  return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
-  );
+  return <tbody data-slot="table-body" className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
 }
 
 function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">): React.ReactElement {
@@ -42,10 +32,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">): React.Re
   return (
     <tr
       data-slot="table-row"
-      className={cn(
-        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-        className,
-      )}
+      className={cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)}
       {...props}
     />
   );
@@ -74,16 +61,9 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">): React.R
   );
 }
 
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">): React.ReactElement {
+function TableCaption({ className, ...props }: React.ComponentProps<"caption">): React.ReactElement {
   return (
-    <caption
-      data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
-      {...props}
-    />
+    <caption data-slot="table-caption" className={cn("mt-4 text-sm text-muted-foreground", className)} {...props} />
   );
 }
 

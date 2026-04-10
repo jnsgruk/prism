@@ -1,24 +1,17 @@
-import { ArrowUp, Plus, Square } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
-
 import { Button } from "@/components/ui/button";
+import { useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
 import { ContextIndicator } from "@/views/ask/components/context-indicator";
-import {
-  FileAttachmentChips,
-  type AttachedFileInfo,
-} from "@/views/ask/components/file-attachment-chips";
+import { FileAttachmentChips, type AttachedFileInfo } from "@/views/ask/components/file-attachment-chips";
 import { MentionPopover, type NavigateHandle } from "@/views/ask/components/mention-popover";
 import { ModelSelector } from "@/views/ask/components/model-selector";
 import { PodStatusIndicator } from "@/views/ask/components/pod-status-indicator";
 import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
 import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
-import {
-  useMentionPicker,
-  extractContent,
-  type MentionItem,
-} from "@/views/ask/hooks/use-mention-picker";
-import { useListWorkspaceFiles } from "@/lib/hooks/use-conversations";
+import { useMentionPicker, extractContent, type MentionItem } from "@/views/ask/hooks/use-mention-picker";
 import { useListPeople, useListTeams } from "@/views/teams/hooks/use-teams";
+import { ArrowUp, Plus, Square } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+
 import { cn } from "@ps/cn";
 
 export const QueryInput = ({
@@ -57,8 +50,7 @@ export const QueryInput = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { mentionQuery, mentionActive, detectMention, insertPill, closeMention } =
-    useMentionPicker();
+  const { mentionQuery, mentionActive, detectMention, insertPill, closeMention } = useMentionPicker();
 
   // Workspace files for the @ mention picker (only when conversation exists)
   const { data: workspaceData } = useListWorkspaceFiles(conversationId ?? "");
@@ -240,17 +232,13 @@ export const QueryInput = ({
         role="textbox"
         aria-multiline
         aria-placeholder={
-          selectedModel?.startsWith("image:")
-            ? "Describe an image..."
-            : "Ask a question about your engineering data..."
+          selectedModel?.startsWith("image:") ? "Describe an image..." : "Ask a question about your engineering data..."
         }
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         data-placeholder={
-          selectedModel?.startsWith("image:")
-            ? "Describe an image..."
-            : "Ask a question about your engineering data..."
+          selectedModel?.startsWith("image:") ? "Describe an image..." : "Ask a question about your engineering data..."
         }
         className="min-h-[36px] max-h-[200px] w-full overflow-y-auto bg-transparent px-4 pt-3 pb-2 text-sm outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
       />
@@ -269,13 +257,7 @@ export const QueryInput = ({
               >
                 <Plus className="size-4" />
               </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                onChange={handleFileInput}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" multiple onChange={handleFileInput} className="hidden" />
             </>
           )}
           <ModelSelector value={selectedModel} onSelect={onModelChange} disabled={isStreaming} />
@@ -297,12 +279,7 @@ export const QueryInput = ({
               <Square className="size-3.5" />
             </Button>
           ) : (
-            <Button
-              size="icon"
-              className="size-8"
-              onClick={handleSubmit}
-              disabled={!enableSubmit || disabled}
-            >
+            <Button size="icon" className="size-8" onClick={handleSubmit} disabled={!enableSubmit || disabled}>
               <ArrowUp className="size-4" />
             </Button>
           )}

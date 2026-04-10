@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useRef } from "react";
-import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
+import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
+
 import { AgentResponse } from "./agent-response";
+import { AnswerContent } from "./answer-content";
 import { ContainerStatus } from "./container-status";
 import { EvidencePanel } from "./evidence-panel";
 import { ThinkingSteps } from "./thinking-steps";
 import { UserMessage } from "./user-message";
-import { AnswerContent } from "./answer-content";
 
 const parseReasoningTrace = (json?: string): AgentStep[] => {
   if (!json) return [];
@@ -89,13 +90,7 @@ const HistoricalAssistantMessage = ({
 
 /** Inline error message rendered for `role = "error"` messages in history
  *  and for live error states. Includes a retry button when `onRetry` is provided. */
-const InlineError = ({
-  content,
-  onRetry,
-}: {
-  content: string;
-  onRetry?: () => void;
-}): React.ReactElement => (
+const InlineError = ({ content, onRetry }: { content: string; onRetry?: () => void }): React.ReactElement => (
   <div className="flex gap-3">
     <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
       <AlertCircle className="size-3.5" />
@@ -164,9 +159,7 @@ export const ConversationThread = ({
     // so the server's copy of the current turn doesn't duplicate AgentResponse.
     // If the question isn't in messages yet (optimistic submit), show everything.
     const question = state.question;
-    const cutoffIdx = question
-      ? deduped.findLastIndex((m) => m.role === "user" && m.content === question)
-      : -1;
+    const cutoffIdx = question ? deduped.findLastIndex((m) => m.role === "user" && m.content === question) : -1;
 
     if (cutoffIdx === -1) return deduped;
     return deduped.filter((_, i) => i <= cutoffIdx);
@@ -207,9 +200,7 @@ export const ConversationThread = ({
           {!messages.some((m) => m.role === "user" && m.content === state.question) && (
             <UserMessage
               content={state.question}
-              attachedFiles={
-                submittedFiles && submittedFiles.length > 0 ? submittedFiles : undefined
-              }
+              attachedFiles={submittedFiles && submittedFiles.length > 0 ? submittedFiles : undefined}
               onFileClick={onFileClick}
             />
           )}

@@ -12,9 +12,7 @@ export const SourcesTab = (): React.ReactElement => {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Configure data sources and their credentials.
-        </p>
+        <p className="text-sm text-muted-foreground">Configure data sources and their credentials.</p>
         <CreateSourceDialog />
       </div>
 

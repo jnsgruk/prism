@@ -3,11 +3,7 @@ import * as React from "react";
 
 import { cn } from "@ps/cn";
 
-function Separator({
-  className,
-  orientation = "horizontal",
-  ...props
-}: SeparatorPrimitive.Props): React.ReactElement {
+function Separator({ className, orientation = "horizontal", ...props }: SeparatorPrimitive.Props): React.ReactElement {
   return (
     <SeparatorPrimitive
       data-slot="separator"

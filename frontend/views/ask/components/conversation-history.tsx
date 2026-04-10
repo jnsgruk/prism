@@ -1,33 +1,15 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDeleteConversation, useListConversations, useRenameConversation } from "@/lib/hooks/use-conversations";
 import { Check, ChevronDown, MessageSquare, Pencil, Trash2, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ConversationSummary } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-
-import {
-  useDeleteConversation,
-  useListConversations,
-  useRenameConversation,
-} from "@/lib/hooks/use-conversations";
 
 const formatRelative = (ts?: { seconds: bigint }): string => {
   if (!ts) return "";
@@ -80,9 +62,7 @@ const ConversationItemContent = ({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <span
-          className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`}
-        />
+        <span className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`} />
         <input
           ref={inputRef}
           type="text"
@@ -102,11 +82,7 @@ const ConversationItemContent = ({
         >
           <Check className="size-3.5 text-green-600" />
         </button>
-        <button
-          type="button"
-          className="shrink-0 rounded p-1 hover:bg-accent"
-          onClick={onRenameCancel}
-        >
+        <button type="button" className="shrink-0 rounded p-1 hover:bg-accent" onClick={onRenameCancel}>
           <X className="size-3.5 text-muted-foreground" />
         </button>
       </div>
@@ -117,9 +93,7 @@ const ConversationItemContent = ({
     <div className="flex w-full items-center gap-2">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span
-            className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`}
-          />
+          <span className={`inline-block size-2 shrink-0 rounded-full ${statusDot(conv.containerStatus)}`} />
           <span className="truncate text-sm">{conv.title || "Untitled conversation"}</span>
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
@@ -167,8 +141,7 @@ export const ConversationHistory = (): React.ReactElement => {
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const currentTitle =
-    data?.conversations.find((c) => c.id === conversationId)?.title ?? "New conversation";
+  const currentTitle = data?.conversations.find((c) => c.id === conversationId)?.title ?? "New conversation";
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -229,14 +202,8 @@ export const ConversationHistory = (): React.ReactElement => {
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button variant="outline" className="h-10 w-96 justify-between gap-2 px-4 text-sm" />
-          }
-        >
-          <span className="truncate text-sm">
-            {conversationId ? currentTitle : "Select conversation"}
-          </span>
+        <PopoverTrigger render={<Button variant="outline" className="h-10 w-96 justify-between gap-2 px-4 text-sm" />}>
+          <span className="truncate text-sm">{conversationId ? currentTitle : "Select conversation"}</span>
           <div className="flex items-center gap-1">
             {data && data.totalCount > 0 && <Badge variant="secondary">{data.totalCount}</Badge>}
             <ChevronDown className="size-4 text-muted-foreground" />
@@ -288,8 +255,7 @@ export const ConversationHistory = (): React.ReactElement => {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This will permanently delete {data?.totalCount ?? 0} conversation
-            {(data?.totalCount ?? 0) !== 1 ? "s" : ""} and reap their containers. This action cannot
-            be undone.
+            {(data?.totalCount ?? 0) !== 1 ? "s" : ""} and reap their containers. This action cannot be undone.
           </p>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>

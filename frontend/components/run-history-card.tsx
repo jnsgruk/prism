@@ -1,17 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, History } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
-
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { RunDetailDialog } from "@/components/run-detail-dialog";
 import { StatusFilterButtons } from "@/components/status-filter-buttons";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { StatusFilter } from "@/lib/run-status";
+import type { ColumnDef } from "@tanstack/react-table";
+import { ChevronDown, ChevronRight, History } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 type RunHistoryCardProps = {
   /** All runs (pre-filtered by entity if applicable). */
@@ -51,8 +50,7 @@ export const RunHistoryCard = ({
   const statusCounts = useMemo(() => {
     const counts = { completed: 0, failed: 0, running: 0 };
     for (const r of runs) {
-      if (r.status === RunStatus.COMPLETED || r.status === RunStatus.COMPLETED_WITH_WARNINGS)
-        counts.completed++;
+      if (r.status === RunStatus.COMPLETED || r.status === RunStatus.COMPLETED_WITH_WARNINGS) counts.completed++;
       else if (r.status === RunStatus.FAILED) counts.failed++;
       else if (r.status === RunStatus.RUNNING) counts.running++;
     }
@@ -93,19 +91,14 @@ export const RunHistoryCard = ({
     <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
       <Card>
         <CardHeader className="cursor-pointer" onClick={() => setHistoryOpen(!historyOpen)}>
-          <CollapsibleTrigger
-            render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
-          >
+          <CollapsibleTrigger render={<button type="button" className="flex w-full items-center gap-2 text-left" />}>
             {historyOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             <History className="size-4 text-muted-foreground" />
             <CardTitle className="text-sm font-semibold">Run History</CardTitle>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               {statusCounts.completed > 0 && (
                 <span>
-                  <span className="font-medium tabular-nums text-foreground">
-                    {statusCounts.completed}
-                  </span>{" "}
-                  completed
+                  <span className="font-medium tabular-nums text-foreground">{statusCounts.completed}</span> completed
                 </span>
               )}
               {statusCounts.failed > 0 && (
@@ -120,10 +113,7 @@ export const RunHistoryCard = ({
                 <>
                   {(statusCounts.completed > 0 || statusCounts.failed > 0) && <span>·</span>}
                   <span>
-                    <span className="font-medium tabular-nums text-foreground">
-                      {statusCounts.running}
-                    </span>{" "}
-                    running
+                    <span className="font-medium tabular-nums text-foreground">{statusCounts.running}</span> running
                   </span>
                 </>
               )}

@@ -18,9 +18,7 @@ describe("SignificanceBreakdown", () => {
   });
 
   it("shows counts in legend", () => {
-    const { container } = render(
-      <SignificanceBreakdown significant={5} notable={3} routine={10} />,
-    );
+    const { container } = render(<SignificanceBreakdown significant={5} notable={3} routine={10} />);
 
     const counts = container.querySelectorAll(".tabular-nums");
     const values = Array.from(counts).map((el) => el.textContent);

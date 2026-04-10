@@ -7,6 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   CompareTeamsRequest,
   CompareTeamsResponse,
@@ -27,7 +29,6 @@ import {
   ListTeamContributionsRequest,
   ListTeamContributionsResponse,
 } from "./metrics_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * MetricsService provides read access to pre-computed engineering metrics

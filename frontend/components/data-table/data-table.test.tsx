@@ -58,12 +58,7 @@ describe("DataTable", () => {
   it("calls onSortingChange when sortable header is clicked", () => {
     const onSortingChange = vi.fn();
     const { container } = render(
-      <DataTable
-        columns={sortableColumns}
-        data={data}
-        sorting={[]}
-        onSortingChange={onSortingChange}
-      />,
+      <DataTable columns={sortableColumns} data={data} sorting={[]} onSortingChange={onSortingChange} />,
     );
 
     // Click the first sortable header button

@@ -1,6 +1,5 @@
-import { Sparkles } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 
 const SUGGESTIONS = [
   "Which teams have the highest merge throughput this month?",
@@ -9,18 +8,12 @@ const SUGGESTIONS = [
   "Which repositories have the most stale open PRs?",
 ];
 
-export const SuggestedQuestions = ({
-  onSelect,
-}: {
-  onSelect: (question: string) => void;
-}): React.ReactElement => (
+export const SuggestedQuestions = ({ onSelect }: { onSelect: (question: string) => void }): React.ReactElement => (
   <div className="flex flex-col items-center justify-center space-y-6 py-12">
     <div className="flex flex-col items-center gap-2">
       <Sparkles className="size-10 text-muted-foreground" />
       <h2 className="text-lg font-medium">Ask Prism</h2>
-      <p className="text-sm text-muted-foreground">
-        Ask questions about your engineering data in natural language.
-      </p>
+      <p className="text-sm text-muted-foreground">Ask questions about your engineering data in natural language.</p>
     </div>
     <div className="grid max-w-2xl gap-2 sm:grid-cols-2">
       {SUGGESTIONS.map((q) => (

@@ -1,5 +1,6 @@
-import { create } from "@bufbuild/protobuf";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { create } from "@bufbuild/protobuf";
+
 import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { PeriodSchema, PeriodType } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 

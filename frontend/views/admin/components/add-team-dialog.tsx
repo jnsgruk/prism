@@ -11,20 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useListPeople } from "@/lib/hooks/use-org";
+import { useCreateTeam } from "@/views/admin/hooks/use-admin";
 import { useState } from "react";
 
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
-import { useCreateTeam } from "@/views/admin/hooks/use-admin";
-import { useListPeople } from "@/lib/hooks/use-org";
 
 const teamTypeOptions = [
   { value: String(TeamType.GROUP), label: "Group" },
@@ -44,11 +37,7 @@ interface AddTeamDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const AddTeamDialog = ({
-  teams,
-  open,
-  onOpenChange,
-}: AddTeamDialogProps): React.ReactElement => {
+export const AddTeamDialog = ({ teams, open, onOpenChange }: AddTeamDialogProps): React.ReactElement => {
   const createTeam = useCreateTeam();
   const { data: people } = useListPeople();
   const [name, setName] = useState("");
@@ -159,9 +148,7 @@ export const AddTeamDialog = ({
 
             {createTeam.isError && (
               <Alert variant="destructive">
-                {createTeam.error instanceof Error
-                  ? createTeam.error.message
-                  : "Failed to create team"}
+                {createTeam.error instanceof Error ? createTeam.error.message : "Failed to create team"}
               </Alert>
             )}
           </div>

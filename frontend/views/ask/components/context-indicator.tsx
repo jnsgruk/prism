@@ -1,5 +1,4 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
 import type { ContextUsage } from "@/views/ask/hooks/use-ask-question";
 
 /** Format a token count like "45K" or "1.2M". */
@@ -47,14 +46,7 @@ export const ContextIndicator = ({
           }
         >
           <svg width={SIZE} height={SIZE} className="-rotate-90">
-            <circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={RADIUS}
-              fill="none"
-              className="stroke-muted"
-              strokeWidth={STROKE}
-            />
+            <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" className="stroke-muted" strokeWidth={STROKE} />
             <circle
               cx={SIZE / 2}
               cy={SIZE / 2}
@@ -70,8 +62,7 @@ export const ContextIndicator = ({
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           <p>
-            Context: {formatTokens(used)} / {formatTokens(contextWindow)} tokens (
-            {Math.round(pct * 100)}%)
+            Context: {formatTokens(used)} / {formatTokens(contextWindow)} tokens ({Math.round(pct * 100)}%)
           </p>
           <p className="text-muted-foreground">
             Input: {formatTokens(inputTokens)} · Output: {formatTokens(outputTokens)}

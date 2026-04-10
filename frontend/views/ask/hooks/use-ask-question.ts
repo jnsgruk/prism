@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ReasoningService, type MentionType } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
@@ -122,10 +122,7 @@ export const useAskQuestion = (): {
 
   // Helper to append a step event from a proto response.
   const appendStepEvent = useCallback(
-    (
-      eventCase: string,
-      value: { stepId?: string; stepSeq?: number; [key: string]: unknown },
-    ): void => {
+    (eventCase: string, value: { stepId?: string; stepSeq?: number; [key: string]: unknown }): void => {
       let stepId = "";
       let stepSeq = 0;
       let eventType = "";
@@ -195,9 +192,7 @@ export const useAskQuestion = (): {
             streamConversationId = v.conversationId;
             queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
             setMeta((prev) =>
-              prev.status === "container_starting"
-                ? { ...prev, conversationId: streamConversationId }
-                : prev,
+              prev.status === "container_starting" ? { ...prev, conversationId: streamConversationId } : prev,
             );
             break;
           }
@@ -268,9 +263,7 @@ export const useAskQuestion = (): {
               outputTokens: Number(v.outputTokens),
               contextWindow: Number(v.contextWindow),
             };
-            setMeta((prev) =>
-              prev.status === "streaming" ? { ...prev, contextUsage: usage } : prev,
-            );
+            setMeta((prev) => (prev.status === "streaming" ? { ...prev, contextUsage: usage } : prev));
             break;
           }
 
@@ -357,9 +350,7 @@ export const useAskQuestion = (): {
       // If the stream ended without a terminal event (finalAnswer or error),
       // reset to idle so the stored conversation data is displayed.
       setMeta((prev) =>
-        prev.status === "streaming" || prev.status === "container_starting"
-          ? { status: "idle" }
-          : prev,
+        prev.status === "streaming" || prev.status === "container_starting" ? { status: "idle" } : prev,
       );
     },
     [processStream],
@@ -382,10 +373,7 @@ export const useAskQuestion = (): {
       });
 
       try {
-        const stream = client.resumeStream(
-          { conversationId, lastEventId: BigInt(0) },
-          { signal: abort.signal },
-        );
+        const stream = client.resumeStream({ conversationId, lastEventId: BigInt(0) }, { signal: abort.signal });
         await processStream(stream, abort, q, conversationId);
       } catch (err) {
         if (!abort.signal.aborted) {
@@ -400,9 +388,7 @@ export const useAskQuestion = (): {
       // already completed when we connected), reset to idle so the stored
       // conversation data is displayed instead of a stuck spinner.
       setMeta((prev) =>
-        prev.status === "streaming" || prev.status === "container_starting"
-          ? { status: "idle" }
-          : prev,
+        prev.status === "streaming" || prev.status === "container_starting" ? { status: "idle" } : prev,
       );
       // Refresh conversation data so any response completed while we were
       // away is shown from the database rather than stale cache.

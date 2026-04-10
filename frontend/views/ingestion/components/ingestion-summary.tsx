@@ -1,8 +1,8 @@
-import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-
 import { formatRelativeTime } from "@/lib/format";
 import { isActive } from "@/views/ingestion/lib/constants";
+
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 /** Inline text summary — sits next to the card title. */
 export const IngestionSummary = ({
@@ -28,8 +28,7 @@ export const IngestionSummary = ({
       {hasActive ? (
         <>
           <span>
-            <span className="font-medium tabular-nums text-foreground">{running.length}</span>{" "}
-            running
+            <span className="font-medium tabular-nums text-foreground">{running.length}</span> running
           </span>
           <span>·</span>
           <span>
@@ -47,8 +46,7 @@ export const IngestionSummary = ({
             <>
               <span>·</span>
               <span>
-                <span className="font-medium tabular-nums text-foreground">{disabledCount}</span>{" "}
-                disabled
+                <span className="font-medium tabular-nums text-foreground">{disabledCount}</span> disabled
               </span>
             </>
           )}

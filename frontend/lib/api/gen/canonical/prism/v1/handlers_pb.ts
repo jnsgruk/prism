@@ -6,13 +6,14 @@
 // @generated from file canonical/prism/v1/handlers.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Platform, RunStatus } from "./common_pb";
-import { file_canonical_prism_v1_common } from "./common_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
+
+import type { Platform, RunStatus } from "./common_pb";
+import { file_canonical_prism_v1_common } from "./common_pb";
 
 /**
  * Describes the file canonical/prism/v1/handlers.proto.
@@ -160,10 +161,7 @@ export type HandlerRun = Message<"canonical.prism.v1.HandlerRun"> & {
  * Describes the message canonical.prism.v1.HandlerRun.
  * Use `create(HandlerRunSchema)` to create a new message.
  */
-export const HandlerRunSchema: GenMessage<HandlerRun> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_handlers,
-  1,
-);
+export const HandlerRunSchema: GenMessage<HandlerRun> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_handlers, 1);
 
 /**
  * @generated from message canonical.prism.v1.GetStatusRequest
@@ -306,8 +304,10 @@ export type TriggerBackfillRequest = Message<"canonical.prism.v1.TriggerBackfill
  * Describes the message canonical.prism.v1.TriggerBackfillRequest.
  * Use `create(TriggerBackfillRequestSchema)` to create a new message.
  */
-export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 8);
+export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerBackfillResponse
@@ -318,8 +318,10 @@ export type TriggerBackfillResponse = Message<"canonical.prism.v1.TriggerBackfil
  * Describes the message canonical.prism.v1.TriggerBackfillResponse.
  * Use `create(TriggerBackfillResponseSchema)` to create a new message.
  */
-export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 9);
+export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelRunRequest
@@ -368,8 +370,10 @@ export type TriggerTeamSyncRequest = Message<"canonical.prism.v1.TriggerTeamSync
  * Describes the message canonical.prism.v1.TriggerTeamSyncRequest.
  * Use `create(TriggerTeamSyncRequestSchema)` to create a new message.
  */
-export const TriggerTeamSyncRequestSchema: GenMessage<TriggerTeamSyncRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 12);
+export const TriggerTeamSyncRequestSchema: GenMessage<TriggerTeamSyncRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerTeamSyncResponse
@@ -380,8 +384,10 @@ export type TriggerTeamSyncResponse = Message<"canonical.prism.v1.TriggerTeamSyn
  * Describes the message canonical.prism.v1.TriggerTeamSyncResponse.
  * Use `create(TriggerTeamSyncResponseSchema)` to create a new message.
  */
-export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 13);
+export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  13,
+);
 
 /**
  * ActiveRun represents a currently executing handler invocation.
@@ -420,10 +426,7 @@ export type ActiveRun = Message<"canonical.prism.v1.ActiveRun"> & {
  * Describes the message canonical.prism.v1.ActiveRun.
  * Use `create(ActiveRunSchema)` to create a new message.
  */
-export const ActiveRunSchema: GenMessage<ActiveRun> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_handlers,
-  14,
-);
+export const ActiveRunSchema: GenMessage<ActiveRun> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_handlers, 14);
 
 /**
  * HandlerInfo describes a registered Restate handler and its current state.
@@ -504,8 +507,10 @@ export type ListHandlersResponse = Message<"canonical.prism.v1.ListHandlersRespo
  * Describes the message canonical.prism.v1.ListHandlersResponse.
  * Use `create(ListHandlersResponseSchema)` to create a new message.
  */
-export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 17);
+export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  17,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerHandlerRequest
@@ -540,8 +545,10 @@ export type TriggerHandlerRequest = Message<"canonical.prism.v1.TriggerHandlerRe
  * Describes the message canonical.prism.v1.TriggerHandlerRequest.
  * Use `create(TriggerHandlerRequestSchema)` to create a new message.
  */
-export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 18);
+export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  18,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerHandlerResponse
@@ -559,8 +566,10 @@ export type TriggerHandlerResponse = Message<"canonical.prism.v1.TriggerHandlerR
  * Describes the message canonical.prism.v1.TriggerHandlerResponse.
  * Use `create(TriggerHandlerResponseSchema)` to create a new message.
  */
-export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 19);
+export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  19,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelHandlerRunRequest
@@ -578,8 +587,10 @@ export type CancelHandlerRunRequest = Message<"canonical.prism.v1.CancelHandlerR
  * Describes the message canonical.prism.v1.CancelHandlerRunRequest.
  * Use `create(CancelHandlerRunRequestSchema)` to create a new message.
  */
-export const CancelHandlerRunRequestSchema: GenMessage<CancelHandlerRunRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 20);
+export const CancelHandlerRunRequestSchema: GenMessage<CancelHandlerRunRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  20,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelHandlerRunResponse
@@ -590,8 +601,10 @@ export type CancelHandlerRunResponse = Message<"canonical.prism.v1.CancelHandler
  * Describes the message canonical.prism.v1.CancelHandlerRunResponse.
  * Use `create(CancelHandlerRunResponseSchema)` to create a new message.
  */
-export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 21);
+export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  21,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPipelineStatusRequest
@@ -602,8 +615,10 @@ export type GetPipelineStatusRequest = Message<"canonical.prism.v1.GetPipelineSt
  * Describes the message canonical.prism.v1.GetPipelineStatusRequest.
  * Use `create(GetPipelineStatusRequestSchema)` to create a new message.
  */
-export const GetPipelineStatusRequestSchema: GenMessage<GetPipelineStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 22);
+export const GetPipelineStatusRequestSchema: GenMessage<GetPipelineStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  22,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPipelineStatusResponse
@@ -628,8 +643,10 @@ export type GetPipelineStatusResponse = Message<"canonical.prism.v1.GetPipelineS
  * Describes the message canonical.prism.v1.GetPipelineStatusResponse.
  * Use `create(GetPipelineStatusResponseSchema)` to create a new message.
  */
-export const GetPipelineStatusResponseSchema: GenMessage<GetPipelineStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 23);
+export const GetPipelineStatusResponseSchema: GenMessage<GetPipelineStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  23,
+);
 
 /**
  * PipelineInfo describes a single pipeline run.
@@ -693,8 +710,10 @@ export type TriggerPipelineRequest = Message<"canonical.prism.v1.TriggerPipeline
  * Describes the message canonical.prism.v1.TriggerPipelineRequest.
  * Use `create(TriggerPipelineRequestSchema)` to create a new message.
  */
-export const TriggerPipelineRequestSchema: GenMessage<TriggerPipelineRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 25);
+export const TriggerPipelineRequestSchema: GenMessage<TriggerPipelineRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  25,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerPipelineResponse
@@ -712,8 +731,10 @@ export type TriggerPipelineResponse = Message<"canonical.prism.v1.TriggerPipelin
  * Describes the message canonical.prism.v1.TriggerPipelineResponse.
  * Use `create(TriggerPipelineResponseSchema)` to create a new message.
  */
-export const TriggerPipelineResponseSchema: GenMessage<TriggerPipelineResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 26);
+export const TriggerPipelineResponseSchema: GenMessage<TriggerPipelineResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  26,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelPipelineRequest
@@ -731,8 +752,10 @@ export type CancelPipelineRequest = Message<"canonical.prism.v1.CancelPipelineRe
  * Describes the message canonical.prism.v1.CancelPipelineRequest.
  * Use `create(CancelPipelineRequestSchema)` to create a new message.
  */
-export const CancelPipelineRequestSchema: GenMessage<CancelPipelineRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 27);
+export const CancelPipelineRequestSchema: GenMessage<CancelPipelineRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  27,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelPipelineResponse
@@ -743,8 +766,10 @@ export type CancelPipelineResponse = Message<"canonical.prism.v1.CancelPipelineR
  * Describes the message canonical.prism.v1.CancelPipelineResponse.
  * Use `create(CancelPipelineResponseSchema)` to create a new message.
  */
-export const CancelPipelineResponseSchema: GenMessage<CancelPipelineResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_handlers, 28);
+export const CancelPipelineResponseSchema: GenMessage<CancelPipelineResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  28,
+);
 
 /**
  * SourceState represents the current operational state of an ingestion source.
@@ -789,10 +814,7 @@ export enum SourceState {
 /**
  * Describes the enum canonical.prism.v1.SourceState.
  */
-export const SourceStateSchema: GenEnum<SourceState> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_handlers,
-  0,
-);
+export const SourceStateSchema: GenEnum<SourceState> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_handlers, 0);
 
 /**
  * HandlersService provides visibility and control over Restate-based background

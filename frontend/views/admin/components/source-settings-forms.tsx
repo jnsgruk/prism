@@ -2,18 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import type { JsonObject } from "@bufbuild/protobuf";
 import { X } from "lucide-react";
 import { useState } from "react";
-
-import type { JsonObject } from "@bufbuild/protobuf";
-import { Switch } from "@/components/ui/switch";
 
 const toStringArray = (val: unknown): string[] => {
   if (!Array.isArray(val)) return [];
@@ -66,8 +59,8 @@ const GitHubSettingsForm = ({
       {/* Scope hint */}
       <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
         Your Personal Access Token needs the <code className="font-semibold">repo</code> and{" "}
-        <code className="font-semibold">read:org</code> scopes. The <code>read:org</code> scope
-        enables team discovery and team-scoped ingestion.
+        <code className="font-semibold">read:org</code> scopes. The <code>read:org</code> scope enables team discovery
+        and team-scoped ingestion.
       </div>
 
       {/* Orgs */}
@@ -75,9 +68,7 @@ const GitHubSettingsForm = ({
         <Label>
           Organisations <span className="text-destructive">*</span>
         </Label>
-        <p className="text-xs text-muted-foreground">
-          GitHub organisations to discover repos from.
-        </p>
+        <p className="text-xs text-muted-foreground">GitHub organisations to discover repos from.</p>
         <div className="flex gap-2">
           <Input
             value={orgInput}
@@ -99,11 +90,7 @@ const GitHubSettingsForm = ({
             {orgs.map((org) => (
               <Badge key={org} variant="secondary" className="gap-1">
                 {org}
-                <button
-                  type="button"
-                  onClick={() => removeOrg(org)}
-                  className="hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeOrg(org)} className="hover:text-destructive">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -116,22 +103,15 @@ const GitHubSettingsForm = ({
       <div className="flex items-center justify-between">
         <div>
           <Label>Exclude archived repos</Label>
-          <p className="text-xs text-muted-foreground">
-            Skip archived repositories during discovery.
-          </p>
+          <p className="text-xs text-muted-foreground">Skip archived repositories during discovery.</p>
         </div>
-        <Switch
-          checked={excludeArchived}
-          onCheckedChange={(checked) => update({ exclude_archived: checked })}
-        />
+        <Switch checked={excludeArchived} onCheckedChange={(checked) => update({ exclude_archived: checked })} />
       </div>
 
       {/* Exclude repos */}
       <div className="space-y-2">
         <Label>Exclude repos</Label>
-        <p className="text-xs text-muted-foreground">
-          Specific repos to skip (e.g. forks, mirrors).
-        </p>
+        <p className="text-xs text-muted-foreground">Specific repos to skip (e.g. forks, mirrors).</p>
         <div className="flex gap-2">
           <Input
             value={excludeInput}
@@ -153,11 +133,7 @@ const GitHubSettingsForm = ({
             {excludeRepos.map((repo) => (
               <Badge key={repo} variant="secondary" className="gap-1">
                 {repo}
-                <button
-                  type="button"
-                  onClick={() => removeExcludeRepo(repo)}
-                  className="hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeExcludeRepo(repo)} className="hover:text-destructive">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -178,8 +154,7 @@ const JiraSettingsForm = ({
 }): React.ReactElement => {
   const baseUrl = typeof settings.base_url === "string" ? settings.base_url : "";
   const projects = toStringArray(settings.projects);
-  const storyPointsField =
-    typeof settings.story_points_field === "string" ? settings.story_points_field : "";
+  const storyPointsField = typeof settings.story_points_field === "string" ? settings.story_points_field : "";
   const apiMode = typeof settings.api_mode === "string" ? settings.api_mode : "cloud";
   const [projectInput, setProjectInput] = useState("");
 
@@ -204,8 +179,8 @@ const JiraSettingsForm = ({
       {/* Credentials hint */}
       <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
         For Jira Cloud, set the <code className="font-semibold">email</code> and{" "}
-        <code className="font-semibold">api_token</code> secrets. For Jira Server/Data Center, only
-        the <code className="font-semibold">api_token</code> (PAT) is needed.
+        <code className="font-semibold">api_token</code> secrets. For Jira Server/Data Center, only the{" "}
+        <code className="font-semibold">api_token</code> (PAT) is needed.
       </div>
 
       {/* Base URL */}
@@ -219,17 +194,13 @@ const JiraSettingsForm = ({
           onChange={(e) => update({ base_url: e.target.value })}
           placeholder="https://your-org.atlassian.net"
         />
-        <p className="text-xs text-muted-foreground">
-          The base URL of your Jira instance (Cloud or Server).
-        </p>
+        <p className="text-xs text-muted-foreground">The base URL of your Jira instance (Cloud or Server).</p>
       </div>
 
       {/* Project keys */}
       <div className="space-y-2">
         <Label>Project Keys</Label>
-        <p className="text-xs text-muted-foreground">
-          Optional filter. Leave empty to ingest all projects.
-        </p>
+        <p className="text-xs text-muted-foreground">Optional filter. Leave empty to ingest all projects.</p>
         <div className="flex gap-2">
           <Input
             value={projectInput}
@@ -251,11 +222,7 @@ const JiraSettingsForm = ({
             {projects.map((project) => (
               <Badge key={project} variant="secondary" className="gap-1">
                 {project}
-                <button
-                  type="button"
-                  onClick={() => removeProject(project)}
-                  className="hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeProject(project)} className="hover:text-destructive">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -273,9 +240,7 @@ const JiraSettingsForm = ({
           onChange={(e) => update({ story_points_field: e.target.value || null })}
           placeholder="e.g. customfield_10016"
         />
-        <p className="text-xs text-muted-foreground">
-          Custom field ID for story points. Varies per instance.
-        </p>
+        <p className="text-xs text-muted-foreground">Custom field ID for story points. Varies per instance.</p>
       </div>
 
       {/* API Mode */}
@@ -327,8 +292,8 @@ const DiscourseSettingsForm = ({
     <div className="space-y-4">
       {/* Credentials hint */}
       <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-        Optional: set the <code className="font-semibold">api_key</code> secret for higher rate
-        limits and access to private categories. Public instances work without a key.
+        Optional: set the <code className="font-semibold">api_key</code> secret for higher rate limits and access to
+        private categories. Public instances work without a key.
       </div>
 
       {/* Base URL */}
@@ -348,9 +313,7 @@ const DiscourseSettingsForm = ({
       {/* Category filter */}
       <div className="space-y-2">
         <Label>Category Filter</Label>
-        <p className="text-xs text-muted-foreground">
-          Optional. Leave empty to ingest all categories.
-        </p>
+        <p className="text-xs text-muted-foreground">Optional. Leave empty to ingest all categories.</p>
         <div className="flex gap-2">
           <Input
             value={categoryInput}
@@ -372,11 +335,7 @@ const DiscourseSettingsForm = ({
             {categories.map((cat) => (
               <Badge key={cat} variant="secondary" className="gap-1">
                 {cat}
-                <button
-                  type="button"
-                  onClick={() => removeCategory(cat)}
-                  className="hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeCategory(cat)} className="hover:text-destructive">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -395,9 +354,7 @@ const DiscourseSettingsForm = ({
           value={minPosts}
           onChange={(e) => update({ min_posts: Number.parseInt(e.target.value, 10) || 0 })}
         />
-        <p className="text-xs text-muted-foreground">
-          Skip topics with fewer posts than this. Set to 0 to ingest all.
-        </p>
+        <p className="text-xs text-muted-foreground">Skip topics with fewer posts than this. Set to 0 to ingest all.</p>
       </div>
     </div>
   );

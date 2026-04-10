@@ -1,15 +1,10 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-
 import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtFloat } from "@/lib/format-metrics";
 import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-export const ActivityChart = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement | null => {
+export const ActivityChart = ({ profile }: { profile: GetIndividualProfileResponse }): React.ReactElement | null => {
   if (profile.activityByPlatform.length === 0) return null;
 
   const data = profile.activityByPlatform.map((a) => ({
@@ -30,12 +25,7 @@ export const ActivityChart = ({
             <XAxis dataKey="platform" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
             <YAxis className="fill-muted-foreground" allowDecimals={false} />
             <Tooltip content={ChartTooltip} cursor={cursorStyle} />
-            <Bar
-              dataKey="count"
-              name="Contributions"
-              fill="hsl(var(--primary))"
-              radius={[4, 4, 0, 0]}
-            />
+            <Bar dataKey="count" name="Contributions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         {/* Per-platform key metrics */}

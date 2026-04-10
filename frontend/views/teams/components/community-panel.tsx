@@ -1,8 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { instanceLabel } from "@/lib/format-metrics";
-import { useMemo } from "react";
 import { ArrowRight, Info, MessageCircle } from "lucide-react";
+import { useMemo } from "react";
 
 import type { TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
@@ -20,12 +20,7 @@ const MetricValue = ({
   onClick?: () => void;
 }): React.ReactElement => (
   <div className="min-w-0 flex-1">
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className="group text-left disabled:cursor-default"
-    >
+    <button type="button" onClick={onClick} disabled={!onClick} className="group text-left disabled:cursor-default">
       <span className="text-2xl font-semibold tabular-nums group-enabled:underline-offset-4 group-enabled:hover:underline">
         {value}
       </span>
@@ -56,8 +51,7 @@ const buildSummary = (metrics: TeamMetrics, instanceCount: number): string => {
     parts.push(`${posts} post${posts !== 1 ? "s" : ""}`);
   }
   if (parts.length === 0) return "No Discourse activity in this period.";
-  const suffix =
-    instanceCount > 1 ? ` across ${instanceCount} Discourse instances.` : " across Discourse.";
+  const suffix = instanceCount > 1 ? ` across ${instanceCount} Discourse instances.` : " across Discourse.";
   return parts.join(" and ") + suffix;
 };
 
@@ -138,33 +132,19 @@ export const CommunityPanel = ({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                      Instance
-                    </th>
-                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                      Topics
-                    </th>
-                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                      Posts
-                    </th>
-                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                      Likes
-                    </th>
+                    <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Instance</th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">Topics</th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">Posts</th>
+                    <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">Likes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {groupedInstances.map((inst) => (
                     <tr key={inst.label} className="border-b last:border-0">
                       <td className="px-3 py-1.5 font-medium">{inst.label}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {inst.topics || "\u2014"}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {inst.posts || "\u2014"}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {inst.likes || "\u2014"}
-                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inst.topics || "\u2014"}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inst.posts || "\u2014"}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{inst.likes || "\u2014"}</td>
                     </tr>
                   ))}
                 </tbody>

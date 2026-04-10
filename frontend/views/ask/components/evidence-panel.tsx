@@ -1,13 +1,8 @@
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { useState } from "react";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-export const EvidencePanel = ({
-  supportingData,
-}: {
-  supportingData?: string;
-}): React.ReactElement => {
+export const EvidencePanel = ({ supportingData }: { supportingData?: string }): React.ReactElement => {
   const [open, setOpen] = useState(false);
 
   return (

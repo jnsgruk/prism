@@ -1,18 +1,10 @@
-import { useCallback, useState } from "react";
-import { Download, ZoomIn, ZoomOut } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-import { formatSize, isTextContent } from "@/views/ask/hooks/use-file-tree";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CodePreview } from "@/views/ask/components/code-preview";
 import type { PreviewState } from "@/views/ask/components/workspace-preview";
+import { formatSize, isTextContent } from "@/views/ask/hooks/use-file-tree";
+import { Download, ZoomIn, ZoomOut } from "lucide-react";
+import { useCallback, useState } from "react";
 
 const ZOOM_LEVELS = [25, 50, 75, 100, 150, 200] as const;
 
@@ -20,22 +12,13 @@ const ImagePreview = ({ src, alt }: { src: string; alt: string }): React.ReactEl
   const [zoomIndex, setZoomIndex] = useState(3); // 100% default
   const zoom = ZOOM_LEVELS[zoomIndex] ?? 100;
 
-  const zoomIn = useCallback(
-    () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1)),
-    [],
-  );
+  const zoomIn = useCallback(() => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1)), []);
   const zoomOut = useCallback(() => setZoomIndex((i) => Math.max(i - 1, 0)), []);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-7"
-          onClick={zoomOut}
-          disabled={zoomIndex === 0}
-        >
+        <Button variant="outline" size="icon" className="size-7" onClick={zoomOut} disabled={zoomIndex === 0}>
           <ZoomOut className="size-3.5" />
         </Button>
         <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{zoom}%</span>
@@ -50,12 +33,7 @@ const ImagePreview = ({ src, alt }: { src: string; alt: string }): React.ReactEl
         </Button>
       </div>
       <div className="max-h-[70vh] overflow-auto rounded-md border">
-        <img
-          src={src}
-          alt={alt}
-          className="origin-top-left"
-          style={{ transform: `scale(${zoom / 100})` }}
-        />
+        <img src={src} alt={alt} className="origin-top-left" style={{ transform: `scale(${zoom / 100})` }} />
       </div>
     </div>
   );
@@ -90,9 +68,7 @@ export const WorkspacePreviewDialog = ({
           </div>
         </DialogHeader>
 
-        {state.contentType.startsWith("image/") && (
-          <ImagePreview src={state.url} alt={state.artifact.displayName} />
-        )}
+        {state.contentType.startsWith("image/") && <ImagePreview src={state.url} alt={state.artifact.displayName} />}
 
         {state.contentType === "application/pdf" && (
           <iframe
@@ -115,9 +91,7 @@ export const WorkspacePreviewDialog = ({
         {!state.contentType.startsWith("image/") &&
           state.contentType !== "application/pdf" &&
           !(isTextContent(state.contentType) && state.textContent !== undefined) && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Preview not available for this file type.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Preview not available for this file type.</p>
           )}
       </DialogContent>
     )}

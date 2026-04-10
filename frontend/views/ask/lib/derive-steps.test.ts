@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { deriveSteps, type StreamEvent } from "@/views/ask/lib/derive-steps";
+import { describe, expect, it } from "vitest";
 
 describe("deriveSteps", () => {
   it("returns empty array for no events", () => {

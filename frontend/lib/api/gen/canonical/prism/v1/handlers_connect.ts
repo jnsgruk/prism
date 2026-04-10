@@ -7,6 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   CancelHandlerRunRequest,
   CancelHandlerRunResponse,
@@ -33,7 +35,6 @@ import {
   TriggerTeamSyncRequest,
   TriggerTeamSyncResponse,
 } from "./handlers_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * HandlersService provides visibility and control over Restate-based background

@@ -6,14 +6,7 @@ type PrismLogoProps = {
 };
 
 export const PrismLogo = ({ className, size = 24 }: PrismLogoProps): React.ReactElement => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 512 512"
-    fill="none"
-    className={cn(className)}
-    aria-hidden="true"
-  >
+  <svg width={size} height={size} viewBox="0 0 512 512" fill="none" className={cn(className)} aria-hidden="true">
     <polygon points="48,27 210,27 277,89 48,89" fill="#FF6363" />
     <polygon points="48,93 281,93 348,155 48,155" fill="#FFB340" />
     <polygon points="48,159 352,159 418,221 48,221" fill="#FFD952" />

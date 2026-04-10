@@ -1,34 +1,22 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  GitPullRequest,
-  KeyRound,
-  Loader2,
-  MessageSquare,
-} from "lucide-react";
-
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  PeriodSelector,
-  buildPeriod,
-  defaultPeriodKey,
-} from "@/views/teams/components/period-selector";
-import { ContributionTable } from "@/views/teams/components/contribution-table";
-import { ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { useGetIndividualProfile, usePersonContributionCount } from "@/lib/hooks/use-metrics";
-import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
-import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
 import { ActivityChart } from "@/views/people/components/activity-chart";
 import { PeerContextPanel } from "@/views/people/components/peer-context-panel";
+import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
 import { PersonInsightsSection } from "@/views/people/components/person-insights-section";
+import { ProfileMetricCards } from "@/views/people/components/profile-metric-cards";
 import { usePersonInsights } from "@/views/people/hooks/use-insights";
+import { ContributionTable } from "@/views/teams/components/contribution-table";
+import { PeriodSelector, buildPeriod, defaultPeriodKey } from "@/views/teams/components/period-selector";
+import { ChevronDown, ChevronRight, Clock, GitPullRequest, KeyRound, Loader2, MessageSquare } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
+import { ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 const PersonProfilePage = (): React.ReactElement => {
   const { personId } = useParams<{ personId: string }>();
@@ -47,11 +35,7 @@ const PersonProfilePage = (): React.ReactElement => {
   );
 
   const { data: profile, isLoading, error } = useGetIndividualProfile(safeId, period);
-  const {
-    data: insights,
-    isLoading: insightsLoading,
-    error: insightsError,
-  } = usePersonInsights(safeId, periodKey);
+  const { data: insights, isLoading: insightsLoading, error: insightsError } = usePersonInsights(safeId, periodKey);
 
   const { data: prTotalCount } = usePersonContributionCount(safeId, {
     ...periodFilters,
@@ -74,8 +58,7 @@ const PersonProfilePage = (): React.ReactElement => {
     );
   }
 
-  const hasDiscourseActivity =
-    profile?.activityByPlatform.some((a) => a.platform === Platform.DISCOURSE) ?? false;
+  const hasDiscourseActivity = profile?.activityByPlatform.some((a) => a.platform === Platform.DISCOURSE) ?? false;
 
   return (
     <>
@@ -119,9 +102,7 @@ const PersonProfilePage = (): React.ReactElement => {
         {/* Error */}
         {error && (
           <Alert variant="destructive">
-            <AlertDescription>
-              {error instanceof Error ? error.message : "Failed to load profile"}
-            </AlertDescription>
+            <AlertDescription>{error instanceof Error ? error.message : "Failed to load profile"}</AlertDescription>
           </Alert>
         )}
 
@@ -132,11 +113,7 @@ const PersonProfilePage = (): React.ReactElement => {
             <ProfileMetricCards profile={profile} />
 
             {/* Insights */}
-            <PersonInsightsSection
-              insights={insights}
-              isLoading={insightsLoading}
-              error={insightsError}
-            />
+            <PersonInsightsSection insights={insights} isLoading={insightsLoading} error={insightsError} />
 
             {/* Activity chart */}
             <ActivityChart profile={profile} />
@@ -149,15 +126,9 @@ const PersonProfilePage = (): React.ReactElement => {
               <Card>
                 <CardHeader className="cursor-pointer" onClick={() => setPrsOpen(!prsOpen)}>
                   <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
+                    render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                   >
-                    {prsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
+                    {prsOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     <GitPullRequest className="size-4 text-muted-foreground" />
                     <CardTitle>Pull Requests</CardTitle>
                     {prTotalCount !== undefined && prTotalCount > 0 && (
@@ -184,15 +155,9 @@ const PersonProfilePage = (): React.ReactElement => {
               <Card>
                 <CardHeader className="cursor-pointer" onClick={() => setReviewsOpen(!reviewsOpen)}>
                   <CollapsibleTrigger
-                    render={
-                      <button type="button" className="flex w-full items-center gap-2 text-left" />
-                    }
+                    render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                   >
-                    {reviewsOpen ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
+                    {reviewsOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     <Clock className="size-4 text-muted-foreground" />
                     <CardTitle>Reviews</CardTitle>
                     {reviewTotalCount !== undefined && reviewTotalCount > 0 && (
@@ -218,23 +183,11 @@ const PersonProfilePage = (): React.ReactElement => {
             {hasDiscourseActivity && (
               <Collapsible open={discourseOpen} onOpenChange={setDiscourseOpen}>
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => setDiscourseOpen(!discourseOpen)}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => setDiscourseOpen(!discourseOpen)}>
                     <CollapsibleTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 text-left"
-                        />
-                      }
+                      render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                     >
-                      {discourseOpen ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
+                      {discourseOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                       <MessageSquare className="size-4 text-muted-foreground" />
                       <CardTitle>Discourse</CardTitle>
                       {discourseTotalCount !== undefined && discourseTotalCount > 0 && (
@@ -246,11 +199,7 @@ const PersonProfilePage = (): React.ReactElement => {
                   </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <ContributionTable
-                        personId={personId}
-                        period={period}
-                        defaultPlatform={Platform.DISCOURSE}
-                      />
+                      <ContributionTable personId={personId} period={period} defaultPlatform={Platform.DISCOURSE} />
                     </CardContent>
                   </CollapsibleContent>
                 </Card>
@@ -261,23 +210,11 @@ const PersonProfilePage = (): React.ReactElement => {
             {profile.identities.length > 0 && (
               <Collapsible open={identitiesOpen} onOpenChange={setIdentitiesOpen}>
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => setIdentitiesOpen(!identitiesOpen)}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => setIdentitiesOpen(!identitiesOpen)}>
                     <CollapsibleTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 text-left"
-                        />
-                      }
+                      render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
                     >
-                      {identitiesOpen ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
+                      {identitiesOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                       <KeyRound className="size-4 text-muted-foreground" />
                       <CardTitle>Identities</CardTitle>
                       <Badge variant="secondary" className="ml-1">

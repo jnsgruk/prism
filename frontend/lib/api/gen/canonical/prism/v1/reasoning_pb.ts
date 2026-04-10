@@ -6,19 +6,14 @@
 // @generated from file canonical/prism/v1/reasoning.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type {
-  AiProvider,
-  ContributionState,
-  ContributionType,
-  EnrichmentType,
-  Platform,
-} from "./common_pb";
-import { file_canonical_prism_v1_common } from "./common_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
+
+import type { AiProvider, ContributionState, ContributionType, EnrichmentType, Platform } from "./common_pb";
+import { file_canonical_prism_v1_common } from "./common_pb";
 
 /**
  * Describes the file canonical/prism/v1/reasoning.proto.
@@ -104,10 +99,7 @@ export type AiSettings = Message<"canonical.prism.v1.AiSettings"> & {
  * Describes the message canonical.prism.v1.AiSettings.
  * Use `create(AiSettingsSchema)` to create a new message.
  */
-export const AiSettingsSchema: GenMessage<AiSettings> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_reasoning,
-  1,
-);
+export const AiSettingsSchema: GenMessage<AiSettings> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_reasoning, 1);
 
 /**
  * @generated from message canonical.prism.v1.GetAiSettingsRequest
@@ -118,8 +110,10 @@ export type GetAiSettingsRequest = Message<"canonical.prism.v1.GetAiSettingsRequ
  * Describes the message canonical.prism.v1.GetAiSettingsRequest.
  * Use `create(GetAiSettingsRequestSchema)` to create a new message.
  */
-export const GetAiSettingsRequestSchema: GenMessage<GetAiSettingsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 2);
+export const GetAiSettingsRequestSchema: GenMessage<GetAiSettingsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetAiSettingsResponse
@@ -135,8 +129,10 @@ export type GetAiSettingsResponse = Message<"canonical.prism.v1.GetAiSettingsRes
  * Describes the message canonical.prism.v1.GetAiSettingsResponse.
  * Use `create(GetAiSettingsResponseSchema)` to create a new message.
  */
-export const GetAiSettingsResponseSchema: GenMessage<GetAiSettingsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 3);
+export const GetAiSettingsResponseSchema: GenMessage<GetAiSettingsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateAiSettingsRequest
@@ -169,8 +165,10 @@ export type UpdateAiSettingsRequest = Message<"canonical.prism.v1.UpdateAiSettin
  * Describes the message canonical.prism.v1.UpdateAiSettingsRequest.
  * Use `create(UpdateAiSettingsRequestSchema)` to create a new message.
  */
-export const UpdateAiSettingsRequestSchema: GenMessage<UpdateAiSettingsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 4);
+export const UpdateAiSettingsRequestSchema: GenMessage<UpdateAiSettingsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateAiSettingsResponse
@@ -186,8 +184,10 @@ export type UpdateAiSettingsResponse = Message<"canonical.prism.v1.UpdateAiSetti
  * Describes the message canonical.prism.v1.UpdateAiSettingsResponse.
  * Use `create(UpdateAiSettingsResponseSchema)` to create a new message.
  */
-export const UpdateAiSettingsResponseSchema: GenMessage<UpdateAiSettingsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 5);
+export const UpdateAiSettingsResponseSchema: GenMessage<UpdateAiSettingsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.SetProviderSecretRequest
@@ -212,21 +212,24 @@ export type SetProviderSecretRequest = Message<"canonical.prism.v1.SetProviderSe
  * Describes the message canonical.prism.v1.SetProviderSecretRequest.
  * Use `create(SetProviderSecretRequestSchema)` to create a new message.
  */
-export const SetProviderSecretRequestSchema: GenMessage<SetProviderSecretRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 6);
+export const SetProviderSecretRequestSchema: GenMessage<SetProviderSecretRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.SetProviderSecretResponse
  */
-export type SetProviderSecretResponse =
-  Message<"canonical.prism.v1.SetProviderSecretResponse"> & {};
+export type SetProviderSecretResponse = Message<"canonical.prism.v1.SetProviderSecretResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.SetProviderSecretResponse.
  * Use `create(SetProviderSecretResponseSchema)` to create a new message.
  */
-export const SetProviderSecretResponseSchema: GenMessage<SetProviderSecretResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 7);
+export const SetProviderSecretResponseSchema: GenMessage<SetProviderSecretResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.TestProviderRequest
@@ -268,8 +271,10 @@ export type TestProviderResponse = Message<"canonical.prism.v1.TestProviderRespo
  * Describes the message canonical.prism.v1.TestProviderResponse.
  * Use `create(TestProviderResponseSchema)` to create a new message.
  */
-export const TestProviderResponseSchema: GenMessage<TestProviderResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 9);
+export const TestProviderResponseSchema: GenMessage<TestProviderResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  9,
+);
 
 /**
  * AiModelInfo describes a single AI model from a provider's catalogue.
@@ -390,41 +395,45 @@ export type ListAiModelsResponse = Message<"canonical.prism.v1.ListAiModelsRespo
  * Describes the message canonical.prism.v1.ListAiModelsResponse.
  * Use `create(ListAiModelsResponseSchema)` to create a new message.
  */
-export const ListAiModelsResponseSchema: GenMessage<ListAiModelsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 12);
+export const ListAiModelsResponseSchema: GenMessage<ListAiModelsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.RefreshModelCatalogueRequest
  */
-export type RefreshModelCatalogueRequest =
-  Message<"canonical.prism.v1.RefreshModelCatalogueRequest"> & {};
+export type RefreshModelCatalogueRequest = Message<"canonical.prism.v1.RefreshModelCatalogueRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.RefreshModelCatalogueRequest.
  * Use `create(RefreshModelCatalogueRequestSchema)` to create a new message.
  */
-export const RefreshModelCatalogueRequestSchema: GenMessage<RefreshModelCatalogueRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 13);
+export const RefreshModelCatalogueRequestSchema: GenMessage<RefreshModelCatalogueRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.RefreshModelCatalogueResponse
  */
-export type RefreshModelCatalogueResponse =
-  Message<"canonical.prism.v1.RefreshModelCatalogueResponse"> & {
-    /**
-     * True if a refresh was started; false if one was already in progress.
-     *
-     * @generated from field: bool started = 1;
-     */
-    started: boolean;
-  };
+export type RefreshModelCatalogueResponse = Message<"canonical.prism.v1.RefreshModelCatalogueResponse"> & {
+  /**
+   * True if a refresh was started; false if one was already in progress.
+   *
+   * @generated from field: bool started = 1;
+   */
+  started: boolean;
+};
 
 /**
  * Describes the message canonical.prism.v1.RefreshModelCatalogueResponse.
  * Use `create(RefreshModelCatalogueResponseSchema)` to create a new message.
  */
-export const RefreshModelCatalogueResponseSchema: GenMessage<RefreshModelCatalogueResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 14);
+export const RefreshModelCatalogueResponseSchema: GenMessage<RefreshModelCatalogueResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  14,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetUsageSummaryRequest
@@ -442,8 +451,10 @@ export type GetUsageSummaryRequest = Message<"canonical.prism.v1.GetUsageSummary
  * Describes the message canonical.prism.v1.GetUsageSummaryRequest.
  * Use `create(GetUsageSummaryRequestSchema)` to create a new message.
  */
-export const GetUsageSummaryRequestSchema: GenMessage<GetUsageSummaryRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 15);
+export const GetUsageSummaryRequestSchema: GenMessage<GetUsageSummaryRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  15,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetUsageSummaryResponse
@@ -464,8 +475,10 @@ export type GetUsageSummaryResponse = Message<"canonical.prism.v1.GetUsageSummar
  * Describes the message canonical.prism.v1.GetUsageSummaryResponse.
  * Use `create(GetUsageSummaryResponseSchema)` to create a new message.
  */
-export const GetUsageSummaryResponseSchema: GenMessage<GetUsageSummaryResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 16);
+export const GetUsageSummaryResponseSchema: GenMessage<GetUsageSummaryResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  16,
+);
 
 /**
  * TaskUsage aggregates AI usage for a single task type.
@@ -500,10 +513,7 @@ export type TaskUsage = Message<"canonical.prism.v1.TaskUsage"> & {
  * Describes the message canonical.prism.v1.TaskUsage.
  * Use `create(TaskUsageSchema)` to create a new message.
  */
-export const TaskUsageSchema: GenMessage<TaskUsage> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_reasoning,
-  17,
-);
+export const TaskUsageSchema: GenMessage<TaskUsage> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_reasoning, 17);
 
 /**
  * ModelUsage aggregates AI usage for a specific provider + model + task combination.
@@ -640,8 +650,10 @@ export type GetEnrichmentsRequest = Message<"canonical.prism.v1.GetEnrichmentsRe
  * Describes the message canonical.prism.v1.GetEnrichmentsRequest.
  * Use `create(GetEnrichmentsRequestSchema)` to create a new message.
  */
-export const GetEnrichmentsRequestSchema: GenMessage<GetEnrichmentsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 20);
+export const GetEnrichmentsRequestSchema: GenMessage<GetEnrichmentsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  20,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetEnrichmentsResponse
@@ -657,8 +669,10 @@ export type GetEnrichmentsResponse = Message<"canonical.prism.v1.GetEnrichmentsR
  * Describes the message canonical.prism.v1.GetEnrichmentsResponse.
  * Use `create(GetEnrichmentsResponseSchema)` to create a new message.
  */
-export const GetEnrichmentsResponseSchema: GenMessage<GetEnrichmentsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 21);
+export const GetEnrichmentsResponseSchema: GenMessage<GetEnrichmentsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  21,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetEnrichmentsByContributionsRequest
@@ -699,8 +713,7 @@ export const GetEnrichmentsByContributionsResponseSchema: GenMessage<GetEnrichme
 /**
  * @generated from message canonical.prism.v1.GetEnrichmentPipelineStatusRequest
  */
-export type GetEnrichmentPipelineStatusRequest =
-  Message<"canonical.prism.v1.GetEnrichmentPipelineStatusRequest"> & {};
+export type GetEnrichmentPipelineStatusRequest = Message<"canonical.prism.v1.GetEnrichmentPipelineStatusRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetEnrichmentPipelineStatusRequest.
@@ -712,36 +725,35 @@ export const GetEnrichmentPipelineStatusRequestSchema: GenMessage<GetEnrichmentP
 /**
  * @generated from message canonical.prism.v1.GetEnrichmentPipelineStatusResponse
  */
-export type GetEnrichmentPipelineStatusResponse =
-  Message<"canonical.prism.v1.GetEnrichmentPipelineStatusResponse"> & {
-    /**
-     * Number of contributions awaiting enrichment.
-     *
-     * @generated from field: int64 pending_count = 1;
-     */
-    pendingCount: bigint;
+export type GetEnrichmentPipelineStatusResponse = Message<"canonical.prism.v1.GetEnrichmentPipelineStatusResponse"> & {
+  /**
+   * Number of contributions awaiting enrichment.
+   *
+   * @generated from field: int64 pending_count = 1;
+   */
+  pendingCount: bigint;
 
-    /**
-     * Total enrichments generated to date.
-     *
-     * @generated from field: int64 total_enrichments = 2;
-     */
-    totalEnrichments: bigint;
+  /**
+   * Total enrichments generated to date.
+   *
+   * @generated from field: int64 total_enrichments = 2;
+   */
+  totalEnrichments: bigint;
 
-    /**
-     * When the most recent enrichment was created.
-     *
-     * @generated from field: optional google.protobuf.Timestamp last_enrichment_at = 3;
-     */
-    lastEnrichmentAt?: Timestamp;
+  /**
+   * When the most recent enrichment was created.
+   *
+   * @generated from field: optional google.protobuf.Timestamp last_enrichment_at = 3;
+   */
+  lastEnrichmentAt?: Timestamp;
 
-    /**
-     * Enrichment counts broken down by type.
-     *
-     * @generated from field: repeated canonical.prism.v1.EnrichmentTypeCount by_type = 4;
-     */
-    byType: EnrichmentTypeCount[];
-  };
+  /**
+   * Enrichment counts broken down by type.
+   *
+   * @generated from field: repeated canonical.prism.v1.EnrichmentTypeCount by_type = 4;
+   */
+  byType: EnrichmentTypeCount[];
+};
 
 /**
  * Describes the message canonical.prism.v1.GetEnrichmentPipelineStatusResponse.
@@ -779,15 +791,14 @@ export const EnrichmentTypeCountSchema: GenMessage<EnrichmentTypeCount> /*@__PUR
 /**
  * @generated from message canonical.prism.v1.DeleteEnrichmentsByTypeRequest
  */
-export type DeleteEnrichmentsByTypeRequest =
-  Message<"canonical.prism.v1.DeleteEnrichmentsByTypeRequest"> & {
-    /**
-     * Kind of enrichment to delete.
-     *
-     * @generated from field: canonical.prism.v1.EnrichmentType enrichment_type = 1;
-     */
-    enrichmentType: EnrichmentType;
-  };
+export type DeleteEnrichmentsByTypeRequest = Message<"canonical.prism.v1.DeleteEnrichmentsByTypeRequest"> & {
+  /**
+   * Kind of enrichment to delete.
+   *
+   * @generated from field: canonical.prism.v1.EnrichmentType enrichment_type = 1;
+   */
+  enrichmentType: EnrichmentType;
+};
 
 /**
  * Describes the message canonical.prism.v1.DeleteEnrichmentsByTypeRequest.
@@ -799,13 +810,12 @@ export const DeleteEnrichmentsByTypeRequestSchema: GenMessage<DeleteEnrichmentsB
 /**
  * @generated from message canonical.prism.v1.DeleteEnrichmentsByTypeResponse
  */
-export type DeleteEnrichmentsByTypeResponse =
-  Message<"canonical.prism.v1.DeleteEnrichmentsByTypeResponse"> & {
-    /**
-     * @generated from field: int64 deleted_count = 1;
-     */
-    deletedCount: bigint;
-  };
+export type DeleteEnrichmentsByTypeResponse = Message<"canonical.prism.v1.DeleteEnrichmentsByTypeResponse"> & {
+  /**
+   * @generated from field: int64 deleted_count = 1;
+   */
+  deletedCount: bigint;
+};
 
 /**
  * Describes the message canonical.prism.v1.DeleteEnrichmentsByTypeResponse.
@@ -1007,69 +1017,73 @@ export type SearchByTextResponse = Message<"canonical.prism.v1.SearchByTextRespo
  * Describes the message canonical.prism.v1.SearchByTextResponse.
  * Use `create(SearchByTextResponseSchema)` to create a new message.
  */
-export const SearchByTextResponseSchema: GenMessage<SearchByTextResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 33);
+export const SearchByTextResponseSchema: GenMessage<SearchByTextResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  33,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetEmbeddingStatusRequest
  */
-export type GetEmbeddingStatusRequest =
-  Message<"canonical.prism.v1.GetEmbeddingStatusRequest"> & {};
+export type GetEmbeddingStatusRequest = Message<"canonical.prism.v1.GetEmbeddingStatusRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetEmbeddingStatusRequest.
  * Use `create(GetEmbeddingStatusRequestSchema)` to create a new message.
  */
-export const GetEmbeddingStatusRequestSchema: GenMessage<GetEmbeddingStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 34);
+export const GetEmbeddingStatusRequestSchema: GenMessage<GetEmbeddingStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  34,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetEmbeddingStatusResponse
  */
-export type GetEmbeddingStatusResponse =
-  Message<"canonical.prism.v1.GetEmbeddingStatusResponse"> & {
-    /**
-     * Number of contributions awaiting embedding generation.
-     *
-     * @generated from field: int64 queued_count = 1;
-     */
-    queuedCount: bigint;
+export type GetEmbeddingStatusResponse = Message<"canonical.prism.v1.GetEmbeddingStatusResponse"> & {
+  /**
+   * Number of contributions awaiting embedding generation.
+   *
+   * @generated from field: int64 queued_count = 1;
+   */
+  queuedCount: bigint;
 
-    /**
-     * Number of contributions with embeddings.
-     *
-     * @generated from field: int64 embedded_count = 2;
-     */
-    embeddedCount: bigint;
+  /**
+   * Number of contributions with embeddings.
+   *
+   * @generated from field: int64 embedded_count = 2;
+   */
+  embeddedCount: bigint;
 
-    /**
-     * Total contributions eligible for embedding.
-     *
-     * @generated from field: int64 total_eligible = 3;
-     */
-    totalEligible: bigint;
+  /**
+   * Total contributions eligible for embedding.
+   *
+   * @generated from field: int64 total_eligible = 3;
+   */
+  totalEligible: bigint;
 
-    /**
-     * When the most recent embedding was generated.
-     *
-     * @generated from field: optional google.protobuf.Timestamp last_embedded_at = 4;
-     */
-    lastEmbeddedAt?: Timestamp;
+  /**
+   * When the most recent embedding was generated.
+   *
+   * @generated from field: optional google.protobuf.Timestamp last_embedded_at = 4;
+   */
+  lastEmbeddedAt?: Timestamp;
 
-    /**
-     * Percentage of eligible contributions with embeddings (0.0–100.0).
-     *
-     * @generated from field: double coverage_percent = 5;
-     */
-    coveragePercent: number;
-  };
+  /**
+   * Percentage of eligible contributions with embeddings (0.0–100.0).
+   *
+   * @generated from field: double coverage_percent = 5;
+   */
+  coveragePercent: number;
+};
 
 /**
  * Describes the message canonical.prism.v1.GetEmbeddingStatusResponse.
  * Use `create(GetEmbeddingStatusResponseSchema)` to create a new message.
  */
-export const GetEmbeddingStatusResponseSchema: GenMessage<GetEmbeddingStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 35);
+export const GetEmbeddingStatusResponseSchema: GenMessage<GetEmbeddingStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  35,
+);
 
 /**
  * A structured @-mention referencing a file, person, or team.
@@ -1103,10 +1117,7 @@ export type Mention = Message<"canonical.prism.v1.Mention"> & {
  * Describes the message canonical.prism.v1.Mention.
  * Use `create(MentionSchema)` to create a new message.
  */
-export const MentionSchema: GenMessage<Mention> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_reasoning,
-  36,
-);
+export const MentionSchema: GenMessage<Mention> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_reasoning, 36);
 
 /**
  * @generated from message canonical.prism.v1.AskQuestionRequest
@@ -1267,8 +1278,10 @@ export type ResumeStreamResponse = Message<"canonical.prism.v1.ResumeStreamRespo
  * Describes the message canonical.prism.v1.ResumeStreamResponse.
  * Use `create(ResumeStreamResponseSchema)` to create a new message.
  */
-export const ResumeStreamResponseSchema: GenMessage<ResumeStreamResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 39);
+export const ResumeStreamResponseSchema: GenMessage<ResumeStreamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  39,
+);
 
 /**
  * AskQuestionResponse is a server-streamed event emitted during an agentic query.
@@ -1403,8 +1416,10 @@ export type AgentToolCallStarted = Message<"canonical.prism.v1.AgentToolCallStar
  * Describes the message canonical.prism.v1.AgentToolCallStarted.
  * Use `create(AgentToolCallStartedSchema)` to create a new message.
  */
-export const AgentToolCallStartedSchema: GenMessage<AgentToolCallStarted> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 41);
+export const AgentToolCallStartedSchema: GenMessage<AgentToolCallStarted> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  41,
+);
 
 /**
  * AgentToolCallCompleted indicates a tool call has finished.
@@ -1464,8 +1479,10 @@ export type AgentToolCallCompleted = Message<"canonical.prism.v1.AgentToolCallCo
  * Describes the message canonical.prism.v1.AgentToolCallCompleted.
  * Use `create(AgentToolCallCompletedSchema)` to create a new message.
  */
-export const AgentToolCallCompletedSchema: GenMessage<AgentToolCallCompleted> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 42);
+export const AgentToolCallCompletedSchema: GenMessage<AgentToolCallCompleted> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  42,
+);
 
 /**
  * AgentPartialAnswer streams incremental text of the agent's response.
@@ -1643,8 +1660,10 @@ export type AgentConversationCreated = Message<"canonical.prism.v1.AgentConversa
  * Describes the message canonical.prism.v1.AgentConversationCreated.
  * Use `create(AgentConversationCreatedSchema)` to create a new message.
  */
-export const AgentConversationCreatedSchema: GenMessage<AgentConversationCreated> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 47);
+export const AgentConversationCreatedSchema: GenMessage<AgentConversationCreated> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  47,
+);
 
 /**
  * AgentContainerStatus reports container lifecycle progress.
@@ -1669,8 +1688,10 @@ export type AgentContainerStatus = Message<"canonical.prism.v1.AgentContainerSta
  * Describes the message canonical.prism.v1.AgentContainerStatus.
  * Use `create(AgentContainerStatusSchema)` to create a new message.
  */
-export const AgentContainerStatusSchema: GenMessage<AgentContainerStatus> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 48);
+export const AgentContainerStatusSchema: GenMessage<AgentContainerStatus> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  48,
+);
 
 /**
  * AgentTokenUsage reports cumulative token consumption for a conversation turn,
@@ -1729,8 +1750,10 @@ export type ListConversationsRequest = Message<"canonical.prism.v1.ListConversat
  * Describes the message canonical.prism.v1.ListConversationsRequest.
  * Use `create(ListConversationsRequestSchema)` to create a new message.
  */
-export const ListConversationsRequestSchema: GenMessage<ListConversationsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 50);
+export const ListConversationsRequestSchema: GenMessage<ListConversationsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  50,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListConversationsResponse
@@ -1751,8 +1774,10 @@ export type ListConversationsResponse = Message<"canonical.prism.v1.ListConversa
  * Describes the message canonical.prism.v1.ListConversationsResponse.
  * Use `create(ListConversationsResponseSchema)` to create a new message.
  */
-export const ListConversationsResponseSchema: GenMessage<ListConversationsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 51);
+export const ListConversationsResponseSchema: GenMessage<ListConversationsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  51,
+);
 
 /**
  * ConversationSummary is a lightweight view for the conversation list.
@@ -1860,8 +1885,10 @@ export type GetConversationRequest = Message<"canonical.prism.v1.GetConversation
  * Describes the message canonical.prism.v1.GetConversationRequest.
  * Use `create(GetConversationRequestSchema)` to create a new message.
  */
-export const GetConversationRequestSchema: GenMessage<GetConversationRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 53);
+export const GetConversationRequestSchema: GenMessage<GetConversationRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  53,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetConversationResponse
@@ -1882,8 +1909,10 @@ export type GetConversationResponse = Message<"canonical.prism.v1.GetConversatio
  * Describes the message canonical.prism.v1.GetConversationResponse.
  * Use `create(GetConversationResponseSchema)` to create a new message.
  */
-export const GetConversationResponseSchema: GenMessage<GetConversationResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 54);
+export const GetConversationResponseSchema: GenMessage<GetConversationResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  54,
+);
 
 /**
  * ConversationMessage is a single turn in a conversation.
@@ -1966,29 +1995,28 @@ export const ConversationMessageSchema: GenMessage<ConversationMessage> /*@__PUR
 /**
  * @generated from message canonical.prism.v1.SaveInsightFromConversationRequest
  */
-export type SaveInsightFromConversationRequest =
-  Message<"canonical.prism.v1.SaveInsightFromConversationRequest"> & {
-    /**
-     * The conversation the insight was derived from.
-     *
-     * @generated from field: string conversation_id = 1;
-     */
-    conversationId: string;
+export type SaveInsightFromConversationRequest = Message<"canonical.prism.v1.SaveInsightFromConversationRequest"> & {
+  /**
+   * The conversation the insight was derived from.
+   *
+   * @generated from field: string conversation_id = 1;
+   */
+  conversationId: string;
 
-    /**
-     * The specific message to save as an insight.
-     *
-     * @generated from field: string message_id = 2;
-     */
-    messageId: string;
+  /**
+   * The specific message to save as an insight.
+   *
+   * @generated from field: string message_id = 2;
+   */
+  messageId: string;
 
-    /**
-     * Human-provided title for the insight.
-     *
-     * @generated from field: string title = 3;
-     */
-    title: string;
-  };
+  /**
+   * Human-provided title for the insight.
+   *
+   * @generated from field: string title = 3;
+   */
+  title: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.SaveInsightFromConversationRequest.
@@ -2000,15 +2028,14 @@ export const SaveInsightFromConversationRequestSchema: GenMessage<SaveInsightFro
 /**
  * @generated from message canonical.prism.v1.SaveInsightFromConversationResponse
  */
-export type SaveInsightFromConversationResponse =
-  Message<"canonical.prism.v1.SaveInsightFromConversationResponse"> & {
-    /**
-     * ID of the created insight snapshot.
-     *
-     * @generated from field: string insight_id = 1;
-     */
-    insightId: string;
-  };
+export type SaveInsightFromConversationResponse = Message<"canonical.prism.v1.SaveInsightFromConversationResponse"> & {
+  /**
+   * ID of the created insight snapshot.
+   *
+   * @generated from field: string insight_id = 1;
+   */
+  insightId: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.SaveInsightFromConversationResponse.
@@ -2031,21 +2058,24 @@ export type DeleteConversationRequest = Message<"canonical.prism.v1.DeleteConver
  * Describes the message canonical.prism.v1.DeleteConversationRequest.
  * Use `create(DeleteConversationRequestSchema)` to create a new message.
  */
-export const DeleteConversationRequestSchema: GenMessage<DeleteConversationRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 58);
+export const DeleteConversationRequestSchema: GenMessage<DeleteConversationRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  58,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteConversationResponse
  */
-export type DeleteConversationResponse =
-  Message<"canonical.prism.v1.DeleteConversationResponse"> & {};
+export type DeleteConversationResponse = Message<"canonical.prism.v1.DeleteConversationResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.DeleteConversationResponse.
  * Use `create(DeleteConversationResponseSchema)` to create a new message.
  */
-export const DeleteConversationResponseSchema: GenMessage<DeleteConversationResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 59);
+export const DeleteConversationResponseSchema: GenMessage<DeleteConversationResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  59,
+);
 
 /**
  * @generated from message canonical.prism.v1.RenameConversationRequest
@@ -2068,21 +2098,24 @@ export type RenameConversationRequest = Message<"canonical.prism.v1.RenameConver
  * Describes the message canonical.prism.v1.RenameConversationRequest.
  * Use `create(RenameConversationRequestSchema)` to create a new message.
  */
-export const RenameConversationRequestSchema: GenMessage<RenameConversationRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 60);
+export const RenameConversationRequestSchema: GenMessage<RenameConversationRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  60,
+);
 
 /**
  * @generated from message canonical.prism.v1.RenameConversationResponse
  */
-export type RenameConversationResponse =
-  Message<"canonical.prism.v1.RenameConversationResponse"> & {};
+export type RenameConversationResponse = Message<"canonical.prism.v1.RenameConversationResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.RenameConversationResponse.
  * Use `create(RenameConversationResponseSchema)` to create a new message.
  */
-export const RenameConversationResponseSchema: GenMessage<RenameConversationResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 61);
+export const RenameConversationResponseSchema: GenMessage<RenameConversationResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  61,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelQueryRequest
@@ -2182,34 +2215,37 @@ export type ListWorkspaceFilesRequest = Message<"canonical.prism.v1.ListWorkspac
  * Describes the message canonical.prism.v1.ListWorkspaceFilesRequest.
  * Use `create(ListWorkspaceFilesRequestSchema)` to create a new message.
  */
-export const ListWorkspaceFilesRequestSchema: GenMessage<ListWorkspaceFilesRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 65);
+export const ListWorkspaceFilesRequestSchema: GenMessage<ListWorkspaceFilesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  65,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListWorkspaceFilesResponse
  */
-export type ListWorkspaceFilesResponse =
-  Message<"canonical.prism.v1.ListWorkspaceFilesResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.WorkspaceFileInfo files = 1;
-     */
-    files: WorkspaceFileInfo[];
+export type ListWorkspaceFilesResponse = Message<"canonical.prism.v1.ListWorkspaceFilesResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.WorkspaceFileInfo files = 1;
+   */
+  files: WorkspaceFileInfo[];
 
-    /**
-     * Data source: "live" (from running container), "snapshot" (from S3),
-     * or "unavailable" (no container and no snapshot).
-     *
-     * @generated from field: string source = 2;
-     */
-    source: string;
-  };
+  /**
+   * Data source: "live" (from running container), "snapshot" (from S3),
+   * or "unavailable" (no container and no snapshot).
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListWorkspaceFilesResponse.
  * Use `create(ListWorkspaceFilesResponseSchema)` to create a new message.
  */
-export const ListWorkspaceFilesResponseSchema: GenMessage<ListWorkspaceFilesResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 66);
+export const ListWorkspaceFilesResponseSchema: GenMessage<ListWorkspaceFilesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  66,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetWorkspaceFileRequest
@@ -2232,8 +2268,10 @@ export type GetWorkspaceFileRequest = Message<"canonical.prism.v1.GetWorkspaceFi
  * Describes the message canonical.prism.v1.GetWorkspaceFileRequest.
  * Use `create(GetWorkspaceFileRequestSchema)` to create a new message.
  */
-export const GetWorkspaceFileRequestSchema: GenMessage<GetWorkspaceFileRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 67);
+export const GetWorkspaceFileRequestSchema: GenMessage<GetWorkspaceFileRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  67,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetWorkspaceFileResponse
@@ -2265,128 +2303,134 @@ export type GetWorkspaceFileResponse = Message<"canonical.prism.v1.GetWorkspaceF
  * Describes the message canonical.prism.v1.GetWorkspaceFileResponse.
  * Use `create(GetWorkspaceFileResponseSchema)` to create a new message.
  */
-export const GetWorkspaceFileResponseSchema: GenMessage<GetWorkspaceFileResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 68);
+export const GetWorkspaceFileResponseSchema: GenMessage<GetWorkspaceFileResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  68,
+);
 
 /**
  * @generated from message canonical.prism.v1.DownloadWorkspaceFileRequest
  */
-export type DownloadWorkspaceFileRequest =
-  Message<"canonical.prism.v1.DownloadWorkspaceFileRequest"> & {
-    /**
-     * @generated from field: string conversation_id = 1;
-     */
-    conversationId: string;
+export type DownloadWorkspaceFileRequest = Message<"canonical.prism.v1.DownloadWorkspaceFileRequest"> & {
+  /**
+   * @generated from field: string conversation_id = 1;
+   */
+  conversationId: string;
 
-    /**
-     * File path relative to the workspace root (e.g. "src/main.py").
-     *
-     * @generated from field: string path = 2;
-     */
-    path: string;
-  };
+  /**
+   * File path relative to the workspace root (e.g. "src/main.py").
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.DownloadWorkspaceFileRequest.
  * Use `create(DownloadWorkspaceFileRequestSchema)` to create a new message.
  */
-export const DownloadWorkspaceFileRequestSchema: GenMessage<DownloadWorkspaceFileRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 69);
+export const DownloadWorkspaceFileRequestSchema: GenMessage<DownloadWorkspaceFileRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  69,
+);
 
 /**
  * @generated from message canonical.prism.v1.DownloadWorkspaceFileResponse
  */
-export type DownloadWorkspaceFileResponse =
-  Message<"canonical.prism.v1.DownloadWorkspaceFileResponse"> & {
-    /**
-     * MIME type of the file (set in first chunk only).
-     *
-     * @generated from field: string content_type = 1;
-     */
-    contentType: string;
+export type DownloadWorkspaceFileResponse = Message<"canonical.prism.v1.DownloadWorkspaceFileResponse"> & {
+  /**
+   * MIME type of the file (set in first chunk only).
+   *
+   * @generated from field: string content_type = 1;
+   */
+  contentType: string;
 
-    /**
-     * Total file size in bytes (set in first chunk only).
-     *
-     * @generated from field: int64 total_size_bytes = 2;
-     */
-    totalSizeBytes: bigint;
+  /**
+   * Total file size in bytes (set in first chunk only).
+   *
+   * @generated from field: int64 total_size_bytes = 2;
+   */
+  totalSizeBytes: bigint;
 
-    /**
-     * File content chunk (~64KB per message).
-     *
-     * @generated from field: bytes data = 3;
-     */
-    data: Uint8Array;
-  };
+  /**
+   * File content chunk (~64KB per message).
+   *
+   * @generated from field: bytes data = 3;
+   */
+  data: Uint8Array;
+};
 
 /**
  * Describes the message canonical.prism.v1.DownloadWorkspaceFileResponse.
  * Use `create(DownloadWorkspaceFileResponseSchema)` to create a new message.
  */
-export const DownloadWorkspaceFileResponseSchema: GenMessage<DownloadWorkspaceFileResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 70);
+export const DownloadWorkspaceFileResponseSchema: GenMessage<DownloadWorkspaceFileResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  70,
+);
 
 /**
  * @generated from message canonical.prism.v1.UploadWorkspaceFileRequest
  */
-export type UploadWorkspaceFileRequest =
-  Message<"canonical.prism.v1.UploadWorkspaceFileRequest"> & {
-    /**
-     * Conversation ID for the workspace to upload into.
-     *
-     * @generated from field: string conversation_id = 1;
-     */
-    conversationId: string;
+export type UploadWorkspaceFileRequest = Message<"canonical.prism.v1.UploadWorkspaceFileRequest"> & {
+  /**
+   * Conversation ID for the workspace to upload into.
+   *
+   * @generated from field: string conversation_id = 1;
+   */
+  conversationId: string;
 
-    /**
-     * File path relative to the workspace root (e.g. "uploads/report.pdf").
-     *
-     * @generated from field: string path = 2;
-     */
-    path: string;
+  /**
+   * File path relative to the workspace root (e.g. "uploads/report.pdf").
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
 
-    /**
-     * MIME type of the file.
-     *
-     * @generated from field: string content_type = 3;
-     */
-    contentType: string;
+  /**
+   * MIME type of the file.
+   *
+   * @generated from field: string content_type = 3;
+   */
+  contentType: string;
 
-    /**
-     * File content (max 100MB).
-     *
-     * @generated from field: bytes data = 4;
-     */
-    data: Uint8Array;
-  };
+  /**
+   * File content (max 100MB).
+   *
+   * @generated from field: bytes data = 4;
+   */
+  data: Uint8Array;
+};
 
 /**
  * Describes the message canonical.prism.v1.UploadWorkspaceFileRequest.
  * Use `create(UploadWorkspaceFileRequestSchema)` to create a new message.
  */
-export const UploadWorkspaceFileRequestSchema: GenMessage<UploadWorkspaceFileRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 71);
+export const UploadWorkspaceFileRequestSchema: GenMessage<UploadWorkspaceFileRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  71,
+);
 
 /**
  * @generated from message canonical.prism.v1.UploadWorkspaceFileResponse
  */
-export type UploadWorkspaceFileResponse =
-  Message<"canonical.prism.v1.UploadWorkspaceFileResponse"> & {
-    /**
-     * Metadata for the uploaded file.
-     *
-     * @generated from field: canonical.prism.v1.WorkspaceFileInfo file = 1;
-     */
-    file?: WorkspaceFileInfo;
-  };
+export type UploadWorkspaceFileResponse = Message<"canonical.prism.v1.UploadWorkspaceFileResponse"> & {
+  /**
+   * Metadata for the uploaded file.
+   *
+   * @generated from field: canonical.prism.v1.WorkspaceFileInfo file = 1;
+   */
+  file?: WorkspaceFileInfo;
+};
 
 /**
  * Describes the message canonical.prism.v1.UploadWorkspaceFileResponse.
  * Use `create(UploadWorkspaceFileResponseSchema)` to create a new message.
  */
-export const UploadWorkspaceFileResponseSchema: GenMessage<UploadWorkspaceFileResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_reasoning, 72);
+export const UploadWorkspaceFileResponseSchema: GenMessage<UploadWorkspaceFileResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_reasoning,
+  72,
+);
 
 /**
  * Type of entity referenced in an @-mention.
@@ -2418,10 +2462,7 @@ export enum MentionType {
 /**
  * Describes the enum canonical.prism.v1.MentionType.
  */
-export const MentionTypeSchema: GenEnum<MentionType> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_reasoning,
-  0,
-);
+export const MentionTypeSchema: GenEnum<MentionType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_reasoning, 0);
 
 /**
  * ReasoningService manages the AI reasoning pipeline — provider configuration,

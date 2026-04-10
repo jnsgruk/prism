@@ -6,6 +6,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   CreateSourceRequest,
   CreateSourceResponse,
@@ -22,7 +24,6 @@ import {
   UpdateSourceRequest,
   UpdateSourceResponse,
 } from "./config_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * ConfigService manages data source configurations — the external platforms

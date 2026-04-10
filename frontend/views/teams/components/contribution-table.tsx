@@ -1,30 +1,21 @@
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import type { Contribution, ContributionFilters, PersonContributionFilters } from "@/lib/hooks/use-metrics";
+import { useListTeamContributions, useListPersonContributions } from "@/lib/hooks/use-metrics";
+import { contributionStateLabel, platformLabel } from "@/lib/proto-display";
+import { create } from "@bufbuild/protobuf";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { ExternalLink, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
-import { create } from "@bufbuild/protobuf";
+import { ContributionState, ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { PeriodSchema } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
-import {
-  ContributionState,
-  ContributionType,
-  Platform,
-} from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { contributionStateLabel, platformLabel } from "@/lib/proto-display";
-import type {
-  Contribution,
-  ContributionFilters,
-  PersonContributionFilters,
-} from "@/lib/hooks/use-metrics";
-import { useListTeamContributions, useListPersonContributions } from "@/lib/hooks/use-metrics";
-
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 const formatTimestamp = (ts?: Timestamp): string => {
   if (!ts) return "\u2014";
@@ -36,9 +27,7 @@ const formatTimestamp = (ts?: Timestamp): string => {
   );
 };
 
-const stateBadgeVariant = (
-  state: ContributionState,
-): "default" | "secondary" | "destructive" | "outline" => {
+const stateBadgeVariant = (state: ContributionState): "default" | "secondary" | "destructive" | "outline" => {
   switch (state) {
     case ContributionState.MERGED:
     case ContributionState.APPROVED:
@@ -171,9 +160,7 @@ const createdAtColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "createdAt",
   header: "Created",
   cell: ({ row }) => (
-    <span className="whitespace-nowrap text-muted-foreground">
-      {formatTimestamp(row.original.createdAt)}
-    </span>
+    <span className="whitespace-nowrap text-muted-foreground">{formatTimestamp(row.original.createdAt)}</span>
   ),
   enableSorting: true,
 };
@@ -185,8 +172,7 @@ const prStatsColumn: ColumnDef<Contribution, unknown> = {
     const c = row.original;
     return c.additions > 0 || c.deletions > 0 ? (
       <span className="whitespace-nowrap">
-        <span className="text-green-600">+{c.additions}</span>{" "}
-        <span className="text-red-600">-{c.deletions}</span>
+        <span className="text-green-600">+{c.additions}</span> <span className="text-red-600">-{c.deletions}</span>
       </span>
     ) : (
       "\u2014"
@@ -246,9 +232,7 @@ const discourseTypeColumn: ColumnDef<Contribution, unknown> = {
 const discourseInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
-  cell: ({ row }) => (
-    <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>
-  ),
+  cell: ({ row }) => <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>,
   enableSorting: false,
 };
 
@@ -317,13 +301,7 @@ export const ContributionTable = ({
     if (isDiscourse) {
       return isPersonMode
         ? [discourseTitleColumn, discourseTypeColumn, discourseInstanceColumn, createdAtColumn]
-        : [
-            discourseTitleColumn,
-            discourseTypeColumn,
-            discourseInstanceColumn,
-            authorColumn,
-            createdAtColumn,
-          ];
+        : [discourseTitleColumn, discourseTypeColumn, discourseInstanceColumn, authorColumn, createdAtColumn];
     }
     if (isReview) {
       return isPersonMode
@@ -374,15 +352,8 @@ export const ContributionTable = ({
   // Use a dummy period for the team hook when in person mode to avoid
   // accessing undefined period.type in the query key.
   const dummyPeriod = create(PeriodSchema, { start: "", end: "" });
-  const teamQuery = useListTeamContributions(
-    isPersonMode ? "" : (teamId ?? ""),
-    period ?? dummyPeriod,
-    teamFilters,
-  );
-  const personQuery = useListPersonContributions(
-    isPersonMode ? (personId ?? "") : "",
-    personFilters,
-  );
+  const teamQuery = useListTeamContributions(isPersonMode ? "" : (teamId ?? ""), period ?? dummyPeriod, teamFilters);
+  const personQuery = useListPersonContributions(isPersonMode ? (personId ?? "") : "", personFilters);
 
   const data = isPersonMode ? personQuery.data : teamQuery.data;
   const isLoading = isPersonMode ? personQuery.isLoading : teamQuery.isLoading;

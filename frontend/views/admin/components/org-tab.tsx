@@ -60,9 +60,7 @@ export const OrgTab = (): React.ReactElement => {
     <div className="space-y-4 pt-4">
       {/* Top action bar */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Manage your organisation's teams and people.
-        </p>
+        <p className="text-sm text-muted-foreground">Manage your organisation's teams and people.</p>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button />}>
             <Plus className="size-4" />

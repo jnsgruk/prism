@@ -10,11 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTriggerBackfill } from "@/views/ingestion/hooks/use-ingestion";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-import { useTriggerBackfill } from "@/views/ingestion/hooks/use-ingestion";
 
 export const BackfillDialog = ({
   sourceName,
@@ -57,8 +56,8 @@ export const BackfillDialog = ({
           <DialogHeader>
             <DialogTitle>Backfill {sourceName}</DialogTitle>
             <DialogDescription>
-              Re-ingest data from a specific date. This will fetch all data since the selected date,
-              regardless of existing watermarks.
+              Re-ingest data from a specific date. This will fetch all data since the selected date, regardless of
+              existing watermarks.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">

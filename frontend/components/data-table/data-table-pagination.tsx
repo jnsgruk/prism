@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE_OPTIONS = ["10", "25", "50", "100"];
@@ -40,10 +34,7 @@ export const DataTablePagination = ({
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5">
           <span className="text-sm text-muted-foreground">Rows</span>
-          <Select
-            value={String(pageSize)}
-            onValueChange={(v) => v !== null && onPageSizeChange(Number(v))}
-          >
+          <Select value={String(pageSize)} onValueChange={(v) => v !== null && onPageSizeChange(Number(v))}>
             <SelectTrigger>
               <SelectValue>{pageSize}</SelectValue>
             </SelectTrigger>
@@ -57,12 +48,7 @@ export const DataTablePagination = ({
           </Select>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={onPreviousPage}
-            disabled={pageIndex === 0}
-          >
+          <Button variant="outline" size="icon-sm" onClick={onPreviousPage} disabled={pageIndex === 0}>
             <ChevronLeft className="size-4" />
           </Button>
           <Button variant="outline" size="icon-sm" onClick={onNextPage} disabled={!hasNextPage}>

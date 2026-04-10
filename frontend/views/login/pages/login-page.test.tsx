@@ -1,3 +1,4 @@
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { create } from "@bufbuild/protobuf";
 import { createRouterTransport } from "@connectrpc/connect";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -5,7 +6,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   AuthService,
   GetCurrentUserResponseSchema,
@@ -19,8 +19,7 @@ vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
     service(AuthService, {
       getSetupStatus: () => create(GetSetupStatusResponseSchema, { setupComplete: true }),
-      getCurrentUser: () =>
-        create(GetCurrentUserResponseSchema, { username: "admin", displayName: "Admin" }),
+      getCurrentUser: () => create(GetCurrentUserResponseSchema, { username: "admin", displayName: "Admin" }),
       login: () => create(LoginResponseSchema, { sessionToken: "test-token" }),
       logout: () => create(LogoutResponseSchema, {}),
       completeSetup: () => ({}),

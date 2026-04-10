@@ -1,6 +1,3 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CategoryTags } from "@/components/category-tags";
 import { CoverageIndicator } from "@/components/coverage-indicator";
 import { DeltaBadge } from "@/components/delta-badge";
@@ -8,6 +5,9 @@ import { DepthHistogram } from "@/components/depth-histogram";
 import { NotableContributionCard } from "@/components/notable-contribution-card";
 import { SentimentBar } from "@/components/sentiment-bar";
 import { SignificanceBreakdown } from "@/components/significance-breakdown";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, Loader2, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 
@@ -89,9 +89,7 @@ export const TeamInsightsSection = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Failed to load insights: {error.message}
-            </p>
+            <p className="text-sm text-muted-foreground">Failed to load insights: {error.message}</p>
           </CardContent>
         </Card>
       );
@@ -109,12 +107,10 @@ export const TeamInsightsSection = ({
   const trend = insights.trend;
 
   const hasReviewData = rq && rq.totalReviews >= 10;
-  const hasSignificanceData =
-    sig && sig.significantCount + sig.notableCount + sig.routineCount >= 5;
+  const hasSignificanceData = sig && sig.significantCount + sig.notableCount + sig.routineCount >= 5;
   const hasTopicData = topics && topics.totalClassified >= 5;
   const hasNotable = notable.length > 0;
-  const hasDbs =
-    dbs && dbs.significantReviewCount + dbs.notableReviewCount + dbs.routineReviewCount >= 10;
+  const hasDbs = dbs && dbs.significantReviewCount + dbs.notableReviewCount + dbs.routineReviewCount >= 10;
 
   const hasAnyData = hasReviewData || hasSignificanceData || hasTopicData || hasNotable;
 
@@ -140,9 +136,7 @@ export const TeamInsightsSection = ({
               </Badge>
             )}
           </div>
-          <CardDescription>
-            AI-powered analysis of review quality, PR impact, and content
-          </CardDescription>
+          <CardDescription>AI-powered analysis of review quality, PR impact, and content</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -151,8 +145,8 @@ export const TeamInsightsSection = ({
               <Sparkles className="mx-auto mb-2 size-8 text-muted-foreground" />
               <p className="mb-1 text-sm font-medium">Insights are building up</p>
               <p className="text-sm text-muted-foreground">
-                {coveragePct}% of contributions enriched so far. Insights will appear here as the
-                pipeline processes more data.
+                {coveragePct}% of contributions enriched so far. Insights will appear here as the pipeline processes
+                more data.
               </p>
               {coverage && <CoverageIndicator byType={coverage.byType} className="mt-4" />}
             </div>
@@ -172,9 +166,7 @@ export const TeamInsightsSection = ({
                       description="Average review depth score (1-5 scale). Higher means more thorough reviews."
                       colorClass={depthColor(rq.avgDepth)}
                       delta={
-                        trend?.hasPrevious ? (
-                          <DeltaBadge delta={trend.avgDepthDelta} format="decimal" />
-                        ) : undefined
+                        trend?.hasPrevious ? <DeltaBadge delta={trend.avgDepthDelta} format="decimal" /> : undefined
                       }
                     />
                     <MetricValue
@@ -184,12 +176,7 @@ export const TeamInsightsSection = ({
                       colorClass={rq.rubberStampPct > 30 ? "text-red-600" : undefined}
                       delta={
                         trend?.hasPrevious ? (
-                          <DeltaBadge
-                            delta={trend.rubberStampPctDelta}
-                            format="percent"
-                            suffix="%"
-                            invert
-                          />
+                          <DeltaBadge delta={trend.rubberStampPctDelta} format="percent" suffix="%" invert />
                         ) : undefined
                       }
                     />
@@ -200,11 +187,7 @@ export const TeamInsightsSection = ({
                       colorClass={rq.deepReviewPct > 20 ? "text-emerald-600" : undefined}
                       delta={
                         trend?.hasPrevious ? (
-                          <DeltaBadge
-                            delta={trend.deepReviewPctDelta}
-                            format="percent"
-                            suffix="%"
-                          />
+                          <DeltaBadge delta={trend.deepReviewPctDelta} format="percent" suffix="%" />
                         ) : undefined
                       }
                     />
@@ -213,17 +196,14 @@ export const TeamInsightsSection = ({
                       label="Total reviews"
                       description="Number of reviews with depth enrichments in this period."
                       delta={
-                        trend?.hasPrevious ? (
-                          <DeltaBadge delta={trend.reviewCountDelta} format="integer" />
-                        ) : undefined
+                        trend?.hasPrevious ? <DeltaBadge delta={trend.reviewCountDelta} format="integer" /> : undefined
                       }
                     />
                   </div>
 
                   <DepthHistogram distribution={rq.depthDistribution} />
 
-                  {rq.constructiveCount + rq.neutralCount + rq.criticalCount + rq.hostileCount >
-                    0 && (
+                  {rq.constructiveCount + rq.neutralCount + rq.criticalCount + rq.hostileCount > 0 && (
                     <SentimentBar
                       constructive={rq.constructiveCount}
                       neutral={rq.neutralCount}
@@ -235,26 +215,19 @@ export const TeamInsightsSection = ({
                   {/* Top reviewers */}
                   {rq.topReviewers.length > 0 && (
                     <div>
-                      <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                        Top reviewers by depth
-                      </h4>
+                      <h4 className="mb-2 text-xs font-medium text-muted-foreground">Top reviewers by depth</h4>
                       <div className="space-y-1">
                         {rq.topReviewers.map((r) => (
                           <div
                             key={r.personId}
                             className="flex items-center justify-between rounded px-2 py-1 text-sm hover:bg-muted/50"
                           >
-                            <Link
-                              to={`/people/${r.personId}`}
-                              className="underline-offset-4 hover:underline"
-                            >
+                            <Link to={`/people/${r.personId}`} className="underline-offset-4 hover:underline">
                               {r.personName}
                             </Link>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span className="tabular-nums">{r.reviewCount} reviews</span>
-                              <span
-                                className={`tabular-nums font-medium ${depthColor(r.avgDepth)}`}
-                              >
+                              <span className={`tabular-nums font-medium ${depthColor(r.avgDepth)}`}>
                                 {r.avgDepth.toFixed(2)}
                               </span>
                             </div>
@@ -315,9 +288,7 @@ export const TeamInsightsSection = ({
                     <p className={`text-lg font-semibold tabular-nums ${depthColor(row.depth)}`}>
                       {row.count > 0 ? row.depth.toFixed(2) : "\u2014"}
                     </p>
-                    <p className="text-[10px] tabular-nums text-muted-foreground">
-                      {row.count} reviews
-                    </p>
+                    <p className="text-[10px] tabular-nums text-muted-foreground">{row.count} reviews</p>
                   </div>
                 ))}
               </div>

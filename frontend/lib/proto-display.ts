@@ -56,8 +56,7 @@ const CONTRIBUTION_TYPE_LABELS: Record<ContributionType, string> = {
   [ContributionType.DISCOURSE_LIKE]: "Discourse Like",
 };
 
-export const contributionTypeLabel = (ct: ContributionType): string =>
-  CONTRIBUTION_TYPE_LABELS[ct] ?? String(ct);
+export const contributionTypeLabel = (ct: ContributionType): string => CONTRIBUTION_TYPE_LABELS[ct] ?? String(ct);
 
 // ---------------------------------------------------------------------------
 // ContributionState
@@ -77,8 +76,7 @@ const CONTRIBUTION_STATE_LABELS: Record<ContributionState, string> = {
   [ContributionState.DONE]: "Done",
 };
 
-export const contributionStateLabel = (cs: ContributionState): string =>
-  CONTRIBUTION_STATE_LABELS[cs] ?? String(cs);
+export const contributionStateLabel = (cs: ContributionState): string => CONTRIBUTION_STATE_LABELS[cs] ?? String(cs);
 
 // ---------------------------------------------------------------------------
 // RunStatus
@@ -121,8 +119,7 @@ const ENRICHMENT_TYPE_LABELS: Record<EnrichmentType, string> = {
   [EnrichmentType.TOPIC]: "Topic",
 };
 
-export const enrichmentTypeLabel = (et: EnrichmentType): string =>
-  ENRICHMENT_TYPE_LABELS[et] ?? String(et);
+export const enrichmentTypeLabel = (et: EnrichmentType): string => ENRICHMENT_TYPE_LABELS[et] ?? String(et);
 
 /** Lowercase key matching the DB string (e.g. "review_depth", "sentiment"). */
 export const enrichmentTypeKey = (et: EnrichmentType): string => {
@@ -152,5 +149,4 @@ const INSIGHT_PERIOD_LABELS: Record<InsightPeriod, string> = {
   [InsightPeriod.LAST_YEAR]: "Last Year",
 };
 
-export const insightPeriodLabel = (p: InsightPeriod): string =>
-  INSIGHT_PERIOD_LABELS[p] ?? String(p);
+export const insightPeriodLabel = (p: InsightPeriod): string => INSIGHT_PERIOD_LABELS[p] ?? String(p);

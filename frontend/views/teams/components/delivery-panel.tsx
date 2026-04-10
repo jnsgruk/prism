@@ -1,6 +1,6 @@
+import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { fmtHours } from "@/lib/format-metrics";
 import { ArrowRight, GitPullRequest, Info } from "lucide-react";
 import { useMemo } from "react";
@@ -15,10 +15,7 @@ import {
   YAxis,
 } from "recharts";
 
-import type {
-  GetFlowMetricsResponse,
-  TeamMetrics,
-} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
+import type { GetFlowMetricsResponse, TeamMetrics } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 /** Capitalise a source key like "github" → "GitHub", "discourse" → "Discourse", "jira" → "Jira". */
 const sourceLabel = (key: string): string => {
@@ -50,12 +47,7 @@ const MetricValue = ({
   onClick?: () => void;
 }): React.ReactElement => (
   <div className="min-w-0 flex-1">
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className="group text-left disabled:cursor-default"
-    >
+    <button type="button" onClick={onClick} disabled={!onClick} className="group text-left disabled:cursor-default">
       <span className="text-2xl font-semibold tabular-nums group-enabled:underline-offset-4 group-enabled:hover:underline">
         {value}
       </span>
@@ -213,16 +205,9 @@ export const DeliveryPanel = ({
                       />
                     ))
                   ) : (
-                    <Bar
-                      dataKey="total"
-                      name="Completed items"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar dataKey="total" name="Completed items" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   )}
-                  {hasMultipleSources && (
-                    <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                  )}
+                  {hasMultipleSources && <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 11 }} />}
                 </BarChart>
               </ResponsiveContainer>
             </div>

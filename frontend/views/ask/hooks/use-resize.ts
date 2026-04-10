@@ -54,8 +54,7 @@ export const useResize = ({
       if (target) target.style.transition = "none";
 
       const onPointerMove = (ev: PointerEvent): void => {
-        const delta =
-          axis === "horizontal" ? ev.clientX - startPos.current : ev.clientY - startPos.current;
+        const delta = axis === "horizontal" ? ev.clientX - startPos.current : ev.clientY - startPos.current;
         const size = clamp(startSize.current + (reverse ? -delta : delta));
 
         // Directly mutate DOM — avoids React re-render on every frame.
@@ -76,8 +75,7 @@ export const useResize = ({
         if (target) target.style.transition = prevTransition;
 
         // Commit final size to React state (single reflow).
-        const delta =
-          axis === "horizontal" ? ev.clientX - startPos.current : ev.clientY - startPos.current;
+        const delta = axis === "horizontal" ? ev.clientX - startPos.current : ev.clientY - startPos.current;
         onResize(clamp(startSize.current + (reverse ? -delta : delta)));
       };
 

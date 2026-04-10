@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  useReactFlow,
-  type Edge,
-  type Node,
-  type NodeTypes,
-} from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeTypes } from "@xyflow/react";
 import { Scan } from "lucide-react";
 import { useMemo } from "react";
 
@@ -56,14 +49,7 @@ const EDGES: Edge[] = [
   },
 ];
 
-const STAGE_KEYS: StageKey[] = [
-  "ingestion",
-  "metrics",
-  "enrichment",
-  "embedding",
-  "insights",
-  "identity_resolution",
-];
+const STAGE_KEYS: StageKey[] = ["ingestion", "metrics", "enrichment", "embedding", "insights", "identity_resolution"];
 
 const FitViewButton = (): React.ReactElement => {
   const { fitView } = useReactFlow();
@@ -91,22 +77,20 @@ const FlowInner = ({
 
   const nodes: Node<StageNodeData>[] = useMemo(
     () =>
-      STAGE_KEYS.filter((key) => stages[key] !== undefined || key !== "identity_resolution").map(
-        (key) => ({
-          id: key,
-          type: "stage",
-          position: NODE_POSITIONS[key],
-          draggable: false,
-          selectable: false,
-          connectable: false,
-          data: {
-            stageKey: key,
-            stage: stages[key],
-            isCurrentStage: currentStage === key,
-            sourceStatuses: key === "ingestion" ? sourceStatuses : undefined,
-          },
-        }),
-      ),
+      STAGE_KEYS.filter((key) => stages[key] !== undefined || key !== "identity_resolution").map((key) => ({
+        id: key,
+        type: "stage",
+        position: NODE_POSITIONS[key],
+        draggable: false,
+        selectable: false,
+        connectable: false,
+        data: {
+          stageKey: key,
+          stage: stages[key],
+          isCurrentStage: currentStage === key,
+          sourceStatuses: key === "ingestion" ? sourceStatuses : undefined,
+        },
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pipeline.stagesJson, currentStage, sourceStatuses],
   );

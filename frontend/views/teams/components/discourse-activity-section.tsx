@@ -1,48 +1,27 @@
+import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
-
+import { useListSources } from "@/lib/hooks/use-config";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import type { ContributionFilters } from "@/lib/hooks/use-metrics";
+import { useListTeamContributions } from "@/lib/hooks/use-metrics";
+import { platformLabel } from "@/lib/proto-display";
+import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { ContributionType, Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { platformLabel } from "@/lib/proto-display";
-import type {
-  Contribution,
-  Period,
-  TeamMetrics,
-  TopContributor,
-} from "@ps/api/gen/canonical/prism/v1/metrics_pb";
-import type { ContributionFilters } from "@/lib/hooks/use-metrics";
-
-import { useListSources } from "@/lib/hooks/use-config";
-import { useListTeamContributions } from "@/lib/hooks/use-metrics";
-import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
+import type { Contribution, Period, TeamMetrics, TopContributor } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 // ---------------------------------------------------------------------------
 // Topics table columns
@@ -101,9 +80,7 @@ const topicTypeColumn: ColumnDef<Contribution, unknown> = {
 const topicInstanceColumn: ColumnDef<Contribution, unknown> = {
   id: "instance",
   header: "Instance",
-  cell: ({ row }) => (
-    <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>
-  ),
+  cell: ({ row }) => <span className="text-muted-foreground">{platformLabel(row.original.platform)}</span>,
   enableSorting: false,
 };
 
@@ -124,9 +101,7 @@ const topicCreatedColumn: ColumnDef<Contribution, unknown> = {
   accessorKey: "createdAt",
   header: "Created",
   cell: ({ row }) => (
-    <span className="whitespace-nowrap text-muted-foreground">
-      {formatShortDate(row.original.createdAt)}
-    </span>
+    <span className="whitespace-nowrap text-muted-foreground">{formatShortDate(row.original.createdAt)}</span>
   ),
   enableSorting: true,
 };
@@ -271,9 +246,7 @@ const likesColumn: ColumnDef<TopContributor, unknown> = {
   id: "likes_received",
   accessorKey: "likesReceived",
   header: "Likes Received",
-  cell: ({ row }) => (
-    <span className="tabular-nums text-right">{row.original.likesReceived || "\u2014"}</span>
-  ),
+  cell: ({ row }) => <span className="tabular-nums text-right">{row.original.likesReceived || "\u2014"}</span>,
   enableSorting: true,
 };
 
@@ -337,10 +310,7 @@ export const DiscourseActivitySection = ({
 
   // Fetch discourse sources for instance filter
   const { data: sources } = useListSources();
-  const discourseSources = useMemo(
-    () => (sources ?? []).filter((s) => s.sourceType === Platform.DISCOURSE),
-    [sources],
-  );
+  const discourseSources = useMemo(() => (sources ?? []).filter((s) => s.sourceType === Platform.DISCOURSE), [sources]);
 
   // Only fetch when section is expanded
   const enabled = open && hasDiscourse;
@@ -381,9 +351,7 @@ export const DiscourseActivitySection = ({
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CardHeader className="cursor-pointer" onClick={() => setOpen(!open)}>
-          <CollapsibleTrigger
-            render={<button type="button" className="flex w-full items-center gap-2 text-left" />}
-          >
+          <CollapsibleTrigger render={<button type="button" className="flex w-full items-center gap-2 text-left" />}>
             {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             <MessageCircle className="size-4 text-muted-foreground" />
             <CardTitle>Discourse Activity</CardTitle>
@@ -409,18 +377,14 @@ export const DiscourseActivitySection = ({
                     <SelectValue>
                       {instanceFilter === "all"
                         ? "All instances"
-                        : (discourseSources.find(
-                            (s) => (s.platformInstance || s.name) === instanceFilter,
-                          )?.name ?? instanceFilter)}
+                        : (discourseSources.find((s) => (s.platformInstance || s.name) === instanceFilter)?.name ??
+                          instanceFilter)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All instances</SelectItem>
                     {discourseSources.map((s) => (
-                      <SelectItem
-                        key={s.platformInstance || s.name}
-                        value={s.platformInstance || s.name}
-                      >
+                      <SelectItem key={s.platformInstance || s.name} value={s.platformInstance || s.name}>
                         {s.name || platformLabel(s.sourceType, s.platformInstance)}
                       </SelectItem>
                     ))}
@@ -444,18 +408,15 @@ export const DiscourseActivitySection = ({
               </div>
             )}
 
-            {!isLoading &&
-              enabled &&
-              activityTrend.length === 0 &&
-              allContributors.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
-                  <MessageCircle className="size-10 text-muted-foreground" />
-                  <p className="mb-1 font-medium">No activity details</p>
-                  <p className="text-sm text-muted-foreground">
-                    Discourse activity exists but detailed breakdown is not yet available.
-                  </p>
-                </div>
-              )}
+            {!isLoading && enabled && activityTrend.length === 0 && allContributors.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12">
+                <MessageCircle className="size-10 text-muted-foreground" />
+                <p className="mb-1 font-medium">No activity details</p>
+                <p className="text-sm text-muted-foreground">
+                  Discourse activity exists but detailed breakdown is not yet available.
+                </p>
+              </div>
+            )}
 
             {!isLoading && enabled && (activityTrend.length > 0 || allContributors.length > 0) && (
               <>
@@ -464,16 +425,9 @@ export const DiscourseActivitySection = ({
                   <div>
                     <h4 className="mb-3 text-sm font-medium">Activity Trend</h4>
                     <ResponsiveContainer width="100%" height={250}>
-                      <AreaChart
-                        data={activityTrend}
-                        margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                      >
+                      <AreaChart data={activityTrend} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12 }}
-                          className="fill-muted-foreground"
-                        />
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                         <YAxis className="fill-muted-foreground" />
                         <Tooltip content={ChartTooltip} cursor={cursorStyle} />
                         <Area
@@ -511,11 +465,7 @@ export const DiscourseActivitySection = ({
                 {/* Topics table (server-side paginated) */}
                 <div>
                   <h4 className="mb-3 text-sm font-medium">Contributions</h4>
-                  <DiscourseTopicsTable
-                    teamId={teamId}
-                    period={period}
-                    platformInstance={instance}
-                  />
+                  <DiscourseTopicsTable teamId={teamId} period={period} platformInstance={instance} />
                 </div>
 
                 {/* Top contributors (client-side) */}

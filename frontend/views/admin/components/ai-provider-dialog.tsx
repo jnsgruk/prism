@@ -1,14 +1,6 @@
-import { useState } from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogClose,
@@ -22,12 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, ChevronsUpDown, Loader2, XCircle } from "lucide-react";
-import { toast } from "sonner";
-
-import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { aiProviderKey } from "@/lib/proto-display";
 import {
   useAiModels,
   useAiSettings,
@@ -36,6 +22,13 @@ import {
   useTestProvider,
   useUpdateAiSettings,
 } from "@/lib/hooks/use-ai-settings";
+import { aiProviderKey } from "@/lib/proto-display";
+import { CheckCircle2, ChevronsUpDown, Loader2, XCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 const TASK_TYPES = [
   {
@@ -135,9 +128,7 @@ export const AiProviderDialog = ({
           <div className="space-y-3">
             <div>
               <Label className="text-sm font-medium">API Key</Label>
-              <p className="text-xs text-muted-foreground">
-                Encrypted at rest. The value is never displayed.
-              </p>
+              <p className="text-xs text-muted-foreground">Encrypted at rest. The value is never displayed.</p>
             </div>
             <div className="flex items-center gap-2">
               {isKeySet ? (
@@ -153,21 +144,12 @@ export const AiProviderDialog = ({
               )}
               <div className="ml-auto flex items-center gap-2">
                 {isKeySet && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={testProvider.isPending}
-                    onClick={handleTest}
-                  >
+                  <Button variant="outline" size="sm" disabled={testProvider.isPending} onClick={handleTest}>
                     {testProvider.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                     Test
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowSecretInput(!showSecretInput)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setShowSecretInput(!showSecretInput)}>
                   {showSecretInput ? "Cancel" : secretButtonLabel}
                 </Button>
               </div>
@@ -181,11 +163,7 @@ export const AiProviderDialog = ({
                   onChange={(e) => setSecretValue(e.target.value)}
                   className="font-mono"
                 />
-                <Button
-                  size="sm"
-                  disabled={!secretValue || setSecret.isPending}
-                  onClick={handleSaveSecret}
-                >
+                <Button size="sm" disabled={!secretValue || setSecret.isPending} onClick={handleSaveSecret}>
                   {setSecret.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                   Save
                 </Button>
@@ -209,8 +187,7 @@ export const AiProviderDialog = ({
                 onClick={() => {
                   refreshCatalogue.mutate(undefined, {
                     onSuccess: () => toast.success("Model catalogue refresh started"),
-                    onError: (err) =>
-                      toast.error(err instanceof Error ? err.message : "Failed to refresh"),
+                    onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to refresh"),
                   });
                 }}
               >
@@ -236,8 +213,7 @@ export const AiProviderDialog = ({
                           { [task.key]: { provider: config.provider, model } },
                           {
                             onSuccess: () => toast.success("Model updated"),
-                            onError: (err) =>
-                              toast.error(err instanceof Error ? err.message : "Failed to update"),
+                            onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update"),
                           },
                         );
                       }}
@@ -305,9 +281,7 @@ const ModelCombobox = ({
           />
         }
       >
-        <span className="min-w-0 truncate text-sm">
-          {selected ? selected.displayName : value || "Select model..."}
-        </span>
+        <span className="min-w-0 truncate text-sm">{selected ? selected.displayName : value || "Select model..."}</span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="w-[340px] p-0" align="start">
@@ -315,9 +289,7 @@ const ModelCombobox = ({
           <CommandInput placeholder="Search models..." />
           <CommandList>
             <CommandEmpty>
-              {models.length === 0
-                ? "No models cached. Click Refresh models."
-                : "No matching models."}
+              {models.length === 0 ? "No models cached. Click Refresh models." : "No matching models."}
             </CommandEmpty>
             {models.map((m) => (
               <ModelCommandItem
@@ -358,8 +330,7 @@ const ModelCommandItem = ({
         {model.inputPricePerMillion != null && (
           <>
             {model.contextLength > 0 && " · "}
-            {formatPrice(model.inputPricePerMillion)}/M in ·{" "}
-            {formatPrice(model.outputPricePerMillion)}
+            {formatPrice(model.inputPricePerMillion)}/M in · {formatPrice(model.outputPricePerMillion)}
             /M out
           </>
         )}

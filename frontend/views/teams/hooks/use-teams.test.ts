@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
-import {
-  findTeam,
-  flattenTree,
-  getAncestors,
-  teamTypeBadgeVariant,
-  teamTypeLabel,
-} from "./use-teams";
+import { findTeam, flattenTree, getAncestors, teamTypeBadgeVariant, teamTypeLabel } from "./use-teams";
 
 const makeTeam = (id: string, children: Team[] = []): Team =>
   ({

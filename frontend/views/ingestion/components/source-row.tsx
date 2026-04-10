@@ -1,17 +1,17 @@
 import { DOT_SEP, Stat } from "@/components/inline-stat";
 import { StatusDot, stateStyles } from "@/components/status-dot";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { formatRelativeTime } from "@/lib/format";
+import { platformKey } from "@/lib/proto-display";
+import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
+import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
 import { ChevronRight, GitPullRequest, MessageSquare, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { platformKey } from "@/lib/proto-display";
 import { cn } from "@ps/cn";
 
-import { formatRelativeTime } from "@/lib/format";
-import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
-import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
 import { SourceOverflowMenu } from "./source-overflow-menu";
 
 // ---------------------------------------------------------------------------
@@ -50,9 +50,7 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
       )}
     </div>
     {progress.percent !== null && (
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-        {progress.percent}%
-      </span>
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress.percent}%</span>
     )}
     <span className="truncate text-xs text-muted-foreground">{progress.label}</span>
   </div>
@@ -63,8 +61,7 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
 // ---------------------------------------------------------------------------
 
 const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => {
-  const rateLimitLow =
-    detail.rateLimit && detail.rateLimit.remaining / detail.rateLimit.limit < 0.1;
+  const rateLimitLow = detail.rateLimit && detail.rateLimit.remaining / detail.rateLimit.limit < 0.1;
 
   const stats: React.ReactNode[] = [];
 
@@ -184,10 +181,7 @@ export const SourceRow = ({
           {hasDetail && isActive ? (
             <CollapsibleTrigger className="flex items-center justify-center">
               <ChevronRight
-                className={cn(
-                  "size-3.5 text-muted-foreground transition-transform",
-                  expanded && "rotate-90",
-                )}
+                className={cn("size-3.5 text-muted-foreground transition-transform", expanded && "rotate-90")}
               />
             </CollapsibleTrigger>
           ) : (
@@ -204,9 +198,7 @@ export const SourceRow = ({
           {/* Progress or last run */}
           <div className="hidden min-w-0 sm:block">
             {isActive && progress && <InlineProgress progress={progress} />}
-            {!isActive && enabled && (
-              <span className="text-xs text-muted-foreground">{relativeTime}</span>
-            )}
+            {!isActive && enabled && <span className="text-xs text-muted-foreground">{relativeTime}</span>}
           </div>
 
           {/* Overflow menu */}

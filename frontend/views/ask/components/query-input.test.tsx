@@ -1,10 +1,10 @@
+import { createPillElement } from "@/views/ask/hooks/use-mention-picker";
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 
 import { QueryInput } from "./query-input";
-import { createPillElement } from "@/views/ask/hooks/use-mention-picker";
 
 const defaultProps = {
   onSubmit: vi.fn(),
@@ -102,20 +102,14 @@ describe("QueryInput", () => {
   });
 
   it("renders plus button for file attachment when onFilesAdded provided", () => {
-    const { container } = renderWithProviders(
-      <QueryInput {...defaultProps} onFilesAdded={vi.fn()} />,
-    );
+    const { container } = renderWithProviders(<QueryInput {...defaultProps} onFilesAdded={vi.fn()} />);
     const plusIcon = container.querySelector("svg.lucide-plus");
     expect(plusIcon).toBeInTheDocument();
   });
 
   it("submit enabled with files but no text", () => {
     renderWithProviders(
-      <QueryInput
-        {...defaultProps}
-        attachedFiles={[{ name: "file.pdf", size: 1000 }]}
-        onFilesAdded={vi.fn()}
-      />,
+      <QueryInput {...defaultProps} attachedFiles={[{ name: "file.pdf", size: 1000 }]} onFilesAdded={vi.fn()} />,
     );
     const buttons = screen.getAllByRole("button");
     const submitButton = buttons.find((b) => b.querySelector("svg.lucide-arrow-up"));
@@ -124,11 +118,7 @@ describe("QueryInput", () => {
 
   it("shows file chips when files attached", () => {
     renderWithProviders(
-      <QueryInput
-        {...defaultProps}
-        attachedFiles={[{ name: "report.pdf", size: 42000 }]}
-        onFilesAdded={vi.fn()}
-      />,
+      <QueryInput {...defaultProps} attachedFiles={[{ name: "report.pdf", size: 42000 }]} onFilesAdded={vi.fn()} />,
     );
     expect(screen.getByText("report.pdf")).toBeInTheDocument();
   });

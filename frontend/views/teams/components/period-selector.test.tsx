@@ -1,5 +1,6 @@
-import { PeriodType } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 import { describe, expect, it } from "vitest";
+
+import { PeriodType } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
 
 import { buildPeriod, defaultPeriodKey } from "./period-selector";
 

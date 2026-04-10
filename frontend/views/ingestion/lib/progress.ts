@@ -49,10 +49,7 @@ export const parseProgress = (json: string | undefined): RunProgress | null => {
 };
 
 /** Normalise handler-specific progress into a uniform { percent, label }. */
-export const normaliseProgress = (
-  sourceType: string,
-  progress: RunProgress | null,
-): NormalisedProgress => {
+export const normaliseProgress = (sourceType: string, progress: RunProgress | null): NormalisedProgress => {
   if (!progress) return { percent: null, label: "Starting" };
 
   // GitHub has structured phases

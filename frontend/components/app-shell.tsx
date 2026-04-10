@@ -1,8 +1,7 @@
-import { useEffect } from "react";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useCurrentUser, useSetupStatus } from "@ps/hooks/use-auth";
@@ -26,11 +25,7 @@ const LoadingSkeleton = (): React.ReactElement => (
   </div>
 );
 
-export const AppShell = ({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement | null => {
+export const AppShell = ({ children }: { children: React.ReactNode }): React.ReactElement | null => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
@@ -39,8 +34,7 @@ export const AppShell = ({
   const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
 
   const needsSetup = !isPublicRoute && !setupLoading && !userLoading && setupComplete === false;
-  const needsLogin =
-    !isPublicRoute && !setupLoading && !userLoading && !needsSetup && (userError || !user);
+  const needsLogin = !isPublicRoute && !setupLoading && !userLoading && !needsSetup && (userError || !user);
 
   useEffect(() => {
     if (needsSetup) navigate("/setup", { replace: true });

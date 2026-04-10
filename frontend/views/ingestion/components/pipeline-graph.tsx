@@ -1,16 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@ps/cn";
+import { PipelineDAGFlow } from "@/views/ingestion/components/pipeline-dag-flow";
+import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
+import { POLL_INTERVAL_ACTIVE, POLL_INTERVAL_BURST, POLL_INTERVAL_IDLE } from "@/views/ingestion/lib/constants";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { PipelineDAGFlow } from "@/views/ingestion/components/pipeline-dag-flow";
-import { useCurrentPipeline } from "@/views/ingestion/hooks/use-pipeline";
-
-import {
-  POLL_INTERVAL_ACTIVE,
-  POLL_INTERVAL_BURST,
-  POLL_INTERVAL_IDLE,
-} from "@/views/ingestion/lib/constants";
+import { cn } from "@ps/cn";
 
 /**
  * Derive handler status from live source state for in-progress stages.
@@ -94,9 +89,7 @@ export const PipelineDAG = ({
 }): React.ReactElement => {
   const { current, isLoading } = usePipelineState({ isBursting });
 
-  const sourceStatusMap = sources
-    ? buildSourceStatusMap(sources, current?.startedAt?.seconds)
-    : undefined;
+  const sourceStatusMap = sources ? buildSourceStatusMap(sources, current?.startedAt?.seconds) : undefined;
 
   if (isLoading) {
     return <Skeleton className="h-[200px] w-full" />;

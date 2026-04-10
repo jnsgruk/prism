@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import * as React from "react";
 
 import { cn } from "@ps/cn";
 
@@ -21,10 +21,7 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: PopoverPrimitive.Popup.Props &
-  Pick<
-    PopoverPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >): React.ReactElement {
+  Pick<PopoverPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">): React.ReactElement {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
@@ -48,29 +45,14 @@ function PopoverContent({
 }
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
-  return (
-    <div
-      data-slot="popover-header"
-      className={cn("flex flex-col gap-0.5 text-sm", className)}
-      {...props}
-    />
-  );
+  return <div data-slot="popover-header" className={cn("flex flex-col gap-0.5 text-sm", className)} {...props} />;
 }
 
 function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props): React.ReactElement {
-  return (
-    <PopoverPrimitive.Title
-      data-slot="popover-title"
-      className={cn("font-medium", className)}
-      {...props}
-    />
-  );
+  return <PopoverPrimitive.Title data-slot="popover-title" className={cn("font-medium", className)} {...props} />;
 }
 
-function PopoverDescription({
-  className,
-  ...props
-}: PopoverPrimitive.Description.Props): React.ReactElement {
+function PopoverDescription({ className, ...props }: PopoverPrimitive.Description.Props): React.ReactElement {
   return (
     <PopoverPrimitive.Description
       data-slot="popover-description"

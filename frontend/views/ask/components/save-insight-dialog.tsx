@@ -1,7 +1,3 @@
-import { Lightbulb, Loader2 } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,8 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { useSaveInsightFromConversation } from "@/lib/hooks/use-conversations";
+import { Lightbulb, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const SaveInsightDialog = ({
   conversationId,
@@ -58,9 +56,7 @@ export const SaveInsightDialog = ({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Save as Insight</DialogTitle>
-            <DialogDescription>
-              Save this answer as a persistent insight snapshot.
-            </DialogDescription>
+            <DialogDescription>Save this answer as a persistent insight snapshot.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="insight-title">Title</Label>

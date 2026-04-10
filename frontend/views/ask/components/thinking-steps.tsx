@@ -1,10 +1,9 @@
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { ThinkingStep } from "./thinking-step";
 
 export const ThinkingSteps = ({
@@ -42,10 +41,7 @@ export const ThinkingSteps = ({
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 space-y-1 border-l-2 border-border pl-4">
         {steps.map((step, i) => (
-          <ThinkingStep
-            key={step.stepId ?? (step.kind === "tool" ? step.callId : `reasoning-${i}`)}
-            step={step}
-          />
+          <ThinkingStep key={step.stepId ?? (step.kind === "tool" ? step.callId : `reasoning-${i}`)} step={step} />
         ))}
         {isActive && (
           <div className="flex items-center gap-1.5 py-1 text-sm text-muted-foreground">

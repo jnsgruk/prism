@@ -1,7 +1,6 @@
+import { AppShell } from "@/components/app-shell";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-
-import { AppShell } from "@/components/app-shell";
 
 const TeamsPage = lazy(() => import("@/views/teams/pages/teams-page"));
 const AdminPage = lazy(() => import("@/views/admin/pages/admin-page"));
@@ -10,9 +9,7 @@ const LoginPage = lazy(() => import("@/views/login/pages/login-page"));
 const SetupPage = lazy(() => import("@/views/setup/pages/setup-page"));
 const PeopleListPage = lazy(() => import("@/views/people/pages/people-list-page"));
 const PersonProfilePage = lazy(() => import("@/views/people/pages/person-profile-page"));
-const ContributionDetailPage = lazy(
-  () => import("@/views/contributions/pages/contribution-detail-page"),
-);
+const ContributionDetailPage = lazy(() => import("@/views/contributions/pages/contribution-detail-page"));
 const AskPage = lazy(() => import("@/views/ask/pages/ask-page"));
 const ChatHistoryPage = lazy(() => import("@/views/ask/pages/chat-history-page"));
 const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page"));

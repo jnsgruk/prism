@@ -5,16 +5,14 @@
 // @generated from file canonical/prism/v1/config.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { JsonObject, Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+
 import type { Platform } from "./common_pb";
 import { file_canonical_prism_v1_common } from "./common_pb";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import {
-  file_google_protobuf_struct,
-  file_google_protobuf_timestamp,
-} from "@bufbuild/protobuf/wkt";
-import type { JsonObject, Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/config.proto.
@@ -227,8 +225,10 @@ export type CreateSourceResponse = Message<"canonical.prism.v1.CreateSourceRespo
  * Describes the message canonical.prism.v1.CreateSourceResponse.
  * Use `create(CreateSourceResponseSchema)` to create a new message.
  */
-export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_config, 6);
+export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateSourceRequest
@@ -278,8 +278,10 @@ export type UpdateSourceResponse = Message<"canonical.prism.v1.UpdateSourceRespo
  * Describes the message canonical.prism.v1.UpdateSourceResponse.
  * Use `create(UpdateSourceResponseSchema)` to create a new message.
  */
-export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_config, 8);
+export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteSourceRequest
@@ -309,8 +311,10 @@ export type DeleteSourceResponse = Message<"canonical.prism.v1.DeleteSourceRespo
  * Describes the message canonical.prism.v1.DeleteSourceResponse.
  * Use `create(DeleteSourceResponseSchema)` to create a new message.
  */
-export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_config, 10);
+export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.SetSecretRequest
@@ -373,8 +377,10 @@ export type TestConnectionRequest = Message<"canonical.prism.v1.TestConnectionRe
  * Describes the message canonical.prism.v1.TestConnectionRequest.
  * Use `create(TestConnectionRequestSchema)` to create a new message.
  */
-export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_config, 13);
+export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.TestConnectionResponse
@@ -404,8 +410,10 @@ export type TestConnectionResponse = Message<"canonical.prism.v1.TestConnectionR
  * Describes the message canonical.prism.v1.TestConnectionResponse.
  * Use `create(TestConnectionResponseSchema)` to create a new message.
  */
-export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_config, 14);
+export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  14,
+);
 
 /**
  * ConfigService manages data source configurations — the external platforms

@@ -1,25 +1,25 @@
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { useAiModels } from "@/lib/hooks/use-ai-settings";
+import { useDownloadWorkspaceFile, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
+import { useGetConversation } from "@/lib/hooks/use-conversations";
+import { ConversationThread } from "@/views/ask/components/conversation-thread";
+import type { AttachedFileInfo } from "@/views/ask/components/file-attachment-chips";
+import { QueryInput } from "@/views/ask/components/query-input";
+import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
+import type { PreviewState } from "@/views/ask/components/workspace-preview";
+import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
+import { WorkspaceSidebar } from "@/views/ask/components/workspace-sidebar";
+import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
+import { isTextContent } from "@/views/ask/hooks/use-file-tree";
+import type { MentionItem } from "@/views/ask/hooks/use-mention-picker";
 import { Loader2, PanelRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { MentionType } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import type { MentionItem } from "@/views/ask/hooks/use-mention-picker";
-import { useAiModels } from "@/lib/hooks/use-ai-settings";
-import { useDownloadWorkspaceFile, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
-import { useAskQuestion, type ContextUsage } from "@/views/ask/hooks/use-ask-question";
-import { useGetConversation } from "@/lib/hooks/use-conversations";
-import { isTextContent } from "@/views/ask/hooks/use-file-tree";
-import type { PreviewState } from "@/views/ask/components/workspace-preview";
-import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
-import type { AttachedFileInfo } from "@/views/ask/components/file-attachment-chips";
-import { ConversationThread } from "@/views/ask/components/conversation-thread";
-import { QueryInput } from "@/views/ask/components/query-input";
-import { SuggestedQuestions } from "@/views/ask/components/suggested-questions";
-import { WorkspaceSidebar } from "@/views/ask/components/workspace-sidebar";
-import { toast } from "sonner";
 
 const AskPage = (): React.ReactElement => {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -39,10 +39,7 @@ const AskPage = (): React.ReactElement => {
 
   const { data: conversationData, isLoading } = useGetConversation(conversationId ?? "");
 
-  const messages: ConversationMessage[] = useMemo(
-    () => conversationData?.messages ?? [],
-    [conversationData],
-  );
+  const messages: ConversationMessage[] = useMemo(() => conversationData?.messages ?? [], [conversationData]);
 
   // Track the conversation ID that the current stream created so that
   // navigating from /ask → /ask/{id} mid-stream does NOT trigger a reset.
@@ -50,8 +47,7 @@ const AskPage = (): React.ReactElement => {
 
   // Navigate to the conversation URL as soon as we learn the conversation ID
   // (from the conversationCreated event), not just on completion.
-  const stateConversationId =
-    state.status !== "idle" && state.status !== "error" ? state.conversationId : undefined;
+  const stateConversationId = state.status !== "idle" && state.status !== "error" ? state.conversationId : undefined;
   useEffect(() => {
     if (!conversationId && stateConversationId) {
       streamConvIdRef.current = stateConversationId;
@@ -128,9 +124,7 @@ const AskPage = (): React.ReactElement => {
       }
 
       // Separate file mentions from people/team mentions.
-      const fileMentionPaths = (mentionItems ?? [])
-        .filter((m) => m.type === "file")
-        .map((m) => m.id);
+      const fileMentionPaths = (mentionItems ?? []).filter((m) => m.type === "file").map((m) => m.id);
       const allFilePaths = [...attachedFilePaths, ...fileMentionPaths];
 
       // Build proto Mention objects for all @-mentions.
@@ -207,9 +201,7 @@ const AskPage = (): React.ReactElement => {
   );
 
   const isActive =
-    state.status === "streaming" ||
-    state.status === "container_starting" ||
-    state.status === "cancelling";
+    state.status === "streaming" || state.status === "container_starting" || state.status === "cancelling";
 
   // Resolve context usage: prefer live streaming data, fall back to stored conversation totals.
   // Only show when the pod is active — once reaped, the context is gone and a new
@@ -229,12 +221,7 @@ const AskPage = (): React.ReactElement => {
       usage = state.contextUsage;
     }
     // Fall back to stored conversation totals only while pod is active.
-    if (
-      !usage &&
-      podActive &&
-      conv &&
-      (conv.totalPromptTokens > 0 || conv.totalCompletionTokens > 0)
-    ) {
+    if (!usage && podActive && conv && (conv.totalPromptTokens > 0 || conv.totalCompletionTokens > 0)) {
       const modelId = conv.modelName.split("/").slice(1).join("/");
       const model = modelsResponse?.models?.find((m) => m.id === modelId);
       usage = {
@@ -312,11 +299,7 @@ const AskPage = (): React.ReactElement => {
         </div>
 
         {/* Workspace file sidebar */}
-        <WorkspaceSidebar
-          open={sidebarOpen}
-          conversationId={conversationId}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <WorkspaceSidebar open={sidebarOpen} conversationId={conversationId} onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Preview dialog for clicking attached files */}

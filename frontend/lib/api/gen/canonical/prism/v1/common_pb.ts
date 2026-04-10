@@ -6,9 +6,9 @@
 // @generated from file canonical/prism/v1/common.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/common.proto.
@@ -104,10 +104,7 @@ export type SortOrder = Message<"canonical.prism.v1.SortOrder"> & {
  * Describes the message canonical.prism.v1.SortOrder.
  * Use `create(SortOrderSchema)` to create a new message.
  */
-export const SortOrderSchema: GenMessage<SortOrder> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_common,
-  2,
-);
+export const SortOrderSchema: GenMessage<SortOrder> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_common, 2);
 
 /**
  * Platform identifies the external platform a data source connects to. For
@@ -161,10 +158,7 @@ export enum Platform {
 /**
  * Describes the enum canonical.prism.v1.Platform.
  */
-export const PlatformSchema: GenEnum<Platform> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  0,
-);
+export const PlatformSchema: GenEnum<Platform> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 0);
 
 /**
  * ContributionType classifies the kind of work item ingested from an external
@@ -333,10 +327,7 @@ export enum RunStatus {
 /**
  * Describes the enum canonical.prism.v1.RunStatus.
  */
-export const RunStatusSchema: GenEnum<RunStatus> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  3,
-);
+export const RunStatusSchema: GenEnum<RunStatus> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 3);
 
 /**
  * AiProvider identifies a supported AI inference provider.
@@ -358,10 +349,7 @@ export enum AiProvider {
 /**
  * Describes the enum canonical.prism.v1.AiProvider.
  */
-export const AiProviderSchema: GenEnum<AiProvider> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  4,
-);
+export const AiProviderSchema: GenEnum<AiProvider> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 4);
 
 /**
  * EnrichmentType classifies the kind of AI enrichment applied to a
@@ -399,10 +387,7 @@ export enum EnrichmentType {
 /**
  * Describes the enum canonical.prism.v1.EnrichmentType.
  */
-export const EnrichmentTypeSchema: GenEnum<EnrichmentType> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  5,
-);
+export const EnrichmentTypeSchema: GenEnum<EnrichmentType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 5);
 
 /**
  * PersonFilter selects a preset filter for the ListPeople RPC.
@@ -433,10 +418,7 @@ export enum PersonFilter {
 /**
  * Describes the enum canonical.prism.v1.PersonFilter.
  */
-export const PersonFilterSchema: GenEnum<PersonFilter> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  6,
-);
+export const PersonFilterSchema: GenEnum<PersonFilter> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 6);
 
 /**
  * InsightPeriod selects the time window for insight aggregation.
@@ -473,7 +455,4 @@ export enum InsightPeriod {
 /**
  * Describes the enum canonical.prism.v1.InsightPeriod.
  */
-export const InsightPeriodSchema: GenEnum<InsightPeriod> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_common,
-  7,
-);
+export const InsightPeriodSchema: GenEnum<InsightPeriod> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 7);

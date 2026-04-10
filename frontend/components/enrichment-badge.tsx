@@ -2,10 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatTimestamp } from "@/lib/format";
+import { enrichmentTypeKey, enrichmentTypeLabel as etLabel } from "@/lib/proto-display";
 import { Brain, MessageCircle, Sparkles, Star, Tag } from "lucide-react";
 
 import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { enrichmentTypeKey, enrichmentTypeLabel as etLabel } from "@/lib/proto-display";
 
 // ---------------------------------------------------------------------------
 // Types parsed from the enrichment value_json
@@ -54,10 +54,7 @@ const ENRICHMENT_LABELS: Record<string, string> = {
   topic: "Topic",
 };
 
-const badgeVariant = (
-  enrichmentType: string,
-  value: unknown,
-): "default" | "secondary" | "destructive" | "outline" => {
+const badgeVariant = (enrichmentType: string, value: unknown): "default" | "secondary" | "destructive" | "outline" => {
   if (enrichmentType === "sentiment") {
     const v = value as SentimentValue;
     if (v.sentiment === "hostile") return "destructive";
@@ -154,9 +151,7 @@ const EnrichmentBadge = ({ enrichment }: EnrichmentBadgeProps): React.ReactEleme
             <Separator />
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Input Preview</p>
-              <p className="max-h-24 overflow-y-auto text-xs text-muted-foreground">
-                {enrichment.inputPreview}
-              </p>
+              <p className="max-h-24 overflow-y-auto text-xs text-muted-foreground">{enrichment.inputPreview}</p>
             </div>
           </>
         )}

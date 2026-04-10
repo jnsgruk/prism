@@ -1,16 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { zipSync } from "fflate";
-import { Download, Loader2, Upload, X } from "lucide-react";
-import { toast } from "sonner";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  useDownloadWorkspaceFile,
-  useListWorkspaceFiles,
-  useUploadWorkspaceFile,
-} from "@/lib/hooks/use-conversations";
-
+import { useDownloadWorkspaceFile, useListWorkspaceFiles, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
+import { WorkspacePreview, type PreviewState } from "@/views/ask/components/workspace-preview";
+import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
+import { WorkspaceTree } from "@/views/ask/components/workspace-tree";
 import {
   type ArtifactDisplay,
   type WorkspaceFileDisplay,
@@ -18,9 +11,10 @@ import {
   useWorkspaceFileTree,
 } from "@/views/ask/hooks/use-file-tree";
 import { useResize } from "@/views/ask/hooks/use-resize";
-import { WorkspaceTree } from "@/views/ask/components/workspace-tree";
-import { WorkspacePreview, type PreviewState } from "@/views/ask/components/workspace-preview";
-import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
+import { zipSync } from "fflate";
+import { Download, Loader2, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 const DEFAULT_WIDTH = 320;
 const MIN_WIDTH = 240;
@@ -168,8 +162,7 @@ export const WorkspaceSidebar = ({
             a.remove();
             URL.revokeObjectURL(blobUrl);
           },
-          onError: (err) =>
-            toast.error(`Failed to download ${artifact.displayName}: ${err.message}`),
+          onError: (err) => toast.error(`Failed to download ${artifact.displayName}: ${err.message}`),
         },
       );
     },
@@ -223,9 +216,7 @@ export const WorkspaceSidebar = ({
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(
-        `Failed to download workspace: ${err instanceof Error ? err.message : "unknown error"}`,
-      );
+      toast.error(`Failed to download workspace: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
       setZipping(false);
     }
@@ -265,11 +256,7 @@ export const WorkspaceSidebar = ({
               disabled={zipping}
               onClick={handleDownloadZip}
             >
-              {zipping ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Download className="size-3.5" />
-              )}
+              {zipping ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
             </Button>
           )}
           <Button variant="ghost" size="icon" className="size-6" onClick={onClose}>
@@ -318,11 +305,7 @@ export const WorkspaceSidebar = ({
 
               {/* Preview pane with drag handle on top edge */}
               {showPreview && (
-                <div
-                  ref={previewRef}
-                  className="relative shrink-0 border-t"
-                  style={{ height: `${previewHeight}px` }}
-                >
+                <div ref={previewRef} className="relative shrink-0 border-t" style={{ height: `${previewHeight}px` }}>
                   {/* Drag handle — top edge of preview */}
                   <div
                     className="absolute top-0 right-0 left-0 z-20 h-1 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"

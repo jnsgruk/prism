@@ -1,10 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  useAssignGithubTeam,
-  useDismissTeamMappingSuggestion,
-} from "@/views/admin/hooks/use-admin";
+import { useAssignGithubTeam, useDismissTeamMappingSuggestion } from "@/views/admin/hooks/use-admin";
 import { useGetTeamMappingSuggestions } from "@/views/teams/hooks/use-teams";
 import { Check, ChevronDown, ChevronRight, GitBranch, Lightbulb, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -107,11 +104,7 @@ const SuggestionRow = ({
   );
 };
 
-export const TeamMappingSuggestions = ({
-  teamId,
-}: {
-  teamId: string;
-}): React.ReactElement | null => {
+export const TeamMappingSuggestions = ({ teamId }: { teamId: string }): React.ReactElement | null => {
   const { data: allSuggestions } = useGetTeamMappingSuggestions();
   const [collapsedIds, setCollapsedIds] = useState(getCollapsedTeams);
 
@@ -130,9 +123,9 @@ export const TeamMappingSuggestions = ({
 
   const suggestions = useMemo(
     () =>
-      (
-        allSuggestions?.filter((s) => s.prismTeamId === teamId && s.prismCoverage >= 0.5) ?? []
-      ).toSorted((a, b) => b.prismCoverage - a.prismCoverage),
+      (allSuggestions?.filter((s) => s.prismTeamId === teamId && s.prismCoverage >= 0.5) ?? []).toSorted(
+        (a, b) => b.prismCoverage - a.prismCoverage,
+      ),
     [allSuggestions, teamId],
   );
 
@@ -141,10 +134,7 @@ export const TeamMappingSuggestions = ({
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
       <CardHeader className={isExpanded ? "pb-2" : ""}>
-        <CardTitle
-          className="flex cursor-pointer items-center gap-2 text-sm"
-          onClick={toggleCollapsed}
-        >
+        <CardTitle className="flex cursor-pointer items-center gap-2 text-sm" onClick={toggleCollapsed}>
           <Lightbulb className="size-4 text-amber-600" />
           Suggested Mappings ({suggestions.length})
         </CardTitle>

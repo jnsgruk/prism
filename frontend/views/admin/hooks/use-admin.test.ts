@@ -42,10 +42,8 @@ vi.mock("@ps/api/transport", () => ({
       async *createBackup() {},
     });
     service(OrgService, {
-      importDirectory: () =>
-        create(ImportDirectoryResponseSchema, { peopleImported: 5, teamsCreated: 2 }),
-      importJiraUsers: () =>
-        create(ImportJiraUsersResponseSchema, { identitiesMapped: 3, unmatchedUsers: 1 }),
+      importDirectory: () => create(ImportDirectoryResponseSchema, { peopleImported: 5, teamsCreated: 2 }),
+      importJiraUsers: () => create(ImportJiraUsersResponseSchema, { identitiesMapped: 3, unmatchedUsers: 1 }),
       createTeam: () => create(CreateTeamResponseSchema, {}),
       updateTeam: () => create(UpdateTeamResponseSchema, {}),
       deleteTeam: () => create(DeleteTeamResponseSchema, {}),

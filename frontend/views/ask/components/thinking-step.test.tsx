@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 afterEach(cleanup);
 
 import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
+
 import { ThinkingStep } from "./thinking-step";
 
 describe("ThinkingStep", () => {

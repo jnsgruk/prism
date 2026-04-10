@@ -6,13 +6,14 @@
 // @generated from file canonical/prism/v1/metrics.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { ContributionState, ContributionType, Platform } from "./common_pb";
-import { file_canonical_prism_v1_common } from "./common_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
+
+import type { ContributionState, ContributionType, Platform } from "./common_pb";
+import { file_canonical_prism_v1_common } from "./common_pb";
 
 /**
  * Describes the file canonical/prism/v1/metrics.proto.
@@ -52,10 +53,7 @@ export type Period = Message<"canonical.prism.v1.Period"> & {
  * Describes the message canonical.prism.v1.Period.
  * Use `create(PeriodSchema)` to create a new message.
  */
-export const PeriodSchema: GenMessage<Period> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_metrics,
-  0,
-);
+export const PeriodSchema: GenMessage<Period> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_metrics, 0);
 
 /**
  * TeamMetrics is a pre-computed snapshot of a team's engineering activity
@@ -196,10 +194,7 @@ export type TeamMetrics = Message<"canonical.prism.v1.TeamMetrics"> & {
  * Describes the message canonical.prism.v1.TeamMetrics.
  * Use `create(TeamMetricsSchema)` to create a new message.
  */
-export const TeamMetricsSchema: GenMessage<TeamMetrics> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_metrics,
-  1,
-);
+export const TeamMetricsSchema: GenMessage<TeamMetrics> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_metrics, 1);
 
 /**
  * DiscourseInstanceMetrics aggregates activity for a single Discourse instance.
@@ -244,8 +239,10 @@ export type DiscourseInstanceMetrics = Message<"canonical.prism.v1.DiscourseInst
  * Describes the message canonical.prism.v1.DiscourseInstanceMetrics.
  * Use `create(DiscourseInstanceMetricsSchema)` to create a new message.
  */
-export const DiscourseInstanceMetricsSchema: GenMessage<DiscourseInstanceMetrics> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 2);
+export const DiscourseInstanceMetricsSchema: GenMessage<DiscourseInstanceMetrics> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamMetricsRequest
@@ -266,8 +263,10 @@ export type GetTeamMetricsRequest = Message<"canonical.prism.v1.GetTeamMetricsRe
  * Describes the message canonical.prism.v1.GetTeamMetricsRequest.
  * Use `create(GetTeamMetricsRequestSchema)` to create a new message.
  */
-export const GetTeamMetricsRequestSchema: GenMessage<GetTeamMetricsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 3);
+export const GetTeamMetricsRequestSchema: GenMessage<GetTeamMetricsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamMetricsResponse
@@ -283,8 +282,10 @@ export type GetTeamMetricsResponse = Message<"canonical.prism.v1.GetTeamMetricsR
  * Describes the message canonical.prism.v1.GetTeamMetricsResponse.
  * Use `create(GetTeamMetricsResponseSchema)` to create a new message.
  */
-export const GetTeamMetricsResponseSchema: GenMessage<GetTeamMetricsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 4);
+export const GetTeamMetricsResponseSchema: GenMessage<GetTeamMetricsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.CompareTeamsRequest
@@ -324,8 +325,10 @@ export type CompareTeamsResponse = Message<"canonical.prism.v1.CompareTeamsRespo
  * Describes the message canonical.prism.v1.CompareTeamsResponse.
  * Use `create(CompareTeamsResponseSchema)` to create a new message.
  */
-export const CompareTeamsResponseSchema: GenMessage<CompareTeamsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 6);
+export const CompareTeamsResponseSchema: GenMessage<CompareTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListPeriodsRequest
@@ -363,80 +366,81 @@ export const ListPeriodsResponseSchema: GenMessage<ListPeriodsResponse> /*@__PUR
 /**
  * @generated from message canonical.prism.v1.ListTeamContributionsRequest
  */
-export type ListTeamContributionsRequest =
-  Message<"canonical.prism.v1.ListTeamContributionsRequest"> & {
-    /**
-     * @generated from field: string team_id = 1;
-     */
-    teamId: string;
+export type ListTeamContributionsRequest = Message<"canonical.prism.v1.ListTeamContributionsRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
 
-    /**
-     * @generated from field: canonical.prism.v1.Period period = 2;
-     */
-    period?: Period;
+  /**
+   * @generated from field: canonical.prism.v1.Period period = 2;
+   */
+  period?: Period;
 
-    /**
-     * Filter by contribution type.
-     *
-     * @generated from field: canonical.prism.v1.ContributionType contribution_type = 3;
-     */
-    contributionType: ContributionType;
+  /**
+   * Filter by contribution type.
+   *
+   * @generated from field: canonical.prism.v1.ContributionType contribution_type = 3;
+   */
+  contributionType: ContributionType;
 
-    /**
-     * Filter by lifecycle state.
-     *
-     * @generated from field: canonical.prism.v1.ContributionState state = 4;
-     */
-    state: ContributionState;
+  /**
+   * Filter by lifecycle state.
+   *
+   * @generated from field: canonical.prism.v1.ContributionState state = 4;
+   */
+  state: ContributionState;
 
-    /**
-     * @generated from field: int32 page_size = 5;
-     */
-    pageSize: number;
+  /**
+   * @generated from field: int32 page_size = 5;
+   */
+  pageSize: number;
 
-    /**
-     * @generated from field: int32 page_index = 6;
-     */
-    pageIndex: number;
+  /**
+   * @generated from field: int32 page_index = 6;
+   */
+  pageIndex: number;
 
-    /**
-     * @generated from field: optional string sort_field = 7;
-     */
-    sortField?: string;
+  /**
+   * @generated from field: optional string sort_field = 7;
+   */
+  sortField?: string;
 
-    /**
-     * @generated from field: optional bool sort_desc = 8;
-     */
-    sortDesc?: boolean;
+  /**
+   * @generated from field: optional bool sort_desc = 8;
+   */
+  sortDesc?: boolean;
 
-    /**
-     * Free-text search across title, author, and repo.
-     *
-     * @generated from field: optional string search = 9;
-     */
-    search?: string;
+  /**
+   * Free-text search across title, author, and repo.
+   *
+   * @generated from field: optional string search = 9;
+   */
+  search?: string;
 
-    /**
-     * Filter by platform.
-     *
-     * @generated from field: canonical.prism.v1.Platform platform = 10;
-     */
-    platform: Platform;
+  /**
+   * Filter by platform.
+   *
+   * @generated from field: canonical.prism.v1.Platform platform = 10;
+   */
+  platform: Platform;
 
-    /**
-     * Filter by platform instance (e.g. "ubuntu" for Discourse).
-     *
-     * @generated from field: optional string platform_instance = 11;
-     */
-    platformInstance?: string;
-  };
+  /**
+   * Filter by platform instance (e.g. "ubuntu" for Discourse).
+   *
+   * @generated from field: optional string platform_instance = 11;
+   */
+  platformInstance?: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListTeamContributionsRequest.
  * Use `create(ListTeamContributionsRequestSchema)` to create a new message.
  */
-export const ListTeamContributionsRequestSchema: GenMessage<ListTeamContributionsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 9);
+export const ListTeamContributionsRequestSchema: GenMessage<ListTeamContributionsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetContributionRequest
@@ -452,8 +456,10 @@ export type GetContributionRequest = Message<"canonical.prism.v1.GetContribution
  * Describes the message canonical.prism.v1.GetContributionRequest.
  * Use `create(GetContributionRequestSchema)` to create a new message.
  */
-export const GetContributionRequestSchema: GenMessage<GetContributionRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 10);
+export const GetContributionRequestSchema: GenMessage<GetContributionRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetContributionResponse
@@ -469,8 +475,10 @@ export type GetContributionResponse = Message<"canonical.prism.v1.GetContributio
  * Describes the message canonical.prism.v1.GetContributionResponse.
  * Use `create(GetContributionResponseSchema)` to create a new message.
  */
-export const GetContributionResponseSchema: GenMessage<GetContributionResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 11);
+export const GetContributionResponseSchema: GenMessage<GetContributionResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  11,
+);
 
 /**
  * Contribution represents a single work item from an external platform
@@ -653,25 +661,26 @@ export const ContributionSchema: GenMessage<Contribution> /*@__PURE__*/ = messag
 /**
  * @generated from message canonical.prism.v1.ListTeamContributionsResponse
  */
-export type ListTeamContributionsResponse =
-  Message<"canonical.prism.v1.ListTeamContributionsResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.Contribution contributions = 1;
-     */
-    contributions: Contribution[];
+export type ListTeamContributionsResponse = Message<"canonical.prism.v1.ListTeamContributionsResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.Contribution contributions = 1;
+   */
+  contributions: Contribution[];
 
-    /**
-     * @generated from field: int32 total_count = 2;
-     */
-    totalCount: number;
-  };
+  /**
+   * @generated from field: int32 total_count = 2;
+   */
+  totalCount: number;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListTeamContributionsResponse.
  * Use `create(ListTeamContributionsResponseSchema)` to create a new message.
  */
-export const ListTeamContributionsResponseSchema: GenMessage<ListTeamContributionsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 13);
+export const ListTeamContributionsResponseSchema: GenMessage<ListTeamContributionsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  13,
+);
 
 /**
  * GetIndividualProfile returns a person's cross-platform activity summary
@@ -679,75 +688,77 @@ export const ListTeamContributionsResponseSchema: GenMessage<ListTeamContributio
  *
  * @generated from message canonical.prism.v1.GetIndividualProfileRequest
  */
-export type GetIndividualProfileRequest =
-  Message<"canonical.prism.v1.GetIndividualProfileRequest"> & {
-    /**
-     * @generated from field: string person_id = 1;
-     */
-    personId: string;
+export type GetIndividualProfileRequest = Message<"canonical.prism.v1.GetIndividualProfileRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
 
-    /**
-     * @generated from field: canonical.prism.v1.Period period = 2;
-     */
-    period?: Period;
-  };
+  /**
+   * @generated from field: canonical.prism.v1.Period period = 2;
+   */
+  period?: Period;
+};
 
 /**
  * Describes the message canonical.prism.v1.GetIndividualProfileRequest.
  * Use `create(GetIndividualProfileRequestSchema)` to create a new message.
  */
-export const GetIndividualProfileRequestSchema: GenMessage<GetIndividualProfileRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 14);
+export const GetIndividualProfileRequestSchema: GenMessage<GetIndividualProfileRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  14,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetIndividualProfileResponse
  */
-export type GetIndividualProfileResponse =
-  Message<"canonical.prism.v1.GetIndividualProfileResponse"> & {
-    /**
-     * @generated from field: string person_id = 1;
-     */
-    personId: string;
+export type GetIndividualProfileResponse = Message<"canonical.prism.v1.GetIndividualProfileResponse"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
 
-    /**
-     * @generated from field: string name = 2;
-     */
-    name: string;
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
 
-    /**
-     * @generated from field: string team_name = 3;
-     */
-    teamName: string;
+  /**
+   * @generated from field: string team_name = 3;
+   */
+  teamName: string;
 
-    /**
-     * @generated from field: string level = 4;
-     */
-    level: string;
+  /**
+   * @generated from field: string level = 4;
+   */
+  level: string;
 
-    /**
-     * @generated from field: repeated canonical.prism.v1.PlatformIdentityInfo identities = 5;
-     */
-    identities: PlatformIdentityInfo[];
+  /**
+   * @generated from field: repeated canonical.prism.v1.PlatformIdentityInfo identities = 5;
+   */
+  identities: PlatformIdentityInfo[];
 
-    /**
-     * @generated from field: repeated canonical.prism.v1.PlatformActivitySummary activity_by_platform = 6;
-     */
-    activityByPlatform: PlatformActivitySummary[];
+  /**
+   * @generated from field: repeated canonical.prism.v1.PlatformActivitySummary activity_by_platform = 6;
+   */
+  activityByPlatform: PlatformActivitySummary[];
 
-    /**
-     * Peer comparison within the same engineering level.
-     *
-     * @generated from field: canonical.prism.v1.PeerComparison peer_context = 7;
-     */
-    peerContext?: PeerComparison;
-  };
+  /**
+   * Peer comparison within the same engineering level.
+   *
+   * @generated from field: canonical.prism.v1.PeerComparison peer_context = 7;
+   */
+  peerContext?: PeerComparison;
+};
 
 /**
  * Describes the message canonical.prism.v1.GetIndividualProfileResponse.
  * Use `create(GetIndividualProfileResponseSchema)` to create a new message.
  */
-export const GetIndividualProfileResponseSchema: GenMessage<GetIndividualProfileResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 15);
+export const GetIndividualProfileResponseSchema: GenMessage<GetIndividualProfileResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  15,
+);
 
 /**
  * PlatformIdentityInfo carries the platform and username for display.
@@ -777,8 +788,10 @@ export type PlatformIdentityInfo = Message<"canonical.prism.v1.PlatformIdentityI
  * Describes the message canonical.prism.v1.PlatformIdentityInfo.
  * Use `create(PlatformIdentityInfoSchema)` to create a new message.
  */
-export const PlatformIdentityInfoSchema: GenMessage<PlatformIdentityInfo> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 16);
+export const PlatformIdentityInfoSchema: GenMessage<PlatformIdentityInfo> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  16,
+);
 
 /**
  * PlatformActivitySummary aggregates contribution counts and platform-specific
@@ -818,8 +831,10 @@ export type PlatformActivitySummary = Message<"canonical.prism.v1.PlatformActivi
  * Describes the message canonical.prism.v1.PlatformActivitySummary.
  * Use `create(PlatformActivitySummarySchema)` to create a new message.
  */
-export const PlatformActivitySummarySchema: GenMessage<PlatformActivitySummary> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 17);
+export const PlatformActivitySummarySchema: GenMessage<PlatformActivitySummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  17,
+);
 
 /**
  * PeerComparison provides percentile context for a person's metrics relative
@@ -882,90 +897,86 @@ export type Percentile = Message<"canonical.prism.v1.Percentile"> & {
  * Describes the message canonical.prism.v1.Percentile.
  * Use `create(PercentileSchema)` to create a new message.
  */
-export const PercentileSchema: GenMessage<Percentile> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_metrics,
-  19,
-);
+export const PercentileSchema: GenMessage<Percentile> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_metrics, 19);
 
 /**
  * @generated from message canonical.prism.v1.ListPersonContributionsRequest
  */
-export type ListPersonContributionsRequest =
-  Message<"canonical.prism.v1.ListPersonContributionsRequest"> & {
-    /**
-     * @generated from field: string person_id = 1;
-     */
-    personId: string;
+export type ListPersonContributionsRequest = Message<"canonical.prism.v1.ListPersonContributionsRequest"> & {
+  /**
+   * @generated from field: string person_id = 1;
+   */
+  personId: string;
 
-    /**
-     * Filter by platform.
-     *
-     * @generated from field: canonical.prism.v1.Platform platform = 2;
-     */
-    platform: Platform;
+  /**
+   * Filter by platform.
+   *
+   * @generated from field: canonical.prism.v1.Platform platform = 2;
+   */
+  platform: Platform;
 
-    /**
-     * Filter by contribution type.
-     *
-     * @generated from field: canonical.prism.v1.ContributionType contribution_type = 3;
-     */
-    contributionType: ContributionType;
+  /**
+   * Filter by contribution type.
+   *
+   * @generated from field: canonical.prism.v1.ContributionType contribution_type = 3;
+   */
+  contributionType: ContributionType;
 
-    /**
-     * Only contributions created on or after this date (YYYY-MM-DD).
-     *
-     * @generated from field: optional string since = 4;
-     */
-    since?: string;
+  /**
+   * Only contributions created on or after this date (YYYY-MM-DD).
+   *
+   * @generated from field: optional string since = 4;
+   */
+  since?: string;
 
-    /**
-     * @generated from field: int32 page_size = 5;
-     */
-    pageSize: number;
+  /**
+   * @generated from field: int32 page_size = 5;
+   */
+  pageSize: number;
 
-    /**
-     * @generated from field: int32 page_index = 6;
-     */
-    pageIndex: number;
+  /**
+   * @generated from field: int32 page_index = 6;
+   */
+  pageIndex: number;
 
-    /**
-     * @generated from field: optional string sort_field = 7;
-     */
-    sortField?: string;
+  /**
+   * @generated from field: optional string sort_field = 7;
+   */
+  sortField?: string;
 
-    /**
-     * @generated from field: optional bool sort_desc = 8;
-     */
-    sortDesc?: boolean;
+  /**
+   * @generated from field: optional bool sort_desc = 8;
+   */
+  sortDesc?: boolean;
 
-    /**
-     * Filter by lifecycle state.
-     *
-     * @generated from field: canonical.prism.v1.ContributionState state = 9;
-     */
-    state: ContributionState;
+  /**
+   * Filter by lifecycle state.
+   *
+   * @generated from field: canonical.prism.v1.ContributionState state = 9;
+   */
+  state: ContributionState;
 
-    /**
-     * Free-text search across title and repo.
-     *
-     * @generated from field: optional string search = 10;
-     */
-    search?: string;
+  /**
+   * Free-text search across title and repo.
+   *
+   * @generated from field: optional string search = 10;
+   */
+  search?: string;
 
-    /**
-     * Filter by platform instance (e.g. "ubuntu" for Discourse).
-     *
-     * @generated from field: optional string platform_instance = 11;
-     */
-    platformInstance?: string;
+  /**
+   * Filter by platform instance (e.g. "ubuntu" for Discourse).
+   *
+   * @generated from field: optional string platform_instance = 11;
+   */
+  platformInstance?: string;
 
-    /**
-     * Only contributions created before this date (YYYY-MM-DD, exclusive upper bound).
-     *
-     * @generated from field: optional string until = 12;
-     */
-    until?: string;
-  };
+  /**
+   * Only contributions created before this date (YYYY-MM-DD, exclusive upper bound).
+   *
+   * @generated from field: optional string until = 12;
+   */
+  until?: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListPersonContributionsRequest.
@@ -977,18 +988,17 @@ export const ListPersonContributionsRequestSchema: GenMessage<ListPersonContribu
 /**
  * @generated from message canonical.prism.v1.ListPersonContributionsResponse
  */
-export type ListPersonContributionsResponse =
-  Message<"canonical.prism.v1.ListPersonContributionsResponse"> & {
-    /**
-     * @generated from field: repeated canonical.prism.v1.Contribution contributions = 1;
-     */
-    contributions: Contribution[];
+export type ListPersonContributionsResponse = Message<"canonical.prism.v1.ListPersonContributionsResponse"> & {
+  /**
+   * @generated from field: repeated canonical.prism.v1.Contribution contributions = 1;
+   */
+  contributions: Contribution[];
 
-    /**
-     * @generated from field: int32 total_count = 2;
-     */
-    totalCount: number;
-  };
+  /**
+   * @generated from field: int32 total_count = 2;
+   */
+  totalCount: number;
+};
 
 /**
  * Describes the message canonical.prism.v1.ListPersonContributionsResponse.
@@ -1018,8 +1028,10 @@ export type GetFlowMetricsRequest = Message<"canonical.prism.v1.GetFlowMetricsRe
  * Describes the message canonical.prism.v1.GetFlowMetricsRequest.
  * Use `create(GetFlowMetricsRequestSchema)` to create a new message.
  */
-export const GetFlowMetricsRequestSchema: GenMessage<GetFlowMetricsRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 22);
+export const GetFlowMetricsRequestSchema: GenMessage<GetFlowMetricsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  22,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetFlowMetricsResponse
@@ -1069,8 +1081,10 @@ export type GetFlowMetricsResponse = Message<"canonical.prism.v1.GetFlowMetricsR
  * Describes the message canonical.prism.v1.GetFlowMetricsResponse.
  * Use `create(GetFlowMetricsResponseSchema)` to create a new message.
  */
-export const GetFlowMetricsResponseSchema: GenMessage<GetFlowMetricsResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 23);
+export const GetFlowMetricsResponseSchema: GenMessage<GetFlowMetricsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  23,
+);
 
 /**
  * ThroughputDataPoint is a single day's throughput count with per-source breakdown.
@@ -1147,66 +1161,68 @@ export const WipDataPointSchema: GenMessage<WipDataPoint> /*@__PURE__*/ = messag
 /**
  * @generated from message canonical.prism.v1.GetDiscourseActivityRequest
  */
-export type GetDiscourseActivityRequest =
-  Message<"canonical.prism.v1.GetDiscourseActivityRequest"> & {
-    /**
-     * @generated from field: string team_id = 1;
-     */
-    teamId: string;
+export type GetDiscourseActivityRequest = Message<"canonical.prism.v1.GetDiscourseActivityRequest"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
 
-    /**
-     * @generated from field: canonical.prism.v1.Period period = 2;
-     */
-    period?: Period;
+  /**
+   * @generated from field: canonical.prism.v1.Period period = 2;
+   */
+  period?: Period;
 
-    /**
-     * Filter by Discourse instance (e.g. "discourse-ubuntu"). Empty returns all instances.
-     *
-     * @generated from field: optional string instance = 3;
-     */
-    instance?: string;
-  };
+  /**
+   * Filter by Discourse instance (e.g. "discourse-ubuntu"). Empty returns all instances.
+   *
+   * @generated from field: optional string instance = 3;
+   */
+  instance?: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.GetDiscourseActivityRequest.
  * Use `create(GetDiscourseActivityRequestSchema)` to create a new message.
  */
-export const GetDiscourseActivityRequestSchema: GenMessage<GetDiscourseActivityRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 26);
+export const GetDiscourseActivityRequestSchema: GenMessage<GetDiscourseActivityRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  26,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetDiscourseActivityResponse
  */
-export type GetDiscourseActivityResponse =
-  Message<"canonical.prism.v1.GetDiscourseActivityResponse"> & {
-    /**
-     * Topic and post counts by Discourse category.
-     *
-     * @generated from field: repeated canonical.prism.v1.CategoryCount category_distribution = 1;
-     */
-    categoryDistribution: CategoryCount[];
+export type GetDiscourseActivityResponse = Message<"canonical.prism.v1.GetDiscourseActivityResponse"> & {
+  /**
+   * Topic and post counts by Discourse category.
+   *
+   * @generated from field: repeated canonical.prism.v1.CategoryCount category_distribution = 1;
+   */
+  categoryDistribution: CategoryCount[];
 
-    /**
-     * Daily activity trend over the period.
-     *
-     * @generated from field: repeated canonical.prism.v1.DiscourseActivityDataPoint activity_trend = 2;
-     */
-    activityTrend: DiscourseActivityDataPoint[];
+  /**
+   * Daily activity trend over the period.
+   *
+   * @generated from field: repeated canonical.prism.v1.DiscourseActivityDataPoint activity_trend = 2;
+   */
+  activityTrend: DiscourseActivityDataPoint[];
 
-    /**
-     * Top contributors by post and topic volume.
-     *
-     * @generated from field: repeated canonical.prism.v1.TopContributor top_contributors = 3;
-     */
-    topContributors: TopContributor[];
-  };
+  /**
+   * Top contributors by post and topic volume.
+   *
+   * @generated from field: repeated canonical.prism.v1.TopContributor top_contributors = 3;
+   */
+  topContributors: TopContributor[];
+};
 
 /**
  * Describes the message canonical.prism.v1.GetDiscourseActivityResponse.
  * Use `create(GetDiscourseActivityResponseSchema)` to create a new message.
  */
-export const GetDiscourseActivityResponseSchema: GenMessage<GetDiscourseActivityResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 27);
+export const GetDiscourseActivityResponseSchema: GenMessage<GetDiscourseActivityResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  27,
+);
 
 /**
  * CategoryCount aggregates Discourse topic and post counts for a single category.
@@ -1244,44 +1260,45 @@ export const CategoryCountSchema: GenMessage<CategoryCount> /*@__PURE__*/ = mess
  *
  * @generated from message canonical.prism.v1.DiscourseActivityDataPoint
  */
-export type DiscourseActivityDataPoint =
-  Message<"canonical.prism.v1.DiscourseActivityDataPoint"> & {
-    /**
-     * Date in YYYY-MM-DD format.
-     *
-     * @generated from field: string date = 1;
-     */
-    date: string;
+export type DiscourseActivityDataPoint = Message<"canonical.prism.v1.DiscourseActivityDataPoint"> & {
+  /**
+   * Date in YYYY-MM-DD format.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
 
-    /**
-     * @generated from field: int32 topics = 2;
-     */
-    topics: number;
+  /**
+   * @generated from field: int32 topics = 2;
+   */
+  topics: number;
 
-    /**
-     * @generated from field: int32 posts = 3;
-     */
-    posts: number;
+  /**
+   * @generated from field: int32 posts = 3;
+   */
+  posts: number;
 
-    /**
-     * @generated from field: int32 likes = 4;
-     */
-    likes: number;
+  /**
+   * @generated from field: int32 likes = 4;
+   */
+  likes: number;
 
-    /**
-     * Discourse instance this data point belongs to. Empty when aggregated.
-     *
-     * @generated from field: string instance = 5;
-     */
-    instance: string;
-  };
+  /**
+   * Discourse instance this data point belongs to. Empty when aggregated.
+   *
+   * @generated from field: string instance = 5;
+   */
+  instance: string;
+};
 
 /**
  * Describes the message canonical.prism.v1.DiscourseActivityDataPoint.
  * Use `create(DiscourseActivityDataPointSchema)` to create a new message.
  */
-export const DiscourseActivityDataPointSchema: GenMessage<DiscourseActivityDataPoint> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_metrics, 29);
+export const DiscourseActivityDataPointSchema: GenMessage<DiscourseActivityDataPoint> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_metrics,
+  29,
+);
 
 /**
  * TopContributor ranks an individual's Discourse activity within a team.
@@ -1359,10 +1376,7 @@ export enum PeriodType {
 /**
  * Describes the enum canonical.prism.v1.PeriodType.
  */
-export const PeriodTypeSchema: GenEnum<PeriodType> /*@__PURE__*/ = enumDesc(
-  file_canonical_prism_v1_metrics,
-  0,
-);
+export const PeriodTypeSchema: GenEnum<PeriodType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_metrics, 0);
 
 /**
  * MetricsService provides read access to pre-computed engineering metrics

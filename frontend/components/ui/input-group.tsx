@@ -1,12 +1,12 @@
 "use client";
 
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-
-import { cn } from "@ps/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+
+import { cn } from "@ps/cn";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">): React.ReactElement {
   return (
@@ -31,8 +31,7 @@ const inputGroupAddonVariants = cva(
         "inline-end": "order-last pr-2 has-[>button]:mr-[-0.3rem] has-[>kbd]:mr-[-0.15rem]",
         "block-start":
           "order-first w-full justify-start px-2.5 pt-2 group-has-[>input]/input-group:pt-2 [.border-b]:pb-2",
-        "block-end":
-          "order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2",
+        "block-end": "order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2",
       },
     },
     defaultVariants: {
@@ -110,10 +109,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">): 
   );
 }
 
-function InputGroupInput({
-  className,
-  ...props
-}: React.ComponentProps<"input">): React.ReactElement {
+function InputGroupInput({ className, ...props }: React.ComponentProps<"input">): React.ReactElement {
   return (
     <Input
       data-slot="input-group-control"
@@ -126,10 +122,7 @@ function InputGroupInput({
   );
 }
 
-function InputGroupTextarea({
-  className,
-  ...props
-}: React.ComponentProps<"textarea">): React.ReactElement {
+function InputGroupTextarea({ className, ...props }: React.ComponentProps<"textarea">): React.ReactElement {
   return (
     <Textarea
       data-slot="input-group-control"
@@ -142,11 +135,4 @@ function InputGroupTextarea({
   );
 }
 
-export {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupText,
-  InputGroupInput,
-  InputGroupTextarea,
-};
+export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput, InputGroupTextarea };

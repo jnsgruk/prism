@@ -11,20 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { platformLabel } from "@/lib/proto-display";
-
-import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
 import {
   useUpdatePerson,
   useDeactivatePerson,
@@ -32,6 +21,10 @@ import {
   useAssignPersonToTeam,
   useRemovePersonFromTeam,
 } from "@/views/admin/hooks/use-admin";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 export const PersonDetailDialog = ({
   person,
@@ -130,21 +123,11 @@ export const PersonDetailDialog = ({
           <div className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="person-name">Name</Label>
-              <Input
-                id="person-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <Input id="person-name" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="person-email">Email</Label>
-              <Input
-                id="person-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Input id="person-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="person-level">Level / Title</Label>
@@ -182,9 +165,7 @@ export const PersonDetailDialog = ({
                         key={`${id.platform}-${id.username}`}
                         className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
                       >
-                        <span className="font-medium">
-                          {platformLabel(id.platform, id.platformInstance)}
-                        </span>
+                        <span className="font-medium">{platformLabel(id.platform, id.platformInstance)}</span>
                         <span className="text-muted-foreground">{id.username}</span>
                       </div>
                     ))}

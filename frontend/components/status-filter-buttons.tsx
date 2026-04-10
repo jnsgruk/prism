@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { StatusFilter } from "@/lib/run-status";
+
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 
 const filters: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },

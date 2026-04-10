@@ -1,10 +1,10 @@
+import type { ContributionFilters } from "@/lib/hooks/use-metrics";
+import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { ContributionType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { Period } from "@ps/api/gen/canonical/prism/v1/metrics_pb";
-import type { ContributionFilters } from "@/lib/hooks/use-metrics";
-import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 
 const BUCKETS = [
   { label: "< 1h", max: 1 },

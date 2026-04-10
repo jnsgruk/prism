@@ -1,3 +1,4 @@
+import { orgKeys } from "@/lib/hooks/use-org";
 import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,8 +22,6 @@ import type {
 import { OrgService, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { transport } from "@ps/api/transport";
 import { configKeys } from "@ps/hooks/use-config";
-
-import { orgKeys } from "@/lib/hooks/use-org";
 
 const adminClient = createClient(AdminService, transport);
 const orgClient = createClient(OrgService, transport);
@@ -81,11 +80,7 @@ export const useResetData = (): UseMutationResult<ResetDataResponse, Error, void
   });
 };
 
-export const useImportDirectory = (): UseMutationResult<
-  ImportDirectoryResponse,
-  Error,
-  Uint8Array
-> => {
+export const useImportDirectory = (): UseMutationResult<ImportDirectoryResponse, Error, Uint8Array> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (fileContent: Uint8Array) => orgClient.importDirectory({ fileContent }),
@@ -102,8 +97,7 @@ export const useImportJiraUsers = (): UseMutationResult<
 > => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ fileContent, sourceName }) =>
-      orgClient.importJiraUsers({ fileContent, sourceName }),
+    mutationFn: ({ fileContent, sourceName }) => orgClient.importJiraUsers({ fileContent, sourceName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.all });
     },
@@ -192,11 +186,7 @@ export const useReactivatePerson = (): UseMutationResult<void, Error, string> =>
   });
 };
 
-export const useAssignPersonToTeam = (): UseMutationResult<
-  void,
-  Error,
-  { personId: string; teamId: string }
-> => {
+export const useAssignPersonToTeam = (): UseMutationResult<void, Error, { personId: string; teamId: string }> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ personId, teamId }) => {
@@ -208,11 +198,7 @@ export const useAssignPersonToTeam = (): UseMutationResult<
   });
 };
 
-export const useRemovePersonFromTeam = (): UseMutationResult<
-  void,
-  Error,
-  { personId: string; teamId: string }
-> => {
+export const useRemovePersonFromTeam = (): UseMutationResult<void, Error, { personId: string; teamId: string }> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ personId, teamId }) => {
@@ -231,11 +217,7 @@ export const useListUnassignedPeople = (): UseQueryResult<Person[], Error> =>
     select: (data): Person[] => data.people,
   });
 
-export const useAssignGithubTeam = (): UseMutationResult<
-  void,
-  Error,
-  { teamId: string; githubTeamId: string }
-> => {
+export const useAssignGithubTeam = (): UseMutationResult<void, Error, { teamId: string; githubTeamId: string }> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ teamId, githubTeamId }) => {
@@ -247,11 +229,7 @@ export const useAssignGithubTeam = (): UseMutationResult<
   });
 };
 
-export const useUnassignGithubTeam = (): UseMutationResult<
-  void,
-  Error,
-  { teamId: string; githubTeamId: string }
-> => {
+export const useUnassignGithubTeam = (): UseMutationResult<void, Error, { teamId: string; githubTeamId: string }> => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ teamId, githubTeamId }) => {

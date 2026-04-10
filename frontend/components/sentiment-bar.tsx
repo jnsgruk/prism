@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
 import { cn } from "@ps/cn";
 
 const segments = [
@@ -34,9 +35,7 @@ export const SentimentBar = ({
           const pct = (count / total) * 100;
           return (
             <Tooltip key={key}>
-              <TooltipTrigger
-                render={<div className={cn(color, "h-full")} style={{ width: `${pct}%` }} />}
-              />
+              <TooltipTrigger render={<div className={cn(color, "h-full")} style={{ width: `${pct}%` }} />} />
               <TooltipContent side="bottom" className="text-xs">
                 {label}: {count} ({Math.round(pct)}%)
               </TooltipContent>

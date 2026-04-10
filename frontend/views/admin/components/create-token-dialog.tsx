@@ -12,10 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCreateApiToken } from "@/views/admin/hooks/use-admin";
 import { Check, Copy, Plus } from "lucide-react";
 import { useState } from "react";
-
-import { useCreateApiToken } from "@/views/admin/hooks/use-admin";
 
 export const CreateTokenDialog = (): React.ReactElement => {
   const createToken = useCreateApiToken();
@@ -55,9 +54,7 @@ export const CreateTokenDialog = (): React.ReactElement => {
           <>
             <DialogHeader>
               <DialogTitle>Token Created</DialogTitle>
-              <DialogDescription>
-                Copy your API token now. It won&apos;t be shown again.
-              </DialogDescription>
+              <DialogDescription>Copy your API token now. It won&apos;t be shown again.</DialogDescription>
             </DialogHeader>
 
             <div className="mt-4 space-y-3">
@@ -80,8 +77,7 @@ export const CreateTokenDialog = (): React.ReactElement => {
               </div>
               <p className="text-sm text-muted-foreground">
                 Store this token securely. You can use it with psctl via the{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs">PS_API_TOKEN</code>{" "}
-                environment variable or the{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">PS_API_TOKEN</code> environment variable or the{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-xs">--token</code> flag.
               </p>
             </div>
@@ -94,9 +90,7 @@ export const CreateTokenDialog = (): React.ReactElement => {
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle>Create API Token</DialogTitle>
-              <DialogDescription>
-                Create a personal API token for use with psctl or the Prism API.
-              </DialogDescription>
+              <DialogDescription>Create a personal API token for use with psctl or the Prism API.</DialogDescription>
             </DialogHeader>
 
             <div className="mt-4 space-y-4">
@@ -114,9 +108,7 @@ export const CreateTokenDialog = (): React.ReactElement => {
 
               {createToken.isError && (
                 <Alert variant="destructive">
-                  {createToken.error instanceof Error
-                    ? createToken.error.message
-                    : "Failed to create token"}
+                  {createToken.error instanceof Error ? createToken.error.message : "Failed to create token"}
                 </Alert>
               )}
             </div>

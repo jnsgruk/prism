@@ -1,22 +1,10 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { usePaginatedPeople } from "@/lib/hooks/use-org";
 import { ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
-
-import { usePaginatedPeople } from "@/lib/hooks/use-org";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 export const PersonBreadcrumb = ({
   personName,
@@ -42,19 +30,14 @@ export const PersonBreadcrumb = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-muted"
-          />
+          <button type="button" className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-muted" />
         }
       >
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem className="text-sm font-medium text-foreground">People</BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem className="text-sm font-medium text-foreground">
-              {personName}
-            </BreadcrumbItem>
+            <BreadcrumbItem className="text-sm font-medium text-foreground">{personName}</BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
         <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground" />
@@ -87,9 +70,7 @@ export const PersonBreadcrumb = ({
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{person.name}</span>
-                  {person.email && (
-                    <span className="truncate text-xs text-muted-foreground">{person.email}</span>
-                  )}
+                  {person.email && <span className="truncate text-xs text-muted-foreground">{person.email}</span>}
                 </span>
               </CommandItem>
             ))}

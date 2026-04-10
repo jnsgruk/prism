@@ -1,15 +1,6 @@
-import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  File,
-  FileArchive,
-  FileCode,
-  FileSpreadsheet,
-  FileText,
-  ImageIcon,
-  FileVideo,
-  FileAudio,
-} from "lucide-react";
+import { File, FileArchive, FileCode, FileSpreadsheet, FileText, ImageIcon, FileVideo, FileAudio } from "lucide-react";
+import { useMemo } from "react";
 
 /** Minimal file shape needed for the file tree. */
 export type ArtifactDisplay = {
@@ -138,8 +129,7 @@ export const getFileIcon = (displayName: string, contentType?: string): LucideIc
       contentType === "application/x-7z-compressed"
     )
       return FileArchive;
-    if (contentType === "text/csv" || contentType === "application/vnd.ms-excel")
-      return FileSpreadsheet;
+    if (contentType === "text/csv" || contentType === "application/vnd.ms-excel") return FileSpreadsheet;
     if (
       contentType.startsWith("text/") ||
       contentType === "application/json" ||
@@ -154,8 +144,7 @@ export const getFileIcon = (displayName: string, contentType?: string): LucideIc
   if (dot >= 0) {
     const ext = displayName.slice(dot).toLowerCase();
     if (EXTENSION_LANG_MAP[ext]) return FileCode;
-    if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"].includes(ext))
-      return ImageIcon;
+    if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"].includes(ext)) return ImageIcon;
     if ([".mp4", ".webm", ".mov", ".avi"].includes(ext)) return FileVideo;
     if ([".mp3", ".wav", ".ogg", ".flac"].includes(ext)) return FileAudio;
     if ([".zip", ".gz", ".tar", ".7z", ".rar"].includes(ext)) return FileArchive;
@@ -266,9 +255,7 @@ export const isTextContent = (contentType?: string): boolean => {
 
 /** Check whether a file can be previewed inline. */
 export const canPreview = (contentType?: string): boolean =>
-  contentType?.startsWith("image/") === true ||
-  contentType === "application/pdf" ||
-  isTextContent(contentType);
+  contentType?.startsWith("image/") === true || contentType === "application/pdf" || isTextContent(contentType);
 
 export const formatSize = (bytes: bigint | number): string => {
   const n = typeof bytes === "bigint" ? Number(bytes) : bytes;

@@ -1,3 +1,4 @@
+import { PrismLogo } from "@/components/prism-logo";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-import { PrismLogo } from "@/components/prism-logo";
 import { useCompleteSetup, useSetupStatus } from "@ps/hooks/use-auth";
 
 const setupSchema = z.object({

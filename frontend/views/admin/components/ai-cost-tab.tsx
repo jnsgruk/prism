@@ -1,20 +1,11 @@
-import { useState } from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Loader2 } from "lucide-react";
-
 import { useUsageSummary } from "@/views/admin/hooks/use-ai-cost";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const USAGE_WINDOWS = [
   { key: "1w", label: "Last week", days: 7 },
@@ -123,13 +114,9 @@ export const AiCostSection = (): React.ReactElement => {
                     {Number(row.promptTokens) > 0 ? Number(row.promptTokens).toLocaleString() : "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {Number(row.completionTokens) > 0
-                      ? Number(row.completionTokens).toLocaleString()
-                      : "—"}
+                    {Number(row.completionTokens) > 0 ? Number(row.completionTokens).toLocaleString() : "—"}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {Number(row.requestCount).toLocaleString()}
-                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{Number(row.requestCount).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -167,9 +154,7 @@ export const AiCostSection = (): React.ReactElement => {
                       ? (Number(row.promptTokens) + Number(row.completionTokens)).toLocaleString()
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {Number(row.requestCount).toLocaleString()}
-                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{Number(row.requestCount).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

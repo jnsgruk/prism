@@ -31,14 +31,9 @@ export const CoverageIndicator = ({
         const pct = t.eligible > 0 ? (t.enriched / t.eligible) * 100 : 0;
         return (
           <div key={t.enrichmentType} className="flex items-center gap-2 text-xs">
-            <span className="w-28 shrink-0 text-muted-foreground">
-              {typeLabel(t.enrichmentType)}
-            </span>
+            <span className="w-28 shrink-0 text-muted-foreground">{typeLabel(t.enrichmentType)}</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${Math.min(pct, 100)}%` }}
-              />
+              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(pct, 100)}%` }} />
             </div>
             <span className="w-16 shrink-0 tabular-nums text-muted-foreground text-right">
               {t.enriched}/{t.eligible}

@@ -20,9 +20,7 @@ export const PageHeader = ({
         <h1 className="text-sm font-medium">{title}</h1>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
-      {center && (
-        <div className="flex min-w-0 flex-1 items-center justify-center px-4">{center}</div>
-      )}
+      {center && <div className="flex min-w-0 flex-1 items-center justify-center px-4">{center}</div>}
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
   </header>

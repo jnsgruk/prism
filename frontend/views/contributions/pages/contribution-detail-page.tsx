@@ -5,12 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEnrichments } from "@/lib/hooks/use-enrichment";
 import { useContribution } from "@/lib/hooks/use-metrics";
-import {
-  ContributionState,
-  ContributionType,
-  EnrichmentType,
-} from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   contributionStateLabel,
   contributionTypeLabel as ctLabel,
@@ -18,22 +14,13 @@ import {
   enrichmentTypeLabel as etDisplayLabel,
   platformLabel,
 } from "@/lib/proto-display";
-import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { useEnrichments } from "@/lib/hooks/use-enrichment";
 import { RelatedItems } from "@/views/contributions/components/related-items";
-import {
-  ArrowLeft,
-  Brain,
-  Calendar,
-  ExternalLink,
-  FileCode,
-  GitBranch,
-  Loader2,
-  Tag,
-  User,
-} from "lucide-react";
-import { Link, useParams, useNavigate } from "react-router";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { ArrowLeft, Brain, Calendar, ExternalLink, FileCode, GitBranch, Loader2, Tag, User } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router";
+
+import { ContributionState, ContributionType, EnrichmentType } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { Enrichment } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
 // ---------------------------------------------------------------------------
 // Formatting helpers
@@ -49,9 +36,7 @@ const formatTimestamp = (ts?: Timestamp): string => {
   );
 };
 
-const stateBadgeVariant = (
-  state: ContributionState,
-): "default" | "secondary" | "destructive" | "outline" => {
+const stateBadgeVariant = (state: ContributionState): "default" | "secondary" | "destructive" | "outline" => {
   switch (state) {
     case ContributionState.MERGED:
     case ContributionState.APPROVED:
@@ -135,10 +120,7 @@ const MetadataRow = ({
 const EnrichmentBadge = ({ enrichment }: { enrichment: Enrichment }): React.ReactElement => {
   const rationale = enrichmentRationale(enrichment.valueJson);
   const badge = (
-    <Badge
-      variant={enrichmentVariant(enrichment.enrichmentType)}
-      className="cursor-default text-xs"
-    >
+    <Badge variant={enrichmentVariant(enrichment.enrichmentType)} className="cursor-default text-xs">
       {enrichmentLabel(enrichment.enrichmentType, enrichment.valueJson)}
     </Badge>
   );
@@ -147,9 +129,7 @@ const EnrichmentBadge = ({ enrichment }: { enrichment: Enrichment }): React.Reac
 
   return (
     <Popover>
-      <PopoverTrigger render={<button type="button" className="cursor-pointer" />}>
-        {badge}
-      </PopoverTrigger>
+      <PopoverTrigger render={<button type="button" className="cursor-pointer" />}>{badge}</PopoverTrigger>
       <PopoverContent className="w-80 space-y-2 text-sm" side="bottom" align="start">
         <p className="font-medium">{etDisplayLabel(enrichment.enrichmentType)}</p>
         {rationale && <p className="text-muted-foreground">{rationale}</p>}
@@ -281,10 +261,7 @@ const ContributionDetailPage = (): React.ReactElement | null => {
               {/* State */}
               {contribution.state && (
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant={stateBadgeVariant(contribution.state)}
-                    className="text-[10px] uppercase"
-                  >
+                  <Badge variant={stateBadgeVariant(contribution.state)} className="text-[10px] uppercase">
                     {contributionStateLabel(contribution.state)}
                   </Badge>
                   {contribution.draft && (
@@ -299,10 +276,7 @@ const ContributionDetailPage = (): React.ReactElement | null => {
               {contribution.personName && (
                 <MetadataRow icon={User} label="Author">
                   {contribution.personId ? (
-                    <Link
-                      to={`/people/${contribution.personId}`}
-                      className="text-foreground hover:underline"
-                    >
+                    <Link to={`/people/${contribution.personId}`} className="text-foreground hover:underline">
                       {contribution.personName}
                     </Link>
                   ) : (

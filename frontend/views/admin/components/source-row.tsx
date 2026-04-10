@@ -1,18 +1,18 @@
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
+import { platformLabel } from "@/lib/proto-display";
+import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
 import { Key, Loader2, Plug, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
-import { platformLabel } from "@/lib/proto-display";
+import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/use-config";
 
-import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
-import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
 import { EditSourceDialog } from "./edit-source-dialog";
 
 export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {
@@ -26,8 +26,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
   const secretEntries = Object.entries(source.secretStatus);
   const allSecretsSet = secretEntries.length > 0 && secretEntries.every(([, set]) => set);
   const base = baseSourceType(source.sourceType);
-  const sourceLabel =
-    SOURCE_TYPES.find((t) => t.value === base)?.label ?? platformLabel(source.sourceType);
+  const sourceLabel = SOURCE_TYPES.find((t) => t.value === base)?.label ?? platformLabel(source.sourceType);
 
   const handleToggleEnabled = (): void => {
     updateSource.mutate({ sourceId: source.id, enabled: !source.enabled });
@@ -86,12 +85,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
               )}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setShowEdit(true)}
-            title="Edit settings"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={() => setShowEdit(true)} title="Edit settings">
             <Settings2 className="size-4" />
           </Button>
 
@@ -115,11 +109,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
             disabled={testConnection.isPending}
             title="Test connection"
           >
-            {testConnection.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plug className="size-4" />
-            )}
+            {testConnection.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
           </Button>
 
           <Button

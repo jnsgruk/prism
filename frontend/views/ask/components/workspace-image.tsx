@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ImageIcon, Loader2, Maximize2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { useGetWorkspaceFile } from "@/lib/hooks/use-conversations";
 import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
+import { ImageIcon, Loader2, Maximize2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Inline image that fetches its content from the workspace API.
@@ -93,25 +92,14 @@ export const WorkspaceImage = ({
     <>
       <figure className="group relative my-3">
         <div className="overflow-hidden rounded-md border">
-          <img
-            src={blobUrl}
-            alt={alt ?? fileName}
-            className="max-h-[500px] w-full object-contain"
-          />
+          <img src={blobUrl} alt={alt ?? fileName} className="max-h-[500px] w-full object-contain" />
         </div>
         <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="size-7 shadow-sm"
-            onClick={() => setDialogOpen(true)}
-          >
+          <Button variant="secondary" size="icon" className="size-7 shadow-sm" onClick={() => setDialogOpen(true)}>
             <Maximize2 className="size-3.5" />
           </Button>
         </div>
-        {alt && (
-          <figcaption className="mt-1 text-center text-xs text-muted-foreground">{alt}</figcaption>
-        )}
+        {alt && <figcaption className="mt-1 text-center text-xs text-muted-foreground">{alt}</figcaption>}
       </figure>
 
       <WorkspacePreviewDialog

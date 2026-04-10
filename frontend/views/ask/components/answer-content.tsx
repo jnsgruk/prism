@@ -1,6 +1,6 @@
 import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
+import remarkGfm from "remark-gfm";
 
 import { WorkspaceImage } from "./workspace-image";
 
@@ -65,10 +65,7 @@ export const AnswerContent = ({
           return <img src={src} alt={alt ?? ""} className="max-h-[500px] rounded-md" />;
         },
         pre: ({ children, ...props }) => (
-          <pre
-            className="overflow-x-auto rounded-md bg-muted p-3 text-sm text-foreground"
-            {...props}
-          >
+          <pre className="overflow-x-auto rounded-md bg-muted p-3 text-sm text-foreground" {...props}>
             {children}
           </pre>
         ),

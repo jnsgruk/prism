@@ -3,10 +3,7 @@ import * as React from "react";
 
 import { cn } from "@ps/cn";
 
-function TooltipProvider({
-  delay = 0,
-  ...props
-}: TooltipPrimitive.Provider.Props): React.ReactElement {
+function TooltipProvider({ delay = 0, ...props }: TooltipPrimitive.Provider.Props): React.ReactElement {
   return <TooltipPrimitive.Provider data-slot="tooltip-provider" delay={delay} {...props} />;
 }
 
@@ -27,10 +24,7 @@ function TooltipContent({
   children,
   ...props
 }: TooltipPrimitive.Popup.Props &
-  Pick<
-    TooltipPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >): React.ReactElement {
+  Pick<TooltipPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">): React.ReactElement {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Positioner

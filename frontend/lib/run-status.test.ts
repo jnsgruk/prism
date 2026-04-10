@@ -37,9 +37,7 @@ describe("statusConfig", () => {
   });
 
   it("each status has an icon", () => {
-    const numericValues = Object.values(RunStatus).filter(
-      (v): v is number => typeof v === "number",
-    );
+    const numericValues = Object.values(RunStatus).filter((v): v is number => typeof v === "number");
     for (const key of numericValues) {
       expect(statusConfig[key as RunStatus]!.icon).toBeTruthy();
     }

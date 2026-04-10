@@ -7,6 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { MethodKind } from "@bufbuild/protobuf";
+
 import {
   AssignGithubTeamRequest,
   AssignGithubTeamResponse,
@@ -51,7 +53,6 @@ import {
   UpdateTeamRequest,
   UpdateTeamResponse,
 } from "./org_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * OrgService manages the organisational hierarchy — teams, people, platform

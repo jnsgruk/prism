@@ -6,11 +6,11 @@
 // @generated from file canonical/prism/v1/auth.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/auth.proto.
@@ -29,8 +29,10 @@ export type GetSetupStatusRequest = Message<"canonical.prism.v1.GetSetupStatusRe
  * Describes the message canonical.prism.v1.GetSetupStatusRequest.
  * Use `create(GetSetupStatusRequestSchema)` to create a new message.
  */
-export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 0);
+export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  0,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSetupStatusResponse
@@ -48,8 +50,10 @@ export type GetSetupStatusResponse = Message<"canonical.prism.v1.GetSetupStatusR
  * Describes the message canonical.prism.v1.GetSetupStatusResponse.
  * Use `create(GetSetupStatusResponseSchema)` to create a new message.
  */
-export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 1);
+export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.CompleteSetupRequest
@@ -75,8 +79,10 @@ export type CompleteSetupRequest = Message<"canonical.prism.v1.CompleteSetupRequ
  * Describes the message canonical.prism.v1.CompleteSetupRequest.
  * Use `create(CompleteSetupRequestSchema)` to create a new message.
  */
-export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 2);
+export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.CompleteSetupResponse
@@ -94,8 +100,10 @@ export type CompleteSetupResponse = Message<"canonical.prism.v1.CompleteSetupRes
  * Describes the message canonical.prism.v1.CompleteSetupResponse.
  * Use `create(CompleteSetupResponseSchema)` to create a new message.
  */
-export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 3);
+export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.LoginRequest
@@ -116,10 +124,7 @@ export type LoginRequest = Message<"canonical.prism.v1.LoginRequest"> & {
  * Describes the message canonical.prism.v1.LoginRequest.
  * Use `create(LoginRequestSchema)` to create a new message.
  */
-export const LoginRequestSchema: GenMessage<LoginRequest> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_auth,
-  4,
-);
+export const LoginRequestSchema: GenMessage<LoginRequest> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_auth, 4);
 
 /**
  * @generated from message canonical.prism.v1.LoginResponse
@@ -182,8 +187,10 @@ export type GetCurrentUserRequest = Message<"canonical.prism.v1.GetCurrentUserRe
  * Describes the message canonical.prism.v1.GetCurrentUserRequest.
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
-export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 8);
+export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetCurrentUserResponse
@@ -216,8 +223,10 @@ export type GetCurrentUserResponse = Message<"canonical.prism.v1.GetCurrentUserR
  * Describes the message canonical.prism.v1.GetCurrentUserResponse.
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
-export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 9);
+export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.PreviewBackupRequest
@@ -235,8 +244,10 @@ export type PreviewBackupRequest = Message<"canonical.prism.v1.PreviewBackupRequ
  * Describes the message canonical.prism.v1.PreviewBackupRequest.
  * Use `create(PreviewBackupRequestSchema)` to create a new message.
  */
-export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 10);
+export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.PreviewBackupResponse
@@ -282,8 +293,10 @@ export type PreviewBackupResponse = Message<"canonical.prism.v1.PreviewBackupRes
  * Describes the message canonical.prism.v1.PreviewBackupResponse.
  * Use `create(PreviewBackupResponseSchema)` to create a new message.
  */
-export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 11);
+export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  11,
+);
 
 /**
  * @generated from message canonical.prism.v1.RestoreBackupRequest
@@ -301,8 +314,10 @@ export type RestoreBackupRequest = Message<"canonical.prism.v1.RestoreBackupRequ
  * Describes the message canonical.prism.v1.RestoreBackupRequest.
  * Use `create(RestoreBackupRequestSchema)` to create a new message.
  */
-export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 12);
+export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.RestoreBackupResponse
@@ -339,8 +354,10 @@ export type RestoreBackupResponse = Message<"canonical.prism.v1.RestoreBackupRes
  * Describes the message canonical.prism.v1.RestoreBackupResponse.
  * Use `create(RestoreBackupResponseSchema)` to create a new message.
  */
-export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_auth, 13);
+export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  13,
+);
 
 /**
  * AuthService handles authentication, session management, and the initial

@@ -5,11 +5,11 @@
 // @generated from file canonical/prism/v1/admin.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/admin.proto.
@@ -49,8 +49,10 @@ export type CreateBackupResponse = Message<"canonical.prism.v1.CreateBackupRespo
  * Describes the message canonical.prism.v1.CreateBackupResponse.
  * Use `create(CreateBackupResponseSchema)` to create a new message.
  */
-export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 1);
+export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateApiTokenRequest
@@ -68,8 +70,10 @@ export type CreateApiTokenRequest = Message<"canonical.prism.v1.CreateApiTokenRe
  * Describes the message canonical.prism.v1.CreateApiTokenRequest.
  * Use `create(CreateApiTokenRequestSchema)` to create a new message.
  */
-export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 2);
+export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateApiTokenResponse
@@ -97,8 +101,10 @@ export type CreateApiTokenResponse = Message<"canonical.prism.v1.CreateApiTokenR
  * Describes the message canonical.prism.v1.CreateApiTokenResponse.
  * Use `create(CreateApiTokenResponseSchema)` to create a new message.
  */
-export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 3);
+export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListApiTokensRequest
@@ -109,8 +115,10 @@ export type ListApiTokensRequest = Message<"canonical.prism.v1.ListApiTokensRequ
  * Describes the message canonical.prism.v1.ListApiTokensRequest.
  * Use `create(ListApiTokensRequestSchema)` to create a new message.
  */
-export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 4);
+export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListApiTokensResponse
@@ -126,8 +134,10 @@ export type ListApiTokensResponse = Message<"canonical.prism.v1.ListApiTokensRes
  * Describes the message canonical.prism.v1.ListApiTokensResponse.
  * Use `create(ListApiTokensResponseSchema)` to create a new message.
  */
-export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 5);
+export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  5,
+);
 
 /**
  * ApiTokenInfo contains metadata about an API token. The token value itself
@@ -163,10 +173,7 @@ export type ApiTokenInfo = Message<"canonical.prism.v1.ApiTokenInfo"> & {
  * Describes the message canonical.prism.v1.ApiTokenInfo.
  * Use `create(ApiTokenInfoSchema)` to create a new message.
  */
-export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> /*@__PURE__*/ = messageDesc(
-  file_canonical_prism_v1_admin,
-  6,
-);
+export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_admin, 6);
 
 /**
  * @generated from message canonical.prism.v1.RevokeApiTokenRequest
@@ -182,8 +189,10 @@ export type RevokeApiTokenRequest = Message<"canonical.prism.v1.RevokeApiTokenRe
  * Describes the message canonical.prism.v1.RevokeApiTokenRequest.
  * Use `create(RevokeApiTokenRequestSchema)` to create a new message.
  */
-export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 7);
+export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.RevokeApiTokenResponse
@@ -194,8 +203,10 @@ export type RevokeApiTokenResponse = Message<"canonical.prism.v1.RevokeApiTokenR
  * Describes the message canonical.prism.v1.RevokeApiTokenResponse.
  * Use `create(RevokeApiTokenResponseSchema)` to create a new message.
  */
-export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 8);
+export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.ResetDataRequest
@@ -256,8 +267,10 @@ export type GetSystemInfoRequest = Message<"canonical.prism.v1.GetSystemInfoRequ
  * Describes the message canonical.prism.v1.GetSystemInfoRequest.
  * Use `create(GetSystemInfoRequestSchema)` to create a new message.
  */
-export const GetSystemInfoRequestSchema: GenMessage<GetSystemInfoRequest> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 11);
+export const GetSystemInfoRequestSchema: GenMessage<GetSystemInfoRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  11,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSystemInfoResponse
@@ -289,8 +302,10 @@ export type GetSystemInfoResponse = Message<"canonical.prism.v1.GetSystemInfoRes
  * Describes the message canonical.prism.v1.GetSystemInfoResponse.
  * Use `create(GetSystemInfoResponseSchema)` to create a new message.
  */
-export const GetSystemInfoResponseSchema: GenMessage<GetSystemInfoResponse> /*@__PURE__*/ =
-  messageDesc(file_canonical_prism_v1_admin, 12);
+export const GetSystemInfoResponseSchema: GenMessage<GetSystemInfoResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  12,
+);
 
 /**
  * AdminService provides privileged operations for instance administrators

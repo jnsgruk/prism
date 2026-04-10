@@ -11,19 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useListPeople } from "@/lib/hooks/use-org";
+import { useUpdateTeam } from "@/views/admin/hooks/use-admin";
 import { useEffect, useState } from "react";
 
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-
-import { useUpdateTeam } from "@/views/admin/hooks/use-admin";
-import { useListPeople } from "@/lib/hooks/use-org";
 
 interface EditTeamDialogProps {
   team: Team;
@@ -32,12 +25,7 @@ interface EditTeamDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const EditTeamDialog = ({
-  team,
-  teams,
-  open,
-  onOpenChange,
-}: EditTeamDialogProps): React.ReactElement => {
+export const EditTeamDialog = ({ team, teams, open, onOpenChange }: EditTeamDialogProps): React.ReactElement => {
   const updateTeam = useUpdateTeam();
   const { data: people } = useListPeople();
   const [name, setName] = useState(team.name);
@@ -76,20 +64,13 @@ export const EditTeamDialog = ({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
-            <DialogDescription>
-              Update team details for &ldquo;{team.name}&rdquo;.
-            </DialogDescription>
+            <DialogDescription>Update team details for &ldquo;{team.name}&rdquo;.</DialogDescription>
           </DialogHeader>
 
           <div className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="team-name">Name</Label>
-              <Input
-                id="team-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <Input id="team-name" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
 
             <div className="space-y-2">
@@ -130,9 +111,7 @@ export const EditTeamDialog = ({
 
             {updateTeam.isError && (
               <Alert variant="destructive">
-                {updateTeam.error instanceof Error
-                  ? updateTeam.error.message
-                  : "Failed to update team"}
+                {updateTeam.error instanceof Error ? updateTeam.error.message : "Failed to update team"}
               </Alert>
             )}
           </div>

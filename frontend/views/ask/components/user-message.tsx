@@ -23,9 +23,7 @@ export const UserMessage = ({
 
   // People and team mentions (names already appear inline in the text,
   // but we could display badges in the future if needed).
-  const _entityMentions = mentions?.filter(
-    (m) => m.type === MentionType.PERSON || m.type === MentionType.TEAM,
-  );
+  const _entityMentions = mentions?.filter((m) => m.type === MentionType.PERSON || m.type === MentionType.TEAM);
 
   return (
     <div className="flex flex-col items-end gap-1.5">

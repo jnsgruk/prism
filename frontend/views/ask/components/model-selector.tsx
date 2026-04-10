@@ -1,19 +1,12 @@
-import { useState } from "react";
-import { ChevronsUpDown, ImageIcon } from "lucide-react";
-
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAiModels, useAiSettings } from "@/lib/hooks/use-ai-settings";
+import { aiProviderKey, aiProviderLabel } from "@/lib/proto-display";
+import { ChevronsUpDown, ImageIcon } from "lucide-react";
+import { useState } from "react";
+
 import { AiProvider } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { AiModelInfo } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
-import { aiProviderKey, aiProviderLabel } from "@/lib/proto-display";
-import { useAiModels, useAiSettings } from "@/lib/hooks/use-ai-settings";
 
 /** Google Gemini icon — the official gradient sparkle. */
 const GeminiIcon = ({ className }: { className?: string }): React.ReactElement => (
@@ -26,12 +19,9 @@ const GeminiIcon = ({ className }: { className?: string }): React.ReactElement =
 );
 
 /** Provider icon for the trigger button and dropdown items. */
-const ProviderIcon = ({
-  className = "size-4",
-}: {
-  provider?: AiProvider;
-  className?: string;
-}): React.ReactElement => <GeminiIcon className={className} />;
+const ProviderIcon = ({ className = "size-4" }: { provider?: AiProvider; className?: string }): React.ReactElement => (
+  <GeminiIcon className={className} />
+);
 
 /** Format a context length like "1M" or "128K". */
 const formatContext = (n: number): string => {
@@ -83,18 +73,14 @@ export const ModelSelector = ({
   const allModels = allModelsResponse?.models ?? [];
 
   // Split into chat models (have tool_use) and image-only models.
-  const chatModels = allModels.filter(
-    (m) => m.capabilities.includes("tool_use") && !isImageOnly(m),
-  );
+  const chatModels = allModels.filter((m) => m.capabilities.includes("tool_use") && !isImageOnly(m));
   const imageModels = allModels.filter((m) => isImageOnly(m));
 
   // Find the selected model.
   const isImage = value?.startsWith("image:");
   const lookupId = isImage ? value?.slice(6) : value;
   const selectedPool = isImage ? imageModels : chatModels;
-  const selected = lookupId
-    ? selectedPool.find((m) => toOverrideId(m, false) === lookupId)
-    : undefined;
+  const selected = lookupId ? selectedPool.find((m) => toOverrideId(m, false) === lookupId) : undefined;
 
   // Resolve the admin-configured default model.
   const defaultModelId = settings?.agentic?.model;
@@ -119,10 +105,7 @@ export const ModelSelector = ({
           <ImageIcon className="size-4 shrink-0 text-muted-foreground" />
         ) : (
           activeProvider != null && (
-            <ProviderIcon
-              provider={activeProvider}
-              className="size-4 shrink-0 text-muted-foreground"
-            />
+            <ProviderIcon provider={activeProvider} className="size-4 shrink-0 text-muted-foreground" />
           )
         )}
         <span className="min-w-0 truncate">{selected ? selected.displayName : defaultLabel}</span>
@@ -133,9 +116,7 @@ export const ModelSelector = ({
           <CommandInput placeholder="Search models..." />
           <CommandList>
             <CommandEmpty>
-              {allModels.length === 0
-                ? "No models available. Check AI provider settings."
-                : "No matching models."}
+              {allModels.length === 0 ? "No models available. Check AI provider settings." : "No matching models."}
             </CommandEmpty>
 
             {/* Default model */}
@@ -149,10 +130,7 @@ export const ModelSelector = ({
                 }}
               >
                 {defaultProvider != null && (
-                  <ProviderIcon
-                    provider={defaultProvider}
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
+                  <ProviderIcon provider={defaultProvider} className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 <span className="text-sm">{defaultLabel} (default)</span>
               </CommandItem>
@@ -173,10 +151,7 @@ export const ModelSelector = ({
                         setOpen(false);
                       }}
                     >
-                      <ProviderIcon
-                        provider={m.provider}
-                        className="size-4 shrink-0 text-muted-foreground"
-                      />
+                      <ProviderIcon provider={m.provider} className="size-4 shrink-0 text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm">{m.displayName || m.id}</span>
                         {m.contextLength > 0 && (
@@ -209,9 +184,7 @@ export const ModelSelector = ({
                       <ImageIcon className="size-4 shrink-0 text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm">{m.displayName || m.id}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {aiProviderLabel(m.provider)}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{aiProviderLabel(m.provider)}</span>
                       </span>
                     </CommandItem>
                   );

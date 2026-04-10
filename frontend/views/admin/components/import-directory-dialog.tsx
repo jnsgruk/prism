@@ -1,12 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useImportDirectory } from "@/views/admin/hooks/use-admin";
 import { AlertCircle, Upload } from "lucide-react";
 import { useState } from "react";
@@ -45,9 +39,7 @@ export const ImportDirectoryDialog = ({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import Directory</DialogTitle>
-          <DialogDescription>
-            Upload an HTML or JSON directory export to populate teams and people.
-          </DialogDescription>
+          <DialogDescription>Upload an HTML or JSON directory export to populate teams and people.</DialogDescription>
         </DialogHeader>
 
         <div
@@ -75,9 +67,7 @@ export const ImportDirectoryDialog = ({
 
         {importDirectory.isSuccess && (
           <div className="rounded border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">
-              Import complete
-            </p>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">Import complete</p>
             <ul className="mt-1 text-xs text-green-700 dark:text-green-300">
               <li>{importDirectory.data.peopleImported} people imported</li>
               <li>{importDirectory.data.teamsCreated} teams created</li>
@@ -99,9 +89,7 @@ export const ImportDirectoryDialog = ({
         {importDirectory.isError && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            {importDirectory.error instanceof Error
-              ? importDirectory.error.message
-              : "Import failed"}
+            {importDirectory.error instanceof Error ? importDirectory.error.message : "Import failed"}
           </Alert>
         )}
       </DialogContent>

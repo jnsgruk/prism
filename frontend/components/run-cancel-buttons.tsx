@@ -20,13 +20,7 @@ export const CancelButton = ({
   </Button>
 );
 
-export const RunButton = ({
-  onClick,
-  isPending,
-}: {
-  onClick: () => void;
-  isPending: boolean;
-}): React.ReactElement => (
+export const RunButton = ({ onClick, isPending }: { onClick: () => void; isPending: boolean }): React.ReactElement => (
   <Button variant="ghost" size="sm" className="h-7" onClick={onClick} disabled={isPending}>
     {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
     <span className="ml-1 hidden sm:inline">Run</span>

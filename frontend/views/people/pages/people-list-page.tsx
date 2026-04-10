@@ -1,31 +1,19 @@
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { PageHeader } from "@/components/page-header";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert } from "@/components/ui/alert";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
+import { personNameColumn, personTeamColumn, personIdentitiesColumn } from "@/views/people/components/person-columns";
 import type { SortingState } from "@tanstack/react-table";
 import { ChevronsUpDown, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { PageHeader } from "@/components/page-header";
-import {
-  personNameColumn,
-  personTeamColumn,
-  personIdentitiesColumn,
-} from "@/views/people/components/person-columns";
-import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
 
 const columns = [personNameColumn, personTeamColumn, personIdentitiesColumn];
 
@@ -43,10 +31,7 @@ const PeopleListPage = (): React.ReactElement => {
   const { data: treeData } = useGetTeamTree();
   const flatTeams = useMemo(() => flattenTree(treeData?.roots ?? []), [treeData?.roots]);
 
-  const selectedTeamName = useMemo(
-    () => flatTeams.find((ft) => ft.team.id === teamId)?.team.name,
-    [flatTeams, teamId],
-  );
+  const selectedTeamName = useMemo(() => flatTeams.find((ft) => ft.team.id === teamId)?.team.name, [flatTeams, teamId]);
 
   useEffect(() => {
     setPageIndex(0);
@@ -103,9 +88,7 @@ const PeopleListPage = (): React.ReactElement => {
             />
           </div>
           <Popover open={teamOpen} onOpenChange={setTeamOpen}>
-            <PopoverTrigger
-              render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between" />}
-            >
+            <PopoverTrigger render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between" />}>
               <span className="truncate">{selectedTeamName ?? "All teams"}</span>
               {teamId ? (
                 <X
@@ -155,9 +138,7 @@ const PeopleListPage = (): React.ReactElement => {
         )}
 
         {/* Error */}
-        {isError && (
-          <Alert variant="destructive">{error?.message ?? "Failed to load people"}</Alert>
-        )}
+        {isError && <Alert variant="destructive">{error?.message ?? "Failed to load people"}</Alert>}
 
         {/* Table */}
         {!isLoading && !isError && (

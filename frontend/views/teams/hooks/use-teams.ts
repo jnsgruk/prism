@@ -22,11 +22,9 @@ export const orgKeys = {
   teams: (parentTeamId?: string): readonly ["org", "teams", string | undefined] =>
     [...orgKeys.all, "teams", parentTeamId] as const,
   tree: (): readonly ["org", "tree"] => [...orgKeys.all, "tree"] as const,
-  team: (teamId: string): readonly ["org", "team", string] =>
-    [...orgKeys.all, "team", teamId] as const,
+  team: (teamId: string): readonly ["org", "team", string] => [...orgKeys.all, "team", teamId] as const,
   people: (): readonly ["org", "people"] => [...orgKeys.all, "people"] as const,
-  githubTeams: (search?: string, githubOrg?: string) =>
-    [...orgKeys.all, "github-teams", search, githubOrg] as const,
+  githubTeams: (search?: string, githubOrg?: string) => [...orgKeys.all, "github-teams", search, githubOrg] as const,
   teamGithubTeams: (teamId: string) => [...orgKeys.all, "team-github-teams", teamId] as const,
   mappingSuggestions: () => [...orgKeys.all, "mapping-suggestions"] as const,
 };
@@ -68,9 +66,7 @@ export interface PeopleQueryParams {
   sortDesc?: boolean;
 }
 
-export const usePaginatedPeople = (
-  params: PeopleQueryParams,
-): UseQueryResult<ListPeopleResponse, Error> =>
+export const usePaginatedPeople = (params: PeopleQueryParams): UseQueryResult<ListPeopleResponse, Error> =>
   useQuery({
     queryKey: [...orgKeys.people(), params] as const,
     queryFn: () =>
@@ -79,9 +75,7 @@ export const usePaginatedPeople = (
         filter: params.filter || undefined,
         teamId: params.teamId || undefined,
         pagination: { pageSize: params.pageSize, pageToken: params.pageToken ?? "" },
-        sort: params.sortField
-          ? { field: params.sortField, descending: params.sortDesc ?? false }
-          : undefined,
+        sort: params.sortField ? { field: params.sortField, descending: params.sortDesc ?? false } : undefined,
       }),
     placeholderData: keepPreviousData,
   });
@@ -132,9 +126,7 @@ export const teamTypeLabel = (t: TeamType): string => {
 };
 
 /** Badge variant for a team type. */
-export const teamTypeBadgeVariant = (
-  t: TeamType,
-): "default" | "secondary" | "outline" | "destructive" => {
+export const teamTypeBadgeVariant = (t: TeamType): "default" | "secondary" | "outline" | "destructive" => {
   switch (t) {
     case TeamType.ORG:
       return "default";
@@ -149,10 +141,7 @@ export const teamTypeBadgeVariant = (
   }
 };
 
-export const useListGithubTeams = (
-  search?: string,
-  githubOrg?: string,
-): UseQueryResult<GitHubTeam[], Error> =>
+export const useListGithubTeams = (search?: string, githubOrg?: string): UseQueryResult<GitHubTeam[], Error> =>
   useQuery({
     queryKey: orgKeys.githubTeams(search, githubOrg),
     queryFn: () =>

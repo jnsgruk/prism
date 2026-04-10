@@ -1,6 +1,7 @@
 import { StatusDot } from "@/components/status-dot";
-import { cn } from "@ps/cn";
 import { Check, Loader2, X } from "lucide-react";
+
+import { cn } from "@ps/cn";
 
 /** Shape of a single handler within a stage (from stages JSONB). */
 export type StageHandler = {
@@ -77,9 +78,7 @@ const HandlerRow = ({ handler }: { handler: StageHandler }): React.ReactElement 
     <span className="shrink-0">{statusIcon(handler.status)}</span>
     <span className="shrink-0">{handler.name}</span>
     {handler.items != null && handler.items > 0 && (
-      <span className="shrink-0 tabular-nums text-muted-foreground">
-        {handler.items.toLocaleString()}
-      </span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">{handler.items.toLocaleString()}</span>
     )}
     {handler.error && (
       <span className="min-w-0 truncate text-destructive" title={handler.error}>

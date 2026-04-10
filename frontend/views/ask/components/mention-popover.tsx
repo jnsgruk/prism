@@ -1,10 +1,10 @@
+import { getFileIcon, formatSize } from "@/views/ask/hooks/use-file-tree";
+import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
+import type { MentionType } from "@/views/ask/hooks/use-mention-picker";
 import { File, User, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
-import { getFileIcon, formatSize } from "@/views/ask/hooks/use-file-tree";
-import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
-import type { MentionType } from "@/views/ask/hooks/use-mention-picker";
 import { cn } from "@ps/cn";
 
 /** Simple fuzzy-ish match: all query characters appear in order in the target. */
@@ -65,9 +65,7 @@ export const MentionPopover = ({
     const cats: { label: string; startIndex: number; count: number }[] = [];
 
     // People
-    const filteredPeople = people
-      .filter((p) => p.active && matchesQuery(p.name, query))
-      .slice(0, MAX_PER_CATEGORY);
+    const filteredPeople = people.filter((p) => p.active && matchesQuery(p.name, query)).slice(0, MAX_PER_CATEGORY);
     if (filteredPeople.length > 0) {
       cats.push({ label: "People", startIndex: allItems.length, count: filteredPeople.length });
       for (const p of filteredPeople) {
@@ -82,9 +80,7 @@ export const MentionPopover = ({
     }
 
     // Teams
-    const filteredTeams = teams
-      .filter((t) => matchesQuery(t.name, query))
-      .slice(0, MAX_PER_CATEGORY);
+    const filteredTeams = teams.filter((t) => matchesQuery(t.name, query)).slice(0, MAX_PER_CATEGORY);
     if (filteredTeams.length > 0) {
       cats.push({ label: "Teams", startIndex: allItems.length, count: filteredTeams.length });
       for (const t of filteredTeams) {
@@ -99,9 +95,7 @@ export const MentionPopover = ({
     }
 
     // Files (only when available)
-    const filteredFiles = files
-      .filter((f) => !f.isDirectory && matchesQuery(f.path, query))
-      .slice(0, MAX_PER_CATEGORY);
+    const filteredFiles = files.filter((f) => !f.isDirectory && matchesQuery(f.path, query)).slice(0, MAX_PER_CATEGORY);
     if (filteredFiles.length > 0) {
       cats.push({ label: "Files", startIndex: allItems.length, count: filteredFiles.length });
       for (const f of filteredFiles) {
@@ -180,13 +174,9 @@ export const MentionPopover = ({
       className="absolute bottom-full left-0 z-50 mb-1 w-80 rounded-lg border bg-popover p-1 shadow-md"
     >
       <div ref={listRef} className="max-h-60 overflow-y-auto">
-        {items.length === 0 && (
-          <p className="py-4 text-center text-sm text-muted-foreground">No results</p>
-        )}
+        {items.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No results</p>}
         {items.map((item, index) => {
-          const cat = categoryStartIndices.has(index)
-            ? categories.find((c) => c.startIndex === index)
-            : undefined;
+          const cat = categoryStartIndices.has(index) ? categories.find((c) => c.startIndex === index) : undefined;
           const isSelected = index === selectedIndex;
           const Icon = item.icon;
           return (
@@ -210,12 +200,8 @@ export const MentionPopover = ({
                 }}
               >
                 <Icon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate">
-                  {item.type === "file" ? item.id : item.name}
-                </span>
-                {item.subtitle && (
-                  <span className="shrink-0 text-xs text-muted-foreground">{item.subtitle}</span>
-                )}
+                <span className="min-w-0 flex-1 truncate">{item.type === "file" ? item.id : item.name}</span>
+                {item.subtitle && <span className="shrink-0 text-xs text-muted-foreground">{item.subtitle}</span>}
               </button>
             </div>
           );

@@ -1,19 +1,10 @@
-import { Activity, BarChart3, TrendingUp, Users } from "lucide-react";
-
 import { fmtPercent } from "@/lib/format-metrics";
 import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
-
 import { MetricCard } from "@/views/people/components/metric-card";
+import { Activity, BarChart3, TrendingUp, Users } from "lucide-react";
 
-export const ProfileMetricCards = ({
-  profile,
-}: {
-  profile: GetIndividualProfileResponse;
-}): React.ReactElement => {
-  const totalContributions = profile.activityByPlatform.reduce(
-    (sum, a) => sum + a.contributionCount,
-    0,
-  );
+export const ProfileMetricCards = ({ profile }: { profile: GetIndividualProfileResponse }): React.ReactElement => {
+  const totalContributions = profile.activityByPlatform.reduce((sum, a) => sum + a.contributionCount, 0);
   const platformCount = profile.activityByPlatform.length;
   const peerPercentile = profile.peerContext?.metrics["throughput"];
 

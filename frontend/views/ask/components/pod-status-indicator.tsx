@@ -4,8 +4,7 @@ const statusConfig = (
   containerStatus: string,
   isStreaming: boolean,
 ): { color: string; label: string; animate: boolean } => {
-  if (containerStatus === "active")
-    return { color: "bg-green-500", label: "Connected", animate: false };
+  if (containerStatus === "active") return { color: "bg-green-500", label: "Connected", animate: false };
   if (isStreaming) return { color: "bg-yellow-500", label: "Starting...", animate: true };
   return { color: "bg-muted-foreground", label: "Disconnected", animate: false };
 };
@@ -37,9 +36,7 @@ export const PodStatusIndicator = ({
         >
           <span className="relative flex size-2.5">
             {animate && (
-              <span
-                className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${color}`}
-              />
+              <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${color}`} />
             )}
             <span className={`relative inline-flex size-2.5 rounded-full ${color}`} />
           </span>

@@ -1,14 +1,12 @@
-import { useCallback } from "react";
-import { useSearchParams } from "react-router";
-
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Building2, Plug, Settings } from "lucide-react";
-
 import { AiSettingsTab } from "@/views/admin/components/ai-settings-tab";
 import { OrgTab } from "@/views/admin/components/org-tab";
 import { SourcesTab } from "@/views/admin/components/sources-tab";
 import { SystemTab } from "@/views/admin/components/system-tab";
+import { Brain, Building2, Plug, Settings } from "lucide-react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router";
 
 const VALID_TABS = new Set(["sources", "org", "ai", "system"]);
 const DEFAULT_TAB = "sources";

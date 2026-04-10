@@ -8,13 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Loader2, Square } from "lucide-react";
-
-import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
-import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
-
 import { formatDuration, formatFullTimestamp } from "@/lib/format";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
+import { AlertTriangle, Loader2, Square } from "lucide-react";
+
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
+import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 export const RunDetailDialog = ({
   run,
@@ -110,12 +109,7 @@ export const RunDetailDialog = ({
         </div>
         {isRunning && onCancel && (
           <DialogFooter>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={cancelPending}
-              onClick={() => onCancel(run.id)}
-            >
+            <Button variant="destructive" size="sm" disabled={cancelPending} onClick={() => onCancel(run.id)}>
               {cancelPending ? (
                 <Loader2 className="mr-1.5 size-3.5 animate-spin" />
               ) : (

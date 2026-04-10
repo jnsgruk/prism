@@ -1,9 +1,9 @@
-import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
+import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
+import { isActive } from "@/views/ingestion/lib/constants";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
-import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
-import { isActive } from "@/views/ingestion/lib/constants";
+import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 import { EmbeddingRow, EnrichmentRow } from "./ai-handler-row";
 import { DisabledSourceRow, SourceRow } from "./source-row";
@@ -38,9 +38,7 @@ export const SourceList = ({
   // Disabled sources: from configs (may or may not have a SourceStatus entry)
   const disabledSources = useMemo(() => {
     if (!sourceConfigs) return [];
-    return [...sourceConfigs.entries()]
-      .filter(([, cfg]) => !cfg.enabled)
-      .map(([name, cfg]) => ({ name, id: cfg.id }));
+    return [...sourceConfigs.entries()].filter(([, cfg]) => !cfg.enabled).map(([name, cfg]) => ({ name, id: cfg.id }));
   }, [sourceConfigs]);
 
   const handleTriggerRun = (name: string): void => {
@@ -90,12 +88,7 @@ export const SourceList = ({
       })}
 
       {disabledSources.map((ds) => (
-        <DisabledSourceRow
-          key={ds.name}
-          name={ds.name}
-          sourceId={ds.id}
-          onToggleEnabled={onToggleEnabled}
-        />
+        <DisabledSourceRow key={ds.name} name={ds.name} sourceId={ds.id} onToggleEnabled={onToggleEnabled} />
       ))}
 
       {/* AI handler rows */}
