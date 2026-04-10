@@ -10,21 +10,25 @@ Built in Rust (backend) + Vite/React (frontend) with PostgreSQL, gRPC (tonic + C
 
 ## Getting Started
 
-Enter the development environment (requires [Nix](https://nixos.org/download/)):
+Install [mise](https://mise.jdx.dev/) then set up the development environment:
 
 ```bash
-direnv allow   # or: nix develop
+mise install              # Install all dev tools
+prek install              # Install git hooks
+cd frontend && bun install  # Install frontend dependencies
 ```
 
-All tooling is provided by the Nix flake — nothing needs to be installed globally.
+System dependencies (install via your package manager): `clang`, `mold`, `pkg-config`, `libssl-dev`, `postgresql-client`.
 
 ## Development
 
 ```bash
 prek run -av              # Run all lints, tests, formatters
+mise run fmt              # Format all files
+mise run check            # Full CI validation (fmt + lint + typecheck)
+mise run test             # Run all tests (Rust + frontend)
+mise run generate         # Generate proto types + SQLx cache
 cargo build               # Build all Rust crates
-cargo test                # Run all Rust tests
-nix fmt                   # Format all files
 buf lint                  # Lint proto files
 buf generate              # Generate Rust + TypeScript code from protos
 ```

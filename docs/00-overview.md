@@ -13,7 +13,7 @@ Prism is an engineering insights platform for understanding team and individual 
 | Orchestration | Restate (durable execution for ingestion and background work) |
 | AI | Rig framework (Google Gemini), OpenCode agent in ephemeral K8s pods |
 | Package manager | Bun (frontend), Cargo (Rust) |
-| Dev environment | Nix flake + direnv |
+| Dev environment | mise + prek |
 | Containers | Ubuntu-based with Chisel, multi-stage Dockerfile |
 | Deployment | Kubernetes (Kustomize), Envoy Gateway, Caddy for static frontend |
 
@@ -29,7 +29,7 @@ Prism is an engineering insights platform for understanding team and individual 
 | `docs/03-ingestion` | Data ingestion pipeline and Restate handler architecture |
 | `docs/04-ai-reasoning` | AI enrichment, embeddings, and agentic query |
 | `docs/05-frontend` | Frontend stack, layout, state management |
-| `docs/06-infrastructure` | Nix, containers, Kubernetes, proto tooling, local dev |
+| `docs/06-infrastructure` | Containers, Kubernetes, proto tooling, local dev |
 | `docs/07-development` | Testing strategy, naming conventions, workflow |
 | `docs/08-decision-log` | Dated log of significant architectural decisions |
 

@@ -84,7 +84,7 @@ Tests are colocated with source in both languages. No separate test directories.
 Before finishing any task:
 
 1. Run `prek run -av` (all lints, tests, formatters)
-2. Ensure zero warnings from `cargo clippy` and `nix fmt`
+2. Ensure zero warnings from `cargo clippy` and `mise run fmt`
 3. Consider if test coverage needs updating
 4. If the change affects architecture or conventions, update the relevant `docs/` file
 5. If the change represents a significant decision, add a dated entry to `docs/08-decision-log.md`

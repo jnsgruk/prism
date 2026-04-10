@@ -1,22 +1,22 @@
 # Infrastructure
 
-## Nix Development Environment
+## Development Environment (mise + prek)
 
-All tooling is provided by the Nix flake — nothing needs to be installed globally. Enter with `direnv allow` or `nix develop`.
+All dev tooling is managed by [mise](https://mise.jdx.dev/) (`.mise.toml`). Git hooks are managed by [prek](https://github.com/jdx/prek) (`prek.toml`). Run `mise install` then `prek install` to set up.
 
-The devshell provides:
-- **Rust:** stable toolchain with rust-src, clippy, rust-analyzer, rustfmt
-- **Build tools:** clang, mold (linker), pkg-config, openssl
+**System dependencies** (install via your package manager): `clang`, `mold`, `pkg-config`, `libssl-dev`, `postgresql-client`.
+
+mise provides:
+- **Rust:** stable toolchain (clippy, rust-analyzer, rustfmt)
 - **Protobuf:** protoc, buf (lint, generate, breaking-change detection)
-- **Database:** sqlx-cli, postgresql client
-- **Frontend:** bun, typescript-go, oxlint, oxfmt, nodejs
-- **K8s:** tilt, kubectl, kubectx, helm, kustomize
+- **Database:** sqlx-cli
+- **Frontend:** bun, node, vp (vite-plus — wraps oxfmt, oxlint, vitest, tsgo)
+- **K8s:** tilt, kubectl, kubectx, helm
 - **Testing:** cargo-nextest, cargo-watch
-- **Formatting:** treefmt (rustfmt, nixfmt, deadnix, oxfmt for TS/JS/JSON)
 
-Pre-commit hooks run treefmt, clippy (with --fix), buf-lint, frontend lint/typecheck/test, and cargo-test.
+**Tasks** follow a `verb:scope` convention (`mise run fmt`, `mise run check`, `mise run test`, etc.). See `.mise.toml` for the full list.
 
-Crane handles Rust binary builds within Nix (ps-server, ps-workers, ps-migrate, psctl).
+Pre-commit hooks run fmt-check, clippy, buf-lint, frontend lint/typecheck/test, and cargo-test.
 
 ## Containers
 
