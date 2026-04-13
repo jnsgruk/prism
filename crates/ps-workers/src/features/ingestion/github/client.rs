@@ -49,6 +49,7 @@ fn validate_path_segment(segment: &str, label: &str) -> Result<(), GitHubError> 
 }
 
 /// Low-level GitHub REST API client.
+#[derive(Clone)]
 pub struct GitHubClient {
     http: reqwest::Client,
     base_url: String,

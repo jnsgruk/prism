@@ -104,9 +104,10 @@ impl GithubTeamSyncHandlerImpl {
 
     /// Sync all teams for a single GitHub org. Returns the number of teams synced.
     ///
-    /// API reads happen outside `ctx.run()` (they are idempotent and safe to
-    /// replay on retry). Only DB writes are wrapped in `ctx.run()` for
-    /// Restate durability.
+    /// API reads (members, repos) are inside `ctx.run()` together with the DB
+    /// writes. This prevents O(n) API replay amplification: without journaling,
+    /// every Restate replay would re-fetch members/repos for all previously
+    /// completed teams, making large orgs unable to make forward progress.
     async fn sync_org(
         &self,
         ctx: &ObjectContext<'_>,
@@ -124,22 +125,7 @@ impl GithubTeamSyncHandlerImpl {
         // each side effect needs a unique name.
         for team in &all_teams {
             synced_slugs.push(team.slug.clone());
-
-            let (members, team_repos) = tokio::try_join!(
-                fetch_all_members(client, org, &team.slug),
-                fetch_all_repos(client, org, &team.slug),
-            )?;
-
-            debug!(
-                org,
-                team = %team.slug,
-                members = members.len(),
-                repos = team_repos.len(),
-                "fetched team details"
-            );
-
-            self.store_team(ctx, source_id, org, team, &members, &team_repos)
-                .await?;
+            self.store_team(ctx, client, source_id, org, team).await?;
         }
 
         let removed = self
@@ -180,15 +166,21 @@ impl GithubTeamSyncHandlerImpl {
         Ok(all_teams)
     }
 
-    /// Store a team and its members/repos as a durable side effect.
+    /// Fetch a team's members/repos from GitHub and store them as a single
+    /// durable side effect.
+    ///
+    /// API calls are inside the `ctx.run()` block so they are skipped on
+    /// replay (the unit result is already journaled). This avoids the O(n)
+    /// replay amplification that occurs when API calls live outside the
+    /// journaled block — without this, every replay re-fetches data for all
+    /// previously completed teams, making large orgs unable to make progress.
     async fn store_team(
         &self,
         ctx: &ObjectContext<'_>,
+        client: &GitHubClient,
         source_id: ps_core::models::SourceId,
         org: &str,
         team: &GitHubTeam,
-        members: &[String],
-        team_repos: &[ps_core::models::GitHubRepoCoord],
     ) -> Result<(), TerminalError> {
         let repos = &self.state.repos;
         let slug = team.slug.clone();
@@ -196,23 +188,28 @@ impl GithubTeamSyncHandlerImpl {
         let description = team.description.clone();
         let team_id = team.id;
         let org_owned = org.to_string();
-        let members = members.to_vec();
-        let team_repos = team_repos.to_vec();
+        let client = client.clone();
 
         let step_name = format!("store_team_{slug}");
         journaled!(
             ctx,
             step_name,
-            [
-                repos,
-                org_owned,
-                slug,
-                name,
-                description,
-                members,
-                team_repos
-            ],
+            [repos, client, org_owned, slug, name, description],
             {
+                let (members, team_repos) = tokio::try_join!(
+                    fetch_all_members(&client, &org_owned, &slug),
+                    fetch_all_repos(&client, &org_owned, &slug),
+                )
+                .map_err(terminal_err("GitHub API error"))?;
+
+                debug!(
+                    org = %org_owned,
+                    team = %slug,
+                    members = members.len(),
+                    repos = team_repos.len(),
+                    "fetched and storing team details"
+                );
+
                 let db_id = repos
                     .org
                     .upsert_github_team(
