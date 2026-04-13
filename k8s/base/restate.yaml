@@ -35,6 +35,8 @@ spec:
             - containerPort: 8080
             - containerPort: 9070
           env:
+            - name: RESTATE_BASE_DIR
+              value: /restate-data/store
             - name: RESTATE_DEFAULT_NUM_PARTITIONS
               value: "4"
             - name: RESTATE_DEFAULT_JOURNAL_RETENTION

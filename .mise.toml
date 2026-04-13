@@ -13,6 +13,7 @@ tilt = "latest"
 kubectl = "latest"
 kubectx = "latest"
 helm = "3"
+kubens = "latest"
 
 [env]
 # SQLX_OFFLINE=true globally so all cargo commands use the committed .sqlx cache
