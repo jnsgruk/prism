@@ -78,7 +78,7 @@ k8s/
 
 **Agent pods** are created dynamically by ps-agent via the K8s API when agentic queries are initiated. RBAC grants ps-workers permission to create/delete pods in the namespace.
 
-**Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by both ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). This allows ps-server to serve workspace file listings directly from the filesystem. Agent pods are isolated to their own conversation subdirectory. Workspace directories are cleaned up when conversations are deleted. Requires an RWX-capable storage class (Docker Desktop hostpath works on a single node; production needs NFS, EFS, or similar).
+**Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by both ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). This allows ps-server to serve workspace file listings directly from the filesystem. Agent pods are isolated to their own conversation subdirectory. Workspace directories are cleaned up when conversations are deleted. Requires an RWX-capable storage class; production needs NFS, EFS, or similar.
 
 ## Gateway
 
@@ -89,7 +89,7 @@ Envoy Gateway handles TLS termination and routes requests:
 
 ## Local Development
 
-The Tiltfile configures Docker Desktop K8s for local development:
+The Tiltfile supports both Canonical K8s and Docker Desktop K8s for local development — no flags needed:
 - Docker builds with BuildKit cache mounts (debug mode, incremental)
 - Resource dependencies: ps-migrate -> ps-server -> ps-workers -> ps-frontend
 - Port forwards: ps-server (8080), ps-workers (9080), ps-frontend (3000), postgres (5432), restate (9070), rustfs (9000-9001)
