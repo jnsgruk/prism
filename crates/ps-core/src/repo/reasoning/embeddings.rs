@@ -33,6 +33,7 @@ type SimilarRow = (
 // ---------------------------------------------------------------------------
 
 /// An entry to insert into the embedding queue.
+#[derive(Clone)]
 pub struct EmbeddingQueueEntry {
     pub contribution_id: Uuid,
     pub content_hash: String,

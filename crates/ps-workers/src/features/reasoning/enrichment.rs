@@ -70,7 +70,6 @@ struct CycleState {
     to_stats: TypeProgress,
     progress: EnrichmentProgress,
     iteration: u32,
-    cleanup_counter: u32,
 }
 
 impl CycleState {
@@ -104,7 +103,6 @@ impl CycleState {
                 status_message: "Starting enrichment cycle".into(),
             },
             iteration: 0,
-            cleanup_counter: 0,
         }
     }
 
@@ -196,24 +194,27 @@ impl EnrichmentHandlerImpl {
                 .iter()
                 .flat_map(|(_, contributions)| contributions.iter().map(|c| c.contribution_id))
                 .collect();
-            self.enqueue_embeddings(ctx, &batch_ids).await;
 
             for batch in &results {
                 s.aggregate_batch(batch);
-                self.log_usage(ctx, batch.enrichment_type, s.iteration, batch)
-                    .await;
             }
+
+            // Commit ALL post-AI DB writes in a single ctx.run() to minimise
+            // Restate suspensions.  Each suspension triggers a full replay
+            // (including the expensive, non-journaled AI calls), so batching
+            // these reduces wasted AI tokens from N suspensions to 1 per
+            // iteration.
+            self.commit_iteration(ctx, &batch_ids, &results, s.iteration)
+                .await;
 
             s.update_progress_after_batch(&results);
             self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
 
-            self.delete_fully_enriched(ctx, s.cleanup_counter).await;
-            s.cleanup_counter += 1;
             s.iteration += 1;
         }
 
-        self.delete_fully_enriched(ctx, s.cleanup_counter).await;
+        self.delete_fully_enriched(ctx, s.iteration).await;
         self.finalize_run(ctx, run_id, &mut s, start.elapsed())
             .await;
 
@@ -316,55 +317,99 @@ impl EnrichmentHandlerImpl {
         }))
     }
 
-    async fn log_usage(
+    /// Commit all post-AI work for one iteration in a single `ctx.run()`.
+    ///
+    /// Batching embedding enqueue, usage logging, and queue cleanup into one
+    /// journal entry means only ONE Restate suspension per iteration.  Each
+    /// suspension triggers a full replay (including the non-journaled AI
+    /// calls), so fewer suspensions = fewer wasted AI tokens.
+    async fn commit_iteration(
         &self,
         ctx: &Context<'_>,
-        enrichment_type: EnrichmentType,
+        contribution_ids: &[Uuid],
+        results: &[enrichment::BatchResult],
         iteration: u32,
-        batch: &enrichment::BatchResult,
     ) {
-        if batch.total_usage.input_tokens == 0 && batch.total_usage.output_tokens == 0 {
-            return;
-        }
         let repos = self.state.repos.clone();
+
+        // Pre-compute everything we need inside the closure.
+        let mut unique_ids: Vec<Uuid> = contribution_ids.to_vec();
+        unique_ids.sort_unstable();
+        unique_ids.dedup();
+
+        let entries: Vec<EmbeddingQueueEntry> = unique_ids
+            .into_iter()
+            .map(|id| EmbeddingQueueEntry {
+                contribution_id: id,
+                content_hash: String::new(), // computed at embed time
+            })
+            .collect();
+
         let router = self.router.read().await;
         let task_config = router.task_config(TaskType::Enrichment);
-        let provider = task_config.provider;
+        let provider_str = task_config.provider.as_str().to_string();
         let model = task_config.model.clone();
         drop(router);
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let input_tokens = batch.total_usage.input_tokens as i32;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let output_tokens = batch.total_usage.output_tokens as i32;
+        let usage_records: Vec<(i32, i32)> = results
+            .iter()
+            .filter(|b| b.total_usage.input_tokens > 0 || b.total_usage.output_tokens > 0)
+            .map(|b| {
+                (
+                    b.total_usage.input_tokens as i32,
+                    b.total_usage.output_tokens as i32,
+                )
+            })
+            .collect();
 
         let result = ctx
             .run(|| {
                 let repos = repos.clone();
+                let entries = entries.clone();
+                let provider_str = provider_str.clone();
                 let model = model.clone();
+                let usage_records = usage_records.clone();
                 async move {
+                    // 1. Enqueue for embeddings.
+                    if !entries.is_empty() {
+                        repos
+                            .reasoning
+                            .bulk_enqueue_embeddings(&entries)
+                            .await
+                            .map_err(terminal_err("enqueue embeddings"))?;
+                    }
+
+                    // 2. Log usage for each batch with non-zero tokens.
+                    for (input_tokens, output_tokens) in &usage_records {
+                        repos
+                            .reasoning
+                            .log_api_usage(
+                                &provider_str,
+                                &model,
+                                "enrichment",
+                                *input_tokens,
+                                *output_tokens,
+                            )
+                            .await
+                            .map_err(terminal_err("log usage"))?;
+                    }
+
+                    // 3. Clean up fully enriched queue entries.
                     repos
                         .reasoning
-                        .log_api_usage(
-                            provider.as_str(),
-                            &model,
-                            "enrichment",
-                            input_tokens,
-                            output_tokens,
-                        )
+                        .delete_fully_enriched_entries()
                         .await
-                        .map_err(terminal_err("db error"))?;
+                        .map_err(terminal_err("cleanup"))?;
+
                     Ok(Json::from(()))
                 }
             })
-            .name(format!(
-                "log_usage_{}_{iteration}",
-                enrichment_type.as_str()
-            ))
+            .name(format!("commit_{iteration}"))
             .await;
 
         if let Err(e) = result {
-            debug!(error = %e, "failed to log enrichment usage");
+            warn!(error = %e, "failed to commit enrichment iteration");
         }
     }
 
@@ -394,59 +439,6 @@ impl EnrichmentHandlerImpl {
             }
             Err(e) => {
                 warn!(error = %e, "failed to delete fully enriched entries");
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Non-journaled helpers
-    // -----------------------------------------------------------------------
-
-    /// Enqueue enriched contributions for embedding (journaled).
-    async fn enqueue_embeddings(&self, ctx: &Context<'_>, contribution_ids: &[Uuid]) {
-        if contribution_ids.is_empty() {
-            return;
-        }
-
-        // Deduplicate
-        let mut unique: Vec<Uuid> = contribution_ids.to_vec();
-        unique.sort_unstable();
-        unique.dedup();
-
-        let entries: Vec<EmbeddingQueueEntry> = unique
-            .into_iter()
-            .map(|id| EmbeddingQueueEntry {
-                contribution_id: id,
-                content_hash: String::new(), // computed at embed time from full text + enrichments
-            })
-            .collect();
-
-        let repos = self.state.repos.clone();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let entries = entries;
-                async move {
-                    let count = repos
-                        .reasoning
-                        .bulk_enqueue_embeddings(&entries)
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(count))
-                }
-            })
-            .name("enqueue_embeddings")
-            .await;
-
-        match result {
-            Ok(count) => {
-                let enqueued = count.into_inner();
-                if enqueued > 0 {
-                    debug!(enqueued, "enqueued contributions for embedding");
-                }
-            }
-            Err(e) => {
-                warn!(error = %e, "failed to enqueue contributions for embedding");
             }
         }
     }
