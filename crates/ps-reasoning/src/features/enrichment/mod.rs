@@ -25,6 +25,7 @@ use self::extract::extract_enrichment;
 use self::types::*;
 
 /// Result of processing a single enrichment batch.
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct BatchResult {
     pub enrichment_type: EnrichmentType,
     pub processed: usize,

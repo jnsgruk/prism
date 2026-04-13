@@ -149,8 +149,9 @@ impl EnrichmentHandlerImpl {
     /// items are also processed concurrently (see `process_queued_enrichment_batch`).
     ///
     /// Journaling strategy:
-    /// - `ctx.run()`: run creation, queue lookups (DB reads), cost logging, cleanup
-    /// - Outside `ctx.run()`: AI API calls (large, idempotent), budget checks (read-only)
+    /// - `ctx.run()`: run creation, queue lookups (DB reads), AI processing
+    ///   results, cost logging, cleanup
+    /// - Outside `ctx.run()`: budget checks (read-only), progress updates
     async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
@@ -188,7 +189,18 @@ impl EnrichmentHandlerImpl {
             self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
 
-            let results = self.process_batches(&batches).await;
+            // Journal the AI processing results so replays skip the
+            // expensive AI calls entirely. Without this, every Restate
+            // replay re-calls the AI APIs for all previous iterations.
+            let results: Vec<enrichment::BatchResult> = {
+                let router = self.router.clone();
+                let repos = self.state.repos.clone();
+                let batches = batches.clone();
+                let step_name = format!("process_{}", s.iteration);
+                journaled_value!(ctx, step_name, [router, repos, batches], {
+                    process_batches_inner(&router, &repos.reasoning, &batches).await
+                })
+            };
 
             let batch_ids: Vec<Uuid> = batches
                 .iter()
@@ -199,11 +211,7 @@ impl EnrichmentHandlerImpl {
                 s.aggregate_batch(batch);
             }
 
-            // Commit ALL post-AI DB writes in a single ctx.run() to minimise
-            // Restate suspensions.  Each suspension triggers a full replay
-            // (including the expensive, non-journaled AI calls), so batching
-            // these reduces wasted AI tokens from N suspensions to 1 per
-            // iteration.
+            // Commit ALL post-AI DB writes in a single ctx.run().
             self.commit_iteration(ctx, &batch_ids, &results, s.iteration)
                 .await;
 
@@ -234,25 +242,6 @@ impl EnrichmentHandlerImpl {
             batches.push((*enrichment_type, contributions));
         }
         Ok(batches)
-    }
-
-    /// Process all non-empty batches concurrently (AI calls NOT journaled).
-    async fn process_batches(
-        &self,
-        batches: &[(EnrichmentType, Vec<QueuedContribution>)],
-    ) -> Vec<enrichment::BatchResult> {
-        let router = self.router.read().await;
-        let repo = &self.state.repos.reasoning;
-        let futures: Vec<_> = batches
-            .iter()
-            .filter(|(_, contributions)| !contributions.is_empty())
-            .map(|(etype, contributions)| {
-                enrichment::process_queued_enrichment_batch(&router, repo, *etype, contributions)
-            })
-            .collect();
-        let results = futures::future::join_all(futures).await;
-        drop(router);
-        results
     }
 
     /// Complete or fail the run based on accumulated stats.
@@ -319,10 +308,8 @@ impl EnrichmentHandlerImpl {
 
     /// Commit all post-AI work for one iteration in a single `ctx.run()`.
     ///
-    /// Batching embedding enqueue, usage logging, and queue cleanup into one
-    /// journal entry means only ONE Restate suspension per iteration.  Each
-    /// suspension triggers a full replay (including the non-journaled AI
-    /// calls), so fewer suspensions = fewer wasted AI tokens.
+    /// Batches embedding enqueue, usage logging, and queue cleanup into one
+    /// journal entry to minimise suspension overhead.
     async fn commit_iteration(
         &self,
         ctx: &Context<'_>,
@@ -456,4 +443,25 @@ impl EnrichmentHandlerImpl {
             debug!(error = %e, "failed to update enrichment progress");
         }
     }
+}
+
+/// Process enrichment batches concurrently (free function for journaling).
+///
+/// Extracted from `EnrichmentHandlerImpl::process_batches` so it can be
+/// called inside `journaled_value!` (which requires cloneable captures,
+/// not `&self` references).
+async fn process_batches_inner(
+    router: &Arc<RwLock<TaskRouter>>,
+    repo: &ps_core::repo::ReasoningRepo,
+    batches: &[(EnrichmentType, Vec<QueuedContribution>)],
+) -> Vec<enrichment::BatchResult> {
+    let router = router.read().await;
+    let futures: Vec<_> = batches
+        .iter()
+        .filter(|(_, contributions)| !contributions.is_empty())
+        .map(|(etype, contributions)| {
+            enrichment::process_queued_enrichment_batch(&router, repo, *etype, contributions)
+        })
+        .collect();
+    futures::future::join_all(futures).await
 }

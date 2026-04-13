@@ -67,7 +67,7 @@ pub struct EnrichmentQueueEntry {
 ///
 /// Derives Serialize/Deserialize so it can be passed through Restate's
 /// `ctx.run()` journal as `Json<Vec<QueuedContribution>>`.
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct QueuedContribution {
     pub id: Uuid,
     pub contribution_id: Uuid,
