@@ -22,7 +22,6 @@ const buildSourceStatusMap = (
   for (const s of sources) {
     switch (s.state) {
       case SourceState.COLLECTING:
-      case SourceState.WAITING:
         map.set(s.name, "running");
         break;
       case SourceState.ERROR:

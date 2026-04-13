@@ -43,7 +43,7 @@ const IngestionPage = (): React.ReactElement => {
     refetchInterval: (query) => {
       if (isBursting) return POLL_INTERVAL_BURST;
       const data = query.state.data?.sources;
-      const hasActive = data?.some((s) => s.state === SourceState.COLLECTING || s.state === SourceState.WAITING);
+      const hasActive = data?.some((s) => s.state === SourceState.COLLECTING);
       return hasActive || pipelineRunning ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
     },
   });

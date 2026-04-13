@@ -149,7 +149,7 @@ export const SourceRow = ({
 
   const stateKey = enabled ? stateFromEnum(source.state) : "disabled";
   const stateLabel = enabled ? (stateStyles[stateKey]?.label ?? "Idle") : "Disabled";
-  const isActive = enabled && (stateKey === "collecting" || stateKey === "waiting");
+  const isActive = enabled && stateKey === "collecting";
 
   const progress = useMemo((): NormalisedProgress | null => {
     if (!isActive) return null;
