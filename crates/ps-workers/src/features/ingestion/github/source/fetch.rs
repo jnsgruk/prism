@@ -94,11 +94,16 @@ async fn fetch_team_repos(
                 repo = %format!("{owner}/{repo}"),
                 "GraphQL rate limit exhausted, deferring for durable sleep"
             );
-            let rl = rate_limit.clone().unwrap_or(RateLimitInfo {
+            let mut rl = rate_limit.clone().unwrap_or(RateLimitInfo {
                 remaining: 0,
                 limit: 5000,
                 reset_at: time::OffsetDateTime::now_utc() + time::Duration::hours(1),
             });
+            // GraphQL rate limit is cost-based — the API can reject a query
+            // even when `remaining > 0` (insufficient points for the query
+            // cost).  Force remaining to 0 so `compute_batch_action` triggers
+            // a durable sleep instead of spinning in a tight retry loop.
+            rl.remaining = 0;
             return Ok(FetchResult {
                 items: vec![],
                 next_cursor: Some(serialise_cursor(cur)?),
@@ -337,11 +342,13 @@ async fn fetch_member_search(
             if e.to_string().contains("rate limit") =>
         {
             warn!("GraphQL rate limit exhausted during member search, deferring for durable sleep");
-            let rl = rate_limit.clone().unwrap_or(RateLimitInfo {
+            let mut rl = rate_limit.clone().unwrap_or(RateLimitInfo {
                 remaining: 0,
                 limit: 5000,
                 reset_at: time::OffsetDateTime::now_utc() + time::Duration::hours(1),
             });
+            // Force remaining to 0 — see team-repos handler comment above.
+            rl.remaining = 0;
             return Ok(FetchResult {
                 items: vec![],
                 next_cursor: Some(serialise_cursor(cur)?),
