@@ -29,6 +29,7 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.completed_at IS NULL
+                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')
                 ORDER BY ir.started_at DESC
                 LIMIT 1
             ) ar ON true
@@ -37,6 +38,7 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.status IN ('completed', 'completed_with_warnings')
+                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')
                 ORDER BY ir.completed_at DESC
                 LIMIT 1
             ) lr ON true
