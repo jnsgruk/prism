@@ -257,29 +257,8 @@ pub(super) async fn fail_ingestion_run(
     fail_run!(ctx, repos, run_id, source_name, error_msg);
 }
 
-/// Fetch a batch with panic isolation. Panics in source `fetch_batch()`
-/// implementations are caught and converted to `TerminalError`.
-async fn fetch_batch_catch_panic(
-    ing_ctx: &IngestionContext,
-    cursor: &str,
-) -> Result<Result<SerFetchResult, TerminalError>, TerminalError> {
-    use futures::FutureExt as _;
-    use std::panic::AssertUnwindSafe;
-
-    AssertUnwindSafe(fetch_batch(ing_ctx, cursor))
-        .catch_unwind()
-        .await
-        .map_err(|panic| {
-            let msg = panic
-                .downcast_ref::<String>()
-                .map(String::as_str)
-                .or_else(|| panic.downcast_ref::<&str>().copied())
-                .unwrap_or("unknown panic");
-            TerminalError::new(format!("fetch panicked: {msg}"))
-        })
-}
-
-/// Fetch a batch — NOT journaled (external API call, large response, idempotent on replay).
+/// Fetch a batch — NOT called inside `ctx.run()` directly, but used
+/// within `journaled_value!` in `fetch_store_loop`.
 pub async fn fetch_batch(
     ing_ctx: &IngestionContext,
     cursor: &str,
@@ -347,9 +326,8 @@ pub async fn advance_watermark(
 
 /// Compute the branching decision from a fetch result.
 ///
-/// The returned [`BatchAction`] is journaled so that Restate replays always
-/// follow the same code path, regardless of what `fetch_batch()` returns
-/// after a pod restart.
+/// This is a pure function — given a journaled `SerFetchResult`,
+/// it always produces the same `BatchAction`.
 fn compute_batch_action(
     batch: &SerFetchResult,
     cursor: &str,
@@ -417,8 +395,20 @@ pub async fn fetch_store_loop(
     let mut last_progress_log = std::time::Instant::now();
 
     loop {
-        // Step 1: Fetch batch (NOT journaled — external API, large response).
-        let batch = fetch_batch_catch_panic(ing_ctx, &cursor).await??;
+        // Step 1: Fetch batch and journal the result.
+        //
+        // Journaling the full response avoids re-fetching from the external
+        // API on every Restate replay. Without this, replay cost grows
+        // linearly with the number of batches (each non-journaled fetch
+        // must hit the API again), causing a degenerate suspend/replay loop
+        // for large ingestions.
+        let batch: SerFetchResult = {
+            let ic = ing_ctx.clone();
+            let cur = cursor.clone();
+            journaled_value!(ctx, "fetch_batch", [ic, cur], {
+                fetch_batch(&ic, &cur).await?
+            })
+        };
 
         // Best-effort rate limit warning (not journaled).
         if let Some(ref rl) = batch.rate_limit
@@ -431,16 +421,14 @@ pub async fn fetch_store_loop(
             );
         }
 
-        // Step 2: Compute and journal the branching decision.
+        // Step 2: Compute the branching decision.
         //
-        // fetch_batch() is not journaled, so its results can differ on
-        // replay (e.g. rate limit resets between pod restarts). By
-        // journaling this small decision, the sequence of downstream
-        // ctx.run()/ctx.sleep() calls becomes deterministic on replay.
+        // Since fetch_batch is journaled, its results are deterministic on
+        // replay, so compute_batch_action (a pure function) is also
+        // deterministic. No need to journal the action separately.
         let action = compute_batch_action(&batch, &cursor, watermark_field);
-        let action = journaled_value!(ctx, "batch_action", [action], { action });
 
-        // Step 3: Execute based on the journaled decision.
+        // Step 3: Execute based on the decision.
         match action {
             BatchAction::SleepForRateLimit {
                 wait_secs,
