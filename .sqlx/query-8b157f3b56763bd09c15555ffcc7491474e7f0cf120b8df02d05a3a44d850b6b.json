@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO config.source_configs (id, source_type, name, enabled, settings, schedule_cron)\n                VALUES ($1, $2, $3, false, $4, $5)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8b157f3b56763bd09c15555ffcc7491474e7f0cf120b8df02d05a3a44d850b6b"
+}
