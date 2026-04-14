@@ -4,7 +4,7 @@ use restate_sdk::prelude::*;
 use tracing::info;
 
 use crate::features::ingestion::lib::{
-    IngestionSpec, ProgressTracker, execute_ingestion, load_ingestion_source_config,
+    IngestionSpec, ProgressTracker, execute_ingestion_chunked, load_ingestion_source_config,
 };
 use crate::infra::SharedState;
 
@@ -38,15 +38,14 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, "starting Jira ingestion run");
 
-        let mut tracker = JiraProgressTracker::default();
-        execute_ingestion(
+        execute_ingestion_chunked(
             &ctx,
             &self.state,
             &JIRA_SPEC,
             &source_name,
             &config,
             None,
-            &mut tracker,
+            50,
             |_ctx| {},
         )
         .await
@@ -63,15 +62,14 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting Jira backfill");
 
-        let mut tracker = JiraProgressTracker::default();
-        execute_ingestion(
+        execute_ingestion_chunked(
             &ctx,
             &self.state,
             &JIRA_SPEC,
             &source_name,
             &config,
             Some(since_date),
-            &mut tracker,
+            50,
             |_ctx| {},
         )
         .await
@@ -79,7 +77,7 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
 }
 
 #[derive(Default)]
-struct JiraProgressTracker {
+pub(crate) struct JiraProgressTracker {
     tickets_fetched: u32,
 }
 

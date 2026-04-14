@@ -1,4 +1,4 @@
-use ps_core::ingestion::{ContributionInput, IngestionContext};
+use ps_core::ingestion::IngestionContext;
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
 
@@ -10,28 +10,9 @@ use crate::infra::{
     SharedState, decrypt_optional_secret, decrypt_required_secret, load_source_config,
 };
 
-use super::finalise::{
-    diff_rate_limit_sleep_duration, extract_failed_items, extract_watermark, finalise_run,
-    retry_skipped_diffs,
-};
-use super::progress::{
-    BatchAction, IngestionSpec, ProgressTracker, SerFetchResult, SkippedDiffAction,
-};
-
-/// Best-effort progress update (not journaled).
-macro_rules! update_progress {
-    ($ing_ctx:expr, $run_id:expr, $total_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
-        let progress = $tracker.build_progress($cursor, $batch.rate_limit.as_ref());
-        if let Err(e) = $ing_ctx
-            .repos
-            .activity
-            .update_run_progress_detail($run_id, $total_items, &progress)
-            .await
-        {
-            tracing::debug!(error = %e, "failed to update run progress");
-        }
-    }};
-}
+use super::chunk::{ChunkRequest, ChunkResult, IngestionChunkServiceClient};
+use super::finalise::{extract_failed_items, extract_watermark, finalise_run};
+use super::progress::{IngestionSpec, SerFetchResult};
 
 /// Load a source config inside a Restate `ctx.run()` closure.
 pub async fn load_ingestion_source_config(
@@ -48,22 +29,27 @@ pub async fn load_ingestion_source_config(
     }))
 }
 
-/// Shared ingestion orchestration used by all three ingestion handlers.
+/// Shared ingestion orchestration used by all ingestion handlers.
+///
+/// Dispatches work to `IngestionChunkService` in batches of `chunk_size`.
+/// Each chunk runs as a separate Restate invocation with its own small
+/// journal. The coordinator's journal stays minimal (~1 entry per chunk).
 ///
 /// Handles: source creation, run creation, secret decryption, planning,
-/// watermark override, fetch/store loop, run finalisation.
+/// watermark override, chunked dispatch, run finalisation.
+/// `IngestionChunkService` in batches of `chunk_size`.
 ///
-/// The caller provides a `ProgressTracker` for source-specific progress
-/// reporting, and a closure to fire downstream triggers after completion.
+/// Each chunk runs as a separate Restate invocation with its own small
+/// journal. The coordinator's journal stays minimal (~1 entry per chunk).
 #[allow(clippy::too_many_arguments)]
-pub async fn execute_ingestion(
+pub async fn execute_ingestion_chunked(
     ctx: &ObjectContext<'_>,
     state: &SharedState,
     spec: &IngestionSpec,
     source_name: &str,
     config: &SourceConfig,
     override_watermark: Option<String>,
-    tracker: &mut (dyn ProgressTracker + Send),
+    chunk_size: usize,
     trigger_downstream: impl FnOnce(&ObjectContext<'_>),
 ) -> Result<(), TerminalError> {
     let start = std::time::Instant::now();
@@ -80,8 +66,6 @@ pub async fn execute_ingestion(
     let run_id =
         create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?;
 
-    // Store the Restate invocation ID so reconcile_stale_runs can verify
-    // this invocation is still alive instead of cancelling it as orphaned.
     let invocation_id = ctx.invocation_id().to_string();
     let repos = state.repos.clone();
     let sn = source_name.to_string();
@@ -101,9 +85,9 @@ pub async fn execute_ingestion(
     );
     let _guard = span.enter();
 
-    tracing::info!("starting ingestion");
+    tracing::info!("starting chunked ingestion");
 
-    // Decrypt secrets outside ctx.run() to avoid journaling plaintext
+    // Decrypt secrets outside ctx.run() to avoid journaling plaintext.
     let token = match (spec.token_key, spec.token_required) {
         (Some(key), true) => Some(decrypt_required_secret(state, config.id, key).await?),
         (Some(key), false) => decrypt_optional_secret(state, config.id, key).await?,
@@ -135,29 +119,50 @@ pub async fn execute_ingestion(
     tracing::debug!(watermark = ?plan.watermark, "ingestion plan ready");
 
     let initial_cursor = source.initial_cursor(&ing_ctx, &plan);
-    let watermark_field = source.watermark_field();
 
-    let result = fetch_store_loop(
-        ctx,
-        &ing_ctx,
-        run_id,
-        source_name,
-        &initial_cursor,
-        watermark_field,
-        tracker,
-    )
-    .await;
+    // Dispatch chunks sequentially to the chunk service.
+    let mut cursor = initial_cursor;
+    let mut total_items = 0i32;
+    let mut chunk_num = 0u32;
+    let sn = source_name.to_string();
 
-    let (total_items, final_cursor) = match result {
-        Ok(v) => v,
-        Err(e) => {
-            let msg = e.to_string();
-            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &msg).await;
-            return Err(TerminalError::new(format!("ingestion failed: {msg}")));
+    loop {
+        chunk_num += 1;
+        tracing::info!(chunk = chunk_num, "dispatching chunk");
+
+        let request = ChunkRequest {
+            source_name: sn.clone(),
+            cursor: cursor.clone(),
+            run_id,
+            max_batches: chunk_size,
+            items_offset: total_items,
+        };
+
+        let result: ChunkResult = ctx
+            .service_client::<IngestionChunkServiceClient>()
+            .process_chunk(Json(request))
+            .call()
+            .await
+            .map_err(|e| TerminalError::new(format!("chunk {chunk_num} failed: {e}")))?
+            .into_inner();
+
+        total_items += result.items_stored;
+        cursor = result.cursor;
+
+        tracing::info!(
+            chunk = chunk_num,
+            items_in_chunk = result.items_stored,
+            total_items,
+            is_complete = result.is_complete,
+            "chunk finished"
+        );
+
+        if result.is_complete {
+            break;
         }
-    };
+    }
 
-    let failed_items = extract_failed_items(&final_cursor);
+    let failed_items = extract_failed_items(&cursor);
     finalise_run(
         ctx,
         &state.repos,
@@ -167,7 +172,7 @@ pub async fn execute_ingestion(
         total_items,
         &failed_items,
         spec.item_noun,
-        &final_cursor,
+        &cursor,
         source.watermark_field(),
     )
     .await?;
@@ -179,8 +184,9 @@ pub async fn execute_ingestion(
 
     tracing::info!(
         total_items,
+        chunks = chunk_num,
         duration_secs = start.elapsed().as_secs(),
-        "complete"
+        "chunked ingestion complete"
     );
     Ok(())
 }
@@ -279,25 +285,6 @@ pub async fn fetch_batch(
     })
 }
 
-/// Store a batch inside a Restate `ctx.run()` closure.
-pub async fn store_batch(
-    ctx: &ObjectContext<'_>,
-    ing_ctx: &IngestionContext,
-    items: &[ContributionInput],
-) -> Result<i32, TerminalError> {
-    let ic = ing_ctx.clone();
-    let items = items.to_vec();
-
-    #[allow(clippy::cast_possible_wrap)]
-    Ok(journaled_value!(ctx, "store_batch", [ic, items], {
-        let src = crate::infra::registry::create_source(&ic.source_config.source_type)
-            .ok_or_else(|| TerminalError::new("source unavailable"))?;
-        src.store_batch(&ic, &items)
-            .await
-            .map_err(terminal_err("store failed"))? as i32
-    }))
-}
-
 /// Advance the watermark inside a Restate `ctx.run()` closure.
 ///
 /// `watermark_field` is the JSON field to extract from the cursor
@@ -322,205 +309,4 @@ pub async fn advance_watermark(
     });
 
     Ok(())
-}
-
-/// Compute the branching decision from a fetch result.
-///
-/// This is a pure function — given a journaled `SerFetchResult`,
-/// it always produces the same `BatchAction`.
-fn compute_batch_action(
-    batch: &SerFetchResult,
-    cursor: &str,
-    watermark_field: ps_core::models::WatermarkField,
-) -> BatchAction {
-    let etag_cursor = batch.etag.clone();
-
-    // Rate limit exhausted with no items — sleep and retry same cursor.
-    if batch.items.is_empty()
-        && batch.next_cursor.is_some()
-        && let Some(ref rl) = batch.rate_limit
-        && rl.remaining == 0
-    {
-        let wait = diff_rate_limit_sleep_duration(rl);
-        return BatchAction::SleepForRateLimit {
-            wait_secs: wait.as_secs(),
-            etag_cursor,
-        };
-    }
-
-    // Pre-compute watermark availability so extract_watermark() isn't called
-    // with potentially different cursor state on replay.
-    let effective_cursor = etag_cursor.as_deref().unwrap_or(cursor);
-    let has_watermark =
-        extract_watermark(effective_cursor, watermark_field).is_some_and(|wm| !wm.is_empty());
-
-    let skipped_diffs = if batch.skipped_diffs.is_empty() {
-        SkippedDiffAction::None
-    } else if let Some(ref rl) = batch.rate_limit
-        && rl.remaining == 0
-    {
-        let wait = diff_rate_limit_sleep_duration(rl);
-        SkippedDiffAction::SleepThenRetry {
-            wait_secs: wait.as_secs(),
-        }
-    } else {
-        SkippedDiffAction::RetryOnly
-    };
-
-    BatchAction::Process {
-        item_count: batch.items.len(),
-        has_watermark,
-        next_cursor: batch.next_cursor.clone(),
-        etag_cursor,
-        skipped_diffs,
-    }
-}
-
-/// Unified fetch-store loop shared by all three ingestion handlers.
-///
-/// Fetches batches from the source, stores them via journaled `ctx.run()`,
-/// updates progress, and returns `(total_items, final_cursor)`.
-pub async fn fetch_store_loop(
-    ctx: &ObjectContext<'_>,
-    ing_ctx: &IngestionContext,
-    run_id: uuid::Uuid,
-    _source_name: &str,
-    initial_cursor: &str,
-    watermark_field: ps_core::models::WatermarkField,
-    tracker: &mut (dyn ProgressTracker + Send),
-) -> Result<(i32, String), TerminalError> {
-    let mut cursor = initial_cursor.to_string();
-    let mut total_items = 0i32;
-    let mut batches = 0u32;
-    let mut last_progress_log = std::time::Instant::now();
-
-    loop {
-        // Step 1: Fetch batch and journal the result.
-        //
-        // Journaling the full response avoids re-fetching from the external
-        // API on every Restate replay. Without this, replay cost grows
-        // linearly with the number of batches (each non-journaled fetch
-        // must hit the API again), causing a degenerate suspend/replay loop
-        // for large ingestions.
-        let batch: SerFetchResult = {
-            let ic = ing_ctx.clone();
-            let cur = cursor.clone();
-            journaled_value!(ctx, "fetch_batch", [ic, cur], {
-                fetch_batch(&ic, &cur).await?
-            })
-        };
-
-        // Best-effort rate limit warning (not journaled).
-        if let Some(ref rl) = batch.rate_limit
-            && rl.remaining < 100
-        {
-            tracing::warn!(
-                remaining = rl.remaining,
-                limit = rl.limit,
-                "rate limit pressure"
-            );
-        }
-
-        // Step 2: Compute the branching decision.
-        //
-        // Since fetch_batch is journaled, its results are deterministic on
-        // replay, so compute_batch_action (a pure function) is also
-        // deterministic. No need to journal the action separately.
-        let action = compute_batch_action(&batch, &cursor, watermark_field);
-
-        // Step 3: Execute based on the decision.
-        match action {
-            BatchAction::SleepForRateLimit {
-                wait_secs,
-                etag_cursor,
-            } => {
-                if let Some(ref latest) = etag_cursor {
-                    cursor = latest.clone();
-                }
-
-                tracing::info!(
-                    wait_secs,
-                    "rate limit exhausted, sleeping durably before retry"
-                );
-
-                update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
-                ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
-                // Don't advance cursor — retry the same position after sleep.
-            }
-            BatchAction::Process {
-                item_count,
-                has_watermark,
-                next_cursor,
-                etag_cursor,
-                skipped_diffs,
-            } => {
-                // Apply etag cursor update (Jira/Discourse pattern).
-                if let Some(ref latest) = etag_cursor {
-                    cursor = latest.clone();
-                }
-
-                if item_count > 0 {
-                    let stored = store_batch(ctx, ing_ctx, &batch.items).await?;
-                    total_items += stored;
-                    tracker.count_batch(&batch.items, stored);
-                    batches += 1;
-
-                    // Advance watermark incrementally after each batch so
-                    // retries don't re-fetch already-stored data.
-                    if has_watermark {
-                        advance_watermark(ctx, ing_ctx, &cursor, total_items, watermark_field)
-                            .await?;
-                    }
-
-                    tracing::debug!(batch_stored = stored, total_items, "stored batch");
-                }
-
-                // Handle skipped diffs (GitHub REST rate limiting).
-                match skipped_diffs {
-                    SkippedDiffAction::None => {}
-                    SkippedDiffAction::SleepThenRetry { wait_secs } => {
-                        tracing::info!(
-                            wait_secs,
-                            skipped = batch.skipped_diffs.len(),
-                            "sleeping for REST rate limit reset before retrying diffs"
-                        );
-                        ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
-                        retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
-                            .await?;
-                    }
-                    SkippedDiffAction::RetryOnly => {
-                        retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
-                            .await?;
-                    }
-                }
-
-                update_progress!(ing_ctx, run_id, total_items, tracker, &cursor, &batch);
-
-                // Periodic progress log at info level for long-running backfills.
-                if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {
-                    tracing::info!(total_items, batches, "progress");
-                    last_progress_log = std::time::Instant::now();
-                }
-
-                // Advance cursor or break.
-                let Some(nc) = next_cursor else {
-                    break;
-                };
-                cursor = nc;
-            }
-        }
-    }
-
-    // Final progress
-    let final_progress = tracker.build_final_progress();
-    if let Err(e) = ing_ctx
-        .repos
-        .activity
-        .update_run_progress_detail(run_id, total_items, &final_progress)
-        .await
-    {
-        tracing::debug!(error = %e, "failed to update final progress");
-    }
-
-    Ok((total_items, cursor))
 }

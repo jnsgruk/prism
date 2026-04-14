@@ -5,7 +5,7 @@ use serde::Serialize;
 use tracing::info;
 
 use crate::features::ingestion::lib::{
-    IngestionSpec, ProgressTracker, execute_ingestion, load_ingestion_source_config,
+    IngestionSpec, ProgressTracker, execute_ingestion_chunked, load_ingestion_source_config,
 };
 use crate::infra::SharedState;
 
@@ -39,15 +39,14 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, "starting ingestion run");
 
-        let mut tracker = GithubProgressTracker::default();
-        execute_ingestion(
+        execute_ingestion_chunked(
             &ctx,
             &self.state,
             &GITHUB_SPEC,
             &source_name,
             &config,
             None,
-            &mut tracker,
+            50,
             |_ctx| {},
         )
         .await
@@ -64,15 +63,14 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
         let source_name = config.name.clone();
         info!(source = %source_name, since = %since_date, "starting backfill");
 
-        let mut tracker = GithubProgressTracker::default();
-        execute_ingestion(
+        execute_ingestion_chunked(
             &ctx,
             &self.state,
             &GITHUB_SPEC,
             &source_name,
             &config,
             Some(since_date),
-            &mut tracker,
+            50,
             |_ctx| {},
         )
         .await
@@ -80,7 +78,7 @@ impl GithubIngestionHandler for GithubIngestionHandlerImpl {
 }
 
 #[derive(Default)]
-struct GithubProgressTracker {
+pub(crate) struct GithubProgressTracker {
     prs_fetched: u32,
     reviews_fetched: u32,
     identities_skipped: u32,
