@@ -2,8 +2,6 @@ use ps_core::ingestion::{ContributionInput, IngestionContext};
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
 
-use crate::features::reasoning::embedding::EmbeddingHandlerClient;
-use crate::features::reasoning::enrichment::EnrichmentHandlerClient;
 use crate::infra::run_lifecycle::{
     complete_run, complete_run_with_warnings, create_run, fail_run, journaled, journaled_value,
     terminal_err,
@@ -203,19 +201,6 @@ pub fn build_ingestion_context(
         email,
         api_username,
     }
-}
-
-/// Fire-and-forget enrichment and embedding cycles after ingestion.
-///
-/// Called via `trigger_downstream` so that standalone ingestion runs
-/// (outside the full pipeline workflow) still process queued enrichments.
-pub fn trigger_enrichment_and_embedding(ctx: &ObjectContext<'_>) {
-    ctx.service_client::<EnrichmentHandlerClient>()
-        .run_cycle()
-        .send();
-    ctx.service_client::<EmbeddingHandlerClient>()
-        .run_cycle()
-        .send();
 }
 
 /// Create an ingestion run record inside a Restate `ctx.run()` closure.

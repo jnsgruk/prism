@@ -5,7 +5,6 @@ use tracing::info;
 
 use crate::features::ingestion::lib::{
     IngestionSpec, ProgressTracker, execute_ingestion, load_ingestion_source_config,
-    trigger_enrichment_and_embedding,
 };
 use crate::infra::SharedState;
 
@@ -73,7 +72,7 @@ impl JiraIngestionHandler for JiraIngestionHandlerImpl {
             &config,
             Some(since_date),
             &mut tracker,
-            trigger_enrichment_and_embedding,
+            |_ctx| {},
         )
         .await
     }
