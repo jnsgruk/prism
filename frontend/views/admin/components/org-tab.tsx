@@ -12,20 +12,23 @@ import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
 import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";
 import { ImportDirectoryDialog } from "@/views/admin/components/import-directory-dialog";
 import { ImportJiraUsersDialog } from "@/views/admin/components/import-jira-users-dialog";
+import { ImportOrgDialog } from "@/views/admin/components/import-org-dialog";
 import { OrgPeoplePanel } from "@/views/admin/components/org-people-panel";
 import { OrgTeamSidebar } from "@/views/admin/components/org-team-sidebar";
 import { PersonDetailDialog } from "@/views/admin/components/person-detail-dialog";
-import { useDeleteTeam } from "@/views/admin/hooks/use-admin";
+import { useDeleteTeam, useExportOrg } from "@/views/admin/hooks/use-admin";
 import { flattenTeams } from "@/views/admin/lib/team-utils";
-import { ChevronDown, FileSpreadsheet, FileUp, Plus, Users } from "lucide-react";
+import { ChevronDown, Download, FileSpreadsheet, FileUp, Plus, Upload, Users } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
+import { toast } from "sonner";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
 export const OrgTab = (): React.ReactElement => {
   const { data: tree } = useGetTeamTree();
   const deleteTeam = useDeleteTeam();
+  const exportOrg = useExportOrg();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Team selection from URL.
@@ -50,6 +53,23 @@ export const OrgTab = (): React.ReactElement => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDirOpen, setImportDirOpen] = useState(false);
   const [importJiraOpen, setImportJiraOpen] = useState(false);
+  const [importOrgOpen, setImportOrgOpen] = useState(false);
+
+  const handleExportOrg = async (): Promise<void> => {
+    try {
+      const response = await exportOrg.mutateAsync();
+      const blob = new Blob([new Uint8Array(response.jsonData)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `prism-org-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Organisation exported");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
@@ -67,10 +87,19 @@ export const OrgTab = (): React.ReactElement => {
             Add
             <ChevronDown className="size-3.5" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
               <Users className="size-4" />
               Add Team
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleExportOrg}>
+              <Download className="size-4" />
+              Export Organisation
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setImportOrgOpen(true)}>
+              <Upload className="size-4" />
+              Import Organisation
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setImportDirOpen(true)}>
@@ -126,6 +155,7 @@ export const OrgTab = (): React.ReactElement => {
       <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
       <ImportDirectoryDialog open={importDirOpen} onOpenChange={setImportDirOpen} />
       <ImportJiraUsersDialog open={importJiraOpen} onOpenChange={setImportJiraOpen} />
+      <ImportOrgDialog open={importOrgOpen} onOpenChange={setImportOrgOpen} />
 
       {editingTeam && (
         <EditTeamDialog

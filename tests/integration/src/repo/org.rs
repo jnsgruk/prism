@@ -483,3 +483,346 @@ async fn import_records_creates_teams_and_people() {
 
     ctx.teardown().await;
 }
+
+// ---------------------------------------------------------------------------
+// Org export / import
+// ---------------------------------------------------------------------------
+
+use ps_core::repo::org::OrgExport;
+
+fn build_test_export() -> OrgExport {
+    OrgExport {
+        version: 1,
+        exported_at: "2026-04-14T00:00:00Z".into(),
+        teams: vec![
+            ps_core::repo::org::export::ExportTeam {
+                name: "Engineering".into(),
+                org_name: "Acme".into(),
+                team_type: "group".into(),
+                parent_team: None,
+                lead_email: Some("alice@example.com".into()),
+                github_teams: vec![],
+            },
+            ps_core::repo::org::export::ExportTeam {
+                name: "Backend".into(),
+                org_name: "Acme".into(),
+                team_type: "team".into(),
+                parent_team: Some("Engineering".into()),
+                lead_email: None,
+                github_teams: vec![],
+            },
+        ],
+        people: vec![
+            ps_core::repo::org::export::ExportPerson {
+                name: "Alice Smith".into(),
+                email: Some("alice@example.com".into()),
+                level: Some("Staff".into()),
+                active: true,
+                team: Some("Engineering".into()),
+                identities: vec![ps_core::repo::org::export::ExportIdentity {
+                    platform: "github".into(),
+                    username: "asmith".into(),
+                }],
+            },
+            ps_core::repo::org::export::ExportPerson {
+                name: "Bob Jones".into(),
+                email: Some("bob@example.com".into()),
+                level: None,
+                active: true,
+                team: Some("Backend".into()),
+                identities: vec![],
+            },
+        ],
+    }
+}
+
+#[tokio::test]
+async fn export_org_empty_db() {
+    let ctx = RepoTestContext::new().await;
+    let export = ctx.repos.org.export_org().await.unwrap();
+
+    assert_eq!(export.version, 1);
+    assert!(export.teams.is_empty());
+    assert!(export.people.is_empty());
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn export_org_includes_teams_people_identities() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Create team hierarchy with lead.
+    let alice = insert_person(pool, "Alice", Some("alice@example.com")).await;
+    insert_identity(pool, alice, "github", "asmith").await;
+
+    let group = repos
+        .org
+        .create_team("Engineering", "Acme", TeamType::Group, None, Some(alice))
+        .await
+        .unwrap();
+    let _team = repos
+        .org
+        .create_team("Backend", "Acme", TeamType::Team, Some(group.id), None)
+        .await
+        .unwrap();
+
+    repos
+        .org
+        .assign_person_to_team(alice.into(), group.id.into())
+        .await
+        .unwrap();
+
+    let export = repos.org.export_org().await.unwrap();
+
+    assert_eq!(export.version, 1);
+    assert_eq!(export.teams.len(), 2);
+    assert_eq!(export.people.len(), 1);
+
+    let eng = export
+        .teams
+        .iter()
+        .find(|t| t.name == "Engineering")
+        .unwrap();
+    assert_eq!(eng.team_type, "group");
+    assert!(eng.parent_team.is_none());
+    assert_eq!(eng.lead_email.as_deref(), Some("alice@example.com"));
+
+    let backend = export.teams.iter().find(|t| t.name == "Backend").unwrap();
+    assert_eq!(backend.parent_team.as_deref(), Some("Engineering"));
+
+    let alice_exp = &export.people[0];
+    assert_eq!(alice_exp.name, "Alice");
+    assert_eq!(alice_exp.team.as_deref(), Some("Engineering"));
+    assert_eq!(alice_exp.identities.len(), 1);
+    assert_eq!(alice_exp.identities[0].platform, "github");
+    assert_eq!(alice_exp.identities[0].username, "asmith");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_merge_creates_on_empty_db() {
+    let ctx = RepoTestContext::new().await;
+    let export = build_test_export();
+
+    let result = ctx.repos.org.import_org(&export, false).await.unwrap();
+
+    assert_eq!(result.teams_created, 2);
+    assert_eq!(result.teams_updated, 0);
+    assert_eq!(result.people_created, 2);
+    assert_eq!(result.people_updated, 0);
+    assert_eq!(result.identities_created, 1);
+
+    // Verify teams exist with correct hierarchy.
+    let teams = ctx.repos.org.list_teams(None, None).await.unwrap();
+    assert_eq!(teams.len(), 2);
+    let eng = teams.iter().find(|t| t.name == "Engineering").unwrap();
+    assert_eq!(eng.team_type, TeamType::Group);
+
+    let backend = teams.iter().find(|t| t.name == "Backend").unwrap();
+    assert_eq!(backend.parent_team_id, Some(eng.id));
+
+    // Verify lead was wired.
+    assert!(eng.lead_id.is_some());
+
+    // Verify memberships.
+    let eng_members = ctx.repos.org.get_team_members(eng.id.into()).await.unwrap();
+    assert_eq!(eng_members.len(), 1);
+    assert_eq!(eng_members[0].name, "Alice Smith");
+
+    let backend_members = ctx
+        .repos
+        .org
+        .get_team_members(backend.id.into())
+        .await
+        .unwrap();
+    assert_eq!(backend_members.len(), 1);
+    assert_eq!(backend_members[0].name, "Bob Jones");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_merge_skips_existing() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Pre-populate with a matching team and person.
+    repos
+        .org
+        .create_team("Engineering", "Acme", TeamType::Group, None, None)
+        .await
+        .unwrap();
+    let _alice = insert_person(pool, "Alice Smith", Some("alice@example.com")).await;
+
+    let export = build_test_export();
+    let result = repos.org.import_org(&export, false).await.unwrap();
+
+    // Engineering matched, Backend created.
+    assert_eq!(result.teams_updated, 1);
+    assert_eq!(result.teams_created, 1);
+    // Alice matched, Bob created.
+    assert_eq!(result.people_updated, 1);
+    assert_eq!(result.people_created, 1);
+
+    // Verify no duplicate teams.
+    let teams = repos.org.list_teams(None, None).await.unwrap();
+    assert_eq!(teams.len(), 2);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_merge_adds_missing_identities() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Pre-populate person without identity.
+    let _alice = insert_person(pool, "Alice Smith", Some("alice@example.com")).await;
+
+    let export = build_test_export();
+    let result = repos.org.import_org(&export, false).await.unwrap();
+
+    // Alice's github identity should be created.
+    assert_eq!(result.identities_created, 1);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_merge_preserves_existing_memberships() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Create Team A and assign Alice.
+    let team_a = repos
+        .org
+        .create_team("TeamA", "Acme", TeamType::Team, None, None)
+        .await
+        .unwrap();
+    let alice = insert_person(pool, "Alice Smith", Some("alice@example.com")).await;
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team_a.id.into())
+        .await
+        .unwrap();
+
+    // Import says Alice belongs to Engineering — but merge mode should preserve TeamA.
+    let export = build_test_export();
+    repos.org.import_org(&export, false).await.unwrap();
+
+    // Alice should still be on TeamA since she already had an active membership.
+    let members = repos.org.get_team_members(team_a.id.into()).await.unwrap();
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0].name, "Alice Smith");
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_warns_on_missing_github_teams() {
+    let ctx = RepoTestContext::new().await;
+
+    let mut export = build_test_export();
+    export.teams[0]
+        .github_teams
+        .push(ps_core::repo::org::export::ExportGitHubTeamRef {
+            github_org: "acme".into(),
+            slug: "nonexistent-team".into(),
+        });
+
+    let result = ctx.repos.org.import_org(&export, false).await.unwrap();
+
+    assert_eq!(result.github_mappings_skipped, 1);
+    assert!(
+        result
+            .warnings
+            .iter()
+            .any(|w| w.contains("nonexistent-team"))
+    );
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn import_org_replace_wipes_and_recreates() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Pre-populate with different data.
+    repos
+        .org
+        .create_team("OldTeam", "OldOrg", TeamType::Team, None, None)
+        .await
+        .unwrap();
+    let _charlie = insert_person(pool, "Charlie", Some("charlie@example.com")).await;
+
+    let export = build_test_export();
+    let result = repos.org.import_org(&export, true).await.unwrap();
+
+    assert_eq!(result.teams_created, 2);
+    assert_eq!(result.people_created, 2);
+
+    // Old data should be gone.
+    let teams = repos.org.list_teams(None, None).await.unwrap();
+    assert!(!teams.iter().any(|t| t.name == "OldTeam"));
+    assert_eq!(teams.len(), 2);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn export_then_import_round_trip() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+    let pool = &ctx.pool;
+
+    // Build an org.
+    let alice = insert_person(pool, "Alice", Some("alice@example.com")).await;
+    insert_identity(pool, alice, "github", "asmith").await;
+
+    let group = repos
+        .org
+        .create_team("Engineering", "Acme", TeamType::Group, None, Some(alice))
+        .await
+        .unwrap();
+    let team = repos
+        .org
+        .create_team("Backend", "Acme", TeamType::Team, Some(group.id), None)
+        .await
+        .unwrap();
+    repos
+        .org
+        .assign_person_to_team(alice.into(), team.id.into())
+        .await
+        .unwrap();
+
+    // Export.
+    let export = repos.org.export_org().await.unwrap();
+    assert_eq!(export.teams.len(), 2);
+    assert_eq!(export.people.len(), 1);
+
+    // Wipe and re-import.
+    repos.org.reset_all().await.unwrap();
+    let result = repos.org.import_org(&export, false).await.unwrap();
+
+    assert_eq!(result.teams_created, 2);
+    assert_eq!(result.people_created, 1);
+    assert_eq!(result.identities_created, 1);
+
+    // Verify hierarchy restored.
+    let teams = repos.org.list_teams(None, None).await.unwrap();
+    let eng = teams.iter().find(|t| t.name == "Engineering").unwrap();
+    let backend = teams.iter().find(|t| t.name == "Backend").unwrap();
+    assert_eq!(backend.parent_team_id, Some(eng.id));
+    assert!(eng.lead_id.is_some());
+
+    ctx.teardown().await;
+}

@@ -56,6 +56,13 @@ service OrgService {
   rpc GetTeamMappingSuggestions(GetTeamMappingSuggestionsRequest) returns (GetTeamMappingSuggestionsResponse);
   // DismissTeamMappingSuggestion hides a mapping suggestion so it is not shown again.
   rpc DismissTeamMappingSuggestion(DismissTeamMappingSuggestionRequest) returns (DismissTeamMappingSuggestionResponse);
+
+  // ExportOrg exports the full organisation structure as a portable JSON document
+  // containing teams, people, identities, and GitHub team mappings.
+  rpc ExportOrg(ExportOrgRequest) returns (ExportOrgResponse);
+  // ImportOrg imports an organisation structure from a previously exported JSON
+  // document. Supports merge (default) and replace modes.
+  rpc ImportOrg(ImportOrgRequest) returns (ImportOrgResponse);
 }
 
 // TeamType classifies teams in the organisational hierarchy from broad (org) to
@@ -343,4 +350,30 @@ message ImportJiraUsersResponse {
   // Number of Jira users that could not be matched.
   int32 unmatched_users = 2;
   repeated string warnings = 3;
+}
+
+message ExportOrgRequest {}
+
+message ExportOrgResponse {
+  // JSON document containing the full portable org export.
+  bytes json_data = 1;
+}
+
+message ImportOrgRequest {
+  // JSON document from a previous ExportOrg call.
+  bytes json_data = 1;
+  // If true, wipe all existing org data before importing (replace mode).
+  // If false (default), merge with existing data without overwriting.
+  bool replace = 2;
+}
+
+message ImportOrgResponse {
+  int32 teams_created = 1;
+  int32 teams_updated = 2;
+  int32 people_created = 3;
+  int32 people_updated = 4;
+  int32 identities_created = 5;
+  int32 github_mappings_created = 6;
+  int32 github_mappings_skipped = 7;
+  repeated string warnings = 8;
 }

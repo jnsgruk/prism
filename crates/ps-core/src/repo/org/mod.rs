@@ -1,4 +1,4 @@
-mod export;
+pub mod export;
 pub mod github_teams;
 mod identities;
 mod import;
@@ -7,6 +7,7 @@ mod people;
 mod resolutions;
 mod teams;
 
+pub use export::{OrgExport, OrgImportResult};
 pub use people::ListPeopleParams;
 pub use resolutions::PendingResolution;
 

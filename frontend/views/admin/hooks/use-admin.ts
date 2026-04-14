@@ -13,8 +13,10 @@ import {
 import type {
   CreateTeamResponse,
   DeleteTeamResponse,
+  ExportOrgResponse,
   ImportDirectoryResponse,
   ImportJiraUsersResponse,
+  ImportOrgResponse,
   Person,
   UpdatePersonResponse,
   UpdateTeamResponse,
@@ -251,6 +253,25 @@ export const useDismissTeamMappingSuggestion = (): UseMutationResult<
     mutationFn: async ({ teamId, githubTeamId }) => {
       await orgClient.dismissTeamMappingSuggestion({ teamId, githubTeamId });
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+    },
+  });
+};
+
+export const useExportOrg = (): UseMutationResult<ExportOrgResponse, Error, void> =>
+  useMutation({
+    mutationFn: () => orgClient.exportOrg({}),
+  });
+
+export const useImportOrg = (): UseMutationResult<
+  ImportOrgResponse,
+  Error,
+  { jsonData: Uint8Array; replace: boolean }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jsonData, replace }) => orgClient.importOrg({ jsonData, replace }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.all });
     },

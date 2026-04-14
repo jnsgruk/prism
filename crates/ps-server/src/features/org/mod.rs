@@ -1,4 +1,5 @@
 mod conversions;
+mod org_export;
 mod people;
 mod teams;
 
@@ -8,16 +9,17 @@ use ps_proto::canonical::prism::v1::{
     AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest,
     AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest,
     DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,
-    DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse,
-    GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse, GetTeamRequest,
-    GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse, ImportDirectoryRequest,
-    ImportDirectoryResponse, ImportJiraUsersRequest, ImportJiraUsersResponse,
-    ListGithubTeamsRequest, ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse,
-    ListTeamGithubTeamsRequest, ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse,
-    ListUnassignedPeopleRequest, ListUnassignedPeopleResponse, ReactivatePersonRequest,
-    ReactivatePersonResponse, RemovePersonFromTeamRequest, RemovePersonFromTeamResponse,
-    UnassignGithubTeamRequest, UnassignGithubTeamResponse, UpdatePersonRequest,
-    UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse,
+    DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse, ExportOrgRequest,
+    ExportOrgResponse, GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse,
+    GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse,
+    ImportDirectoryRequest, ImportDirectoryResponse, ImportJiraUsersRequest,
+    ImportJiraUsersResponse, ImportOrgRequest, ImportOrgResponse, ListGithubTeamsRequest,
+    ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse, ListTeamGithubTeamsRequest,
+    ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest,
+    ListUnassignedPeopleResponse, ReactivatePersonRequest, ReactivatePersonResponse,
+    RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, UnassignGithubTeamRequest,
+    UnassignGithubTeamResponse, UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest,
+    UpdateTeamResponse,
 };
 use tonic::{Request, Response, Status};
 
@@ -247,5 +249,22 @@ impl OrgService for OrgServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
         people::handle_import_jira_users(&self.repos, req.file_content).await
+    }
+
+    async fn export_org(
+        &self,
+        request: Request<ExportOrgRequest>,
+    ) -> Result<Response<ExportOrgResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        org_export::handle_export_org(&self.repos).await
+    }
+
+    async fn import_org(
+        &self,
+        request: Request<ImportOrgRequest>,
+    ) -> Result<Response<ImportOrgResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+        org_export::handle_import_org(&self.repos, req.json_data, req.replace).await
     }
 }

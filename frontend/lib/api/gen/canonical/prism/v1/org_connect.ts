@@ -22,6 +22,8 @@ import {
   DeleteTeamResponse,
   DismissTeamMappingSuggestionRequest,
   DismissTeamMappingSuggestionResponse,
+  ExportOrgRequest,
+  ExportOrgResponse,
   GetTeamMappingSuggestionsRequest,
   GetTeamMappingSuggestionsResponse,
   GetTeamRequest,
@@ -32,6 +34,8 @@ import {
   ImportDirectoryResponse,
   ImportJiraUsersRequest,
   ImportJiraUsersResponse,
+  ImportOrgRequest,
+  ImportOrgResponse,
   ListGithubTeamsRequest,
   ListGithubTeamsResponse,
   ListPeopleRequest,
@@ -294,6 +298,30 @@ export const OrgService = {
       name: "DismissTeamMappingSuggestion",
       I: DismissTeamMappingSuggestionRequest,
       O: DismissTeamMappingSuggestionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ExportOrg exports the full organisation structure as a portable JSON document
+     * containing teams, people, identities, and GitHub team mappings.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.ExportOrg
+     */
+    exportOrg: {
+      name: "ExportOrg",
+      I: ExportOrgRequest,
+      O: ExportOrgResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ImportOrg imports an organisation structure from a previously exported JSON
+     * document. Supports merge (default) and replace modes.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.ImportOrg
+     */
+    importOrg: {
+      name: "ImportOrg",
+      I: ImportOrgRequest,
+      O: ImportOrgResponse,
       kind: MethodKind.Unary,
     },
   },
