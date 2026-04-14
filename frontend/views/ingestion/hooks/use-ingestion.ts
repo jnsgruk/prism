@@ -4,13 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   CancelHandlerRunResponse,
-  CancelRunResponse,
   GetStatusResponse,
   HandlerRun,
   SourceStatus,
-  TriggerBackfillResponse,
   TriggerHandlerResponse,
-  TriggerRunResponse,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { HandlersService } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { transport } from "@ps/api/transport";
@@ -49,46 +46,6 @@ export const useListRuns = (
     select: (data): HandlerRun[] => data.runs,
     refetchInterval: options?.refetchInterval,
   });
-
-export const useTriggerRun = (): UseMutationResult<TriggerRunResponse, Error, string> => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (sourceName: string) => handlersClient.triggerRun({ sourceName }),
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
-      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
-    },
-  });
-};
-
-export const useTriggerBackfill = (): UseMutationResult<
-  TriggerBackfillResponse,
-  Error,
-  { sourceName: string; sinceDate: string }
-> => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (req: { sourceName: string; sinceDate: string }) => handlersClient.triggerBackfill(req),
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
-      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
-    },
-  });
-};
-
-export const useCancelRun = (): UseMutationResult<CancelRunResponse, Error, string> => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (sourceName: string) => handlersClient.cancelRun({ sourceName }),
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: handlersKeys.status() });
-      await queryClient.refetchQueries({ queryKey: handlersKeys.runs() });
-    },
-  });
-};
 
 export const useTriggerHandler = (): UseMutationResult<
   TriggerHandlerResponse,

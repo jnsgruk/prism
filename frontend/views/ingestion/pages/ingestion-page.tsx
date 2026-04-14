@@ -167,12 +167,7 @@ const IngestionPage = (): React.ReactElement => {
 
           {/* Source list + AI handlers */}
           <CardContent className="px-0 pb-0">
-            <SourceList
-              sources={sources}
-              sourceConfigs={sourceConfigMap}
-              onAction={triggerBurst}
-              onToggleEnabled={handleToggleEnabled}
-            />
+            <SourceList sources={sources} sourceConfigs={sourceConfigMap} onToggleEnabled={handleToggleEnabled} />
           </CardContent>
         </Card>
 

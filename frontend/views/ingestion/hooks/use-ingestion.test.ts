@@ -8,7 +8,6 @@ import { Platform, RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import {
   CancelHandlerRunResponseSchema,
   CancelPipelineResponseSchema,
-  CancelRunResponseSchema,
   GetPipelineStatusResponseSchema,
   GetStatusResponseSchema,
   HandlersService,
@@ -17,10 +16,8 @@ import {
   ListRunsResponseSchema,
   SourceState,
   SourceStatusSchema,
-  TriggerBackfillResponseSchema,
   TriggerHandlerResponseSchema,
   TriggerPipelineResponseSchema,
-  TriggerRunResponseSchema,
   TriggerTeamSyncResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { TestWrapper } from "@ps/test-utils";
@@ -60,9 +57,6 @@ vi.mock("@ps/api/transport", () => ({
     service(HandlersService, {
       getStatus: () => create(GetStatusResponseSchema, { sources: mockSources }),
       listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
-      triggerRun: () => create(TriggerRunResponseSchema, {}),
-      triggerBackfill: () => create(TriggerBackfillResponseSchema, {}),
-      cancelRun: () => create(CancelRunResponseSchema, {}),
       listHandlers: () => create(ListHandlersResponseSchema, { handlers: mockHandlers }),
       triggerHandler: () => create(TriggerHandlerResponseSchema, {}),
       cancelHandlerRun: () => create(CancelHandlerRunResponseSchema, {}),
@@ -105,39 +99,6 @@ describe("ingestion hooks", () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toHaveLength(1);
-    });
-  });
-
-  describe("useTriggerRun", () => {
-    it("triggers a run and succeeds", async () => {
-      const { useTriggerRun } = await import("./use-ingestion");
-      const { result } = renderHook(() => useTriggerRun(), { wrapper: TestWrapper });
-
-      result.current.mutate("github-main");
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    });
-  });
-
-  describe("useTriggerBackfill", () => {
-    it("triggers a backfill with source and date", async () => {
-      const { useTriggerBackfill } = await import("./use-ingestion");
-      const { result } = renderHook(() => useTriggerBackfill(), { wrapper: TestWrapper });
-
-      result.current.mutate({ sourceName: "github-main", sinceDate: "2026-01-01" });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    });
-  });
-
-  describe("useCancelRun", () => {
-    it("cancels a run and succeeds", async () => {
-      const { useCancelRun } = await import("./use-ingestion");
-      const { result } = renderHook(() => useCancelRun(), { wrapper: TestWrapper });
-
-      result.current.mutate("github-main");
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
   });
 

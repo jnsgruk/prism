@@ -132,18 +132,12 @@ export const SourceRow = ({
   source,
   sourceId,
   enabled = true,
-  onTriggerRun,
-  onCancelRun,
   onToggleEnabled,
-  onAction,
 }: {
   source: SourceStatus;
   sourceId?: string;
   enabled?: boolean;
-  onTriggerRun?: (name: string) => void;
-  onCancelRun?: (name: string) => void;
   onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
-  onAction?: () => void;
 }): React.ReactElement => {
   const [expanded, setExpanded] = useState(false);
 
@@ -203,16 +197,7 @@ export const SourceRow = ({
 
           {/* Overflow menu */}
           <div className="flex shrink-0 items-center justify-end">
-            <SourceOverflowMenu
-              sourceName={source.name}
-              sourceId={sourceId}
-              isActive={isActive}
-              enabled={enabled}
-              onTriggerRun={onTriggerRun}
-              onCancelRun={onCancelRun}
-              onToggleEnabled={onToggleEnabled}
-              onAction={onAction}
-            />
+            <SourceOverflowMenu sourceId={sourceId} enabled={enabled} onToggleEnabled={onToggleEnabled} />
           </div>
         </div>
 
@@ -258,13 +243,7 @@ export const DisabledSourceRow = ({
     </div>
     <div className="hidden sm:block" />
     <div className="flex shrink-0 items-center justify-end">
-      <SourceOverflowMenu
-        sourceName={name}
-        sourceId={sourceId}
-        isActive={false}
-        enabled={false}
-        onToggleEnabled={onToggleEnabled}
-      />
+      <SourceOverflowMenu sourceId={sourceId} enabled={false} onToggleEnabled={onToggleEnabled} />
     </div>
   </div>
 );

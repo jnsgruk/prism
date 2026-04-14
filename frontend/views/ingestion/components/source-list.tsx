@@ -1,7 +1,5 @@
-import { useCancelRun, useTriggerRun } from "@/views/ingestion/hooks/use-ingestion";
 import { isActive } from "@/views/ingestion/lib/constants";
 import { useMemo } from "react";
-import { toast } from "sonner";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
@@ -13,17 +11,12 @@ export type SourceConfigInfo = { id: string; enabled: boolean };
 export const SourceList = ({
   sources,
   sourceConfigs,
-  onAction,
   onToggleEnabled,
 }: {
   sources: SourceStatus[];
   sourceConfigs?: Map<string, SourceConfigInfo>;
-  onAction: () => void;
   onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
 }): React.ReactElement => {
-  const triggerRun = useTriggerRun();
-  const cancelRun = useCancelRun();
-
   const isDisabled = (name: string): boolean => sourceConfigs?.get(name)?.enabled === false;
 
   // Enabled sources only: active first, then idle
@@ -40,26 +33,6 @@ export const SourceList = ({
     if (!sourceConfigs) return [];
     return [...sourceConfigs.entries()].filter(([, cfg]) => !cfg.enabled).map(([name, cfg]) => ({ name, id: cfg.id }));
   }, [sourceConfigs]);
-
-  const handleTriggerRun = (name: string): void => {
-    triggerRun.mutate(name, {
-      onSuccess: () => {
-        toast.success(`Run triggered for ${name}`);
-        onAction();
-      },
-      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to trigger run"),
-    });
-  };
-
-  const handleCancelRun = (name: string): void => {
-    cancelRun.mutate(name, {
-      onSuccess: () => {
-        toast.success(`Cancelled run for ${name}`);
-        onAction();
-      },
-      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to cancel run"),
-    });
-  };
 
   return (
     <div>
@@ -79,10 +52,7 @@ export const SourceList = ({
             source={source}
             sourceId={config?.id}
             enabled={config?.enabled ?? true}
-            onTriggerRun={handleTriggerRun}
-            onCancelRun={handleCancelRun}
             onToggleEnabled={onToggleEnabled}
-            onAction={onAction}
           />
         );
       })}

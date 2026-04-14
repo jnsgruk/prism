@@ -44,11 +44,15 @@ export const useCurrentPipeline = (options?: {
   };
 };
 
-export const useTriggerPipeline = (): UseMutationResult<TriggerPipelineResponse, Error, void> => {
+export const useTriggerPipeline = (): UseMutationResult<
+  TriggerPipelineResponse,
+  Error,
+  { sinceDate?: string } | void
+> => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => client.triggerPipeline({}),
+    mutationFn: (args) => client.triggerPipeline({ sinceDate: args?.sinceDate }),
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: pipelineKeys.status() });
     },

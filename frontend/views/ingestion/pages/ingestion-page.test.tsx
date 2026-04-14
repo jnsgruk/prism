@@ -14,8 +14,7 @@ import {
   ListRunsResponseSchema,
   SourceState,
   SourceStatusSchema,
-  TriggerBackfillResponseSchema,
-  TriggerRunResponseSchema,
+  TriggerPipelineResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import {
   GetEmbeddingStatusResponseSchema,
@@ -87,9 +86,8 @@ vi.mock("@ps/api/transport", () => ({
     service(HandlersService, {
       getStatus: () => create(GetStatusResponseSchema, { sources: mockSources }),
       listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
-      triggerRun: () => create(TriggerRunResponseSchema, {}),
-      triggerBackfill: () => create(TriggerBackfillResponseSchema, {}),
       getPipelineStatus: () => create(GetPipelineStatusResponseSchema, {}),
+      triggerPipeline: () => create(TriggerPipelineResponseSchema, { pipelineId: "pipe-1" }),
     });
     service(ConfigService, {
       listSources: () => create(ListSourcesResponseSchema, { sources: mockSourceConfigs }),
