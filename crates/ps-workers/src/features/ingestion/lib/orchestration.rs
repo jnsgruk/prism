@@ -124,14 +124,13 @@ pub async fn execute_ingestion_chunked(
     let mut cursor = initial_cursor;
     let mut total_items = 0i32;
     let mut chunk_num = 0u32;
-    let sn = source_name.to_string();
 
     loop {
         chunk_num += 1;
         tracing::info!(chunk = chunk_num, "dispatching chunk");
 
         let request = ChunkRequest {
-            source_name: sn.clone(),
+            source_type: config.source_type.clone(),
             cursor: cursor.clone(),
             run_id,
             max_batches: chunk_size,

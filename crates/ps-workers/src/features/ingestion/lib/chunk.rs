@@ -5,7 +5,7 @@
 //! keeping its own journal minimal (~1 entry per chunk).
 
 use ps_core::ingestion::{ContributionInput, IngestionContext};
-use ps_core::models::SourceConfig;
+use ps_core::models::{Platform, SourceConfig};
 use restate_sdk::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -27,8 +27,8 @@ use super::progress::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkRequest {
-    /// Source type key (e.g. "github") used to load config + create source.
-    pub source_name: String,
+    /// Source platform type used to load config + create source adapter.
+    pub source_type: Platform,
     /// Opaque cursor JSON — continues from previous chunk.
     pub cursor: String,
     /// Coordinator's run ID for progress updates.
@@ -70,11 +70,12 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
         ctx: Context<'_>,
         Json(req): Json<ChunkRequest>,
     ) -> Result<Json<ChunkResult>, TerminalError> {
-        let span = tracing::info_span!("chunk", source = %req.source_name, run_id = %req.run_id);
+        let source_type_key = req.source_type.to_string();
+        let span = tracing::info_span!("chunk", source = %source_type_key, run_id = %req.run_id);
         let _guard = span.enter();
 
         // 1. Load source config (journaled).
-        let config = load_chunk_source_config(&ctx, &self.state.repos, &req.source_name).await?;
+        let config = load_chunk_source_config(&ctx, &self.state.repos, &source_type_key).await?;
         let spec = spec_for_source_type(&config.source_type);
 
         // 2. Decrypt secrets (outside ctx.run()).
