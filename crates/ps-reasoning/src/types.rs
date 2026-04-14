@@ -9,12 +9,28 @@ pub struct AiTaskConfig {
 }
 
 /// All AI task routing configuration.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiConfig {
     pub tasks: AiTaskRouting,
     /// Default model for image generation via the `generate_image` MCP tool.
-    #[serde(default)]
+    #[serde(default = "default_image_generation")]
     pub image_generation: Option<AiTaskConfig>,
+}
+
+fn default_image_generation() -> Option<AiTaskConfig> {
+    Some(AiTaskConfig {
+        provider: AiProvider::Google,
+        model: "gemini-3-pro-image-preview".into(),
+    })
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            tasks: AiTaskRouting::default(),
+            image_generation: default_image_generation(),
+        }
+    }
 }
 
 /// Per-task provider/model routing.
@@ -41,15 +57,15 @@ impl Default for AiTaskRouting {
         Self {
             enrichment: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-2.5-flash".into(),
+                model: "gemini-3-flash-preview".into(),
             },
             agentic: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "gemini-2.5-flash".into(),
+                model: "gemini-3.1-pro-preview".into(),
             },
             embeddings: AiTaskConfig {
                 provider: AiProvider::Google,
-                model: "text-embedding-004".into(),
+                model: "gemini-embedding-2-preview".into(),
             },
         }
     }
