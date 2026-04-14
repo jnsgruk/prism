@@ -123,7 +123,7 @@ async fn trigger_pipeline_rejects_when_active() {
     repos.activity.create_pipeline(id, None).await.unwrap();
 
     let mut client = HandlersServiceClient::new(server.channel.clone());
-    let mut req = Request::new(TriggerPipelineRequest {});
+    let mut req = Request::new(TriggerPipelineRequest { since_date: None });
     auth(&mut req, &token);
 
     let err = client.trigger_pipeline(req).await.unwrap_err();

@@ -13,24 +13,6 @@ use tonic::Status;
 /// Each tuple is `(handler_name, &[methods], description, requires_key)`.
 pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
     (
-        "GithubIngestionHandler",
-        &["run_ingestion", "backfill"],
-        "Fetches pull requests and reviews from GitHub repositories",
-        true,
-    ),
-    (
-        "JiraIngestionHandler",
-        &["run_ingestion", "backfill"],
-        "Fetches issues, changelogs, and status transitions from Jira",
-        true,
-    ),
-    (
-        "DiscourseIngestionHandler",
-        &["run_ingestion", "backfill"],
-        "Fetches topics and posts from a Discourse instance",
-        true,
-    ),
-    (
         "GithubTeamSyncHandler",
         &["sync_teams"],
         "Discovers GitHub teams, members, and repos for configured orgs",
@@ -73,21 +55,6 @@ pub(crate) const HANDLER_DEFS: &[(&str, &[&str], &str, bool)] = &[
         false,
     ),
 ];
-
-/// Map a platform to its Restate ingestion handler name.
-#[allow(clippy::result_large_err)]
-pub(crate) fn handler_for_platform(
-    platform: &ps_core::models::Platform,
-) -> Result<&'static str, Status> {
-    match platform {
-        ps_core::models::Platform::Github => Ok("GithubIngestionHandler"),
-        ps_core::models::Platform::Jira => Ok("JiraIngestionHandler"),
-        ps_core::models::Platform::Discourse(_) => Ok("DiscourseIngestionHandler"),
-        _ => Err(Status::unimplemented(format!(
-            "no ingestion handler for platform: {platform}"
-        ))),
-    }
-}
 
 /// Build the list of `HandlerInfo` proto messages from the static definitions.
 pub(crate) fn known_handlers() -> Vec<HandlerInfo> {

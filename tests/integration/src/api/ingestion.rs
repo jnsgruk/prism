@@ -143,57 +143,38 @@ async fn list_runs_filters_by_source() {
 }
 
 #[tokio::test]
-async fn trigger_run_requires_valid_source() {
+async fn trigger_run_returns_unimplemented() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
-    // Empty name
     let mut req = Request::new(TriggerRunRequest {
-        source_name: String::new(),
+        source_name: "any".into(),
     });
     auth(&mut req, &token);
     let err = client.trigger_run(req).await.expect_err("should fail");
-    assert_eq!(err.code(), tonic::Code::InvalidArgument);
-
-    // Non-existent source
-    let mut req = Request::new(TriggerRunRequest {
-        source_name: "nonexistent".into(),
-    });
-    auth(&mut req, &token);
-    let err = client.trigger_run(req).await.expect_err("should fail");
-    assert_eq!(err.code(), tonic::Code::NotFound);
+    assert_eq!(err.code(), tonic::Code::Unimplemented);
 
     ctx.teardown().await;
 }
 
 #[tokio::test]
-async fn trigger_backfill_validates_inputs() {
+async fn trigger_backfill_returns_unimplemented() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let mut client = HandlersServiceClient::new(server.channel.clone());
 
-    // Empty source name
     let mut req = Request::new(TriggerBackfillRequest {
-        source_name: String::new(),
+        source_name: "any".into(),
         since_date: "2024-01-01".into(),
     });
     auth(&mut req, &token);
     let err = client.trigger_backfill(req).await.expect_err("should fail");
-    assert_eq!(err.code(), tonic::Code::InvalidArgument);
-
-    // Empty since_date
-    let mut req = Request::new(TriggerBackfillRequest {
-        source_name: "test".into(),
-        since_date: String::new(),
-    });
-    auth(&mut req, &token);
-    let err = client.trigger_backfill(req).await.expect_err("should fail");
-    assert_eq!(err.code(), tonic::Code::InvalidArgument);
+    assert_eq!(err.code(), tonic::Code::Unimplemented);
 
     ctx.teardown().await;
 }

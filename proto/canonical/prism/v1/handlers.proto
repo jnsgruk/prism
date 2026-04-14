@@ -211,7 +211,11 @@ message PipelineInfo {
   optional string error = 7;
 }
 
-message TriggerPipelineRequest {}
+message TriggerPipelineRequest {
+  // Optional backfill date (YYYY-MM-DD). When set, the pipeline runs
+  // backfill instead of incremental ingestion for all enabled sources.
+  optional string since_date = 1;
+}
 
 message TriggerPipelineResponse {
   // Pipeline ID (also used as the Restate workflow ID).

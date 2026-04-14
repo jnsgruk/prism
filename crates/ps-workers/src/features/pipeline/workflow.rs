@@ -31,9 +31,13 @@ pub struct IngestionPipelineWorkflowImpl {
 
 #[restate_sdk::workflow]
 pub trait IngestionPipelineWorkflow {
-    /// Run the full pipeline: team sync → ingestion → [metrics → enrichment →
+    /// Run the full pipeline: ingestion → [metrics → enrichment →
     /// embedding → insights] + [identity resolution].
-    async fn run() -> Result<Json<PipelineResult>, TerminalError>;
+    ///
+    /// When `since_date` is provided (YYYY-MM-DD), the ingestion stage
+    /// calls `backfill(since_date)` on each handler instead of
+    /// `run_ingestion()`, re-fetching data from the specified date.
+    async fn run(since_date: Option<String>) -> Result<Json<PipelineResult>, TerminalError>;
 
     /// Query current pipeline progress (callable while `run()` is executing).
     #[shared]
@@ -45,7 +49,11 @@ pub trait IngestionPipelineWorkflow {
 }
 
 impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
-    async fn run(&self, ctx: WorkflowContext<'_>) -> Result<Json<PipelineResult>, TerminalError> {
+    async fn run(
+        &self,
+        ctx: WorkflowContext<'_>,
+        since_date: Option<String>,
+    ) -> Result<Json<PipelineResult>, TerminalError> {
         let pipeline_id_str = ctx.key().to_string();
         let pipeline_id: Uuid = pipeline_id_str
             .parse()
@@ -118,7 +126,13 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
 
         // 4. STAGE: Ingestion (fan-out)
         let all_failed = self
-            .run_ingestion(pipeline_id, &mut stages, &sources, &ctx)
+            .run_ingestion(
+                pipeline_id,
+                &mut stages,
+                &sources,
+                &ctx,
+                since_date.as_deref(),
+            )
             .await?;
         if all_failed {
             mark_remaining_cancelled(&mut stages);
@@ -221,12 +235,16 @@ impl IngestionPipelineWorkflowImpl {
     /// All handlers are dispatched at once so each creates its own run record
     /// immediately — source rows show "collecting" in the UI, consistent with
     /// how individual triggers work.
+    ///
+    /// When `since_date` is provided, calls `backfill(since_date)` on each
+    /// handler instead of `run_ingestion()`.
     async fn run_ingestion(
         &self,
         pipeline_id: Uuid,
         stages: &mut serde_json::Value,
         sources: &[SourceInfo],
         ctx: &WorkflowContext<'_>,
+        since_date: Option<&str>,
     ) -> Result<bool, TerminalError> {
         type CallFut<'a> = Pin<Box<dyn Future<Output = Result<(), TerminalError>> + Send + 'a>>;
 
@@ -238,18 +256,33 @@ impl IngestionPipelineWorkflowImpl {
         let mut names: Vec<String> = Vec::new();
 
         for source in sources {
-            let call: CallFut<'_> = match source.source_type.as_str() {
-                "github" => Box::pin(
+            let call: CallFut<'_> = match (source.source_type.as_str(), since_date) {
+                ("github", Some(date)) => Box::pin(
+                    ctx.object_client::<GithubIngestionHandlerClient>(&source.source_type)
+                        .backfill(date.to_string())
+                        .call(),
+                ),
+                ("github", None) => Box::pin(
                     ctx.object_client::<GithubIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
                         .call(),
                 ),
-                "jira" => Box::pin(
+                ("jira", Some(date)) => Box::pin(
+                    ctx.object_client::<JiraIngestionHandlerClient>(&source.source_type)
+                        .backfill(date.to_string())
+                        .call(),
+                ),
+                ("jira", None) => Box::pin(
                     ctx.object_client::<JiraIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
                         .call(),
                 ),
-                p if p.starts_with("discourse") => Box::pin(
+                (p, Some(date)) if p.starts_with("discourse") => Box::pin(
+                    ctx.object_client::<DiscourseIngestionHandlerClient>(&source.source_type)
+                        .backfill(date.to_string())
+                        .call(),
+                ),
+                (p, None) if p.starts_with("discourse") => Box::pin(
                     ctx.object_client::<DiscourseIngestionHandlerClient>(&source.source_type)
                         .run_ingestion()
                         .call(),

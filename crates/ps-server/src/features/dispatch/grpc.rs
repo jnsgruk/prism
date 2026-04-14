@@ -14,8 +14,7 @@ use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
 use super::{
-    HANDLER_DEFS, HandlersServiceImpl, derive_state, handler_for_platform, known_handlers,
-    validate_restate_identifier,
+    HANDLER_DEFS, HandlersServiceImpl, derive_state, known_handlers, validate_restate_identifier,
 };
 use crate::common::{db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp};
 
@@ -141,91 +140,20 @@ impl HandlersService for HandlersServiceImpl {
 
     async fn trigger_run(
         &self,
-        request: Request<TriggerRunRequest>,
+        _request: Request<TriggerRunRequest>,
     ) -> Result<Response<TriggerRunResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        if req.source_name.is_empty() {
-            return Err(Status::invalid_argument("source_name is required"));
-        }
-
-        // Look up source by display name, then use source_type as the Restate key
-        let source = self
-            .repos
-            .config
-            .get_enabled_source_by_name(&req.source_name)
-            .await
-            .map_err(db_err)?
-            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
-
-        let handler = handler_for_platform(&source.source_type)?;
-        let restate_key = source.source_type.to_string();
-        validate_restate_identifier(&restate_key)?;
-
-        // Fire-and-forget send to Restate ingress
-        let url = format!(
-            "{}/{handler}/{restate_key}/run_ingestion/send",
-            self.restate_url,
-        );
-
-        let invocation_id = self.send_to_restate(&url, None).await?;
-
-        // Store the invocation ID for cancellation (keyed on display name)
-        self.repos
-            .activity
-            .set_current_invocation_id(&source.name, &invocation_id)
-            .await
-            .map_err(db_err)?;
-
-        info!(source = %source.name, %handler, %invocation_id, "triggered ingestion run via Restate");
-
-        Ok(Response::new(TriggerRunResponse {}))
+        Err(Status::unimplemented(
+            "use TriggerPipeline instead — individual source runs are no longer supported",
+        ))
     }
 
     async fn trigger_backfill(
         &self,
-        request: Request<TriggerBackfillRequest>,
+        _request: Request<TriggerBackfillRequest>,
     ) -> Result<Response<TriggerBackfillResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        if req.source_name.is_empty() {
-            return Err(Status::invalid_argument("source_name is required"));
-        }
-        if req.since_date.is_empty() {
-            return Err(Status::invalid_argument("since_date is required"));
-        }
-
-        // Look up source by display name, then use source_type as the Restate key
-        let source = self
-            .repos
-            .config
-            .get_enabled_source_by_name(&req.source_name)
-            .await
-            .map_err(db_err)?
-            .ok_or_else(|| Status::not_found("source not found or disabled"))?;
-
-        let handler = handler_for_platform(&source.source_type)?;
-        let restate_key = source.source_type.to_string();
-        validate_restate_identifier(&restate_key)?;
-
-        // Fire-and-forget send to Restate ingress
-        let url = format!("{}/{handler}/{restate_key}/backfill/send", self.restate_url,);
-        let body = serde_json::json!(req.since_date);
-
-        let invocation_id = self.send_to_restate(&url, Some(&body)).await?;
-
-        // Store the invocation ID for cancellation (keyed on display name)
-        self.repos
-            .activity
-            .set_current_invocation_id(&source.name, &invocation_id)
-            .await
-            .map_err(db_err)?;
-
-        info!(source = %source.name, %handler, since = %req.since_date, %invocation_id, "triggered backfill via Restate");
-
-        Ok(Response::new(TriggerBackfillResponse {}))
+        Err(Status::unimplemented(
+            "use TriggerPipeline with since_date instead — individual backfills are no longer supported",
+        ))
     }
 
     async fn cancel_run(
@@ -697,6 +625,7 @@ impl HandlersService for HandlersServiceImpl {
         request: Request<TriggerPipelineRequest>,
     ) -> Result<Response<TriggerPipelineResponse>, Status> {
         let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
 
         // Guard: no concurrent pipelines
         let active = self
@@ -718,9 +647,16 @@ impl HandlersService for HandlersServiceImpl {
             self.restate_url,
         );
 
-        let _invocation_id = self.send_to_restate(&url, None).await?;
+        // Pass since_date as the workflow argument for backfill pipelines.
+        let body = req.since_date.as_ref().map(|d| serde_json::json!(d));
 
-        info!(%pipeline_id, "triggered pipeline via Restate");
+        let _invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
+
+        if let Some(ref since) = req.since_date {
+            info!(%pipeline_id, since = %since, "triggered backfill pipeline via Restate");
+        } else {
+            info!(%pipeline_id, "triggered pipeline via Restate");
+        }
 
         Ok(Response::new(TriggerPipelineResponse {
             pipeline_id: pipeline_id.to_string(),
