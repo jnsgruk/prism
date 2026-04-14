@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM org.team_github_team_mappings",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1e69e2ffc3c1f9c74ea7dddf6dc176b1f08a24e0797bb3f7d40f0a4e6993792d"
+}

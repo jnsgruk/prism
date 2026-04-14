@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.id, t.name, t.org_name,\n                   t.team_type AS \"team_type: TeamType\",\n                   pt.name AS \"parent_team_name?\",\n                   lp.email AS \"lead_email?\",\n                   lp.name AS \"lead_name?\"\n            FROM org.teams t\n            LEFT JOIN org.teams pt ON pt.id = t.parent_team_id\n            LEFT JOIN org.people lp ON lp.id = t.lead_id\n            ORDER BY t.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "org_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "team_type: TeamType",
+        "type_info": {
+          "Custom": {
+            "name": "org.team_type",
+            "kind": {
+              "Enum": [
+                "org",
+                "group",
+                "team",
+                "squad"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_team_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "lead_email?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "lead_name?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "41c9d650c0370d26c6c8199cafdb8c453b2a85e203ab000afa2d006d632ec5b1"
+}

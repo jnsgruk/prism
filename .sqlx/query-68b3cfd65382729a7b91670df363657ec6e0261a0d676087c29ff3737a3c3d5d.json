@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT person_id, platform, platform_username\n                FROM org.platform_identities\n                WHERE person_id = ANY($1)\n                ORDER BY person_id, platform\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "platform",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "platform_username",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "68b3cfd65382729a7b91670df363657ec6e0261a0d676087c29ff3737a3c3d5d"
+}

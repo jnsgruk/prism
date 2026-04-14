@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT id FROM org.team_memberships\n                WHERE person_id = $1\n                  AND (end_date IS NULL OR end_date > CURRENT_DATE)\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "28d7f5f49ad9edf33bcdb3d62ad9dd0b6cdf5b7ca332e4effa396b4ea532d014"
+}

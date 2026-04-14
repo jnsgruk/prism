@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO org.platform_identities (id, person_id, platform, platform_username)\n                VALUES ($1, $2, $3, $4)\n                ON CONFLICT (platform, platform_username) DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7954e0d2a1dc87b1b994177113109c0a671ce31dc7c9a4edd224c1777ebf891f"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO org.team_github_team_mappings (team_id, github_team_id)\n                    VALUES ($1, $2)\n                    ON CONFLICT DO NOTHING\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c503c020b5c23a1bf4b360ba477d3894c33ee66ada331cb1386ce8552355118d"
+}
