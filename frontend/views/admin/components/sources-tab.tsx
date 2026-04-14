@@ -1,19 +1,70 @@
 import { Alert } from "@/components/ui/alert";
-import { AlertCircle, Plug } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertCircle, ChevronDown, Download, Plug, Plus, Upload } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
-import { useListSources } from "@ps/hooks/use-config";
+import { useExportSources, useListSources } from "@ps/hooks/use-config";
 
 import { CreateSourceDialog } from "./create-source-dialog";
+import { ImportSourcesDialog } from "./import-sources-dialog";
 import { SourceRow } from "./source-row";
 
 export const SourcesTab = (): React.ReactElement => {
   const { data: sources, isLoading, error } = useListSources();
+  const exportSources = useExportSources();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleExportSources = async (): Promise<void> => {
+    try {
+      const response = await exportSources.mutateAsync();
+      const blob = new Blob([new Uint8Array(response.jsonData)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `prism-sources-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Sources exported");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
 
   return (
     <div className="space-y-4 pt-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Configure data sources and their credentials.</p>
-        <CreateSourceDialog />
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button />}>
+            <Plus className="size-4" />
+            Add
+            <ChevronDown className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Add Source
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleExportSources}>
+              <Download className="size-4" />
+              Export Sources
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" />
+              Import Sources
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading sources...</p>}
@@ -40,6 +91,9 @@ export const SourcesTab = (): React.ReactElement => {
           ))}
         </div>
       )}
+
+      <CreateSourceDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <ImportSourcesDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 };

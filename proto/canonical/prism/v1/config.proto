@@ -25,6 +25,12 @@ service ConfigService {
   rpc SetSecret(SetSecretRequest) returns (SetSecretResponse);
   // TestConnection verifies connectivity to the source's external platform.
   rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse);
+  // ExportSources exports all source configurations as a portable JSON document.
+  // Secrets are never included — only configuration and settings.
+  rpc ExportSources(ExportSourcesRequest) returns (ExportSourcesResponse);
+  // ImportSources imports source configurations from a previously exported JSON
+  // document. Supports merge (default) and replace modes.
+  rpc ImportSources(ImportSourcesRequest) returns (ImportSourcesResponse);
 }
 
 // SourceConfig represents a configured data source. Secret values are never
@@ -113,4 +119,25 @@ message TestConnectionResponse {
   string error_message = 2;
   // Platform-specific connection details (e.g. rate limit remaining, org name).
   map<string, string> details = 3;
+}
+
+message ExportSourcesRequest {}
+
+message ExportSourcesResponse {
+  // JSON document containing all source configurations (no secrets).
+  bytes json_data = 1;
+}
+
+message ImportSourcesRequest {
+  // JSON document from a previous ExportSources call.
+  bytes json_data = 1;
+  // If true, delete all existing sources before importing (replace mode).
+  // If false (default), merge with existing sources, skipping duplicates by name.
+  bool replace = 2;
+}
+
+message ImportSourcesResponse {
+  int32 sources_created = 1;
+  int32 sources_skipped = 2;
+  repeated string warnings = 3;
 }

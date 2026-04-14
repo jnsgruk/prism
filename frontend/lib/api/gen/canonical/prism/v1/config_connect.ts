@@ -13,8 +13,12 @@ import {
   CreateSourceResponse,
   DeleteSourceRequest,
   DeleteSourceResponse,
+  ExportSourcesRequest,
+  ExportSourcesResponse,
   GetSourceRequest,
   GetSourceResponse,
+  ImportSourcesRequest,
+  ImportSourcesResponse,
   ListSourcesRequest,
   ListSourcesResponse,
   SetSecretRequest,
@@ -109,6 +113,30 @@ export const ConfigService = {
       name: "TestConnection",
       I: TestConnectionRequest,
       O: TestConnectionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ExportSources exports all source configurations as a portable JSON document.
+     * Secrets are never included — only configuration and settings.
+     *
+     * @generated from rpc canonical.prism.v1.ConfigService.ExportSources
+     */
+    exportSources: {
+      name: "ExportSources",
+      I: ExportSourcesRequest,
+      O: ExportSourcesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ImportSources imports source configurations from a previously exported JSON
+     * document. Supports merge (default) and replace modes.
+     *
+     * @generated from rpc canonical.prism.v1.ConfigService.ImportSources
+     */
+    importSources: {
+      name: "ImportSources",
+      I: ImportSourcesRequest,
+      O: ImportSourcesResponse,
       kind: MethodKind.Unary,
     },
   },

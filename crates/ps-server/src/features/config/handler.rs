@@ -5,9 +5,10 @@ use ps_core::crypto;
 use ps_proto::canonical::prism::v1::config_service_server::ConfigService;
 use ps_proto::canonical::prism::v1::{
     CreateSourceRequest, CreateSourceResponse, DeleteSourceRequest, DeleteSourceResponse,
-    GetSourceRequest, GetSourceResponse, ListSourcesRequest, ListSourcesResponse, SetSecretRequest,
-    SetSecretResponse, TestConnectionRequest, TestConnectionResponse, UpdateSourceRequest,
-    UpdateSourceResponse,
+    ExportSourcesRequest, ExportSourcesResponse, GetSourceRequest, GetSourceResponse,
+    ImportSourcesRequest, ImportSourcesResponse, ListSourcesRequest, ListSourcesResponse,
+    SetSecretRequest, SetSecretResponse, TestConnectionRequest, TestConnectionResponse,
+    UpdateSourceRequest, UpdateSourceResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
@@ -345,6 +346,23 @@ impl ConfigService for ConfigServiceImpl {
                 }))
             }
         }
+    }
+
+    async fn export_sources(
+        &self,
+        request: Request<ExportSourcesRequest>,
+    ) -> Result<Response<ExportSourcesResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        super::config_export::handle_export_sources(&self.repos).await
+    }
+
+    async fn import_sources(
+        &self,
+        request: Request<ImportSourcesRequest>,
+    ) -> Result<Response<ImportSourcesResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+        let req = request.into_inner();
+        super::config_export::handle_import_sources(&self.repos, req.json_data, req.replace).await
     }
 }
 

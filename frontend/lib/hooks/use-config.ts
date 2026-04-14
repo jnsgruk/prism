@@ -7,6 +7,8 @@ import type { Platform } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type {
   CreateSourceResponse,
   DeleteSourceResponse,
+  ExportSourcesResponse,
+  ImportSourcesResponse,
   SetSecretResponse,
   SourceConfig,
   TestConnectionResponse,
@@ -108,3 +110,22 @@ export const useTestConnection = (): UseMutationResult<TestConnectionResponse, E
   useMutation({
     mutationFn: (sourceId: string) => configClient.testConnection({ sourceId }),
   });
+
+export const useExportSources = (): UseMutationResult<ExportSourcesResponse, Error, void> =>
+  useMutation({
+    mutationFn: () => configClient.exportSources({}),
+  });
+
+export const useImportSources = (): UseMutationResult<
+  ImportSourcesResponse,
+  Error,
+  { jsonData: Uint8Array; replace: boolean }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jsonData, replace }) => configClient.importSources({ jsonData, replace }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: configKeys.sources() });
+    },
+  });
+};

@@ -18,7 +18,7 @@ import { file_canonical_prism_v1_common } from "./common_pb";
  * Describes the file canonical/prism/v1/config.proto.
  */
 export const file_canonical_prism_v1_config: GenFile /*@__PURE__*/ = fileDesc(
-  "Ch9jYW5vbmljYWwvcHJpc20vdjEvY29uZmlnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEi2wMKDFNvdXJjZUNvbmZpZxIKCgJpZBgBIAEoCRIxCgtzb3VyY2VfdHlwZRgCIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIMCgRuYW1lGAMgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAogASgJSACIAQESDwoHZW5hYmxlZBgEIAEoCBIpCghzZXR0aW5ncxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSSQoNc2VjcmV0X3N0YXR1cxgGIAMoCzIyLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcuU2VjcmV0U3RhdHVzRW50cnkSGgoNc2NoZWR1bGVfY3JvbhgHIAEoCUgBiAEBEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGjMKEVNlY3JldFN0YXR1c0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCDoCOAFCFAoSX3BsYXRmb3JtX2luc3RhbmNlQhAKDl9zY2hlZHVsZV9jcm9uIhQKEkxpc3RTb3VyY2VzUmVxdWVzdCJIChNMaXN0U291cmNlc1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlQ29uZmlnIiUKEEdldFNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJIkUKEUdldFNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcirwEKE0NyZWF0ZVNvdXJjZVJlcXVlc3QSMQoLc291cmNlX3R5cGUYASABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SDAoEbmFtZRgCIAEoCRIpCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGgoNc2NoZWR1bGVfY3JvbhgEIAEoCUgAiAEBQhAKDl9zY2hlZHVsZV9jcm9uIkgKFENyZWF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcitQEKE1VwZGF0ZVNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJEhQKB2VuYWJsZWQYAiABKAhIAIgBARIuCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIAYgBARIaCg1zY2hlZHVsZV9jcm9uGAQgASgJSAKIAQFCCgoIX2VuYWJsZWRCCwoJX3NldHRpbmdzQhAKDl9zY2hlZHVsZV9jcm9uIkgKFFVwZGF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWciKAoTRGVsZXRlU291cmNlUmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkiFgoURGVsZXRlU291cmNlUmVzcG9uc2UiTwoQU2V0U2VjcmV0UmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkSEgoKc2VjcmV0X2tleRgCIAEoCRIUCgxzZWNyZXRfdmFsdWUYAyABKAkiEwoRU2V0U2VjcmV0UmVzcG9uc2UiKgoVVGVzdENvbm5lY3Rpb25SZXF1ZXN0EhEKCXNvdXJjZV9pZBgBIAEoCSK6AQoWVGVzdENvbm5lY3Rpb25SZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSSAoHZGV0YWlscxgDIAMoCzI3LmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlLkRldGFpbHNFbnRyeRouCgxEZXRhaWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATK1BQoNQ29uZmlnU2VydmljZRJeCgtMaXN0U291cmNlcxImLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0U291cmNlc1JlcXVlc3QaJy5jYW5vbmljYWwucHJpc20udjEuTGlzdFNvdXJjZXNSZXNwb25zZRJYCglHZXRTb3VyY2USJC5jYW5vbmljYWwucHJpc20udjEuR2V0U291cmNlUmVxdWVzdBolLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTb3VyY2VSZXNwb25zZRJhCgxDcmVhdGVTb3VyY2USJy5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlU291cmNlUmVxdWVzdBooLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVTb3VyY2VSZXNwb25zZRJhCgxVcGRhdGVTb3VyY2USJy5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlU291cmNlUmVxdWVzdBooLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVTb3VyY2VSZXNwb25zZRJhCgxEZWxldGVTb3VyY2USJy5jYW5vbmljYWwucHJpc20udjEuRGVsZXRlU291cmNlUmVxdWVzdBooLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVTb3VyY2VSZXNwb25zZRJYCglTZXRTZWNyZXQSJC5jYW5vbmljYWwucHJpc20udjEuU2V0U2VjcmV0UmVxdWVzdBolLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRTZWNyZXRSZXNwb25zZRJnCg5UZXN0Q29ubmVjdGlvbhIpLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlcXVlc3QaKi5jYW5vbmljYWwucHJpc20udjEuVGVzdENvbm5lY3Rpb25SZXNwb25zZWIGcHJvdG8z",
+  "Ch9jYW5vbmljYWwvcHJpc20vdjEvY29uZmlnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEi2wMKDFNvdXJjZUNvbmZpZxIKCgJpZBgBIAEoCRIxCgtzb3VyY2VfdHlwZRgCIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIMCgRuYW1lGAMgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAogASgJSACIAQESDwoHZW5hYmxlZBgEIAEoCBIpCghzZXR0aW5ncxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSSQoNc2VjcmV0X3N0YXR1cxgGIAMoCzIyLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcuU2VjcmV0U3RhdHVzRW50cnkSGgoNc2NoZWR1bGVfY3JvbhgHIAEoCUgBiAEBEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGjMKEVNlY3JldFN0YXR1c0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCDoCOAFCFAoSX3BsYXRmb3JtX2luc3RhbmNlQhAKDl9zY2hlZHVsZV9jcm9uIhQKEkxpc3RTb3VyY2VzUmVxdWVzdCJIChNMaXN0U291cmNlc1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlQ29uZmlnIiUKEEdldFNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJIkUKEUdldFNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcirwEKE0NyZWF0ZVNvdXJjZVJlcXVlc3QSMQoLc291cmNlX3R5cGUYASABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SDAoEbmFtZRgCIAEoCRIpCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGgoNc2NoZWR1bGVfY3JvbhgEIAEoCUgAiAEBQhAKDl9zY2hlZHVsZV9jcm9uIkgKFENyZWF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcitQEKE1VwZGF0ZVNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJEhQKB2VuYWJsZWQYAiABKAhIAIgBARIuCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIAYgBARIaCg1zY2hlZHVsZV9jcm9uGAQgASgJSAKIAQFCCgoIX2VuYWJsZWRCCwoJX3NldHRpbmdzQhAKDl9zY2hlZHVsZV9jcm9uIkgKFFVwZGF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWciKAoTRGVsZXRlU291cmNlUmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkiFgoURGVsZXRlU291cmNlUmVzcG9uc2UiTwoQU2V0U2VjcmV0UmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkSEgoKc2VjcmV0X2tleRgCIAEoCRIUCgxzZWNyZXRfdmFsdWUYAyABKAkiEwoRU2V0U2VjcmV0UmVzcG9uc2UiKgoVVGVzdENvbm5lY3Rpb25SZXF1ZXN0EhEKCXNvdXJjZV9pZBgBIAEoCSK6AQoWVGVzdENvbm5lY3Rpb25SZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSSAoHZGV0YWlscxgDIAMoCzI3LmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlLkRldGFpbHNFbnRyeRouCgxEZXRhaWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIWChRFeHBvcnRTb3VyY2VzUmVxdWVzdCIqChVFeHBvcnRTb3VyY2VzUmVzcG9uc2USEQoJanNvbl9kYXRhGAEgASgMIjoKFEltcG9ydFNvdXJjZXNSZXF1ZXN0EhEKCWpzb25fZGF0YRgBIAEoDBIPCgdyZXBsYWNlGAIgASgIIlsKFUltcG9ydFNvdXJjZXNSZXNwb25zZRIXCg9zb3VyY2VzX2NyZWF0ZWQYASABKAUSFwoPc291cmNlc19za2lwcGVkGAIgASgFEhAKCHdhcm5pbmdzGAMgAygJMoEHCg1Db25maWdTZXJ2aWNlEl4KC0xpc3RTb3VyY2VzEiYuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RTb3VyY2VzUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0U291cmNlc1Jlc3BvbnNlElgKCUdldFNvdXJjZRIkLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTb3VyY2VSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkdldFNvdXJjZVJlc3BvbnNlEmEKDENyZWF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZVNvdXJjZVJlc3BvbnNlEmEKDFVwZGF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlVwZGF0ZVNvdXJjZVJlc3BvbnNlEmEKDERlbGV0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkRlbGV0ZVNvdXJjZVJlc3BvbnNlElgKCVNldFNlY3JldBIkLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRTZWNyZXRSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlNldFNlY3JldFJlc3BvbnNlEmcKDlRlc3RDb25uZWN0aW9uEikuY2Fub25pY2FsLnByaXNtLnYxLlRlc3RDb25uZWN0aW9uUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlEmQKDUV4cG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1Jlc3BvbnNlEmQKDUltcG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1Jlc3BvbnNlYgZwcm90bzM",
   [file_canonical_prism_v1_common, file_google_protobuf_struct, file_google_protobuf_timestamp],
 );
 
@@ -416,6 +416,99 @@ export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*
 );
 
 /**
+ * @generated from message canonical.prism.v1.ExportSourcesRequest
+ */
+export type ExportSourcesRequest = Message<"canonical.prism.v1.ExportSourcesRequest"> & {};
+
+/**
+ * Describes the message canonical.prism.v1.ExportSourcesRequest.
+ * Use `create(ExportSourcesRequestSchema)` to create a new message.
+ */
+export const ExportSourcesRequestSchema: GenMessage<ExportSourcesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  15,
+);
+
+/**
+ * @generated from message canonical.prism.v1.ExportSourcesResponse
+ */
+export type ExportSourcesResponse = Message<"canonical.prism.v1.ExportSourcesResponse"> & {
+  /**
+   * JSON document containing all source configurations (no secrets).
+   *
+   * @generated from field: bytes json_data = 1;
+   */
+  jsonData: Uint8Array;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ExportSourcesResponse.
+ * Use `create(ExportSourcesResponseSchema)` to create a new message.
+ */
+export const ExportSourcesResponseSchema: GenMessage<ExportSourcesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  16,
+);
+
+/**
+ * @generated from message canonical.prism.v1.ImportSourcesRequest
+ */
+export type ImportSourcesRequest = Message<"canonical.prism.v1.ImportSourcesRequest"> & {
+  /**
+   * JSON document from a previous ExportSources call.
+   *
+   * @generated from field: bytes json_data = 1;
+   */
+  jsonData: Uint8Array;
+
+  /**
+   * If true, delete all existing sources before importing (replace mode).
+   * If false (default), merge with existing sources, skipping duplicates by name.
+   *
+   * @generated from field: bool replace = 2;
+   */
+  replace: boolean;
+};
+
+/**
+ * Describes the message canonical.prism.v1.ImportSourcesRequest.
+ * Use `create(ImportSourcesRequestSchema)` to create a new message.
+ */
+export const ImportSourcesRequestSchema: GenMessage<ImportSourcesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  17,
+);
+
+/**
+ * @generated from message canonical.prism.v1.ImportSourcesResponse
+ */
+export type ImportSourcesResponse = Message<"canonical.prism.v1.ImportSourcesResponse"> & {
+  /**
+   * @generated from field: int32 sources_created = 1;
+   */
+  sourcesCreated: number;
+
+  /**
+   * @generated from field: int32 sources_skipped = 2;
+   */
+  sourcesSkipped: number;
+
+  /**
+   * @generated from field: repeated string warnings = 3;
+   */
+  warnings: string[];
+};
+
+/**
+ * Describes the message canonical.prism.v1.ImportSourcesResponse.
+ * Use `create(ImportSourcesResponseSchema)` to create a new message.
+ */
+export const ImportSourcesResponseSchema: GenMessage<ImportSourcesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  18,
+);
+
+/**
  * ConfigService manages data source configurations — the external platforms
  * from which Prism ingests contributions (GitHub, Jira, Discourse, etc.).
  *
@@ -491,5 +584,27 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof TestConnectionRequestSchema;
     output: typeof TestConnectionResponseSchema;
+  };
+  /**
+   * ExportSources exports all source configurations as a portable JSON document.
+   * Secrets are never included — only configuration and settings.
+   *
+   * @generated from rpc canonical.prism.v1.ConfigService.ExportSources
+   */
+  exportSources: {
+    methodKind: "unary";
+    input: typeof ExportSourcesRequestSchema;
+    output: typeof ExportSourcesResponseSchema;
+  };
+  /**
+   * ImportSources imports source configurations from a previously exported JSON
+   * document. Supports merge (default) and replace modes.
+   *
+   * @generated from rpc canonical.prism.v1.ConfigService.ImportSources
+   */
+  importSources: {
+    methodKind: "unary";
+    input: typeof ImportSourcesRequestSchema;
+    output: typeof ImportSourcesResponseSchema;
   };
 }> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_config, 0);

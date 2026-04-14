@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::models::{AiModel, AiProvider, GlobalSetting, Platform, SourceConfig};
 use sqlx::PgPool;
+use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 /// Repository for the `config` schema: source configurations and encrypted secrets.
@@ -586,4 +587,137 @@ impl ConfigRepo {
             .await?;
         Ok(row.size.unwrap_or(0))
     }
+
+    // -----------------------------------------------------------------------
+    // Source export/import (portable JSON)
+    // -----------------------------------------------------------------------
+
+    /// Export all source configurations as a portable JSON structure.
+    ///
+    /// Secrets are never included. The export uses name-based references
+    /// so it can be imported on a different Prism instance.
+    pub async fn export_sources_portable(&self) -> Result<SourcesExport, Error> {
+        let sources = self.list_sources().await?;
+
+        let exported = sources
+            .into_iter()
+            .map(|s| ExportSource {
+                source_type: s.source_type.to_string(),
+                name: s.name,
+                enabled: s.enabled,
+                settings: s.settings,
+                schedule_cron: s.schedule_cron,
+            })
+            .collect();
+
+        Ok(SourcesExport {
+            version: 1,
+            exported_at: time::OffsetDateTime::now_utc()
+                .format(&Rfc3339)
+                .unwrap_or_default(),
+            sources: exported,
+        })
+    }
+
+    /// Import source configurations from a portable export.
+    ///
+    /// In merge mode (default), sources whose name already exists are skipped.
+    /// In replace mode, all existing sources (and their cascaded secrets) are
+    /// deleted first. Imported sources are always created **disabled** because
+    /// secrets cannot be exported — the user must configure credentials after.
+    pub async fn import_sources(
+        &self,
+        export: &SourcesExport,
+        replace: bool,
+    ) -> Result<SourcesImportResult, Error> {
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+
+        if replace {
+            // CASCADE on the FK deletes associated secrets automatically.
+            sqlx::query!("DELETE FROM config.source_configs")
+                .execute(&mut *tx)
+                .await
+                .map_err(Error::from)?;
+        }
+
+        let mut result = SourcesImportResult {
+            sources_created: 0,
+            sources_skipped: 0,
+            warnings: Vec::new(),
+        };
+
+        for source in &export.sources {
+            // Check for existing source with the same name.
+            let exists = sqlx::query_scalar!(
+                "SELECT id FROM config.source_configs WHERE name = $1",
+                source.name,
+            )
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
+            if exists.is_some() {
+                result.sources_skipped += 1;
+                result
+                    .warnings
+                    .push(format!("Source '{}' already exists — skipped", source.name));
+                continue;
+            }
+
+            let id = Uuid::now_v7();
+            sqlx::query!(
+                r#"
+                INSERT INTO config.source_configs (id, source_type, name, enabled, settings, schedule_cron)
+                VALUES ($1, $2, $3, false, $4, $5)
+                "#,
+                id,
+                source.source_type,
+                source.name,
+                source.settings,
+                source.schedule_cron.as_deref(),
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
+            result.sources_created += 1;
+            result.warnings.push(format!(
+                "Source '{}' imported as disabled — configure credentials to enable",
+                source.name,
+            ));
+        }
+
+        tx.commit().await.map_err(Error::from)?;
+        Ok(result)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Source export/import types
+// ---------------------------------------------------------------------------
+
+/// Portable source configuration export document.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SourcesExport {
+    pub version: u32,
+    pub exported_at: String,
+    pub sources: Vec<ExportSource>,
+}
+
+/// A single source configuration in the export format.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ExportSource {
+    pub source_type: String,
+    pub name: String,
+    pub enabled: bool,
+    pub settings: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schedule_cron: Option<String>,
+}
+
+/// Result counters from a source import operation.
+pub struct SourcesImportResult {
+    pub sources_created: i32,
+    pub sources_skipped: i32,
+    pub warnings: Vec<String>,
 }

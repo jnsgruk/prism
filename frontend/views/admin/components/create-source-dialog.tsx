@@ -33,12 +33,20 @@ const hasConfigStep = (sourceType: string): boolean => {
   return hasSettings || hasSecrets;
 };
 
-export const CreateSourceDialog = (): React.ReactElement => {
+export const CreateSourceDialog = ({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+} = {}): React.ReactElement => {
   const createSource = useCreateSource();
   const setSecret = useSetSecret();
   const triggerTeamSync = useTriggerTeamSync();
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [step, setStep] = useState<Step>("basics");
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState("github");
@@ -118,10 +126,12 @@ export const CreateSourceDialog = (): React.ReactElement => {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button />}>
-        <Plus className="size-4" />
-        Add Source
-      </DialogTrigger>
+      {controlledOpen === undefined && (
+        <DialogTrigger render={<Button />}>
+          <Plus className="size-4" />
+          Add Source
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         {step === "basics" ? (
           <form onSubmit={handleNext}>
