@@ -4,6 +4,19 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-04-15 — Fail Pipeline on Any Source Ingestion Failure
+
+**Context:** A GitHub ingestion run processed 31,835 items across 17 chunks over 3+ hours, then chunk 18 hit persistent GitHub 502 errors. Two problems surfaced: (1) the chunk error propagated via `?` and skipped `finalise_run()`, leaving the run record orphaned in `running` status; (2) the pipeline continued into downstream stages (metrics, enrichment, embedding) because the previous behaviour only halted if *all* source handlers failed.
+
+**Decision:** (1) Catch chunk failures in the coordinator and always call `finalise_run()` — if items were already stored the run completes with warnings, otherwise it fails cleanly. (2) Change the pipeline ingestion gate from "all failed" to "any failed" — any source failure halts the pipeline and cancels remaining stages.
+
+**Rationale:**
+- Downstream stages (enrichment, embedding, insights) process data from all sources together. Running them with incomplete data produces misleading metrics and wastes AI spend on contributions that will be re-processed when the failed source succeeds.
+- Orphaned run records create confusing UI state and require manual cleanup. The invariant should be: `finalise_run()` is always called, regardless of how the chunk loop exits.
+- The watermark system means re-triggering the pipeline after the transient failure is resolved will pick up where the failed source left off — no data is lost.
+
+---
+
 ## 2026-04-10 — Journal Branching Decisions in fetch_store_loop for Restate Determinism
 
 **Context:** `fetch_batch()` in the ingestion orchestration loop is deliberately not journaled (large API responses). However, its result determines whether the next Restate journal entry is a `ctx.sleep()` (rate limit) or a `store_batch` via `ctx.run()`. After a pod restart, Restate replays the journal but re-executes `fetch_batch()` against the live API — if the rate limit has reset, the fetch returns different results, producing a different journal sequence and triggering Restate error 570. This caused an infinite retry loop that burned through GitHub API quota every cycle.
