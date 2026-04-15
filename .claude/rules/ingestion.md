@@ -6,13 +6,17 @@ paths:
 
 # Ingestion Pipeline Rules
 
-The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion()` in `features/ingestion/lib/`. Platform-specific logic is abstracted behind the `Source` trait.
+The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion_chunked()` in `features/ingestion/lib/`. Platform-specific logic is abstracted behind the `Source` trait.
 
 ## Source Trait (`ps-core/src/ingestion.rs`)
 
 Sources implement: `plan()`, `fetch_batch()`, `store_batch()`, `advance_watermark()`, `initial_cursor()`, `watermark_field()`. Registered in `registry.rs`, instantiated by `create_source(platform)`.
 
-## execute_ingestion() Flow
+## Chunked Ingestion Flow
+
+Ingestion uses a two-level architecture: a **coordinator** dispatches sequential chunks to the **chunk service**, each processed as a separate Restate invocation with its own small journal. This keeps the coordinator's journal minimal (~1 entry per chunk). A **batch** is one `fetch_batch()`/`store_batch()` cycle; a **chunk** is up to N batches (currently 50 for all sources).
+
+### Coordinator (`execute_ingestion_chunked`)
 
 1. Create source adapter via registry
 2. Create run record (journaled — `Uuid::now_v7()` inside `ctx.run()` for idempotent retries)
@@ -20,9 +24,13 @@ Sources implement: `plan()`, `fetch_batch()`, `store_batch()`, `advance_watermar
 4. Build `IngestionContext` with pre-decrypted secrets
 5. Plan (not journaled)
 6. Override watermark if backfilling
-7. `fetch_store_loop()` — batched fetch→store→advance cycle
+7. Dispatch chunks — sequential loop sending `ChunkRequest`s to `IngestionChunkService`, accumulating `items_offset` and cursor until `ChunkResult.is_complete == true`
 8. Finalise run
 9. Trigger downstream (fire-and-forget to MetricsComputeHandler, etc.)
+
+### Chunk Service (`IngestionChunkService`)
+
+Each chunk: loads config, decrypts secrets, builds `IngestionContext`, runs `chunk_fetch_store_loop()` for up to `max_batches` iterations, returns `ChunkResult { items_stored, cursor, is_complete }`.
 
 ## IngestionSpec
 
@@ -39,7 +47,7 @@ const GITHUB_SPEC: IngestionSpec = IngestionSpec {
 };
 ```
 
-## fetch_store_loop() Rules
+## chunk_fetch_store_loop() Rules
 
 1. `fetch_batch()` — **NOT journaled** (external API, idempotent on replay). Wrapped in `catch_unwind()`.
 2. `store_batch()` — **journaled** inside `ctx.run()`

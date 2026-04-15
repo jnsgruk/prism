@@ -13,12 +13,11 @@ Built in Rust (backend) + Vite/React (frontend) with PostgreSQL, gRPC (tonic + C
 Install [mise](https://mise.jdx.dev/) then set up the development environment:
 
 ```bash
+mise run install-deps     # Install native OS packages
 mise install              # Install all dev tools
 prek install              # Install git hooks
 cd frontend && bun install  # Install frontend dependencies
 ```
-
-System dependencies (install via your package manager): `clang`, `mold`, `pkg-config`, `libssl-dev`, `postgresql-client`.
 
 ## Development
 

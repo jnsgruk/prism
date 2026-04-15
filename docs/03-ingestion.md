@@ -29,6 +29,7 @@ Sources are registered in `registry.rs` and instantiated by `create_source(platf
 | `GithubIngestionHandler` | Object | source name | GitHub PR/review ingestion |
 | `JiraIngestionHandler` | Object | source name | Jira issue ingestion |
 | `DiscourseIngestionHandler` | Object | source name | Discourse topic ingestion |
+| `IngestionChunkService` | Service | — | Processes a single chunk (batch-limited fetch-store loop) |
 | `GithubTeamSyncHandler` | Object | source name | GitHub team/member/repo sync |
 | `MetricsComputeHandler` | Service | — | Metric snapshot computation |
 | `EnrichmentHandler` | Service | — | AI enrichment pipeline |
@@ -53,9 +54,18 @@ pub struct SharedState {
 
 Handlers never touch `PgPool` directly — always go through `state.repos`.
 
-## execute_ingestion() Flow
+## Chunked Ingestion Flow
 
-Unified orchestration for all ingestion handlers via `execute_ingestion()` in `features/ingestion/lib/`:
+Ingestion uses a two-level architecture to keep Restate journals small while supporting long-running ingestion runs. All handlers call `execute_ingestion_chunked()` from `features/ingestion/lib/`.
+
+### Terminology
+
+- **Batch** — a single `fetch_batch()` / `store_batch()` cycle (one API page of data)
+- **Chunk** — up to N batches (currently 50) processed in a single Restate service invocation
+
+### Coordinator (`execute_ingestion_chunked` in `orchestration.rs`)
+
+The coordinator runs in the per-source Object handler. Its journal stays minimal (~1 entry per chunk):
 
 1. **Create source adapter** — `registry::create_source(source_type)`
 2. **Create run record** (journaled) — `Uuid::now_v7()` inside `ctx.run()` for idempotent retries
@@ -63,9 +73,21 @@ Unified orchestration for all ingestion handlers via `execute_ingestion()` in `f
 4. **Build IngestionContext** — combine state + config + decrypted secrets
 5. **Plan** (not journaled) — determine repos/projects/categories to fetch, load watermark
 6. **Override watermark** if backfilling
-7. **fetch_store_loop()** — batched fetch -> store -> advance cycle
+7. **Dispatch chunks** — sequential loop sending `ChunkRequest`s to `IngestionChunkService`, accumulating `items_offset` and cursor across chunks until `ChunkResult.is_complete == true`
 8. **Finalise run** — three outcomes based on failed items
 9. **Trigger downstream** — fire-and-forget to MetricsComputeHandler, etc.
+
+### Chunk Service (`IngestionChunkService` in `chunk.rs`)
+
+Each chunk runs as a separate Restate service invocation with its own isolated journal:
+
+1. Load source config (journaled)
+2. Decrypt secrets (outside `ctx.run()`)
+3. Build `IngestionContext`
+4. Run `chunk_fetch_store_loop()` — up to `max_batches` iterations of fetch→store→advance
+5. Return `ChunkResult { items_stored, cursor, is_complete }`
+
+The `ChunkRequest` carries `source_type`, `cursor`, `run_id`, `max_batches`, and `items_offset` (global item count from previous chunks for progress display).
 
 ## Journaling Rules
 
@@ -123,7 +145,7 @@ GraphQL over REST for N+1-prone queries. REST for infrequent operations like tea
 
 1. **Source module** — `crates/ps-workers/src/features/ingestion/<platform>/`. Implement `Source` trait. Define cursor struct.
 2. **Registry** — add `Platform::NewPlatform => Some(Box::new(NewPlatformSource))` in `registry.rs`
-3. **Handler** — define `IngestionSpec`, implement `ProgressTracker`, create `#[restate_sdk::object]` with `run_ingestion()` and `backfill()`
+3. **Handler** — define `IngestionSpec`, implement `ProgressTracker`, create `#[restate_sdk::object]` with `run_ingestion()` and `backfill()`. Call `execute_ingestion_chunked()`.
 4. **Export** — add `pub mod` in handlers `mod.rs`
 5. **Wire up** — instantiate in `main.rs`, bind to Restate endpoint
 6. **Platform enum** — add variant to `Platform` in `ps-core/src/models/enums.rs`

@@ -78,7 +78,7 @@ Changing the sequence of `ctx.run()` calls **breaks in-flight invocations**. Res
 
 1. **Source module** — `crates/ps-workers/src/features/ingestion/<platform>/`. Implement `Source` trait. Define cursor struct.
 2. **Registry** — add `Platform::NewPlatform => Some(Box::new(NewPlatformSource))` in `registry.rs`
-3. **Handler** — define `IngestionSpec`, implement `ProgressTracker`, create `#[restate_sdk::object]` with `run_ingestion()` and `backfill()`. Call `execute_ingestion()`.
+3. **Handler** — define `IngestionSpec`, implement `ProgressTracker`, create `#[restate_sdk::object]` with `run_ingestion()` and `backfill()`. Call `execute_ingestion_chunked()`.
 4. **Export** — add `pub mod` in `mod.rs`
 5. **Wire up** — instantiate in `main.rs`, bind to Restate endpoint
 6. **Platform enum** — add variant to `Platform` in `ps-core/src/models/enums.rs`
