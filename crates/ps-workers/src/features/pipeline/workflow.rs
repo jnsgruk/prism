@@ -125,7 +125,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
             .await?;
 
         // 4. STAGE: Ingestion (fan-out)
-        let all_failed = self
+        let (any_failed, failed_names) = self
             .run_ingestion(
                 pipeline_id,
                 &mut stages,
@@ -134,8 +134,9 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                 since_date.as_deref(),
             )
             .await?;
-        if all_failed {
+        if any_failed {
             mark_remaining_cancelled(&mut stages);
+            let error_msg = format!("ingestion failed for: {}", failed_names.join(", "));
             return self
                 .finalize(
                     pipeline_id,
@@ -143,7 +144,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
                     &mut stages,
                     &ctx,
                     "failed",
-                    Some("all ingestion handlers failed"),
+                    Some(&error_msg),
                 )
                 .await;
         }
@@ -230,7 +231,7 @@ impl IngestionPipelineWorkflow for IngestionPipelineWorkflowImpl {
 }
 
 impl IngestionPipelineWorkflowImpl {
-    /// Run ingestion for all sources concurrently. Returns `true` if all handlers failed.
+    /// Run ingestion for all sources concurrently. Returns `(any_failed, failed_names)`.
     ///
     /// All handlers are dispatched at once so each creates its own run record
     /// immediately — source rows show "collecting" in the UI, consistent with
@@ -245,7 +246,7 @@ impl IngestionPipelineWorkflowImpl {
         sources: &[SourceInfo],
         ctx: &WorkflowContext<'_>,
         since_date: Option<&str>,
-    ) -> Result<bool, TerminalError> {
+    ) -> Result<(bool, Vec<String>), TerminalError> {
         type CallFut<'a> = Pin<Box<dyn Future<Output = Result<(), TerminalError>> + Send + 'a>>;
 
         mark_stage_running(stages, "ingestion");
@@ -307,9 +308,13 @@ impl IngestionPipelineWorkflowImpl {
         self.update_state(ctx, pipeline_id, "ingestion", stages)
             .await?;
 
-        let all_failed =
-            !results.is_empty() && results.iter().all(|r| r.status == StageStatus::Failed);
-        Ok(all_failed)
+        let failed_names: Vec<String> = results
+            .iter()
+            .filter(|r| r.status == StageStatus::Failed)
+            .map(|r| r.name.clone())
+            .collect();
+        let any_failed = !failed_names.is_empty();
+        Ok((any_failed, failed_names))
     }
 
     /// Persist stage update to DB (journaled).

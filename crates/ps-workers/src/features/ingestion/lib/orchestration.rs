@@ -10,7 +10,7 @@ use crate::infra::{
     SharedState, decrypt_optional_secret, decrypt_required_secret, load_source_config,
 };
 
-use super::chunk::{ChunkRequest, ChunkResult, IngestionChunkServiceClient};
+use super::chunk::{ChunkRequest, IngestionChunkServiceClient};
 use super::finalise::{extract_failed_items, extract_watermark, finalise_run};
 use super::progress::{IngestionSpec, SerFetchResult};
 
@@ -124,6 +124,7 @@ pub async fn execute_ingestion_chunked(
     let mut cursor = initial_cursor;
     let mut total_items = 0i32;
     let mut chunk_num = 0u32;
+    let mut chunk_error: Option<String> = None;
 
     loop {
         chunk_num += 1;
@@ -137,28 +138,56 @@ pub async fn execute_ingestion_chunked(
             items_offset: total_items,
         };
 
-        let result: ChunkResult = ctx
+        let chunk_result = ctx
             .service_client::<IngestionChunkServiceClient>()
             .process_chunk(Json(request))
             .call()
-            .await
-            .map_err(|e| TerminalError::new(format!("chunk {chunk_num} failed: {e}")))?
-            .into_inner();
+            .await;
 
-        total_items += result.items_stored;
-        cursor = result.cursor;
+        match chunk_result {
+            Ok(json) => {
+                let result = json.into_inner();
+                total_items += result.items_stored;
+                cursor = result.cursor;
 
-        tracing::info!(
-            chunk = chunk_num,
-            items_in_chunk = result.items_stored,
-            total_items,
-            is_complete = result.is_complete,
-            "chunk finished"
-        );
+                tracing::info!(
+                    chunk = chunk_num,
+                    items_in_chunk = result.items_stored,
+                    total_items,
+                    is_complete = result.is_complete,
+                    "chunk finished"
+                );
 
-        if result.is_complete {
-            break;
+                if result.is_complete {
+                    break;
+                }
+            }
+            Err(e) => {
+                tracing::error!(chunk = chunk_num, error = %e, "chunk failed");
+                chunk_error = Some(format!("chunk {chunk_num} failed: {e}"));
+                break;
+            }
         }
+    }
+
+    // Always finalise the run, even if a chunk failed.
+    if let Some(ref error_msg) = chunk_error {
+        if total_items > 0 {
+            let metadata = serde_json::json!({ "chunk_error": error_msg });
+            complete_ingestion_run_with_warnings(
+                ctx,
+                &state.repos,
+                run_id,
+                source_name,
+                total_items,
+                error_msg,
+                metadata,
+            )
+            .await;
+        } else {
+            fail_ingestion_run(ctx, &state.repos, run_id, source_name, error_msg).await;
+        }
+        return Err(TerminalError::new(error_msg.clone()));
     }
 
     let failed_items = extract_failed_items(&cursor);
