@@ -133,15 +133,15 @@ fn build_progress_json(
         .and_then(|v| v.as_array())
         .map_or(0, Vec::len);
 
-    let status_message = if let Some(proj) = current_project {
+    let status_message = if current_project.is_some() {
         format!(
-            "Fetching Jira issues from {proj} ({}/{projects_total}, {tickets_fetched} so far)",
+            "Fetched {tickets_fetched} Jira issues ({}/{projects_total} projects)",
             project_index + 1
         )
     } else if projects_total > 0 {
         format!("Jira ingestion complete ({tickets_fetched} tickets)")
     } else {
-        format!("Fetching Jira issues ({tickets_fetched} so far)")
+        format!("Fetched {tickets_fetched} Jira issues")
     };
 
     let mut progress = serde_json::json!({
@@ -223,9 +223,8 @@ mod tests {
         assert_eq!(progress["current_project"], "PROJ-A");
         assert_eq!(progress["projects_total"], 2);
         let msg = progress["status_message"].as_str().unwrap();
-        assert!(msg.contains("PROJ-A"));
-        assert!(msg.contains("1/2"));
-        assert!(msg.contains("5 so far"));
+        assert!(msg.contains("Fetched 5 Jira issues"));
+        assert!(msg.contains("1/2 projects"));
     }
 
     #[test]
