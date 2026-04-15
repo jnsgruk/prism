@@ -35,10 +35,9 @@ export const SourceList = ({
   }, [sourceConfigs]);
 
   return (
-    <div>
+    <div className="divide-y">
       {/* Column headers — desktop only */}
-      <div className="hidden border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem] sm:items-center sm:gap-x-2">
-        <span />
+      <div className="hidden bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[14rem_1fr_2rem] sm:items-center sm:gap-x-2">
         <span>Source</span>
         <span>Status</span>
         <span />

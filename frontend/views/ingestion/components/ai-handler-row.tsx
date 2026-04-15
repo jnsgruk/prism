@@ -113,24 +113,39 @@ export const EnrichmentRow = (): React.ReactElement => {
   const lastRunLabel = status?.lastEnrichmentAt ? formatRelativeTime(status.lastEnrichmentAt) : undefined;
 
   return (
-    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]">
-      <span />
+    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1fr_auto_auto] sm:grid-cols-[14rem_1fr_2rem]">
       {/* Name + status */}
       <div className="flex min-w-0 items-center gap-2">
         <StatusDot state={actions.isRunning ? "running" : "idle"} animate={actions.isRunning} />
         <span className="truncate font-medium">Enrichments</span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">{actions.isRunning ? "Running" : "Idle"}</span>
       </div>
 
-      {/* Stats */}
+      {/* Stats / last run */}
       <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        {status && Number(status.pendingCount) > 0 && <Stat label="queued" value={status.pendingCount.toString()} />}
-        {actions.isRunning && actions.activeRun && (
+        {actions.isRunning ? (
           <>
-            {status && Number(status.pendingCount) > 0 && DOT_SEP}
-            <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
+            {status && Number(status.pendingCount) > 0 && (
+              <Stat label="queued" value={status.pendingCount.toString()} />
+            )}
+            {actions.activeRun && (
+              <>
+                {status && Number(status.pendingCount) > 0 && DOT_SEP}
+                <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {status && Number(status.pendingCount) > 0 && (
+              <>
+                <Stat label="queued" value={status.pendingCount.toString()} />
+                {lastRunLabel && DOT_SEP}
+              </>
+            )}
+            {lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
           </>
         )}
-        {!actions.isRunning && lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
       </div>
 
       {/* Actions */}
@@ -149,27 +164,40 @@ export const EmbeddingRow = (): React.ReactElement => {
 
   const lastRunLabel = embStatus?.lastEmbeddedAt ? formatRelativeTime(embStatus.lastEmbeddedAt) : undefined;
 
-  const coverage = embStatus ? Math.round(embStatus.coveragePercent) : null;
-
   return (
-    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1rem_1fr_auto_auto] sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]">
-      <span />
+    <div className="group grid items-center gap-x-2 px-4 py-2.5 text-sm grid-cols-[1fr_auto_auto] sm:grid-cols-[14rem_1fr_2rem]">
       {/* Name + status */}
       <div className="flex min-w-0 items-center gap-2">
         <StatusDot state={actions.isRunning ? "running" : "idle"} animate={actions.isRunning} />
         <span className="truncate font-medium">Embeddings</span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">{actions.isRunning ? "Running" : "Idle"}</span>
       </div>
 
-      {/* Stats */}
+      {/* Stats / last run */}
       <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        {coverage !== null && <Stat label="coverage" value={`${coverage}%`} />}
-        {embStatus && Number(embStatus.queuedCount) > 0 && (
+        {actions.isRunning ? (
           <>
-            {coverage !== null && DOT_SEP}
-            <Stat label="queued" value={embStatus.queuedCount.toString()} />
+            {embStatus && Number(embStatus.queuedCount) > 0 && (
+              <Stat label="queued" value={embStatus.queuedCount.toString()} />
+            )}
+            {actions.activeRun && (
+              <>
+                {embStatus && Number(embStatus.queuedCount) > 0 && DOT_SEP}
+                <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {embStatus && Number(embStatus.queuedCount) > 0 && (
+              <>
+                <Stat label="queued" value={embStatus.queuedCount.toString()} />
+                {lastRunLabel && DOT_SEP}
+              </>
+            )}
+            {lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
           </>
         )}
-        {!actions.isRunning && lastRunLabel && <span className="text-xs text-muted-foreground">{lastRunLabel}</span>}
       </div>
 
       {/* Actions */}

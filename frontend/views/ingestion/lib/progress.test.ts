@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { extractDetail, normaliseProgress, parseProgress } from "./progress";
+import { normaliseProgress, parseProgress } from "./progress";
 import type { RunProgress } from "./progress";
 
 describe("parseProgress", () => {
@@ -30,10 +30,10 @@ describe("normaliseProgress", () => {
     });
   });
 
-  it("handles GitHub team_repos phase with totals", () => {
+  it("handles GitHub team_repos phase with totals (weighted 0-90%)", () => {
     const progress: RunProgress = { phase: "team_repos", repos_total: 10, repos_completed: 3 };
     expect(normaliseProgress("github", progress)).toEqual({
-      percent: 30,
+      percent: 27,
       label: "3/10 repos",
     });
   });
@@ -46,14 +46,14 @@ describe("normaliseProgress", () => {
     });
   });
 
-  it("handles GitHub member_search phase", () => {
+  it("handles GitHub member_search phase (weighted 90-100%)", () => {
     const progress: RunProgress = {
       phase: "member_search",
       search_users_total: 8,
       search_users_completed: 4,
     };
     expect(normaliseProgress("github", progress)).toEqual({
-      percent: 50,
+      percent: 95,
       label: "4/8 members",
     });
   });
@@ -104,54 +104,45 @@ describe("normaliseProgress", () => {
       label: "Collecting",
     });
   });
-});
 
-describe("extractDetail", () => {
-  it("returns null for null progress", () => {
-    expect(extractDetail(null)).toBeNull();
-  });
-
-  it("returns null when no detail fields are present", () => {
-    expect(extractDetail({})).toBeNull();
-  });
-
-  it("returns null when numeric fields are zero", () => {
-    expect(extractDetail({ prs_fetched: 0, reviews_fetched: 0 })).toBeNull();
-  });
-
-  it("extracts PR and review counts", () => {
-    const result = extractDetail({ prs_fetched: 42, reviews_fetched: 100 });
-    expect(result).toEqual({
-      prsFetched: 42,
-      reviewsFetched: 100,
-    });
-  });
-
-  it("extracts identities skipped", () => {
-    const result = extractDetail({ prs_fetched: 1, identities_skipped: 5 });
-    expect(result?.identitiesSkipped).toBe(5);
-  });
-
-  it("extracts rate limit info", () => {
-    const result = extractDetail({
-      prs_fetched: 1,
-      rate_limit_remaining: 450,
+  it("includes rateLimitNote when rate limit data is present", () => {
+    const progress: RunProgress = {
+      phase: "team_repos",
+      repos_total: 10,
+      repos_completed: 5,
+      rate_limit_remaining: 4334,
       rate_limit_limit: 5000,
-    });
-    expect(result?.rateLimit).toEqual({ remaining: 450, limit: 5000 });
+    };
+    const result = normaliseProgress("github", progress);
+    expect(result.rateLimitNote).toBe("87% API calls left");
+    expect(result.rateLimitLow).toBe(false);
+  });
+
+  it("sets rateLimitLow when remaining is below 10%", () => {
+    const progress: RunProgress = {
+      status_message: "Fetching issues",
+      rate_limit_remaining: 30,
+      rate_limit_limit: 350,
+    };
+    const result = normaliseProgress("jira", progress);
+    expect(result.rateLimitNote).toBe("9% API calls left");
+    expect(result.rateLimitLow).toBe(true);
+  });
+
+  it("omits rateLimitNote when rate limit data is absent", () => {
+    const progress: RunProgress = { phase: "team_repos", repos_total: 10, repos_completed: 3 };
+    const result = normaliseProgress("github", progress);
+    expect(result.rateLimitNote).toBeUndefined();
+    expect(result.rateLimitLow).toBeUndefined();
   });
 
   it("defaults rate_limit_remaining to 0 when missing", () => {
-    const result = extractDetail({ prs_fetched: 1, rate_limit_limit: 5000 });
-    expect(result?.rateLimit).toEqual({ remaining: 0, limit: 5000 });
-  });
-
-  it("includes statusMessage only when other stats exist", () => {
-    // statusMessage alone doesn't produce a detail
-    expect(extractDetail({ status_message: "hello" })).toBeNull();
-
-    // statusMessage with stats is included
-    const result = extractDetail({ prs_fetched: 10, status_message: "Fetching PRs" });
-    expect(result?.statusMessage).toBe("Fetching PRs");
+    const progress: RunProgress = {
+      status_message: "Collecting",
+      rate_limit_limit: 5000,
+    };
+    const result = normaliseProgress("jira", progress);
+    expect(result.rateLimitNote).toBe("0% API calls left");
+    expect(result.rateLimitLow).toBe(true);
   });
 });

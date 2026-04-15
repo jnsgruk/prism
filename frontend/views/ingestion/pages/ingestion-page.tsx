@@ -129,7 +129,7 @@ const IngestionPage = (): React.ReactElement => {
       <PageHeader title="Ingestion" description="Monitor data source ingestion runs" />
       <div className="flex-1 space-y-6 p-6">
         {/* Unified Pipeline Card */}
-        <Card>
+        <Card className="pb-0">
           <Collapsible open={dagExpanded} onOpenChange={setDagOpen}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">

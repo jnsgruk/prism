@@ -1,12 +1,9 @@
-import { DOT_SEP, Stat } from "@/components/inline-stat";
 import { StatusDot, stateStyles } from "@/components/status-dot";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatRelativeTime } from "@/lib/format";
 import { platformKey } from "@/lib/proto-display";
-import type { NormalisedProgress, ProgressDetail } from "@/views/ingestion/lib/progress";
-import { extractDetail, normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
-import { ChevronRight, GitPullRequest, MessageSquare, UserX } from "lucide-react";
-import { useMemo, useState } from "react";
+import type { NormalisedProgress } from "@/views/ingestion/lib/progress";
+import { normaliseProgress, parseProgress } from "@/views/ingestion/lib/progress";
+import { useMemo } from "react";
 
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
@@ -34,7 +31,7 @@ const stateFromEnum = (state: SourceState): string => {
 };
 
 // ---------------------------------------------------------------------------
-// Inline progress bar
+// Inline progress bar + rate limit
 // ---------------------------------------------------------------------------
 
 const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.ReactElement => (
@@ -53,76 +50,18 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress.percent}%</span>
     )}
     <span className="truncate text-xs text-muted-foreground">{progress.label}</span>
+    {progress.rateLimitNote && (
+      <span
+        className={cn(
+          "shrink-0 text-xs tabular-nums whitespace-nowrap",
+          progress.rateLimitLow ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
+        ({progress.rateLimitNote})
+      </span>
+    )}
   </div>
 );
-
-// ---------------------------------------------------------------------------
-// Detail expansion — compact inline stats
-// ---------------------------------------------------------------------------
-
-const SourceDetail = ({ detail }: { detail: ProgressDetail }): React.ReactElement => {
-  const rateLimitLow = detail.rateLimit && detail.rateLimit.remaining / detail.rateLimit.limit < 0.1;
-
-  const stats: React.ReactNode[] = [];
-
-  if (detail.prsFetched !== undefined) {
-    stats.push(
-      <Stat
-        key="prs"
-        label="PRs"
-        value={detail.prsFetched.toLocaleString()}
-        icon={<GitPullRequest className="size-3" />}
-      />,
-    );
-  }
-  if (detail.reviewsFetched !== undefined) {
-    stats.push(
-      <Stat
-        key="reviews"
-        label="reviews"
-        value={detail.reviewsFetched.toLocaleString()}
-        icon={<MessageSquare className="size-3" />}
-      />,
-    );
-  }
-  if (detail.identitiesSkipped !== undefined) {
-    stats.push(
-      <Stat
-        key="skipped"
-        label="skipped"
-        value={String(detail.identitiesSkipped)}
-        icon={<UserX className="size-3" />}
-        variant="warning"
-      />,
-    );
-  }
-  if (detail.rateLimit) {
-    stats.push(
-      <Stat
-        key="rate"
-        label="API calls left"
-        value={`${detail.rateLimit.remaining.toLocaleString()}/${detail.rateLimit.limit.toLocaleString()}`}
-        variant={rateLimitLow ? "danger" : undefined}
-      />,
-    );
-  }
-
-  return (
-    <div className="border-b bg-muted/40 px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {stats.map((stat, i) => (
-          <span key={i} className="flex items-center gap-x-3">
-            {i > 0 && DOT_SEP}
-            {stat}
-          </span>
-        ))}
-      </div>
-      {detail.statusMessage && (
-        <p className="mt-1 truncate text-xs italic text-muted-foreground">{detail.statusMessage}</p>
-      )}
-    </div>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Main row component
@@ -139,8 +78,6 @@ export const SourceRow = ({
   enabled?: boolean;
   onToggleEnabled?: (sourceId: string, enabled: boolean) => void;
 }): React.ReactElement => {
-  const [expanded, setExpanded] = useState(false);
-
   const stateKey = enabled ? stateFromEnum(source.state) : "disabled";
   const stateLabel = enabled ? (stateStyles[stateKey]?.label ?? "Idle") : "Disabled";
   const isActive = enabled && stateKey === "collecting";
@@ -151,67 +88,44 @@ export const SourceRow = ({
     return normaliseProgress(platformKey(source.sourceType), raw);
   }, [isActive, source.progressJson, source.sourceType]);
 
-  const detail = useMemo((): ProgressDetail | null => {
-    if (!isActive) return null;
-    const raw = parseProgress(source.progressJson);
-    return extractDetail(raw);
-  }, [isActive, source.progressJson]);
-
-  const hasDetail = !!detail;
   const relativeTime = source.lastRun ? formatRelativeTime(source.lastRun) : "Never";
 
   return (
-    <>
-      <Collapsible open={expanded} onOpenChange={setExpanded}>
-        <div
-          className={cn(
-            "group grid items-center gap-x-2 border-b px-4 py-2.5 text-sm last:border-b-0",
-            "grid-cols-[1rem_1fr_auto_auto]",
-            "sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]",
-            !enabled && "opacity-50",
-          )}
-        >
-          {/* Expand chevron */}
-          {hasDetail && isActive ? (
-            <CollapsibleTrigger className="flex items-center justify-center">
-              <ChevronRight
-                className={cn("size-3.5 text-muted-foreground transition-transform", expanded && "rotate-90")}
-              />
-            </CollapsibleTrigger>
-          ) : (
-            <span />
-          )}
-
-          {/* Name + status */}
-          <div className="flex min-w-0 items-center gap-2">
-            <StatusDot state={enabled ? stateKey : "pending"} animate={isActive} />
-            <span className="truncate font-medium">{source.name}</span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">{stateLabel}</span>
-          </div>
-
-          {/* Progress or last run */}
-          <div className="hidden min-w-0 sm:block">
-            {isActive && progress && <InlineProgress progress={progress} />}
-            {!isActive && enabled && <span className="text-xs text-muted-foreground">{relativeTime}</span>}
-          </div>
-
-          {/* Overflow menu */}
-          <div className="flex shrink-0 items-center justify-end">
-            <SourceOverflowMenu sourceId={sourceId} enabled={enabled} onToggleEnabled={onToggleEnabled} />
-          </div>
+    <div>
+      <div
+        className={cn(
+          "group grid items-center gap-x-2 px-4 py-2.5 text-sm",
+          "grid-cols-[1fr_auto_auto]",
+          "sm:grid-cols-[14rem_1fr_2rem]",
+          !enabled && "opacity-50",
+        )}
+      >
+        {/* Name + status */}
+        <div className="flex min-w-0 items-center gap-2">
+          <StatusDot state={enabled ? stateKey : "pending"} animate={isActive} />
+          <span className="truncate font-medium">{source.name}</span>
+          <span className="hidden text-xs text-muted-foreground sm:inline">{stateLabel}</span>
         </div>
 
-        {/* Expandable detail */}
-        <CollapsibleContent>{detail && <SourceDetail detail={detail} />}</CollapsibleContent>
-      </Collapsible>
+        {/* Progress or last run */}
+        <div className="hidden min-w-0 sm:block">
+          {isActive && progress && <InlineProgress progress={progress} />}
+          {!isActive && enabled && <span className="text-xs text-muted-foreground">{relativeTime}</span>}
+        </div>
+
+        {/* Overflow menu */}
+        <div className="flex shrink-0 items-center justify-end">
+          <SourceOverflowMenu sourceId={sourceId} enabled={enabled} onToggleEnabled={onToggleEnabled} />
+        </div>
+      </div>
 
       {/* Mobile progress — shown below the row on small screens */}
       {isActive && progress && (
-        <div className="border-b px-4 pb-2 sm:hidden">
+        <div className="px-4 pb-2 sm:hidden">
           <InlineProgress progress={progress} />
         </div>
       )}
-    </>
+    </div>
   );
 };
 
@@ -231,11 +145,10 @@ export const DisabledSourceRow = ({
   <div
     className={cn(
       "group grid items-center gap-x-2 px-4 py-2.5 text-sm text-muted-foreground",
-      "grid-cols-[1rem_1fr_auto_auto]",
-      "sm:grid-cols-[1rem_minmax(8rem,1fr)_1fr_2rem]",
+      "grid-cols-[1fr_auto_auto]",
+      "sm:grid-cols-[14rem_1fr_2rem]",
     )}
   >
-    <span />
     <div className="flex min-w-0 items-center gap-2">
       <StatusDot state="pending" animate={false} />
       <span className="truncate font-medium">{name}</span>
