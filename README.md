@@ -13,6 +13,7 @@ Built in Rust (backend) + Vite/React (frontend) with PostgreSQL, gRPC (tonic + C
 Install [mise](https://mise.jdx.dev/) then set up the development environment:
 
 ```bash
+mise trust
 mise run install-deps     # Install native OS packages
 mise install              # Install all dev tools
 prek install              # Install git hooks
@@ -34,26 +35,9 @@ buf generate              # Generate Rust + TypeScript code from protos
 
 See [CLAUDE.md](CLAUDE.md) for full development guidelines, architecture, and conventions.
 
-## Architecture
-
-```
-crates/
-├── ps-core/          # Domain types, traits, error types, shared logic
-├── ps-proto/         # Generated Rust code from proto definitions
-├── ps-server/        # API server binary (tonic + tonic-web)
-├── ps-workers/       # Restate worker binary — ingestion, team sync, metrics compute
-├── ps-metrics/       # Metric computation logic
-├── ps-migrate/       # Migration binary for k8s init container
-└── psctl/            # Lightweight CLI client
-frontend/             # Vite + React Router SPA + shadcn/ui
-proto/prism/v1/       # Protobuf service definitions
-k8s/                  # Kubernetes manifests (Kustomize)
-migrations/           # PostgreSQL migrations (sqlx)
-```
-
 ## Documentation
 
-See [docs/](docs/) for architecture, design decisions, and technical documentation. See [CLAUDE.md](CLAUDE.md) for development guidelines and coding conventions.
+See [docs/00-overview.md](docs/00-overview.md) for an overview of the system, tech stack, and codebase map. See [docs/](docs/) for architecture, design decisions, and technical documentation. See [CLAUDE.md](CLAUDE.md) for development guidelines and coding conventions.
 
 ## License
 
