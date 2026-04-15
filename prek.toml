@@ -8,7 +8,7 @@ repo = "local"
 [[repos.hooks]]
 id = "fmt-check"
 name = "fmt-check"
-entry = "bash -c 'mise exec -- cargo fmt -- --check && cd frontend && mise exec -- vp fmt --check'"
+entry = "bash -c 'mise exec -- cargo fmt -- --check && cd frontend && mise exec -- vp fmt -c .oxfmtrc.json --check'"
 language = "system"
 pass_filenames = false
 fail_fast = true

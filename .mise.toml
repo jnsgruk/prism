@@ -43,7 +43,7 @@ run = "cargo fmt"
 [tasks."fmt:ts"]
 description = "Format TypeScript/JS/JSON (oxfmt)"
 dir = "frontend"
-run = "vp fmt"
+run = "vp fmt -c .oxfmtrc.json"
 
 # ── lint: report issues (read-only) ─────────────────────────────────────
 
@@ -78,7 +78,7 @@ run = "SQLX_OFFLINE=true cargo clippy --lib --bins --fix --allow-dirty --allow-s
 [tasks."fix:ts"]
 description = "Auto-fix TypeScript (format + lint fix)"
 dir = "frontend"
-run = ["vp fmt", "vp lint --type-aware --fix"]
+run = ["vp fmt -c .oxfmtrc.json", "vp lint --type-aware --fix"]
 
 # ── check: full validation (read-only) ──────────────────────────────────
 
@@ -97,7 +97,7 @@ run = [
 description = "Validate TypeScript (fmt + lint + typecheck)"
 dir = "frontend"
 run = [
-  "vp fmt --check",
+  "vp fmt -c .oxfmtrc.json --check",
   "vp lint --type-aware",
   "vp lint --type-aware --type-check",
 ]
