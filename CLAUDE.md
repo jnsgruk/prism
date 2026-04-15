@@ -24,7 +24,9 @@ buf generate                              # Generate Rust + TypeScript code from
 cargo sqlx prepare --workspace            # Update offline query cache (.sqlx/)
 sqlx migrate add <name>                   # Create new migration in migrations/
 bun install                               # Install frontend dependencies (run from frontend/)
-bun dev                                   # Start frontend dev server (run from frontend/)
+vp dev                                    # Start frontend dev server (run from frontend/)
+vp check                                  # Frontend fmt + lint + typecheck (run from frontend/)
+vp test run                               # Run frontend tests (run from frontend/)
 ```
 
 ## Local Dev Services (Tilt)
