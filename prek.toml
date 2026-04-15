@@ -8,7 +8,7 @@ repo = "local"
 [[repos.hooks]]
 id = "fmt-check"
 name = "fmt-check"
-entry = "bash -c 'mise exec -- cargo fmt -- --check && cd frontend && mise exec -- vp fmt -c .oxfmtrc.json --check'"
+entry = "bash -c 'mise exec -- cargo fmt -- --check && cd frontend && mise exec -- vp fmt --check'"
 language = "system"
 pass_filenames = false
 fail_fast = true
@@ -35,21 +35,11 @@ fail_fast = true
 stages = ["pre-commit"]
 
 [[repos.hooks]]
-id = "frontend-lint"
-name = "frontend-lint"
-entry = "bash -c 'cd frontend && mise exec -- vp lint --type-aware'"
+id = "frontend-check"
+name = "frontend-check"
+entry = "bash -c 'cd frontend && mise exec -- vp check'"
 language = "system"
 files = '\.(ts|tsx|js|jsx)$'
-pass_filenames = false
-fail_fast = true
-stages = ["pre-commit"]
-
-[[repos.hooks]]
-id = "frontend-typecheck"
-name = "frontend-typecheck"
-entry = "bash -c 'cd frontend && mise exec -- vp lint --type-aware --type-check'"
-language = "system"
-files = '\.(ts|tsx)$'
 pass_filenames = false
 fail_fast = true
 stages = ["pre-commit"]

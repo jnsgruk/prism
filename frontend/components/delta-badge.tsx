@@ -37,6 +37,8 @@ export const DeltaBadge = ({
         return `${Math.abs(Math.round(delta))}`;
       case "integer":
         return String(Math.abs(Math.round(delta)));
+      default:
+        return Math.abs(delta).toFixed(2);
     }
   })();
 

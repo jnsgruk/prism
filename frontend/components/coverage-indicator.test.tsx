@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { TypeCoverageSchema } from "@ps/api/gen/canonical/prism/v1/insights_pb";
 

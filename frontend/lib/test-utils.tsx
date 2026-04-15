@@ -2,7 +2,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { queries } from "@testing-library/dom";
 import { cleanup, render, type RenderOptions, type RenderResult } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 export const createTestQueryClient = (): QueryClient =>
   new QueryClient({

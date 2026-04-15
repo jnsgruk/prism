@@ -1,7 +1,7 @@
 import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import { create } from "@bufbuild/protobuf";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { PersonSchema, TeamSchema } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";

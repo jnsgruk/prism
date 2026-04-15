@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPillElement, extractContent, PILL_ID_ATTR, PILL_TYPE_ATTR } from "./use-mention-picker";
 

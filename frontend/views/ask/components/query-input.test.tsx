@@ -1,6 +1,6 @@
 import { createPillElement } from "@/views/ask/hooks/use-mention-picker";
 import { fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { renderWithProviders, setupCleanup } from "@ps/test-utils";
 

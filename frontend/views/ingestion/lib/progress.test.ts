@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { extractDetail, normaliseProgress, parseProgress } from "./progress";
 import type { RunProgress } from "./progress";

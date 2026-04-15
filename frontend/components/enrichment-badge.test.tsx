@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { EnrichmentType } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import { EnrichmentSchema } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { fmtFloat, fmtHours, fmtPercent, instanceLabel } from "./format-metrics";
 

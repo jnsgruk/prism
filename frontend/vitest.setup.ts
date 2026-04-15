@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 // Stub global fetch to prevent happy-dom from making real HTTP requests during
 // tests. All RPC calls are mocked at the transport layer, so a real fetch

@@ -43,7 +43,7 @@ run = "cargo fmt"
 [tasks."fmt:ts"]
 description = "Format TypeScript/JS/JSON (oxfmt)"
 dir = "frontend"
-run = "vp fmt -c .oxfmtrc.json"
+run = "vp fmt"
 
 # ── lint: report issues (read-only) ─────────────────────────────────────
 
@@ -58,7 +58,7 @@ run = "SQLX_OFFLINE=true cargo clippy --lib --bins -- -D warnings"
 [tasks."lint:ts"]
 description = "Lint TypeScript (oxlint + typecheck)"
 dir = "frontend"
-run = "vp lint --type-aware"
+run = "vp lint"
 
 [tasks."lint:proto"]
 description = "Lint protobuf definitions"
@@ -78,7 +78,7 @@ run = "SQLX_OFFLINE=true cargo clippy --lib --bins --fix --allow-dirty --allow-s
 [tasks."fix:ts"]
 description = "Auto-fix TypeScript (format + lint fix)"
 dir = "frontend"
-run = ["vp fmt -c .oxfmtrc.json", "vp lint --type-aware --fix"]
+run = "vp check --fix"
 
 # ── check: full validation (read-only) ──────────────────────────────────
 
@@ -96,11 +96,7 @@ run = [
 [tasks."check:ts"]
 description = "Validate TypeScript (fmt + lint + typecheck)"
 dir = "frontend"
-run = [
-  "vp fmt -c .oxfmtrc.json --check",
-  "vp lint --type-aware",
-  "vp lint --type-aware --type-check",
-]
+run = "vp check"
 
 [tasks."check:proto"]
 description = "Validate protobuf definitions"
@@ -124,7 +120,7 @@ run = "cargo build --bin setup-test-db && cargo nextest run"
 [tasks."test:ts"]
 description = "Run frontend tests"
 dir = "frontend"
-run = "bun run test"
+run = "vp test run"
 
 # ── generate: create derived files ──────────────────────────────────────
 

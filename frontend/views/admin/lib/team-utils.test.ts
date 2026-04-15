@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { TeamSchema, TeamType } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
