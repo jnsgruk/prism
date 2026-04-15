@@ -45,14 +45,7 @@ pub(super) async fn fetch_batch_impl(
     } else {
         let Some(proj) = cur.projects.get(cur.project_index) else {
             // All projects exhausted — done
-            let final_cursor = serialise_cursor(&cur)?;
-            return Ok(FetchResult {
-                items: vec![],
-                next_cursor: None,
-                rate_limit: None,
-                etag: Some(final_cursor),
-                skipped_diffs: vec![],
-            });
+            return Ok(empty_result(serialise_cursor(&cur)?, None));
         };
         Some(proj.clone())
     };
@@ -113,13 +106,7 @@ pub(super) async fn fetch_batch_impl(
                 } else {
                     None
                 };
-                return Ok(FetchResult {
-                    items: vec![],
-                    next_cursor,
-                    rate_limit: None,
-                    etag: Some(final_cursor),
-                    skipped_diffs: vec![],
-                });
+                return Ok(empty_result(final_cursor, next_cursor));
             }
             return Err(e);
         }
@@ -182,9 +169,21 @@ pub(super) async fn fetch_batch_impl(
         items,
         next_cursor,
         rate_limit,
+        display_rate_limit: None,
         etag: Some(final_cursor),
         skipped_diffs: vec![],
     })
+}
+
+fn empty_result(etag_cursor: String, next_cursor: Option<String>) -> FetchResult {
+    FetchResult {
+        items: vec![],
+        next_cursor,
+        rate_limit: None,
+        display_rate_limit: None,
+        etag: Some(etag_cursor),
+        skipped_diffs: vec![],
+    }
 }
 
 /// Convert a Jira issue into a `ContributionInput`.

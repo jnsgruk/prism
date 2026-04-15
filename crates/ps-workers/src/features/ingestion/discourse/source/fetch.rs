@@ -87,6 +87,7 @@ pub(super) async fn fetch_batch_impl(
         items,
         next_cursor,
         rate_limit: None,
+        display_rate_limit: None,
         etag: Some(final_cursor),
         skipped_diffs: vec![],
     })
@@ -97,6 +98,7 @@ fn empty_result() -> FetchResult {
         items: vec![],
         next_cursor: None,
         rate_limit: None,
+        display_rate_limit: None,
         etag: None,
         skipped_diffs: vec![],
     }

@@ -108,6 +108,7 @@ async fn fetch_team_repos(
                 items: vec![],
                 next_cursor: Some(serialise_cursor(cur)?),
                 rate_limit: Some(rl),
+                display_rate_limit: None,
                 etag: None,
                 skipped_diffs: vec![],
             });
@@ -129,6 +130,7 @@ async fn fetch_team_repos(
                 items: vec![],
                 next_cursor: Some(serialise_cursor(cur)?),
                 rate_limit: None,
+                display_rate_limit: None,
                 etag: None,
                 skipped_diffs: vec![],
             });
@@ -212,7 +214,8 @@ async fn fetch_team_repos(
     Ok(FetchResult {
         items,
         next_cursor,
-        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit)),
+        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit.clone())),
+        display_rate_limit: Some(page.rate_limit),
         etag: None,
         skipped_diffs: diff_outcome.skipped,
     })
@@ -235,6 +238,7 @@ async fn transition_to_member_search(
             items: vec![],
             next_cursor: None,
             rate_limit: None,
+            display_rate_limit: None,
             etag: None,
             skipped_diffs: vec![],
         });
@@ -250,6 +254,7 @@ async fn transition_to_member_search(
             items: vec![],
             next_cursor: None,
             rate_limit: None,
+            display_rate_limit: None,
             etag: None,
             skipped_diffs: vec![],
         });
@@ -297,6 +302,7 @@ async fn fetch_member_search(
             items: vec![],
             next_cursor: None,
             rate_limit: None,
+            display_rate_limit: None,
             etag: None,
             skipped_diffs: vec![],
         });
@@ -353,6 +359,7 @@ async fn fetch_member_search(
                 items: vec![],
                 next_cursor: Some(serialise_cursor(cur)?),
                 rate_limit: Some(rl),
+                display_rate_limit: None,
                 etag: None,
                 skipped_diffs: vec![],
             });
@@ -428,7 +435,8 @@ async fn fetch_member_search(
     Ok(FetchResult {
         items,
         next_cursor,
-        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit)),
+        rate_limit: diff_outcome.rate_limit.or(Some(page.rate_limit.clone())),
+        display_rate_limit: Some(page.rate_limit),
         etag: None,
         skipped_diffs: diff_outcome.skipped,
     })

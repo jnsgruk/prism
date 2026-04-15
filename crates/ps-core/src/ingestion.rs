@@ -136,7 +136,13 @@ pub struct FetchResult {
     pub items: Vec<ContributionInput>,
     /// Opaque cursor for the next batch. `None` means no more data.
     pub next_cursor: Option<String>,
+    /// Rate limit info for flow control (sleep decisions). For GitHub this may
+    /// reflect the REST diff-fetching pool rather than the primary GraphQL pool.
     pub rate_limit: Option<RateLimitInfo>,
+    /// Rate limit info for progress display. When present, the progress tracker
+    /// uses this instead of `rate_limit`. Separates the user-facing rate limit
+    /// (e.g. GraphQL) from the flow-control rate limit (which may reflect REST).
+    pub display_rate_limit: Option<RateLimitInfo>,
     pub etag: Option<String>,
     /// PR diffs skipped due to REST rate limiting. The orchestrator should
     /// durably sleep then retry these before continuing to the next batch.

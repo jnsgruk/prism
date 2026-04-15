@@ -308,6 +308,7 @@ pub async fn fetch_batch(
         items: result.items,
         next_cursor: result.next_cursor,
         rate_limit: result.rate_limit,
+        display_rate_limit: result.display_rate_limit,
         etag: result.etag,
         skipped_diffs: result.skipped_diffs,
     })

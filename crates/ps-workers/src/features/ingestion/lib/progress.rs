@@ -42,6 +42,9 @@ pub struct SerFetchResult {
     pub next_cursor: Option<String>,
     #[serde(default)]
     pub rate_limit: Option<RateLimitInfo>,
+    /// Rate limit for progress display (prefers primary API pool over REST).
+    #[serde(default)]
+    pub display_rate_limit: Option<RateLimitInfo>,
     /// Carries the latest cursor state for watermark extraction, even when
     /// `next_cursor` is `None` (final batch). Used by Discourse ingestion.
     #[serde(default)]

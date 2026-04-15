@@ -132,7 +132,8 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
 /// Best-effort progress update (not journaled).
 macro_rules! chunk_update_progress {
     ($ing_ctx:expr, $run_id:expr, $global_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
-        let progress = $tracker.build_progress($cursor, $batch.rate_limit.as_ref());
+        let rl = $batch.display_rate_limit.as_ref().or($batch.rate_limit.as_ref());
+        let progress = $tracker.build_progress($cursor, rl);
         if let Err(e) = $ing_ctx
             .repos
             .activity
