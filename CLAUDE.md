@@ -8,6 +8,7 @@ Prism is an engineering insights platform for understanding team and individual 
 
 ```bash
 mise install                              # Install all dev tools (one-time setup)
+mise run install-deps                     # Install native OS packages (one-time setup)
 prek install                              # Install git hooks (one-time setup)
 prek run -av                              # All lints, tests, formatters — run before finishing any task
 mise run fmt                              # Format all files (rustfmt, oxfmt via vp)
@@ -36,6 +37,8 @@ Tilt port-forwards all infrastructure to localhost. Use these for troubleshootin
 | Restate Admin API | `9070` | `curl http://localhost:9070/...` — manage invocations, deployments, state |
 
 For sqlx query cache updates: `mise run generate:sqlx`
+
+Connect to the dev database with psql: `kubectl exec -it postgres-0 -- psql -U prism -d prism`
 
 Useful Restate commands:
 - List invocations: `restate invocations list`

@@ -24,6 +24,12 @@ SQLX_OFFLINE = "true"
 # script (setup-test-db) uses its absence to spin up an isolated Docker
 # container. Tasks that need the Tilt DB (e.g. generate:sqlx) set it explicitly.
 
+# ── install-deps: native OS packages ────────────────────────────────────
+
+[tasks.install-deps]
+description = "Install native OS dependencies"
+run = "sudo apt-get update && sudo apt-get install -y clang mold libssl-dev pkg-config"
+
 # ── fmt: fix formatting ─────────────────────────────────────────────────
 
 [tasks.fmt]
@@ -90,7 +96,11 @@ run = [
 [tasks."check:ts"]
 description = "Validate TypeScript (fmt + lint + typecheck)"
 dir = "frontend"
-run = ["vp fmt --check", "vp lint --type-aware", "vp lint --type-aware --type-check"]
+run = [
+  "vp fmt --check",
+  "vp lint --type-aware",
+  "vp lint --type-aware --type-check",
+]
 
 [tasks."check:proto"]
 description = "Validate protobuf definitions"
