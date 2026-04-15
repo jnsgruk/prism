@@ -16,7 +16,7 @@ use crate::infra::run_lifecycle::{
 };
 
 /// Max contributions to fetch from the embedding queue per cycle.
-const MAX_BATCH_SIZE: i64 = 500;
+const MAX_BATCH_SIZE: i64 = 100;
 
 pub struct EmbeddingHandlerImpl {
     pub state: SharedState,

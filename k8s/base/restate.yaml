@@ -42,7 +42,7 @@ spec:
             - name: RESTATE_DEFAULT_JOURNAL_RETENTION
               value: "7d"
             - name: RESTATE_WORKER__INVOKER__ABORT_TIMEOUT
-              value: "2min"
+              value: "10min"
             # How long Restate waits before re-invoking a suspended handler
             # when completions arrive. The default (60s) causes visible stalls
             # in the pipeline UI between stages (e.g. ingestion finishing and
