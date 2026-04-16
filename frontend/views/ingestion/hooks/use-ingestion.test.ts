@@ -144,6 +144,7 @@ describe("ingestion hooks", () => {
       const { handlersKeys } = await import("./use-ingestion");
       expect(handlersKeys.all).toEqual(["handlers"]);
       expect(handlersKeys.status()).toEqual(["handlers", "status"]);
+      expect(handlersKeys.runsAll()).toEqual(["handlers", "runs"]);
       expect(handlersKeys.runs()).toEqual(["handlers", "runs", undefined, undefined]);
       expect(handlersKeys.runs("github")).toEqual(["handlers", "runs", "github", undefined]);
       expect(handlersKeys.runs("github", "GithubIngestionHandler")).toEqual([

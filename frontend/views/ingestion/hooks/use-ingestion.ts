@@ -21,6 +21,7 @@ const handlersClient = createClient(HandlersService, transport);
 export const handlersKeys = {
   all: ["handlers"] as const,
   status: (): readonly ["handlers", "status"] => [...handlersKeys.all, "status"] as const,
+  runsAll: () => [...handlersKeys.all, "runs"] as const,
   runs: (sourceName?: string, handlerName?: string) => [...handlersKeys.all, "runs", sourceName, handlerName] as const,
   handlers: (): readonly ["handlers", "handlers"] => [...handlersKeys.all, "handlers"] as const,
   pipelineRuns: () => [...handlersKeys.all, "pipelineRuns"] as const,
@@ -71,7 +72,7 @@ export const useTriggerHandler = (): UseMutationResult<
     mutationFn: (req: { handlerName: string; method: string; key: string; payload?: string }) =>
       handlersClient.triggerHandler(req),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runsAll() });
       queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
       queryClient.invalidateQueries({ queryKey: handlersKeys.handlers() });
     },
@@ -85,7 +86,7 @@ export const useCancelHandlerRun = (): UseMutationResult<CancelHandlerRunRespons
     mutationFn: (runId: string) => handlersClient.cancelHandlerRun({ runId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: handlersKeys.status() });
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runsAll() });
       queryClient.invalidateQueries({ queryKey: handlersKeys.handlers() });
     },
   });
@@ -99,7 +100,7 @@ export const useTriggerTeamSync = (): UseMutationResult<void, Error, string> => 
       await handlersClient.triggerTeamSync({ sourceName });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: handlersKeys.runs() });
+      queryClient.invalidateQueries({ queryKey: handlersKeys.runsAll() });
     },
   });
 };

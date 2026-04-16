@@ -27,21 +27,23 @@ const TeamSyncButton = ({ sourceName }: { sourceName: string }): React.ReactElem
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() =>
-              triggerTeamSync.mutate(sourceName, {
-                onSuccess: () => toast.success("Team sync triggered"),
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Sync failed"),
-              })
-            }
-            disabled={isBusy}
-          />
+          <span className="inline-flex">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() =>
+                triggerTeamSync.mutate(sourceName, {
+                  onSuccess: () => toast.success("Team sync triggered"),
+                  onError: (err) => toast.error(err instanceof Error ? err.message : "Sync failed"),
+                })
+              }
+              disabled={isBusy}
+            >
+              {isBusy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            </Button>
+          </span>
         }
-      >
-        {isBusy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-      </TooltipTrigger>
+      />
       <TooltipContent>{isRunning ? "Team sync in progress…" : "Sync GitHub teams"}</TooltipContent>
     </Tooltip>
   );
