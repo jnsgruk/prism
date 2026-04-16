@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatRelativeTime } from "@/lib/format";
 import { useListSources, useUpdateSource } from "@/lib/hooks/use-config";
-import { RunHistoryPanel } from "@/views/ingestion/components/ingestion-runs-table";
 import { IngestionSummary } from "@/views/ingestion/components/ingestion-summary";
 import { PipelineActions } from "@/views/ingestion/components/pipeline-actions";
 import { PipelineDAG, StatusBadge, usePipelineState } from "@/views/ingestion/components/pipeline-graph";
+import { PipelineRunHistoryPanel } from "@/views/ingestion/components/pipeline-run-history";
 import { SourceList, type SourceConfigInfo } from "@/views/ingestion/components/source-list";
-import { useIngestionStatus, useListRuns } from "@/views/ingestion/hooks/use-ingestion";
+import { useIngestionStatus } from "@/views/ingestion/hooks/use-ingestion";
 import { POLL_INTERVAL_ACTIVE, POLL_INTERVAL_BURST, POLL_INTERVAL_IDLE } from "@/views/ingestion/lib/constants";
 import { Activity, ChevronRight, GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -85,15 +85,6 @@ const IngestionPage = (): React.ReactElement => {
 
   const hasActiveRun = sources?.some((s) => s.state === SourceState.COLLECTING);
 
-  let runsInterval = POLL_INTERVAL_IDLE;
-  if (isBursting) runsInterval = POLL_INTERVAL_BURST;
-  else if (hasActiveRun) runsInterval = POLL_INTERVAL_ACTIVE;
-
-  const { data: runs, isLoading: runsLoading } = useListRuns(undefined, {
-    refetchInterval: runsInterval,
-    ingestionOnly: true,
-  });
-
   if (sourcesLoading) {
     return (
       <>
@@ -121,8 +112,6 @@ const IngestionPage = (): React.ReactElement => {
       </>
     );
   }
-
-  const sourceNames = sources.map((s) => s.name);
 
   return (
     <>
@@ -172,13 +161,7 @@ const IngestionPage = (): React.ReactElement => {
         </Card>
 
         {/* Run History */}
-        {runsLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <RunHistoryPanel runs={runs ?? []} sourceNames={sourceNames} />
-        )}
+        <PipelineRunHistoryPanel hasActiveRun={hasActiveRun || pipelineRunning} />
       </div>
     </>
   );

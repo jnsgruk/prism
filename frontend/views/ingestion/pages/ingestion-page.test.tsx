@@ -11,7 +11,10 @@ import {
   GetStatusResponseSchema,
   HandlersService,
   HandlerRunSchema,
+  ListPipelineRunsResponseSchema,
   ListRunsResponseSchema,
+  PipelineInfoSchema,
+  PipelineRunSummarySchema,
   SourceState,
   SourceStatusSchema,
   TriggerPipelineResponseSchema,
@@ -81,12 +84,27 @@ const mockRuns = [
   }),
 ];
 
+const mockPipelineRuns = [
+  create(PipelineRunSummarySchema, {
+    pipeline: create(PipelineInfoSchema, {
+      id: "pipe-1",
+      status: "completed",
+      currentStage: "done",
+      startedAt: timestampFromDate(new Date("2026-03-12T10:00:00Z")),
+      completedAt: timestampFromDate(new Date("2026-03-12T10:05:00Z")),
+      stagesJson: "{}",
+    }),
+    runs: mockRuns,
+  }),
+];
+
 vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
     service(HandlersService, {
       getStatus: () => create(GetStatusResponseSchema, { sources: mockSources }),
       listRuns: () => create(ListRunsResponseSchema, { runs: mockRuns }),
       getPipelineStatus: () => create(GetPipelineStatusResponseSchema, {}),
+      listPipelineRuns: () => create(ListPipelineRunsResponseSchema, { pipelines: mockPipelineRuns }),
       triggerPipeline: () => create(TriggerPipelineResponseSchema, { pipelineId: "pipe-1" }),
     });
     service(ConfigService, {
@@ -153,9 +171,8 @@ describe("IngestionPage", () => {
       expect(screen.getByText("Run History")).toBeInTheDocument();
     });
 
-    // Collapsed header shows status counts
-    expect(screen.getByText((_, el) => el?.textContent === "1 completed")).toBeInTheDocument();
-    expect(screen.getByText((_, el) => el?.textContent === "1 failed")).toBeInTheDocument();
+    // Collapsed header shows pipeline-level status counts (1 completed pipeline)
+    expect(screen.getAllByText((_, el) => el?.textContent === "1 completed").length).toBeGreaterThanOrEqual(1);
   });
 
   it("expands run history to show filters and table", async () => {
@@ -168,9 +185,11 @@ describe("IngestionPage", () => {
     screen.getByText("Run History").click();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Completed" })).toBeInTheDocument();
+      expect(screen.getByText("Completed")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "Failed" })).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    // Pipeline table should show column headers
+    expect(screen.getByText("Started")).toBeInTheDocument();
   });
 });

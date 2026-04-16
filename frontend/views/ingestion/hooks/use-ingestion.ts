@@ -6,6 +6,8 @@ import type {
   CancelHandlerRunResponse,
   GetStatusResponse,
   HandlerRun,
+  ListPipelineRunsResponse,
+  PipelineRunSummary,
   SourceStatus,
   TriggerHandlerResponse,
 } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
@@ -21,6 +23,7 @@ export const handlersKeys = {
   status: (): readonly ["handlers", "status"] => [...handlersKeys.all, "status"] as const,
   runs: (sourceName?: string, handlerName?: string) => [...handlersKeys.all, "runs", sourceName, handlerName] as const,
   handlers: (): readonly ["handlers", "handlers"] => [...handlersKeys.all, "handlers"] as const,
+  pipelineRuns: () => [...handlersKeys.all, "pipelineRuns"] as const,
 };
 
 export const useIngestionStatus = (options?: { refetchInterval?: RefetchInterval }): UseQueryResult<SourceStatus[]> =>
@@ -44,6 +47,16 @@ export const useListRuns = (
         ingestionOnly: options?.ingestionOnly ?? false,
       }),
     select: (data): HandlerRun[] => data.runs,
+    refetchInterval: options?.refetchInterval,
+  });
+
+export const useListPipelineRuns = (options?: {
+  refetchInterval?: number | false;
+}): UseQueryResult<PipelineRunSummary[]> =>
+  useQuery({
+    queryKey: handlersKeys.pipelineRuns(),
+    queryFn: () => handlersClient.listPipelineRuns({}),
+    select: (data: ListPipelineRunsResponse): PipelineRunSummary[] => data.pipelines,
     refetchInterval: options?.refetchInterval,
   });
 
