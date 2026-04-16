@@ -118,8 +118,23 @@ const PipelineRow = ({
 
       {/* Expanded detail rows */}
       {isExpanded &&
-        groups.map((group) => (
-          <StageGroup key={group.stage} stage={group.stage} runs={group.runs} onSelectRun={onSelectRun} />
+        (groups.length > 0 ? (
+          groups.map((group) => (
+            <StageGroup key={group.stage} stage={group.stage} runs={group.runs} onSelectRun={onSelectRun} />
+          ))
+        ) : (
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={5} className="py-4 pl-12 text-center text-sm text-muted-foreground">
+              {pipeline.status === "running" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Waiting for handler runs to start…
+                </span>
+              ) : (
+                "No handler runs recorded."
+              )}
+            </TableCell>
+          </TableRow>
         ))}
     </>
   );
