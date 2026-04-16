@@ -120,6 +120,7 @@ fn ensure_container() -> u16 {
         .args([
             "run",
             "-d",
+            "--rm",
             "--name",
             CONTAINER_NAME,
             "-e",
