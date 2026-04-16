@@ -42,10 +42,11 @@ For sqlx query cache updates: `mise run generate:sqlx`
 
 Connect to the dev database with psql: `kubectl exec -it postgres-0 -- psql -U prism -d prism`
 
-Useful Restate commands:
-- List invocations: `restate invocations list`
-- Cancel stuck invocation: `restate invocations cancel <id>`
-- Re-register deployment: `restate deployments register http://localhost:9080/ --force --yes`
+Useful Restate commands (the `restate` CLI runs inside the pod):
+- List invocations: `kubectl exec -n prism restate-0 -- restate invocations list`
+- Cancel stuck invocation: `kubectl exec -n prism restate-0 -- restate invocations cancel <id>`
+- Re-register deployment: `curl -X POST http://localhost:9070/deployments -H 'content-type: application/json' -d '{"uri":"http://ps-workers:9081/","force":true}'`
+- Clear journal (after refactoring `ctx.run()` sequences): `kubectl exec -n prism restate-0 -- rm -rf /restate-data/store/` then `kubectl delete pod -n prism restate-0` and re-register
 
 ## Workflow Requirements
 

@@ -65,8 +65,8 @@ let items = journaled_value!(ctx, "fetch_queue", [repos], {
 Changing the sequence of `ctx.run()` calls **breaks in-flight invocations**. Restate replays positionally — different steps at the same indices causes error 570. After refactoring:
 
 1. Cancel all in-flight invocations for affected handlers
-2. If needed: wipe Restate's journal storage (`/restate-data/`) and restart
-3. Re-register: `restate deployments register http://ps-workers:9081/ --force --yes`
+2. If needed: wipe Restate's journal storage (`/restate-data/store/`) and restart the pod
+3. Re-register via Admin API: `curl -X POST http://localhost:9070/deployments -H 'content-type: application/json' -d '{"uri":"http://ps-workers:9081/","force":true}'`
 
 ## Frontend Dispatch
 
