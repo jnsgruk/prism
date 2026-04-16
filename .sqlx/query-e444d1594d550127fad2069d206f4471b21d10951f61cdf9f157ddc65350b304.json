@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET pipeline_id = $1\n            WHERE pipeline_id IS NULL\n              AND source_name != '_pipeline'\n              AND started_at >= (SELECT started_at FROM activity.pipelines WHERE id = $1)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e444d1594d550127fad2069d206f4471b21d10951f61cdf9f157ddc65350b304"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method,\n                   pipeline_id\n            FROM activity.ingestion_runs\n            WHERE status = 'running'\n            ORDER BY started_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -47,12 +47,15 @@
         "ordinal": 8,
         "name": "handler_method",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "pipeline_id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -63,8 +66,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "144a24d9aecb9f27f888d4bce34a814878f75717e4915c60690a70e1990451ca"
+  "hash": "cbdbcb0eeb95d54886b12268b1f767d3490440d7847e73408ee35960625235be"
 }

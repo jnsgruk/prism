@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method\n            FROM activity.ingestion_runs\n            WHERE status = 'running'\n            ORDER BY started_at DESC\n            ",
+  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method,\n                   pipeline_id\n            FROM activity.ingestion_runs\n            WHERE ($1::text IS NULL OR source_name = $1)\n              AND ($2::text IS NULL OR handler_name = $2)\n              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill', 'run_cycle'))\n            ORDER BY started_at DESC\n            LIMIT 100\n            ",
   "describe": {
     "columns": [
       {
@@ -47,10 +47,19 @@
         "ordinal": 8,
         "name": "handler_method",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "pipeline_id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text",
+        "Bool"
+      ]
     },
     "nullable": [
       false,
@@ -61,8 +70,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "9dc21c78b7c99fb4e56feae7cf71ef547aded8e15c049c1a918bb97fbdb1f2cc"
+  "hash": "a23bc1055e14aab383ed048b07618599075a09201c0e5262bb49b0eeadefa786"
 }
