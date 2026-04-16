@@ -568,18 +568,38 @@ impl HandlersService for HandlersServiceImpl {
             .map_err(db_err)?;
 
         // Auto-heal stale pipelines stuck in "running" (e.g. from a killed invocation
-        // that never finalized). If a pipeline has been running for >2 hours, mark it cancelled.
+        // that never finalized). If a pipeline has been running for >2 hours AND its
+        // Restate invocation is no longer alive, mark it cancelled. Pipelines that are
+        // still alive in Restate (e.g. suspended after a cluster restart) are left alone.
         if let Some(ref p) = latest
             && p.status == "running"
         {
             let age = time::OffsetDateTime::now_utc() - p.started_at;
             if age > time::Duration::hours(2) {
-                tracing::warn!(pipeline_id = %p.id, age_hours = age.whole_hours(), "auto-healing stale pipeline");
-                let _ = self
-                    .repos
-                    .activity
-                    .complete_pipeline(p.id, "cancelled", &p.stages, Some("stale: auto-cancelled"))
-                    .await;
+                let still_alive = match &p.current_invocation_id {
+                    Some(id) if !id.is_empty() => self.is_invocation_alive(id).await,
+                    _ => false,
+                };
+
+                if still_alive {
+                    tracing::info!(
+                        pipeline_id = %p.id,
+                        age_hours = age.whole_hours(),
+                        "pipeline exceeds 2h but Restate invocation is still alive, skipping auto-heal",
+                    );
+                } else {
+                    tracing::warn!(pipeline_id = %p.id, age_hours = age.whole_hours(), "auto-healing stale pipeline");
+                    let _ = self
+                        .repos
+                        .activity
+                        .complete_pipeline(
+                            p.id,
+                            "cancelled",
+                            &p.stages,
+                            Some("stale: auto-cancelled"),
+                        )
+                        .await;
+                }
             }
         }
 
