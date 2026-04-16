@@ -365,9 +365,27 @@ async fn fetch_member_search(
             });
         }
         Err(e) => {
-            return Err(ps_core::Error::Internal(format!(
-                "GitHub GraphQL search error: {e}"
-            )));
+            let batch_desc = batch.join(", ");
+            warn!(
+                source = ctx.source_config.name,
+                users = %batch_desc,
+                error = %e,
+                "skipping user batch due to search error"
+            );
+            cur.failed_items.push(FailedItem {
+                key: format!("member_search[{batch_desc}]"),
+                error: e.to_string(),
+            });
+            cur.search_user_index = batch_end;
+            cur.search_graphql_cursor = None;
+            return Ok(FetchResult {
+                items: vec![],
+                next_cursor: Some(serialise_cursor(cur)?),
+                rate_limit: None,
+                display_rate_limit: None,
+                etag: None,
+                skipped_diffs: vec![],
+            });
         }
     };
 

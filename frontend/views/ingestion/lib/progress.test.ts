@@ -105,44 +105,33 @@ describe("normaliseProgress", () => {
     });
   });
 
-  it("includes rateLimitNote when rate limit data is present", () => {
+  it("shows pause note when rate_limit_reset_at is in the future", () => {
+    const future = new Date(Date.now() + 15 * 60_000).toISOString();
     const progress: RunProgress = {
       phase: "team_repos",
       repos_total: 10,
       repos_completed: 5,
-      rate_limit_remaining: 4334,
-      rate_limit_limit: 5000,
+      rate_limit_reset_at: future,
     };
     const result = normaliseProgress("github", progress);
-    expect(result.rateLimitNote).toBe("87% API calls left");
-    expect(result.rateLimitLow).toBe(false);
+    expect(result.pauseNote).toMatch(/^Paused — resumes in \d+m$/);
   });
 
-  it("sets rateLimitLow when remaining is below 10%", () => {
+  it("omits pause note when rate_limit_reset_at is in the past", () => {
+    const past = new Date(Date.now() - 60_000).toISOString();
     const progress: RunProgress = {
-      status_message: "Fetching issues",
-      rate_limit_remaining: 30,
-      rate_limit_limit: 350,
+      phase: "team_repos",
+      repos_total: 10,
+      repos_completed: 5,
+      rate_limit_reset_at: past,
     };
-    const result = normaliseProgress("jira", progress);
-    expect(result.rateLimitNote).toBe("9% API calls left");
-    expect(result.rateLimitLow).toBe(true);
+    const result = normaliseProgress("github", progress);
+    expect(result.pauseNote).toBeUndefined();
   });
 
-  it("omits rateLimitNote when rate limit data is absent", () => {
+  it("omits pause note when rate_limit_reset_at is absent", () => {
     const progress: RunProgress = { phase: "team_repos", repos_total: 10, repos_completed: 3 };
     const result = normaliseProgress("github", progress);
-    expect(result.rateLimitNote).toBeUndefined();
-    expect(result.rateLimitLow).toBeUndefined();
-  });
-
-  it("defaults rate_limit_remaining to 0 when missing", () => {
-    const progress: RunProgress = {
-      status_message: "Collecting",
-      rate_limit_limit: 5000,
-    };
-    const result = normaliseProgress("jira", progress);
-    expect(result.rateLimitNote).toBe("0% API calls left");
-    expect(result.rateLimitLow).toBe(true);
+    expect(result.pauseNote).toBeUndefined();
   });
 });

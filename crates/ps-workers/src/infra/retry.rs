@@ -1,7 +1,21 @@
 use tracing::warn;
 
 /// Maximum retries for transient errors (502, 503, timeouts, etc.).
-const MAX_TRANSIENT_RETRIES: u32 = 3;
+const MAX_TRANSIENT_RETRIES: u32 = 5;
+
+/// Base delay for exponential backoff (multiplied by 2^(attempt-1)).
+const BACKOFF_BASE_SECS: u64 = 8;
+
+/// Ceiling for any single backoff delay.
+const MAX_BACKOFF_SECS: u64 = 120;
+
+/// Compute backoff with ±25% jitter clamped to [`MAX_BACKOFF_SECS`].
+fn backoff_with_jitter(attempt: u32) -> std::time::Duration {
+    let base = (BACKOFF_BASE_SECS * 2u64.pow(attempt - 1)).min(MAX_BACKOFF_SECS);
+    let low = base * 3 / 4; // -25%
+    let high = (base * 5 / 4).min(MAX_BACKOFF_SECS); // +25%, still capped
+    std::time::Duration::from_secs(fastrand::u64(low..=high))
+}
 
 /// Retry a fallible async operation with exponential backoff for transient errors.
 ///
@@ -25,7 +39,7 @@ where
     }
 
     for attempt in 1..=MAX_TRANSIENT_RETRIES {
-        let backoff = std::time::Duration::from_secs(2u64.pow(attempt - 1));
+        let backoff = backoff_with_jitter(attempt);
         warn!(
             error = %last_err,
             attempt,
@@ -124,7 +138,7 @@ mod tests {
         })
         .await;
         assert!(result.is_err());
-        // Initial call + MAX_TRANSIENT_RETRIES (3) = 4 total calls
-        assert_eq!(call_count.load(Ordering::SeqCst), 4);
+        // Initial call + MAX_TRANSIENT_RETRIES (5) = 6 total calls
+        assert_eq!(call_count.load(Ordering::SeqCst), 6);
     }
 }

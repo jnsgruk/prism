@@ -50,15 +50,8 @@ const InlineProgress = ({ progress }: { progress: NormalisedProgress }): React.R
       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress.percent}%</span>
     )}
     <span className="truncate text-xs text-muted-foreground">{progress.label}</span>
-    {progress.rateLimitNote && (
-      <span
-        className={cn(
-          "shrink-0 text-xs tabular-nums whitespace-nowrap",
-          progress.rateLimitLow ? "text-destructive" : "text-muted-foreground",
-        )}
-      >
-        ({progress.rateLimitNote})
-      </span>
+    {progress.pauseNote && (
+      <span className="shrink-0 text-xs whitespace-nowrap text-destructive">({progress.pauseNote})</span>
     )}
   </div>
 );

@@ -15,6 +15,7 @@ export type RunProgress = {
   search_users_completed?: number;
   rate_limit_remaining?: number;
   rate_limit_limit?: number;
+  rate_limit_reset_at?: string;
   status_message?: string;
 };
 
@@ -23,10 +24,8 @@ export type NormalisedProgress = {
   percent: number | null;
   /** Short context label for the progress column */
   label: string;
-  /** Inline rate-limit note, e.g. "4,334/5,000 API calls left" */
-  rateLimitNote?: string;
-  /** True when remaining / limit < 0.1 */
-  rateLimitLow?: boolean;
+  /** Human-readable pause message shown when pipeline is sleeping for rate limit */
+  pauseNote?: string;
 };
 
 const isRunProgress = (v: unknown): v is RunProgress => typeof v === "object" && v !== null;
@@ -42,14 +41,14 @@ export const parseProgress = (json: string | undefined): RunProgress | null => {
   }
 };
 
-/** Append rate-limit fields to a result when the progress carries them. */
-const withRateLimit = (result: NormalisedProgress, progress: RunProgress): NormalisedProgress => {
-  if (progress.rate_limit_limit && progress.rate_limit_limit > 0) {
-    const remaining = progress.rate_limit_remaining ?? 0;
-    const pct = Math.round((remaining / progress.rate_limit_limit) * 100);
-    result.rateLimitNote = `${pct}% API calls left`;
-    result.rateLimitLow = remaining / progress.rate_limit_limit < 0.1;
-  }
+/** Append pause info when the pipeline is sleeping for a rate limit reset. */
+const withPauseInfo = (result: NormalisedProgress, progress: RunProgress): NormalisedProgress => {
+  if (!progress.rate_limit_reset_at) return result;
+  const resetAt = new Date(progress.rate_limit_reset_at);
+  const diffMs = resetAt.getTime() - Date.now();
+  if (diffMs <= 0) return result;
+  const diffMin = Math.ceil(diffMs / 60_000);
+  result.pauseNote = diffMin <= 1 ? "Paused — resumes in <1m" : `Paused — resumes in ${String(diffMin)}m`;
   return result;
 };
 
@@ -66,32 +65,32 @@ export const normaliseProgress = (sourceType: string, progress: RunProgress | nu
         const total = progress.repos_total ?? 0;
         const done = progress.repos_completed ?? 0;
         if (total > 0) {
-          return withRateLimit({ percent: Math.round((done / total) * 90), label: `${done}/${total} repos` }, progress);
+          return withPauseInfo({ percent: Math.round((done / total) * 90), label: `${done}/${total} repos` }, progress);
         }
-        return withRateLimit({ percent: null, label: "Fetching repos" }, progress);
+        return withPauseInfo({ percent: null, label: "Fetching repos" }, progress);
       }
       case "member_search": {
         const total = progress.search_users_total ?? 0;
         const done = progress.search_users_completed ?? 0;
         if (total > 0) {
-          return withRateLimit(
+          return withPauseInfo(
             { percent: 90 + Math.round((done / total) * 10), label: `${done}/${total} members` },
             progress,
           );
         }
-        return withRateLimit({ percent: null, label: "Searching members" }, progress);
+        return withPauseInfo({ percent: null, label: "Searching members" }, progress);
       }
       case "complete":
-        return withRateLimit({ percent: 100, label: "Finalising" }, progress);
+        return withPauseInfo({ percent: 100, label: "Finalising" }, progress);
       default:
-        return withRateLimit({ percent: null, label: progress.status_message ?? "Starting" }, progress);
+        return withPauseInfo({ percent: null, label: progress.status_message ?? "Starting" }, progress);
     }
   }
 
   // Generic handler — use status_message if available
   if (progress.status_message) {
-    return withRateLimit({ percent: null, label: progress.status_message }, progress);
+    return withPauseInfo({ percent: null, label: progress.status_message }, progress);
   }
 
-  return withRateLimit({ percent: null, label: "Collecting" }, progress);
+  return withPauseInfo({ percent: null, label: "Collecting" }, progress);
 };

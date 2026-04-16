@@ -145,6 +145,34 @@ macro_rules! chunk_update_progress {
     }};
 }
 
+/// Best-effort progress update with rate-limit pause info (not journaled).
+///
+/// Like `chunk_update_progress!` but injects a `rate_limit_reset_at` ISO 8601
+/// timestamp so the UI can show "Paused — resumes in Xm" while sleeping.
+macro_rules! chunk_update_progress_with_pause {
+    ($ing_ctx:expr, $run_id:expr, $global_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
+        let rl = $batch.display_rate_limit.as_ref().or($batch.rate_limit.as_ref());
+        let mut progress = $tracker.build_progress($cursor, rl);
+        if let Some(ref rl) = $batch.rate_limit {
+            if let Some(obj) = progress.as_object_mut() {
+                let ts = rl
+                    .reset_at
+                    .format(&time::format_description::well_known::Rfc3339)
+                    .unwrap_or_default();
+                obj.insert("rate_limit_reset_at".into(), serde_json::json!(ts));
+            }
+        }
+        if let Err(e) = $ing_ctx
+            .repos
+            .activity
+            .update_run_progress_detail($run_id, $global_items, &progress)
+            .await
+        {
+            tracing::debug!(error = %e, "failed to update run progress");
+        }
+    }};
+}
+
 /// Fetch-store loop with a batch limit and `Context<'_>` (service context).
 ///
 /// Returns `(items_stored, final_cursor, is_complete)`.
@@ -202,7 +230,9 @@ async fn chunk_fetch_store_loop(
                     "rate limit exhausted, sleeping durably before retry"
                 );
                 let global = items_offset + total_items;
-                chunk_update_progress!(ing_ctx, run_id, global, tracker, &cursor, &batch);
+                chunk_update_progress_with_pause!(
+                    ing_ctx, run_id, global, tracker, &cursor, &batch
+                );
                 ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
             }
             BatchAction::Process {
@@ -244,6 +274,10 @@ async fn chunk_fetch_store_loop(
                             wait_secs,
                             skipped = batch.skipped_diffs.len(),
                             "sleeping for REST rate limit reset before retrying diffs"
+                        );
+                        let global = items_offset + total_items;
+                        chunk_update_progress_with_pause!(
+                            ing_ctx, run_id, global, tracker, &cursor, &batch
                         );
                         ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
                         chunk_retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
