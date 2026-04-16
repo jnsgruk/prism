@@ -2,8 +2,10 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTriggerTeamSync } from "@/lib/hooks/use-ingestion";
 import { platformLabel } from "@/lib/proto-display";
+import { useTeamSyncStatus } from "@/views/admin/hooks/use-team-sync-status";
 import { SOURCE_TYPES, baseSourceType } from "@/views/admin/lib/source-types";
 import { Key, Loader2, Plug, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -15,11 +17,40 @@ import { useDeleteSource, useTestConnection, useUpdateSource } from "@ps/hooks/u
 
 import { EditSourceDialog } from "./edit-source-dialog";
 
+const TeamSyncButton = ({ sourceName }: { sourceName: string }): React.ReactElement => {
+  const triggerTeamSync = useTriggerTeamSync();
+  const { isRunning } = useTeamSyncStatus(sourceName);
+
+  const isBusy = triggerTeamSync.isPending || isRunning;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() =>
+              triggerTeamSync.mutate(sourceName, {
+                onSuccess: () => toast.success("Team sync triggered"),
+                onError: (err) => toast.error(err instanceof Error ? err.message : "Sync failed"),
+              })
+            }
+            disabled={isBusy}
+          />
+        }
+      >
+        {isBusy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+      </TooltipTrigger>
+      <TooltipContent>{isRunning ? "Team sync in progress…" : "Sync GitHub teams"}</TooltipContent>
+    </Tooltip>
+  );
+};
+
 export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElement => {
   const updateSource = useUpdateSource();
   const deleteSource = useDeleteSource();
   const testConnection = useTestConnection();
-  const triggerTeamSync = useTriggerTeamSync();
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -65,26 +96,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
         </div>
 
         <div className="flex items-center gap-1">
-          {source.sourceType === Platform.GITHUB && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() =>
-                triggerTeamSync.mutate(source.name, {
-                  onSuccess: () => toast.success("Team sync triggered"),
-                  onError: (err) => toast.error(err instanceof Error ? err.message : "Sync failed"),
-                })
-              }
-              disabled={triggerTeamSync.isPending}
-              title="Sync GitHub teams"
-            >
-              {triggerTeamSync.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-            </Button>
-          )}
+          {source.sourceType === Platform.GITHUB && <TeamSyncButton sourceName={source.name} />}
           <Button variant="ghost" size="icon-sm" onClick={() => setShowEdit(true)} title="Edit settings">
             <Settings2 className="size-4" />
           </Button>
