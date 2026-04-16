@@ -52,6 +52,7 @@ impl Error {
                     || m.contains("connection reset")
                     || m.contains("connection closed")
                     || m.contains("broken pipe")
+                    || m.contains("error decoding")
             }
             _ => false,
         }
@@ -126,6 +127,12 @@ mod tests {
     #[test]
     fn internal_timeout_case_insensitive() {
         let e = Error::Internal("REQUEST TIMED OUT".into());
+        assert!(e.is_transient());
+    }
+
+    #[test]
+    fn internal_decode_error_transient() {
+        let e = Error::Internal("jira response parse error: error decoding response body".into());
         assert!(e.is_transient());
     }
 

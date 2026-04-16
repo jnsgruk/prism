@@ -7,9 +7,9 @@
 use base64::Engine;
 use ps_core::models::RateLimitInfo;
 use reqwest::header::AUTHORIZATION;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use time::OffsetDateTime;
-use tracing::debug;
+use tracing::{debug, error};
 use zeroize::Zeroizing;
 
 /// Validate a Jira issue key (e.g., `PROJ-123`) before interpolating into URLs.
@@ -40,6 +40,15 @@ pub struct JiraClient {
     auth_header: Zeroizing<String>,
 }
 
+/// Deserialize `null` as the type's default (e.g. empty `Vec`).
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 /// A page of search results from the Jira JQL search endpoint.
 ///
 /// Jira Cloud's `/rest/api/3/search/jql` uses cursor-based pagination
@@ -53,6 +62,7 @@ pub struct SearchResponse {
     pub max_results: i64,
     #[serde(default)]
     pub total: i64,
+    #[serde(default, deserialize_with = "null_as_default")]
     pub issues: Vec<JiraIssue>,
     /// Cursor for the next page. `None` or absent means last page.
     #[serde(default)]
@@ -135,12 +145,14 @@ pub struct JiraParent {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JiraChangelog {
+    #[serde(default, deserialize_with = "null_as_default")]
     pub histories: Vec<JiraChangeHistory>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct JiraChangeHistory {
     pub created: Option<String>,
+    #[serde(default, deserialize_with = "null_as_default")]
     pub items: Vec<JiraChangeItem>,
 }
 
@@ -246,10 +258,21 @@ impl JiraClient {
             });
         }
 
-        let search_resp: SearchResponse = resp
-            .json()
+        let body = resp
+            .text()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("jira response parse error: {e}")))?;
+            .map_err(|e| ps_core::Error::Internal(format!("jira response body read error: {e}")))?;
+
+        let search_resp: SearchResponse = serde_json::from_str(&body).map_err(|e| {
+            let snippet: String = body.chars().take(2000).collect();
+            error!(
+                error = %e,
+                body_len = body.len(),
+                body_snippet = snippet.as_str(),
+                "jira search response parse error"
+            );
+            ps_core::Error::Internal(format!("jira response parse error: {e}"))
+        })?;
 
         debug!(
             total = search_resp.total,
@@ -298,9 +321,22 @@ impl JiraClient {
             });
         }
 
-        resp.json()
+        let body = resp
+            .text()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("jira issue parse error: {e}")))
+            .map_err(|e| ps_core::Error::Internal(format!("jira issue body read error: {e}")))?;
+
+        serde_json::from_str(&body).map_err(|e| {
+            let snippet: String = body.chars().take(2000).collect();
+            error!(
+                issue_key = key,
+                error = %e,
+                body_len = body.len(),
+                body_snippet = snippet.as_str(),
+                "jira issue parse error"
+            );
+            ps_core::Error::Internal(format!("jira issue parse error: {e}"))
+        })
     }
 
     /// Test the connection by fetching server info (Jira Cloud) or myself endpoint.
@@ -356,4 +392,37 @@ fn extract_rate_limit(resp: &reqwest::Response) -> Option<RateLimitInfo> {
         limit,
         reset_at,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_response_null_issues() {
+        let json = r#"{"startAt":0,"maxResults":50,"total":0,"issues":null}"#;
+        let resp: SearchResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.issues.is_empty());
+    }
+
+    #[test]
+    fn search_response_missing_issues() {
+        let json = r#"{"startAt":0,"maxResults":50,"total":0}"#;
+        let resp: SearchResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.issues.is_empty());
+    }
+
+    #[test]
+    fn changelog_null_histories() {
+        let json = r#"{"histories":null}"#;
+        let cl: JiraChangelog = serde_json::from_str(json).unwrap();
+        assert!(cl.histories.is_empty());
+    }
+
+    #[test]
+    fn change_history_null_items() {
+        let json = r#"{"created":"2024-01-01T00:00:00Z","items":null}"#;
+        let h: JiraChangeHistory = serde_json::from_str(json).unwrap();
+        assert!(h.items.is_empty());
+    }
 }
