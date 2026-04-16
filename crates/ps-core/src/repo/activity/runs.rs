@@ -1,5 +1,6 @@
 use crate::Error;
 use crate::models::{HandlerMethod, HandlerName, SourceName};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{ActivityRepo, IngestionRunRow};
@@ -208,6 +209,50 @@ impl ActivityRepo {
             WHERE status = 'running'
             ORDER BY started_at DESC
             "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| IngestionRunRow {
+                id: r.id,
+                source_name: r.source_name,
+                started_at: r.started_at,
+                completed_at: r.completed_at,
+                status: r
+                    .status
+                    .parse()
+                    .unwrap_or(crate::models::IngestionStatus::Failed),
+                items_collected: r.items_collected,
+                error_message: r.error_message,
+                handler_name: r.handler_name,
+                handler_method: r.handler_method,
+                pipeline_id: r.pipeline_id,
+            })
+            .collect())
+    }
+
+    /// List runs that are not yet linked to a pipeline but started after the
+    /// given timestamp.  Used to show in-progress runs before `link_runs_to_pipeline`
+    /// has been called by the workflow.
+    pub async fn list_unlinked_runs_since(
+        &self,
+        since: OffsetDateTime,
+    ) -> Result<Vec<IngestionRunRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, source_name, started_at, completed_at, status,
+                   items_collected, error_message, handler_name, handler_method,
+                   pipeline_id
+            FROM activity.ingestion_runs
+            WHERE pipeline_id IS NULL
+              AND source_name != '_pipeline'
+              AND started_at >= $1
+            ORDER BY started_at ASC
+            "#,
+            since,
         )
         .fetch_all(&self.pool)
         .await

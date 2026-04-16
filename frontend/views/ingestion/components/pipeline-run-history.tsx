@@ -69,11 +69,13 @@ const totalItems = (runs: HandlerRun[]): number => runs.reduce((sum, r) => sum +
 
 const PipelineRow = ({
   summary,
+  rowNumber,
   isExpanded,
   onToggle,
   onSelectRun,
 }: {
   summary: PipelineRunSummary;
+  rowNumber: number;
   isExpanded: boolean;
   onToggle: () => void;
   onSelectRun: (run: HandlerRun) => void;
@@ -82,6 +84,7 @@ const PipelineRow = ({
   const runs = summary.runs;
   const groups = useMemo(() => groupRunsByStage(runs), [runs]);
   const items = useMemo(() => totalItems(runs), [runs]);
+  const shortId = pipeline.id.slice(0, 8);
 
   return (
     <>
@@ -94,10 +97,11 @@ const PipelineRow = ({
             ) : (
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="font-medium">Pipeline</span>
+            <span className="font-medium">Run #{rowNumber}</span>
+            <span className="text-xs text-muted-foreground">({shortId})</span>
             {runs.length > 0 && (
               <span className="text-xs text-muted-foreground">
-                {runs.length} {runs.length === 1 ? "run" : "runs"}
+                &middot; {runs.length} {runs.length === 1 ? "handler" : "handlers"}
               </span>
             )}
           </div>
@@ -336,11 +340,12 @@ export const PipelineRunHistoryPanel = ({ hasActiveRun }: { hasActiveRun: boolea
                     </TableRow>
                   ) : (
                     pagePipelines.map(
-                      (summary) =>
+                      (summary, i) =>
                         summary.pipeline && (
                           <PipelineRow
                             key={summary.pipeline.id}
                             summary={summary}
+                            rowNumber={totalCount - (pageIndex * pageSize + i)}
                             isExpanded={expandedIds.has(summary.pipeline.id)}
                             onToggle={() => toggleExpanded(summary.pipeline!.id)}
                             onSelectRun={setSelectedRun}

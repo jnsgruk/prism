@@ -779,6 +779,33 @@ impl HandlersService for HandlersServiceImpl {
             }
         }
 
+        // For running pipelines, also include unlinked runs that started after
+        // the pipeline — these haven't been linked yet because the workflow
+        // only calls link_runs_to_pipeline after each stage completes.
+        let running_pipeline = pipelines.iter().find(|p| p.status == "running");
+        if let Some(rp) = running_pipeline {
+            let unlinked = self
+                .repos
+                .activity
+                .list_unlinked_runs_since(rp.started_at)
+                .await
+                .map_err(db_err)?;
+
+            let entry = runs_by_pipeline.entry(rp.id).or_default();
+            let existing_ids: HashSet<uuid::Uuid> =
+                entry.iter().filter_map(|r| r.id.parse().ok()).collect();
+            for run in unlinked {
+                if !existing_ids.contains(&run.id) {
+                    entry.push(run_to_proto(run));
+                }
+            }
+            entry.sort_by(|a, b| {
+                let ts =
+                    |t: &Option<prost_types::Timestamp>| t.as_ref().map(|t| (t.seconds, t.nanos));
+                ts(&a.started_at).cmp(&ts(&b.started_at))
+            });
+        }
+
         let summaries = pipelines
             .iter()
             .map(|p| PipelineRunSummary {
