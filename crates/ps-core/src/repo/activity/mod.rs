@@ -28,6 +28,7 @@ pub struct IngestionRunRow {
     pub error_message: Option<String>,
     pub handler_name: String,
     pub handler_method: String,
+    pub pipeline_id: Option<Uuid>,
 }
 
 /// A joined row from `config.source_configs` + `activity.ingestion_watermarks`.

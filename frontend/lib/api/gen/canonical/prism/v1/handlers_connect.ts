@@ -22,6 +22,8 @@ import {
   GetStatusResponse,
   ListHandlersRequest,
   ListHandlersResponse,
+  ListPipelineRunsRequest,
+  ListPipelineRunsResponse,
   ListRunsRequest,
   ListRunsResponse,
   TriggerBackfillRequest,
@@ -175,6 +177,17 @@ export const HandlersService = {
       name: "CancelPipeline",
       I: CancelPipelineRequest,
       O: CancelPipelineResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListPipelineRuns returns recent pipelines with their associated handler runs.
+     *
+     * @generated from rpc canonical.prism.v1.HandlersService.ListPipelineRuns
+     */
+    listPipelineRuns: {
+      name: "ListPipelineRuns",
+      I: ListPipelineRunsRequest,
+      O: ListPipelineRunsResponse,
       kind: MethodKind.Unary,
     },
   },

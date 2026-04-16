@@ -37,6 +37,9 @@ service HandlersService {
   rpc TriggerPipeline(TriggerPipelineRequest) returns (TriggerPipelineResponse);
   // CancelPipeline cooperatively cancels a running pipeline after the current stage.
   rpc CancelPipeline(CancelPipelineRequest) returns (CancelPipelineResponse);
+
+  // ListPipelineRuns returns recent pipelines with their associated handler runs.
+  rpc ListPipelineRuns(ListPipelineRunsRequest) returns (ListPipelineRunsResponse);
 }
 
 // SourceState represents the current operational state of an ingestion source.
@@ -87,6 +90,8 @@ message HandlerRun {
   string handler_name = 9;
   // Restate method name (e.g. "run_ingestion").
   string handler_method = 10;
+  // Pipeline that triggered this run, if any.
+  optional string pipeline_id = 11;
 }
 
 message GetStatusRequest {}
@@ -228,3 +233,20 @@ message CancelPipelineRequest {
 }
 
 message CancelPipelineResponse {}
+
+// ---------------------------------------------------------------------------
+// Pipeline run history (grouped)
+// ---------------------------------------------------------------------------
+
+message ListPipelineRunsRequest {}
+
+message ListPipelineRunsResponse {
+  repeated PipelineRunSummary pipelines = 1;
+}
+
+// PipelineRunSummary bundles a pipeline with all handler runs it triggered.
+message PipelineRunSummary {
+  PipelineInfo pipeline = 1;
+  // Handler runs linked to this pipeline, ordered by started_at ASC.
+  repeated HandlerRun runs = 2;
+}

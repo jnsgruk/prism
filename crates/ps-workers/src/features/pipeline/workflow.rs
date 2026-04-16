@@ -308,6 +308,9 @@ impl IngestionPipelineWorkflowImpl {
         self.update_state(ctx, pipeline_id, "ingestion", stages)
             .await?;
 
+        // Link handler runs created during ingestion to this pipeline
+        self.link_runs(ctx, pipeline_id).await?;
+
         let failed_names: Vec<String> = results
             .iter()
             .filter(|r| r.status == StageStatus::Failed)
@@ -315,6 +318,23 @@ impl IngestionPipelineWorkflowImpl {
             .collect();
         let any_failed = !failed_names.is_empty();
         Ok((any_failed, failed_names))
+    }
+
+    /// Link all unlinked handler runs to this pipeline (journaled).
+    async fn link_runs(
+        &self,
+        ctx: &WorkflowContext<'_>,
+        pipeline_id: Uuid,
+    ) -> Result<(), TerminalError> {
+        let repos = self.state.repos.clone();
+        journaled!(ctx, "link_runs_to_pipeline", [repos], {
+            repos
+                .activity
+                .link_runs_to_pipeline(pipeline_id)
+                .await
+                .map_err(terminal_err("failed to link runs to pipeline"))?;
+        });
+        Ok(())
     }
 
     /// Persist stage update to DB (journaled).
@@ -380,6 +400,9 @@ impl IngestionPipelineWorkflowImpl {
         mark_stage_complete(stages, stage_name, &[handler_result]);
         self.update_state(ctx, pipeline_id, stage_name, stages)
             .await?;
+
+        // Link handler runs created during this stage to the pipeline
+        self.link_runs(ctx, pipeline_id).await?;
 
         if result.is_err() {
             mark_remaining_cancelled(stages);

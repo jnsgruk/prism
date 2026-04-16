@@ -109,7 +109,8 @@ impl ActivityRepo {
         let rows = sqlx::query!(
             r#"
             SELECT id, source_name, started_at, completed_at, status,
-                   items_collected, error_message, handler_name, handler_method
+                   items_collected, error_message, handler_name, handler_method,
+                   pipeline_id
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
               AND ($2::text IS NULL OR handler_name = $2)
@@ -140,6 +141,7 @@ impl ActivityRepo {
                 error_message: r.error_message,
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
+                pipeline_id: r.pipeline_id,
             })
             .collect())
     }
@@ -149,7 +151,8 @@ impl ActivityRepo {
         let row = sqlx::query!(
             r#"
             SELECT id, source_name, started_at, completed_at, status,
-                   items_collected, error_message, handler_name, handler_method
+                   items_collected, error_message, handler_name, handler_method,
+                   pipeline_id
             FROM activity.ingestion_runs
             WHERE id = $1
             "#,
@@ -172,6 +175,7 @@ impl ActivityRepo {
             error_message: r.error_message,
             handler_name: r.handler_name,
             handler_method: r.handler_method,
+            pipeline_id: r.pipeline_id,
         }))
     }
 
@@ -198,7 +202,8 @@ impl ActivityRepo {
         let rows = sqlx::query!(
             r#"
             SELECT id, source_name, started_at, completed_at, status,
-                   items_collected, error_message, handler_name, handler_method
+                   items_collected, error_message, handler_name, handler_method,
+                   pipeline_id
             FROM activity.ingestion_runs
             WHERE status = 'running'
             ORDER BY started_at DESC
@@ -223,8 +228,29 @@ impl ActivityRepo {
                 error_message: r.error_message,
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
+                pipeline_id: r.pipeline_id,
             })
             .collect())
+    }
+
+    /// Link all unlinked runs that started after the pipeline to this pipeline.
+    /// Used by the pipeline workflow after each stage to associate handler runs.
+    pub async fn link_runs_to_pipeline(&self, pipeline_id: Uuid) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET pipeline_id = $1
+            WHERE pipeline_id IS NULL
+              AND source_name != '_pipeline'
+              AND started_at >= (SELECT started_at FROM activity.pipelines WHERE id = $1)
+            "#,
+            pipeline_id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
     }
 
     /// Update the progress of a running ingestion (items collected so far).
@@ -243,6 +269,47 @@ impl ActivityRepo {
         .map_err(Error::from)?;
 
         Ok(())
+    }
+
+    /// List runs associated with a set of pipeline IDs.
+    pub async fn list_runs_for_pipelines(
+        &self,
+        pipeline_ids: &[Uuid],
+    ) -> Result<Vec<IngestionRunRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, source_name, started_at, completed_at, status,
+                   items_collected, error_message, handler_name, handler_method,
+                   pipeline_id
+            FROM activity.ingestion_runs
+            WHERE pipeline_id = ANY($1)
+              AND source_name != '_pipeline'
+            ORDER BY started_at ASC
+            "#,
+            pipeline_ids,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| IngestionRunRow {
+                id: r.id,
+                source_name: r.source_name,
+                started_at: r.started_at,
+                completed_at: r.completed_at,
+                status: r
+                    .status
+                    .parse()
+                    .unwrap_or(crate::models::IngestionStatus::Failed),
+                items_collected: r.items_collected,
+                error_message: r.error_message,
+                handler_name: r.handler_name,
+                handler_method: r.handler_method,
+                pipeline_id: r.pipeline_id,
+            })
+            .collect())
     }
 
     /// Update the progress of a running ingestion with structured detail.

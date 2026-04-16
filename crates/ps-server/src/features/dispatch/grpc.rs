@@ -5,10 +5,11 @@ use ps_proto::canonical::prism::v1::{
     ActiveRun, CancelHandlerRunRequest, CancelHandlerRunResponse, CancelPipelineRequest,
     CancelPipelineResponse, CancelRunRequest, CancelRunResponse, GetPipelineStatusRequest,
     GetPipelineStatusResponse, GetStatusRequest, GetStatusResponse, HandlerRun,
-    ListHandlersRequest, ListHandlersResponse, ListRunsRequest, ListRunsResponse, PipelineInfo,
-    SourceStatus, TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest,
-    TriggerHandlerResponse, TriggerPipelineRequest, TriggerPipelineResponse, TriggerRunRequest,
-    TriggerRunResponse, TriggerTeamSyncRequest, TriggerTeamSyncResponse,
+    ListHandlersRequest, ListHandlersResponse, ListPipelineRunsRequest, ListPipelineRunsResponse,
+    ListRunsRequest, ListRunsResponse, PipelineInfo, PipelineRunSummary, SourceStatus,
+    TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest, TriggerHandlerResponse,
+    TriggerPipelineRequest, TriggerPipelineResponse, TriggerRunRequest, TriggerRunResponse,
+    TriggerTeamSyncRequest, TriggerTeamSyncResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
@@ -17,6 +18,22 @@ use super::{
     HANDLER_DEFS, HandlersServiceImpl, derive_state, known_handlers, validate_restate_identifier,
 };
 use crate::common::{db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp};
+
+fn run_to_proto(r: ps_core::repo::activity::IngestionRunRow) -> HandlerRun {
+    HandlerRun {
+        id: r.id.to_string(),
+        source_name: r.source_name,
+        started_at: Some(to_timestamp(r.started_at)),
+        completed_at: r.completed_at.map(to_timestamp),
+        status: run_status_to_proto(&r.status),
+        items_collected: r.items_collected.unwrap_or(0),
+        error_message: r.error_message,
+        rate_limit_waits_seconds: 0,
+        handler_name: r.handler_name,
+        handler_method: r.handler_method,
+        pipeline_id: r.pipeline_id.map(|id| id.to_string()),
+    }
+}
 
 fn pipeline_to_proto(p: &ps_core::models::Pipeline) -> PipelineInfo {
     PipelineInfo {
@@ -119,21 +136,7 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
-        let runs = rows
-            .into_iter()
-            .map(|r| HandlerRun {
-                id: r.id.to_string(),
-                source_name: r.source_name,
-                started_at: Some(to_timestamp(r.started_at)),
-                completed_at: r.completed_at.map(to_timestamp),
-                status: run_status_to_proto(&r.status),
-                items_collected: r.items_collected.unwrap_or(0),
-                error_message: r.error_message,
-                rate_limit_waits_seconds: 0,
-                handler_name: r.handler_name,
-                handler_method: r.handler_method,
-            })
-            .collect();
+        let runs = rows.into_iter().map(run_to_proto).collect();
 
         Ok(Response::new(ListRunsResponse { runs }))
     }
@@ -742,5 +745,50 @@ impl HandlersService for HandlersServiceImpl {
         info!(%pipeline_id, "cancelled pipeline");
 
         Ok(Response::new(CancelPipelineResponse {}))
+    }
+
+    async fn list_pipeline_runs(
+        &self,
+        request: Request<ListPipelineRunsRequest>,
+    ) -> Result<Response<ListPipelineRunsResponse>, Status> {
+        let _ctx = require_auth(&request)?;
+
+        let pipelines = self
+            .repos
+            .activity
+            .list_recent_pipelines(20)
+            .await
+            .map_err(db_err)?;
+
+        let pipeline_ids: Vec<uuid::Uuid> = pipelines.iter().map(|p| p.id).collect();
+
+        let all_runs = self
+            .repos
+            .activity
+            .list_runs_for_pipelines(&pipeline_ids)
+            .await
+            .map_err(db_err)?;
+
+        // Group runs by pipeline_id
+        let mut runs_by_pipeline: HashMap<uuid::Uuid, Vec<HandlerRun>> = HashMap::new();
+        for run in all_runs {
+            let pid = run.pipeline_id;
+            let proto = run_to_proto(run);
+            if let Some(pid) = pid {
+                runs_by_pipeline.entry(pid).or_default().push(proto);
+            }
+        }
+
+        let summaries = pipelines
+            .iter()
+            .map(|p| PipelineRunSummary {
+                pipeline: Some(pipeline_to_proto(p)),
+                runs: runs_by_pipeline.remove(&p.id).unwrap_or_default(),
+            })
+            .collect();
+
+        Ok(Response::new(ListPipelineRunsResponse {
+            pipelines: summaries,
+        }))
     }
 }
