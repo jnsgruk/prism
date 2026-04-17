@@ -18,6 +18,14 @@ use crate::infra::run_lifecycle::{
 /// Max contributions to fetch from the embedding queue per cycle.
 const MAX_BATCH_SIZE: i64 = 100;
 
+/// Max iterations per Restate invocation. Each iteration journals
+/// ~3 entries (fetch/log/cleanup), so a cap of 20 keeps the journal ~60
+/// entries and bounds replay cost on retry. When more work remains the
+/// handler chains a fresh `run_cycle` call — each continuation gets its
+/// own invocation with a fresh journal, while the outer caller still
+/// awaits full drain through the chain.
+const MAX_ITERATIONS_PER_INVOCATION: u32 = 20;
+
 pub struct EmbeddingHandlerImpl {
     pub state: SharedState,
     pub router: Arc<RwLock<TaskRouter>>,
@@ -83,6 +91,7 @@ impl EmbeddingHandlerImpl {
         let mut total_skipped = 0usize;
         let mut total_errors = 0usize;
         let mut iteration = 0u32;
+        let mut more_work_remaining = false;
 
         loop {
             // Step 3: Fetch queued batch (journaled — DB read)
@@ -145,6 +154,13 @@ impl EmbeddingHandlerImpl {
             if batch_size < MAX_BATCH_SIZE as usize {
                 break;
             }
+
+            // Bound per-invocation journal growth. Chain a continuation
+            // below so the outer caller still awaits full drain.
+            if iteration >= MAX_ITERATIONS_PER_INVOCATION {
+                more_work_remaining = true;
+                break;
+            }
         }
 
         // Step 8: Complete/fail run (journaled)
@@ -168,6 +184,20 @@ impl EmbeddingHandlerImpl {
                 duration_secs = start.elapsed().as_secs(),
                 "embedding cycle complete"
             );
+        }
+
+        // If we hit the per-invocation iteration cap, continue in a fresh
+        // invocation. The outer caller awaits this chain to completion,
+        // so pipeline semantics are preserved.
+        if more_work_remaining {
+            info!(
+                iteration,
+                "iteration cap reached; dispatching continuation for remaining queue"
+            );
+            ctx.service_client::<EmbeddingHandlerClient>()
+                .run_cycle()
+                .call()
+                .await?;
         }
 
         Ok(())
