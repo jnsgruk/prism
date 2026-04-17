@@ -2,12 +2,14 @@ import { RunHistoryCard } from "@/components/run-history-card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDuration, formatTimestamp } from "@/lib/format";
+import { useNow } from "@/lib/hooks/use-now";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
 import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
@@ -18,45 +20,47 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
 
 const displaySourceName = (name: string): string => SOURCE_DISPLAY_NAMES[name] ?? name;
 
-const columns: ColumnDef<HandlerRun>[] = [
-  {
-    accessorKey: "sourceName",
-    header: "Source",
-    cell: ({ row }) => <span className="font-medium">{displaySourceName(row.original.sourceName)}</span>,
+const sourceColumn: ColumnDef<HandlerRun> = {
+  accessorKey: "sourceName",
+  header: "Source",
+  cell: ({ row }) => <span className="font-medium">{displaySourceName(row.original.sourceName)}</span>,
+};
+
+const startedColumn: ColumnDef<HandlerRun> = {
+  accessorKey: "startedAt",
+  header: "Started",
+  cell: ({ row }) => <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>,
+};
+
+const itemsColumn: ColumnDef<HandlerRun> = {
+  accessorKey: "itemsCollected",
+  header: () => <span className="block text-right">Items</span>,
+  cell: ({ row }) => (
+    <span className="block text-right tabular-nums">{row.original.itemsCollected.toLocaleString()}</span>
+  ),
+};
+
+const statusColumn: ColumnDef<HandlerRun> = {
+  accessorKey: "status",
+  header: "Status",
+  cell: ({ row }) => {
+    const cfg = statusConfig[row.original.status] ?? defaultStatus;
+    return (
+      <Badge variant={cfg.variant} className="gap-1">
+        {cfg.icon}
+        {cfg.label}
+      </Badge>
+    );
   },
-  {
-    accessorKey: "startedAt",
-    header: "Started",
-    cell: ({ row }) => <span className="text-xs">{formatTimestamp(row.original.startedAt)}</span>,
-  },
-  {
-    id: "duration",
-    header: "Duration",
-    cell: ({ row }) => (
-      <span className="text-xs">{formatDuration(row.original.startedAt, row.original.completedAt)}</span>
-    ),
-  },
-  {
-    accessorKey: "itemsCollected",
-    header: () => <span className="block text-right">Items</span>,
-    cell: ({ row }) => (
-      <span className="block text-right tabular-nums">{row.original.itemsCollected.toLocaleString()}</span>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const cfg = statusConfig[row.original.status] ?? defaultStatus;
-      return (
-        <Badge variant={cfg.variant} className="gap-1">
-          {cfg.icon}
-          {cfg.label}
-        </Badge>
-      );
-    },
-  },
-];
+};
+
+const durationColumn = (nowMs: number): ColumnDef<HandlerRun> => ({
+  id: "duration",
+  header: "Duration",
+  cell: ({ row }): React.ReactElement => (
+    <span className="text-xs">{formatDuration(row.original.startedAt, row.original.completedAt, nowMs)}</span>
+  ),
+});
 
 export const RunHistoryPanel = ({
   runs,
@@ -67,6 +71,12 @@ export const RunHistoryPanel = ({
 }): React.ReactElement => {
   const cancelRun = useCancelHandlerRun();
   const [sourceFilter, setSourceFilter] = useState("all");
+  const hasRunning = useMemo(() => runs.some((r) => r.status === RunStatus.RUNNING), [runs]);
+  const nowMs = useNow(1000, hasRunning);
+  const columns = useMemo<ColumnDef<HandlerRun>[]>(
+    () => [sourceColumn, startedColumn, durationColumn(nowMs), itemsColumn, statusColumn],
+    [nowMs],
+  );
 
   const handleCancel = useCallback(
     (runId: string) => {

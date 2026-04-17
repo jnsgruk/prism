@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDuration, formatTimestamp } from "@/lib/format";
+import { useNow } from "@/lib/hooks/use-now";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
 import { StatusBadge } from "@/views/ingestion/components/pipeline-graph";
 import { useCancelHandlerRun, useListPipelineRuns } from "@/views/ingestion/hooks/use-ingestion";
@@ -73,12 +74,14 @@ const PipelineRow = ({
   isExpanded,
   onToggle,
   onSelectRun,
+  nowMs,
 }: {
   summary: PipelineRunSummary;
   rowNumber: number;
   isExpanded: boolean;
   onToggle: () => void;
   onSelectRun: (run: HandlerRun) => void;
+  nowMs: number;
 }): React.ReactElement => {
   const pipeline = summary.pipeline!;
   const runs = summary.runs;
@@ -110,7 +113,7 @@ const PipelineRow = ({
           <span className="text-xs">{formatTimestamp(pipeline.startedAt)}</span>
         </TableCell>
         <TableCell>
-          <span className="text-xs">{formatDuration(pipeline.startedAt, pipeline.completedAt)}</span>
+          <span className="text-xs">{formatDuration(pipeline.startedAt, pipeline.completedAt, nowMs)}</span>
         </TableCell>
         <TableCell>
           <span className="block text-right tabular-nums">{items.toLocaleString()}</span>
@@ -124,7 +127,13 @@ const PipelineRow = ({
       {isExpanded &&
         (groups.length > 0 ? (
           groups.map((group) => (
-            <StageGroup key={group.stage} stage={group.stage} runs={group.runs} onSelectRun={onSelectRun} />
+            <StageGroup
+              key={group.stage}
+              stage={group.stage}
+              runs={group.runs}
+              onSelectRun={onSelectRun}
+              nowMs={nowMs}
+            />
           ))
         ) : (
           <TableRow className="hover:bg-transparent">
@@ -148,10 +157,12 @@ const StageGroup = ({
   stage,
   runs,
   onSelectRun,
+  nowMs,
 }: {
   stage: string;
   runs: HandlerRun[];
   onSelectRun: (run: HandlerRun) => void;
+  nowMs: number;
 }): React.ReactElement => (
   <>
     {/* Stage header */}
@@ -162,7 +173,7 @@ const StageGroup = ({
     </TableRow>
     {/* Handler runs within stage */}
     {runs.map((run) => (
-      <HandlerRunRow key={run.id} run={run} onSelect={() => onSelectRun(run)} />
+      <HandlerRunRow key={run.id} run={run} onSelect={() => onSelectRun(run)} nowMs={nowMs} />
     ))}
   </>
 );
@@ -175,7 +186,15 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
 
 const displaySourceName = (name: string): string => SOURCE_DISPLAY_NAMES[name] ?? name;
 
-const HandlerRunRow = ({ run, onSelect }: { run: HandlerRun; onSelect: () => void }): React.ReactElement => {
+const HandlerRunRow = ({
+  run,
+  onSelect,
+  nowMs,
+}: {
+  run: HandlerRun;
+  onSelect: () => void;
+  nowMs: number;
+}): React.ReactElement => {
   const cfg = statusConfig[run.status] ?? defaultStatus;
 
   return (
@@ -187,7 +206,7 @@ const HandlerRunRow = ({ run, onSelect }: { run: HandlerRun; onSelect: () => voi
         <span className="text-xs">{formatTimestamp(run.startedAt)}</span>
       </TableCell>
       <TableCell>
-        <span className="text-xs">{formatDuration(run.startedAt, run.completedAt)}</span>
+        <span className="text-xs">{formatDuration(run.startedAt, run.completedAt, nowMs)}</span>
       </TableCell>
       <TableCell>
         <span className="block text-right tabular-nums">{run.itemsCollected.toLocaleString()}</span>
@@ -210,6 +229,7 @@ export const PipelineRunHistoryPanel = ({ hasActiveRun }: { hasActiveRun: boolea
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const nowMs = useNow(1000, historyOpen && hasActiveRun);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedRun, setSelectedRun] = useState<HandlerRun | null>(null);
   const [pageSize, setPageSize] = useState(10);
@@ -349,6 +369,7 @@ export const PipelineRunHistoryPanel = ({ hasActiveRun }: { hasActiveRun: boolea
                             isExpanded={expandedIds.has(summary.pipeline.id)}
                             onToggle={() => toggleExpanded(summary.pipeline!.id)}
                             onSelectRun={setSelectedRun}
+                            nowMs={nowMs}
                           />
                         ),
                     )

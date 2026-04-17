@@ -81,6 +81,18 @@ describe("formatDuration", () => {
   it("handles zero duration", () => {
     expect(formatDuration(ts(100), ts(100))).toBe("0s");
   });
+
+  it("formats hours and minutes past 60 minutes", () => {
+    expect(formatDuration(ts(0), ts(3600 + 5 * 60 + 30))).toBe("1h 5m");
+  });
+
+  it("formats days and hours past 24 hours", () => {
+    expect(formatDuration(ts(0), ts(2 * 86_400 + 3 * 3600))).toBe("2d 3h");
+  });
+
+  it("uses nowMs when end is missing", () => {
+    expect(formatDuration(ts(100), undefined, 200_000)).toBe("1m 40s");
+  });
 });
 
 describe("formatRelativeTime", () => {

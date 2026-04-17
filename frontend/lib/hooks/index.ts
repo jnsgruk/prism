@@ -28,6 +28,7 @@ export type {
 } from "./use-metrics";
 export { useIsMobile } from "./use-mobile";
 export { useDebouncedValue } from "./use-debounced-value";
+export { useNow } from "./use-now";
 export { useEmbeddingSimilar, useEmbeddingSearch, useEmbeddingStatus, embeddingKeys } from "./use-embeddings";
 export {
   useAiSettings,
