@@ -48,6 +48,35 @@ Useful Restate commands (the `restate` CLI runs inside the pod):
 - Re-register deployment: `curl -X POST http://localhost:9070/deployments -H 'content-type: application/json' -d '{"uri":"http://ps-workers:9081/","force":true}'`
 - Clear journal (after refactoring `ctx.run()` sequences): `kubectl exec -n prism restate-0 -- rm -rf /restate-data/store/` then `kubectl delete pod -n prism restate-0` and re-register
 
+Monitoring ingestion via Restate SQL API (preferred over CLI when kubectl is unavailable):
+
+```bash
+# Status summary — group by target and status to see overall progress
+curl -s 'http://localhost:9070/query' \
+  -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"query": "SELECT target, status, COUNT(*) as cnt FROM sys_invocation WHERE target LIKE '\''%backfill%'\'' OR target LIKE '\''%Pipeline%'\'' OR target LIKE '\''%process_chunk%'\'' GROUP BY target, status ORDER BY target, status"}'
+
+# Active/problem invocations — check for backing-off, failed, or stuck
+curl -s 'http://localhost:9070/query' \
+  -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"query": "SELECT id, target, status, retry_count, last_failure, modified_at FROM sys_invocation WHERE status IN ('\''backing-off'\'', '\''failed'\'', '\''running'\'', '\''suspended'\'') AND (target LIKE '\''%backfill%'\'' OR target LIKE '\''%Pipeline%'\'' OR target LIKE '\''%process_chunk%'\'') ORDER BY modified_at DESC"}'
+
+# Inspect a specific invocation's journal (shows the sequence of operations)
+curl -s 'http://localhost:9070/query' \
+  -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"query": "SELECT index, entry_type, name, entry_lite_json FROM sys_journal WHERE id = '\''<invocation_id>'\'' ORDER BY index"}'
+```
+
+Key tables: `sys_invocation` (status, retry info, what it's waiting on), `sys_journal` (step-by-step execution log). Invocation statuses: `running`, `suspended` (waiting on child call or signal), `backing-off` (retrying after failure), `failed`, `completed`, `scheduled`.
+
+Monitoring tips:
+- A `suspended` backfill handler is normal — it means it dispatched a chunk and is waiting for the result. Check `suspended_waiting_for_completions` to find which child invocation it's blocked on.
+- `retry_count` on running chunks is expected to be low (1-2). Escalating retry counts signal a problem.
+- `modified_at` on `sys_invocation` updates when Restate touches the invocation — a frozen `modified_at` on a `suspended` handler doesn't necessarily mean it's stuck; check the child invocation it's waiting on instead.
+- The Restate UI is available at `http://localhost:9070/ui/invocations/<id>` for visual inspection of individual invocations.
+- A `suspended` chunk (not just a handler) with a `Command: Sleep` at the end of its journal indicates a **rate limit backoff**. Decode the `wake_up_time` (epoch millis) to find when it will resume. GitHub backfills commonly hit this after ~7 min of intensive fetching, sleeping ~20 min before retrying.
+- To check what a suspended invocation is waiting on: query `sys_invocation` for `suspended_waiting_for_completions` (array of completion IDs), then check `sys_journal` at those indices for the blocking call type (`Command: Call`, `Command: Sleep`, etc.).
+
 ## Workflow Requirements
 
 **Before finishing any task**, always:
