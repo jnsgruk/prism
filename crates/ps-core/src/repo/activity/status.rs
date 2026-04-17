@@ -103,6 +103,40 @@ impl ActivityRepo {
         Ok(())
     }
 
+    /// Cancel all active runs for system-handler sources (those whose
+    /// `source_name` begins with `_`, e.g. `_embedding`, `_enrichment`,
+    /// `_metrics`). Used when the pipeline is cancelled — Restate
+    /// terminates child handler invocations forcefully, so those handlers
+    /// never reach their own `complete_run!` and would otherwise leave
+    /// `ingestion_runs` rows with `completed_at IS NULL`.
+    pub async fn cancel_active_system_runs(&self, reason: &str) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET completed_at = now(), status = 'cancelled', error_message = $1
+            WHERE completed_at IS NULL
+              AND source_name LIKE '\_%' ESCAPE '\'
+            "#,
+            reason,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_watermarks
+            SET current_invocation_id = NULL
+            WHERE source_name LIKE '\_%' ESCAPE '\'
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(())
+    }
+
     /// Delete all activity data: contributions, watermarks, runs, etag cache, metric snapshots.
     /// Returns the number of contributions deleted.
     pub async fn reset_all(&self) -> Result<i64, Error> {

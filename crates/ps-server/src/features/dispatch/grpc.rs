@@ -742,6 +742,16 @@ impl HandlersService for HandlersServiceImpl {
             .await
             .map_err(db_err)?;
 
+        // Also cancel any active runs for system handlers (e.g. _embedding,
+        // _enrichment, _metrics). Restate terminates those child invocations
+        // forcefully, so their handlers never reach complete_run! and would
+        // otherwise show "Running" in the UI indefinitely.
+        self.repos
+            .activity
+            .cancel_active_system_runs("Cancelled — parent pipeline cancelled")
+            .await
+            .map_err(db_err)?;
+
         info!(%pipeline_id, "cancelled pipeline");
 
         Ok(Response::new(CancelPipelineResponse {}))
