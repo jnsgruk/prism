@@ -159,8 +159,10 @@ export const EnrichmentRow = (): React.ReactElement => {
 // ---------------------------------------------------------------------------
 
 export const EmbeddingRow = (): React.ReactElement => {
-  const { data: embStatus } = useEmbeddingStatus();
   const actions = useHandlerActions("EmbeddingHandler", "run_cycle");
+  const { data: embStatus } = useEmbeddingStatus({
+    refetchInterval: actions.isRunning ? 5_000 : 30_000,
+  });
 
   const lastRunLabel = embStatus?.lastEmbeddedAt ? formatRelativeTime(embStatus.lastEmbeddedAt) : undefined;
 
@@ -178,12 +180,12 @@ export const EmbeddingRow = (): React.ReactElement => {
         {actions.isRunning ? (
           <>
             {embStatus && Number(embStatus.queuedCount) > 0 && (
-              <Stat label="queued" value={embStatus.queuedCount.toString()} />
+              <Stat label="queued" value={Number(embStatus.queuedCount).toLocaleString()} />
             )}
-            {actions.activeRun && (
+            {embStatus && (
               <>
-                {embStatus && Number(embStatus.queuedCount) > 0 && DOT_SEP}
-                <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
+                {Number(embStatus.queuedCount) > 0 && DOT_SEP}
+                <Stat label="embedded" value={`${Math.round(embStatus.coveragePercent)}%`} />
               </>
             )}
           </>

@@ -46,9 +46,9 @@ export const useEmbeddingSearch = (): ReturnType<
     mutationFn: (params) => client.searchByText(params),
   });
 
-export const useEmbeddingStatus = (): UseQueryResult<GetEmbeddingStatusResponse> =>
+export const useEmbeddingStatus = (opts?: { refetchInterval?: number }): UseQueryResult<GetEmbeddingStatusResponse> =>
   useQuery({
     queryKey: embeddingKeys.status(),
     queryFn: () => client.getEmbeddingStatus({}),
-    refetchInterval: 30_000,
+    refetchInterval: opts?.refetchInterval ?? 30_000,
   });
