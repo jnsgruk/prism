@@ -1,4 +1,4 @@
-use ps_core::ingestion::IngestionContext;
+use ps_core::ingestion::{IngestionContext, IngestionPlan};
 use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
 
@@ -41,7 +41,7 @@ pub async fn load_ingestion_source_config(
 ///
 /// Each chunk runs as a separate Restate invocation with its own small
 /// journal. The coordinator's journal stays minimal (~1 entry per chunk).
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub async fn execute_ingestion_chunked(
     ctx: &ObjectContext<'_>,
     state: &SharedState,
@@ -104,10 +104,25 @@ pub async fn execute_ingestion_chunked(
 
     let ing_ctx = build_ingestion_context(state, config, token, email, api_username);
 
-    let mut plan = match source.plan(&ing_ctx).await {
+    // Journal the plan. plan() reads watermarks and (for GitHub) the
+    // team-repos list from the DB — both can change between replays,
+    // which would alter the cursor parameter passed to process_chunk()
+    // and trigger a Restate journal mismatch (error 570). Freezing the
+    // plan output in the journal makes the cursor deterministic.
+    let source_type = config.source_type.clone();
+    let ic = ing_ctx.clone();
+    let plan_result: Result<IngestionPlan, String> =
+        journaled_value!(ctx, "plan", [source_type, ic], {
+            let src = crate::infra::registry::create_source(&source_type).ok_or_else(|| {
+                TerminalError::new(format!("unsupported source type: {source_type}"))
+            })?;
+            src.plan(&ic).await.map_err(|e| e.to_string())
+        });
+
+    let mut plan = match plan_result {
         Ok(p) => p,
         Err(e) => {
-            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &e.to_string()).await;
+            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &e).await;
             return Err(TerminalError::new(format!("plan failed: {e}")));
         }
     };
