@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_watermarks\n            SET current_invocation_id = NULL\n            WHERE source_name LIKE '\\_%' ESCAPE '\\'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5ecc90a22641fb874b13f238b67aa9c5bdc6fb6471bb4748fd2a2e61cc034581"
+}

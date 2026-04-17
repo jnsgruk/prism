@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET completed_at = now(), status = 'cancelled', error_message = $1\n            WHERE completed_at IS NULL\n              AND source_name LIKE '\\_%' ESCAPE '\\'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2fd2f4c40bcf1f87f274e10b837627bfb044aa8c657ebd52375e6a0edf4a0986"
+}
