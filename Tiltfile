@@ -85,14 +85,19 @@ docker_build(
 # Agent container — ps-mcp binary + OpenCode + system tools
 # ---------------------------------------------------------------------------
 # Agent pods are created dynamically by ContainerManager, not from YAML that
-# Tilt can rewrite. We use custom_build so the image is tagged with $EXPECTED_REF
-# (which Tilt controls), then also tag it as prism/prism-agent:latest so that
-# dynamically-created pods can reference a stable tag.
+# Tilt can rewrite. We build with $EXPECTED_REF (which Tilt pushes to the
+# cluster registry) and additionally tag+push the stable
+# localhost:30500/prism_prism-agent:latest ref so dynamically-created pods
+# can pull from the in-cluster registry without needing a dynamic tag.
+# ps-workers reads AGENT_IMAGE=localhost:30500/prism_prism-agent:latest.
 custom_build(
     "prism/prism-agent",
-    "docker build -t $EXPECTED_REF -t prism/prism-agent:latest" +
+    "docker build -t $EXPECTED_REF" +
+    " -t prism/prism-agent:latest" +
+    " -t localhost:30500/prism_prism-agent:latest" +
     " --target prism-agent-dev --build-arg PROFILE=debug" +
-    " -f crates/ps-agent/agent-container/Dockerfile . ",
+    " -f crates/ps-agent/agent-container/Dockerfile . " +
+    " && docker push localhost:30500/prism_prism-agent:latest",
     deps=_meta + _tomls + _shared + ["crates/ps-mcp", "crates/ps-agent/agent-container"],
     skips_local_docker=False,
 )

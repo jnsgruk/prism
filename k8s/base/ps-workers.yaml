@@ -47,6 +47,8 @@ spec:
                   key: PS_SECRET_KEY
             - name: RESTATE_URL
               value: http://restate:8080
+            - name: AGENT_IMAGE
+              value: localhost:30500/prism_prism-agent:latest
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
