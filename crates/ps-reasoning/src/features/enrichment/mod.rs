@@ -34,6 +34,12 @@ pub struct BatchResult {
     /// The first error message encountered, if any. Useful for surfacing
     /// systemic issues (e.g. model not found, auth failure) to the UI.
     pub first_error: Option<String>,
+    /// Contribution IDs that produced a successful enrichment in this batch.
+    /// Used by the handler to count distinct contributions processed across
+    /// types, rather than summing per-type row counts (a `pr_review` produces
+    /// two enrichment rows — `review_depth` + `sentiment` — but is one unit
+    /// of work from the user's perspective).
+    pub successful_contribution_ids: Vec<uuid::Uuid>,
 }
 
 /// Max errors before flagging a systemic issue.
@@ -229,6 +235,7 @@ pub async fn process_queued_enrichment_batch(
             errors: 0,
             total_usage: Usage::new(),
             first_error: None,
+            successful_contribution_ids: Vec::new(),
         };
     }
 
@@ -364,12 +371,15 @@ pub async fn process_queued_enrichment_batch(
         "queued enrichment batch complete"
     );
 
+    let successful_contribution_ids = successes.iter().map(|r| r.contribution_id).collect();
+
     BatchResult {
         enrichment_type,
         processed,
         errors,
         total_usage,
         first_error,
+        successful_contribution_ids,
     }
 }
 

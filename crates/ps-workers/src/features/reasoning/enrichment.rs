@@ -126,14 +126,12 @@ impl CycleState {
         }
     }
 
+    /// Per-type telemetry (enrichment-row counts). Does NOT update
+    /// `total_processed` — that is handled once per iteration by
+    /// [`aggregate_iteration`] with distinct contribution counting.
     fn aggregate_batch(&mut self, batch: &enrichment::BatchResult) {
         if self.first_error.is_none() {
             self.first_error.clone_from(&batch.first_error);
-        }
-
-        #[allow(clippy::cast_possible_wrap)]
-        {
-            self.total_processed += batch.processed as i32;
         }
         self.total_errors += batch.errors;
 
@@ -145,6 +143,21 @@ impl CycleState {
         };
         stats.processed += batch.processed;
         stats.errors += batch.errors;
+    }
+
+    /// Count distinct contributions successfully processed across all types
+    /// in an iteration. A `pr_review` can produce 2 enrichment rows and a
+    /// large `pull_request` up to 3, but each is one unit of work for the
+    /// progress UI.
+    fn aggregate_iteration(&mut self, batches: &[enrichment::BatchResult]) {
+        let mut distinct = std::collections::HashSet::new();
+        for b in batches {
+            distinct.extend(b.successful_contribution_ids.iter().copied());
+        }
+        #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+        {
+            self.total_processed += distinct.len() as i32;
+        }
     }
 
     fn update_progress_after_batch(&mut self, results: &[enrichment::BatchResult]) {
@@ -252,6 +265,7 @@ impl EnrichmentHandlerImpl {
             for batch in &results {
                 s.aggregate_batch(batch);
             }
+            s.aggregate_iteration(&results);
 
             // Commit ALL post-AI DB writes in a single ctx.run().
             self.commit_iteration(ctx, &batch_ids, &results, s.iteration)
