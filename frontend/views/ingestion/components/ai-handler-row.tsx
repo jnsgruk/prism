@@ -125,15 +125,24 @@ export const EnrichmentRow = (): React.ReactElement => {
       <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
         {actions.isRunning ? (
           <>
-            {status && Number(status.pendingCount) > 0 && (
-              <Stat label="queued" value={status.pendingCount.toString()} />
-            )}
-            {actions.activeRun && (
-              <>
-                {status && Number(status.pendingCount) > 0 && DOT_SEP}
-                <Stat label="this run" value={actions.activeRun.itemsCollected.toLocaleString()} />
-              </>
-            )}
+            {actions.activeRun && status
+              ? (() => {
+                  const processed = actions.activeRun.itemsCollected;
+                  const pending = Number(status.pendingCount);
+                  const total = processed + pending;
+                  return total > 0 ? (
+                    <>
+                      <Stat label="progress" value={`${Math.round((processed / total) * 100)}%`} />
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        ({processed.toLocaleString()}/{total.toLocaleString()} queued)
+                      </span>
+                    </>
+                  ) : null;
+                })()
+              : status &&
+                Number(status.pendingCount) > 0 && (
+                  <Stat label="queued" value={Number(status.pendingCount).toLocaleString()} />
+                )}
           </>
         ) : (
           <>
@@ -179,15 +188,24 @@ export const EmbeddingRow = (): React.ReactElement => {
       <div className="hidden min-w-0 sm:flex flex-wrap items-center gap-x-2.5 gap-y-1">
         {actions.isRunning ? (
           <>
-            {embStatus && Number(embStatus.queuedCount) > 0 && (
-              <Stat label="queued" value={Number(embStatus.queuedCount).toLocaleString()} />
-            )}
-            {embStatus && (
-              <>
-                {Number(embStatus.queuedCount) > 0 && DOT_SEP}
-                <Stat label="embedded" value={`${Math.round(embStatus.coveragePercent)}%`} />
-              </>
-            )}
+            {actions.activeRun && embStatus
+              ? (() => {
+                  const processed = actions.activeRun.itemsCollected;
+                  const pending = Number(embStatus.queuedCount);
+                  const total = processed + pending;
+                  return total > 0 ? (
+                    <>
+                      <Stat label="progress" value={`${Math.round((processed / total) * 100)}%`} />
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        ({processed.toLocaleString()}/{total.toLocaleString()} queued)
+                      </span>
+                    </>
+                  ) : null;
+                })()
+              : embStatus &&
+                Number(embStatus.queuedCount) > 0 && (
+                  <Stat label="queued" value={Number(embStatus.queuedCount).toLocaleString()} />
+                )}
           </>
         ) : (
           <>
