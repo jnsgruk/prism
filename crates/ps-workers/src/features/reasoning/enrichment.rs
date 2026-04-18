@@ -6,7 +6,7 @@ use ps_core::repo::reasoning::{EmbeddingQueueEntry, QueuedContribution};
 use ps_reasoning::features::enrichment;
 use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -35,26 +35,41 @@ pub struct EnrichmentHandlerImpl {
     pub router: Arc<RwLock<TaskRouter>>,
 }
 
+/// Arguments carried through a `run_cycle` chain.
+///
+/// Continuations `.send()` (fire-and-forget) themselves with these args rather
+/// than `.call().await` — that keeps the chain flat instead of a deep
+/// call-stack of awaiting parents, which was found to pathologically stall
+/// under replay when the chain got deep. The caller (e.g. pipeline workflow)
+/// waits on `completion_awakeable` instead of on the initial invocation's
+/// return, so it still knows when the full chain has drained.
+#[derive(Serialize, Deserialize, Default)]
+pub struct RunCycleArgs {
+    /// Run ID to reuse across the chain. `None` on the initial call.
+    pub parent_run_id: Option<Uuid>,
+    /// Awakeable ID to resolve once the chain's final invocation drains the
+    /// queue. `None` for manual invocations (e.g. UI trigger) that don't need
+    /// a completion signal.
+    pub completion_awakeable: Option<String>,
+}
+
 #[restate_sdk::service]
 pub trait EnrichmentHandler {
     /// Run a single enrichment cycle: process all un-enriched contributions for all types.
     ///
-    /// `parent_run_id` is `Some` when this invocation is a continuation of a
-    /// chain that hit the per-invocation iteration cap — the existing run row
-    /// is reused (and `items_collected` carried forward via DB read), so the
-    /// whole chain appears as one run in the UI. Callers starting a fresh
-    /// cycle pass `None`.
-    async fn run_cycle(parent_run_id: Json<Option<Uuid>>) -> Result<(), TerminalError>;
+    /// When the per-invocation iteration cap is hit, the handler dispatches a
+    /// fire-and-forget continuation carrying the same args; the caller awaits
+    /// [`RunCycleArgs::completion_awakeable`] to know when the chain drains.
+    async fn run_cycle(args: Json<RunCycleArgs>) -> Result<(), TerminalError>;
 }
 
 impl EnrichmentHandler for EnrichmentHandlerImpl {
     async fn run_cycle(
         &self,
         ctx: Context<'_>,
-        parent_run_id: Json<Option<Uuid>>,
+        args: Json<RunCycleArgs>,
     ) -> Result<(), TerminalError> {
-        self.run_enrichment_cycle(&ctx, parent_run_id.into_inner())
-            .await
+        self.run_enrichment_cycle(&ctx, args.into_inner()).await
     }
 }
 
@@ -188,12 +203,12 @@ impl EnrichmentHandlerImpl {
     async fn run_enrichment_cycle(
         &self,
         ctx: &Context<'_>,
-        parent_run_id: Option<Uuid>,
+        args: RunCycleArgs,
     ) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
-        let is_continuation = parent_run_id.is_some();
-        let run_id = match parent_run_id {
+        let is_continuation = args.parent_run_id.is_some();
+        let run_id = match args.parent_run_id {
             Some(id) => id,
             None => create_run!(
                 ctx,
@@ -285,22 +300,28 @@ impl EnrichmentHandlerImpl {
             }
         }
 
-        // Only the final invocation in the chain runs cleanup and finalises
-        // the run — continuations skip these so the UI shows a single run
-        // transitioning to Completed exactly once, when the queue is drained.
+        // Only the final invocation in the chain runs cleanup, finalises the
+        // run, and resolves the completion awakeable. Continuations .send()
+        // (fire-and-forget) and return immediately — the chain is kept flat
+        // instead of nested so parents don't get stuck in deep replay waits.
         if more_work_remaining {
             info!(
                 iteration = s.iteration,
                 "iteration cap reached; dispatching continuation for remaining queue"
             );
             ctx.service_client::<EnrichmentHandlerClient>()
-                .run_cycle(Json(Some(run_id)))
-                .call()
-                .await?;
+                .run_cycle(Json(RunCycleArgs {
+                    parent_run_id: Some(run_id),
+                    completion_awakeable: args.completion_awakeable,
+                }))
+                .send();
         } else {
             self.delete_fully_enriched(ctx, s.iteration).await;
             self.finalize_run(ctx, run_id, &mut s, start.elapsed())
                 .await;
+            if let Some(awakeable_id) = args.completion_awakeable.as_deref() {
+                ctx.resolve_awakeable(awakeable_id, ());
+            }
         }
 
         Ok(())

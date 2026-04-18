@@ -11,8 +11,12 @@ use crate::features::ingestion::github::handler::GithubIngestionHandlerClient;
 
 use crate::features::ingestion::jira::handler::JiraIngestionHandlerClient;
 use crate::features::metrics::handler::MetricsComputeHandlerClient;
-use crate::features::reasoning::embedding::EmbeddingHandlerClient;
-use crate::features::reasoning::enrichment::EnrichmentHandlerClient;
+use crate::features::reasoning::embedding::{
+    EmbeddingHandlerClient, RunCycleArgs as EmbeddingRunCycleArgs,
+};
+use crate::features::reasoning::enrichment::{
+    EnrichmentHandlerClient, RunCycleArgs as EnrichmentRunCycleArgs,
+};
 use crate::features::reasoning::insights::InsightsHandlerClient;
 use crate::infra::SharedState;
 use crate::infra::run_lifecycle::{
@@ -433,25 +437,53 @@ impl IngestionPipelineWorkflowImpl {
             return Ok(());
         }
 
-        // Enrichment
+        // Enrichment — fire-and-forget via awakeable so the chain stays flat.
+        // The stage closure creates an awakeable, `.send()`s run_cycle with
+        // the awakeable id, and awaits the awakeable. The handler chain
+        // resolves the awakeable from its final invocation when the queue is
+        // drained, regardless of how many continuations it took to get there.
         if !self
-            .run_stage(pipeline_id, stages, ctx, "enrichment", "Enrichment", || {
-                ctx.service_client::<EnrichmentHandlerClient>()
-                    .run_cycle(Json(None))
-                    .call()
-            })
+            .run_stage(
+                pipeline_id,
+                stages,
+                ctx,
+                "enrichment",
+                "Enrichment",
+                || async {
+                    let (awakeable_id, fut) = ctx.awakeable::<()>();
+                    ctx.service_client::<EnrichmentHandlerClient>()
+                        .run_cycle(Json(EnrichmentRunCycleArgs {
+                            parent_run_id: None,
+                            completion_awakeable: Some(awakeable_id),
+                        }))
+                        .send();
+                    fut.await
+                },
+            )
             .await?
         {
             return Ok(());
         }
 
-        // Embedding
+        // Embedding — same awakeable-based flat-chain pattern as enrichment.
         if !self
-            .run_stage(pipeline_id, stages, ctx, "embedding", "Embedding", || {
-                ctx.service_client::<EmbeddingHandlerClient>()
-                    .run_cycle(Json(None))
-                    .call()
-            })
+            .run_stage(
+                pipeline_id,
+                stages,
+                ctx,
+                "embedding",
+                "Embedding",
+                || async {
+                    let (awakeable_id, fut) = ctx.awakeable::<()>();
+                    ctx.service_client::<EmbeddingHandlerClient>()
+                        .run_cycle(Json(EmbeddingRunCycleArgs {
+                            parent_run_id: None,
+                            completion_awakeable: Some(awakeable_id),
+                        }))
+                        .send();
+                    fut.await
+                },
+            )
             .await?
         {
             return Ok(());
