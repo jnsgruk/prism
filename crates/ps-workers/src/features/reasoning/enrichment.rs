@@ -38,12 +38,23 @@ pub struct EnrichmentHandlerImpl {
 #[restate_sdk::service]
 pub trait EnrichmentHandler {
     /// Run a single enrichment cycle: process all un-enriched contributions for all types.
-    async fn run_cycle() -> Result<(), TerminalError>;
+    ///
+    /// `parent_run_id` is `Some` when this invocation is a continuation of a
+    /// chain that hit the per-invocation iteration cap — the existing run row
+    /// is reused (and `items_collected` carried forward via DB read), so the
+    /// whole chain appears as one run in the UI. Callers starting a fresh
+    /// cycle pass `None`.
+    async fn run_cycle(parent_run_id: Json<Option<Uuid>>) -> Result<(), TerminalError>;
 }
 
 impl EnrichmentHandler for EnrichmentHandlerImpl {
-    async fn run_cycle(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
-        self.run_enrichment_cycle(&ctx).await
+    async fn run_cycle(
+        &self,
+        ctx: Context<'_>,
+        parent_run_id: Json<Option<Uuid>>,
+    ) -> Result<(), TerminalError> {
+        self.run_enrichment_cycle(&ctx, parent_run_id.into_inner())
+            .await
     }
 }
 
@@ -161,22 +172,43 @@ impl EnrichmentHandlerImpl {
     /// - `ctx.run()`: run creation, queue lookups (DB reads), AI processing
     ///   results, cost logging, cleanup
     /// - Outside `ctx.run()`: budget checks (read-only), progress updates
-    async fn run_enrichment_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
+    async fn run_enrichment_cycle(
+        &self,
+        ctx: &Context<'_>,
+        parent_run_id: Option<Uuid>,
+    ) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
-        let run_id = create_run!(
-            ctx,
-            self.state.repos,
-            "_enrichment",
-            "EnrichmentHandler",
-            "run_cycle"
-        )?;
+        let is_continuation = parent_run_id.is_some();
+        let run_id = match parent_run_id {
+            Some(id) => id,
+            None => create_run!(
+                ctx,
+                self.state.repos,
+                "_enrichment",
+                "EnrichmentHandler",
+                "run_cycle"
+            )?,
+        };
 
         let span = tracing::info_span!("handler", handler = "EnrichmentHandler", run_id = %run_id);
         let _guard = span.enter();
-        info!("starting enrichment cycle");
+        if is_continuation {
+            info!("resuming enrichment cycle (continuation)");
+        } else {
+            info!("starting enrichment cycle");
+        }
 
         let mut s = CycleState::new();
+        // On continuation, seed the cumulative items count from the run row so
+        // progress updates append to the chain total rather than restarting.
+        if is_continuation {
+            match self.state.repos.activity.get_run(run_id).await {
+                Ok(Some(row)) => s.total_processed = row.items_collected.unwrap_or(0),
+                Ok(None) => warn!(%run_id, "continuation: run row missing, starting at 0"),
+                Err(e) => warn!(error = %e, "continuation: failed to read run row"),
+            }
+        }
         let mut more_work_remaining = false;
 
         loop {
@@ -239,22 +271,22 @@ impl EnrichmentHandlerImpl {
             }
         }
 
-        self.delete_fully_enriched(ctx, s.iteration).await;
-        self.finalize_run(ctx, run_id, &mut s, start.elapsed())
-            .await;
-
-        // If we hit the per-invocation iteration cap, continue in a fresh
-        // invocation. The outer caller awaits this chain to completion, so
-        // pipeline semantics are preserved.
+        // Only the final invocation in the chain runs cleanup and finalises
+        // the run — continuations skip these so the UI shows a single run
+        // transitioning to Completed exactly once, when the queue is drained.
         if more_work_remaining {
             info!(
                 iteration = s.iteration,
                 "iteration cap reached; dispatching continuation for remaining queue"
             );
             ctx.service_client::<EnrichmentHandlerClient>()
-                .run_cycle()
+                .run_cycle(Json(Some(run_id)))
                 .call()
                 .await?;
+        } else {
+            self.delete_fully_enriched(ctx, s.iteration).await;
+            self.finalize_run(ctx, run_id, &mut s, start.elapsed())
+                .await;
         }
 
         Ok(())

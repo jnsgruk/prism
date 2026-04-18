@@ -34,12 +34,23 @@ pub struct EmbeddingHandlerImpl {
 #[restate_sdk::service]
 pub trait EmbeddingHandler {
     /// Run a single embedding cycle: process queued contributions, embed, store.
-    async fn run_cycle() -> Result<(), TerminalError>;
+    ///
+    /// `parent_run_id` is `Some` when this invocation is a continuation of a
+    /// chain that hit the per-invocation iteration cap — the existing run row
+    /// is reused (and `items_collected` carried forward via DB read), so the
+    /// whole chain appears as one run in the UI. Callers starting a fresh
+    /// cycle pass `None`.
+    async fn run_cycle(parent_run_id: Json<Option<Uuid>>) -> Result<(), TerminalError>;
 }
 
 impl EmbeddingHandler for EmbeddingHandlerImpl {
-    async fn run_cycle(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
-        self.run_embedding_cycle(&ctx).await
+    async fn run_cycle(
+        &self,
+        ctx: Context<'_>,
+        parent_run_id: Json<Option<Uuid>>,
+    ) -> Result<(), TerminalError> {
+        self.run_embedding_cycle(&ctx, parent_run_id.into_inner())
+            .await
     }
 }
 
@@ -54,22 +65,34 @@ struct EmbeddingProgress {
 }
 
 impl EmbeddingHandlerImpl {
-    async fn run_embedding_cycle(&self, ctx: &Context<'_>) -> Result<(), TerminalError> {
+    async fn run_embedding_cycle(
+        &self,
+        ctx: &Context<'_>,
+        parent_run_id: Option<Uuid>,
+    ) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
-        // Step 1: Create run record (journaled)
-        let run_id = create_run!(
-            ctx,
-            self.state.repos,
-            "_embedding",
-            "EmbeddingHandler",
-            "run_cycle"
-        )?;
+        let is_continuation = parent_run_id.is_some();
+        // Step 1: Create or reuse run record (journaled on first call only)
+        let run_id = match parent_run_id {
+            Some(id) => id,
+            None => create_run!(
+                ctx,
+                self.state.repos,
+                "_embedding",
+                "EmbeddingHandler",
+                "run_cycle"
+            )?,
+        };
 
         let span = tracing::info_span!("handler", handler = "EmbeddingHandler", run_id = %run_id);
         let _guard = span.enter();
 
-        info!("starting embedding cycle");
+        if is_continuation {
+            info!("resuming embedding cycle (continuation)");
+        } else {
+            info!("starting embedding cycle");
+        }
 
         // Step 2: Resolve embedding model from TaskRouter (NOT journaled)
         let (model_name, embedding_model) = {
@@ -92,6 +115,21 @@ impl EmbeddingHandlerImpl {
         let mut total_errors = 0usize;
         let mut iteration = 0u32;
         let mut more_work_remaining = false;
+
+        // On continuation, seed cumulative totals from the run row so progress
+        // updates append to the chain total rather than restarting.
+        if is_continuation {
+            match self.state.repos.activity.get_run(run_id).await {
+                Ok(Some(row)) => {
+                    #[allow(clippy::cast_sign_loss)]
+                    {
+                        total_embedded = row.items_collected.unwrap_or(0).max(0) as usize;
+                    }
+                }
+                Ok(None) => warn!(%run_id, "continuation: run row missing, starting at 0"),
+                Err(e) => warn!(error = %e, "continuation: failed to read run row"),
+            }
+        }
 
         loop {
             // Step 3: Fetch queued batch (journaled — DB read)
@@ -163,41 +201,40 @@ impl EmbeddingHandlerImpl {
             }
         }
 
-        // Step 8: Complete/fail run (journaled)
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let total = total_embedded as i32;
-        if total_errors > 0 && total_embedded == 0 {
-            fail_run!(
-                ctx,
-                self.state.repos,
-                run_id,
-                "_embedding",
-                &format!("all {total_errors} items failed")
-            );
-            warn!(errors = total_errors, "embedding cycle failed");
-        } else {
-            complete_run!(ctx, self.state.repos, run_id, "_embedding", total);
-            info!(
-                embedded = total_embedded,
-                skipped = total_skipped,
-                errors = total_errors,
-                duration_secs = start.elapsed().as_secs(),
-                "embedding cycle complete"
-            );
-        }
-
-        // If we hit the per-invocation iteration cap, continue in a fresh
-        // invocation. The outer caller awaits this chain to completion,
-        // so pipeline semantics are preserved.
+        // Only the final invocation in the chain finalises the run —
+        // continuations skip finalisation so the UI shows a single run
+        // transitioning to Completed exactly once, when the queue is drained.
         if more_work_remaining {
             info!(
                 iteration,
                 "iteration cap reached; dispatching continuation for remaining queue"
             );
             ctx.service_client::<EmbeddingHandlerClient>()
-                .run_cycle()
+                .run_cycle(Json(Some(run_id)))
                 .call()
                 .await?;
+        } else {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+            let total = total_embedded as i32;
+            if total_errors > 0 && total_embedded == 0 {
+                fail_run!(
+                    ctx,
+                    self.state.repos,
+                    run_id,
+                    "_embedding",
+                    &format!("all {total_errors} items failed")
+                );
+                warn!(errors = total_errors, "embedding cycle failed");
+            } else {
+                complete_run!(ctx, self.state.repos, run_id, "_embedding", total);
+                info!(
+                    embedded = total_embedded,
+                    skipped = total_skipped,
+                    errors = total_errors,
+                    duration_secs = start.elapsed().as_secs(),
+                    "embedding cycle complete"
+                );
+            }
         }
 
         Ok(())

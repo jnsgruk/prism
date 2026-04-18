@@ -437,7 +437,7 @@ impl IngestionPipelineWorkflowImpl {
         if !self
             .run_stage(pipeline_id, stages, ctx, "enrichment", "Enrichment", || {
                 ctx.service_client::<EnrichmentHandlerClient>()
-                    .run_cycle()
+                    .run_cycle(Json(None))
                     .call()
             })
             .await?
@@ -449,7 +449,7 @@ impl IngestionPipelineWorkflowImpl {
         if !self
             .run_stage(pipeline_id, stages, ctx, "embedding", "Embedding", || {
                 ctx.service_client::<EmbeddingHandlerClient>()
-                    .run_cycle()
+                    .run_cycle(Json(None))
                     .call()
             })
             .await?
