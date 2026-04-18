@@ -21,6 +21,15 @@ use crate::infra::run_lifecycle::{
 /// than when processing was sequential.
 const MAX_BATCH_SIZE: i64 = 50;
 
+/// Max iterations per Restate invocation. Each iteration journals ~6 entries
+/// (one `find_*` per type + `process_*` + `commit_*`) with significant payload
+/// (serialized batches and results), so a cap of 10 keeps the journal ~60
+/// entries and bounds replay cost on retry. When more work remains the handler
+/// chains a fresh `run_cycle` call — each continuation gets its own invocation
+/// with a fresh journal, while the outer caller still awaits full drain
+/// through the chain.
+const MAX_ITERATIONS_PER_INVOCATION: u32 = 10;
+
 pub struct EnrichmentHandlerImpl {
     pub state: SharedState,
     pub router: Arc<RwLock<TaskRouter>>,
@@ -168,6 +177,7 @@ impl EnrichmentHandlerImpl {
         info!("starting enrichment cycle");
 
         let mut s = CycleState::new();
+        let mut more_work_remaining = false;
 
         loop {
             let batches = self.fetch_all_type_batches(ctx, s.iteration).await?;
@@ -220,11 +230,32 @@ impl EnrichmentHandlerImpl {
                 .await;
 
             s.iteration += 1;
+
+            // Bound per-invocation journal growth. Chain a continuation
+            // below so the outer caller still awaits full drain.
+            if s.iteration >= MAX_ITERATIONS_PER_INVOCATION {
+                more_work_remaining = true;
+                break;
+            }
         }
 
         self.delete_fully_enriched(ctx, s.iteration).await;
         self.finalize_run(ctx, run_id, &mut s, start.elapsed())
             .await;
+
+        // If we hit the per-invocation iteration cap, continue in a fresh
+        // invocation. The outer caller awaits this chain to completion, so
+        // pipeline semantics are preserved.
+        if more_work_remaining {
+            info!(
+                iteration = s.iteration,
+                "iteration cap reached; dispatching continuation for remaining queue"
+            );
+            ctx.service_client::<EnrichmentHandlerClient>()
+                .run_cycle()
+                .call()
+                .await?;
+        }
 
         Ok(())
     }
