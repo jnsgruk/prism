@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::Error;
+use crate::backup::{PlatformIdentityRow, RepositoryRow, TeamMembershipRow};
 use crate::models::TeamType;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -865,4 +866,379 @@ fn topological_sort_teams(teams: &[ExportTeam]) -> Vec<&ExportTeam> {
     // Any remaining have broken parent references — add them at the end.
     sorted.extend(remaining);
     sorted
+}
+
+// ---------------------------------------------------------------------------
+// Backup-specific raw export/import (platform_identities, team_memberships,
+// repositories)
+// ---------------------------------------------------------------------------
+
+impl OrgRepo {
+    // ---- platform_identities -----------------------------------------------
+
+    /// Count `org.platform_identities` rows (for backup manifest).
+    pub async fn count_platform_identities(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM org.platform_identities"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all `org.platform_identities` rows for backup.
+    pub async fn export_platform_identities(&self) -> Result<Vec<PlatformIdentityRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, person_id, platform, platform_username, platform_user_id
+            FROM org.platform_identities
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| PlatformIdentityRow {
+                id: r.id,
+                person_id: r.person_id,
+                platform: r.platform,
+                platform_username: r.platform_username,
+                platform_user_id: r.platform_user_id,
+            })
+            .collect())
+    }
+
+    /// Import `org.platform_identities` from backup. Upserts on
+    /// `(platform, platform_username)`.
+    pub async fn import_platform_identities(
+        &self,
+        rows: &[PlatformIdentityRow],
+    ) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let person_ids: Vec<Uuid> = chunk.iter().map(|r| r.person_id).collect();
+            let platforms: Vec<&str> = chunk.iter().map(|r| r.platform.as_str()).collect();
+            let usernames: Vec<&str> = chunk.iter().map(|r| r.platform_username.as_str()).collect();
+            let user_ids: Vec<Option<&str>> = chunk
+                .iter()
+                .map(|r| r.platform_user_id.as_deref())
+                .collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO org.platform_identities
+                    (id, person_id, platform, platform_username, platform_user_id)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::text[]),
+                    unnest($4::text[]),
+                    unnest($5::text[])
+                ON CONFLICT (platform, platform_username) DO UPDATE
+                    SET platform_user_id = EXCLUDED.platform_user_id
+                "#,
+                &ids,
+                &person_ids,
+                &platforms as &[&str],
+                &usernames as &[&str],
+                &user_ids as &[Option<&str>],
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    // ---- team_memberships --------------------------------------------------
+
+    /// Count `org.team_memberships` rows (for backup manifest).
+    pub async fn count_team_memberships(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM org.team_memberships"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all `org.team_memberships` rows for backup.
+    pub async fn export_team_memberships(&self) -> Result<Vec<TeamMembershipRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, person_id, team_id, start_date, end_date
+            FROM org.team_memberships
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamMembershipRow {
+                id: r.id,
+                person_id: r.person_id,
+                team_id: r.team_id,
+                start_date: r.start_date.to_string(),
+                end_date: r.end_date.map(|d| d.to_string()),
+            })
+            .collect())
+    }
+
+    /// Import `org.team_memberships` from backup. Upserts on
+    /// `(person_id, team_id, start_date)`.
+    pub async fn import_team_memberships(&self, rows: &[TeamMembershipRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let person_ids: Vec<Uuid> = chunk.iter().map(|r| r.person_id).collect();
+            let team_ids: Vec<Uuid> = chunk.iter().map(|r| r.team_id).collect();
+            let start_dates: Vec<time::Date> = chunk
+                .iter()
+                .map(|r| {
+                    time::Date::parse(
+                        &r.start_date,
+                        &time::format_description::well_known::Iso8601::DEFAULT,
+                    )
+                    .unwrap_or(time::Date::MIN)
+                })
+                .collect();
+            let end_dates: Vec<Option<time::Date>> = chunk
+                .iter()
+                .map(|r| {
+                    r.end_date.as_deref().and_then(|s| {
+                        time::Date::parse(
+                            s,
+                            &time::format_description::well_known::Iso8601::DEFAULT,
+                        )
+                        .ok()
+                    })
+                })
+                .collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO org.team_memberships (id, person_id, team_id, start_date, end_date)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::uuid[]),
+                    unnest($4::date[]),
+                    unnest($5::date[])
+                ON CONFLICT (person_id, team_id, start_date) DO UPDATE
+                    SET end_date = EXCLUDED.end_date
+                "#,
+                &ids,
+                &person_ids,
+                &team_ids,
+                &start_dates,
+                &end_dates as &[Option<time::Date>],
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    // ---- repositories ------------------------------------------------------
+
+    /// Count `org.repositories` rows (for backup manifest).
+    pub async fn count_repositories(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM org.repositories"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all `org.repositories` rows for backup.
+    pub async fn export_repositories(&self) -> Result<Vec<RepositoryRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, github_org, github_repo, default_branch, primary_language, team_id, created_at
+            FROM org.repositories
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| RepositoryRow {
+                id: r.id,
+                github_org: r.github_org,
+                github_repo: r.github_repo,
+                default_branch: r.default_branch,
+                primary_language: r.primary_language,
+                team_id: r.team_id,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    /// Import `org.repositories` from backup. Upserts on `(github_org, github_repo)`.
+    pub async fn import_repositories(&self, rows: &[RepositoryRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let orgs: Vec<&str> = chunk.iter().map(|r| r.github_org.as_str()).collect();
+            let repos: Vec<&str> = chunk.iter().map(|r| r.github_repo.as_str()).collect();
+            let branches: Vec<Option<&str>> =
+                chunk.iter().map(|r| r.default_branch.as_deref()).collect();
+            let languages: Vec<Option<&str>> = chunk
+                .iter()
+                .map(|r| r.primary_language.as_deref())
+                .collect();
+            let team_ids: Vec<Option<Uuid>> = chunk.iter().map(|r| r.team_id).collect();
+            let created_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.created_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO org.repositories
+                    (id, github_org, github_repo, default_branch, primary_language, team_id, created_at)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::text[]),
+                    unnest($3::text[]),
+                    unnest($4::text[]),
+                    unnest($5::text[]),
+                    unnest($6::uuid[]),
+                    unnest($7::timestamptz[])
+                ON CONFLICT (github_org, github_repo) DO UPDATE
+                    SET default_branch  = EXCLUDED.default_branch,
+                        primary_language = EXCLUDED.primary_language,
+                        team_id          = EXCLUDED.team_id
+                "#,
+                &ids,
+                &orgs as &[&str],
+                &repos as &[&str],
+                &branches as &[Option<&str>],
+                &languages as &[Option<&str>],
+                &team_ids as &[Option<Uuid>],
+                &created_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    // ---- people (raw backup import) ----------------------------------------
+
+    /// Import people from raw backup JSON rows. Upserts on `id`.
+    ///
+    /// Used during restore. The JSON matches the shape produced by `export_people`.
+    pub async fn import_people_raw(&self, rows: &[serde_json::Value]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for row in rows {
+            let id: uuid::Uuid = serde_json::from_value(row["id"].clone())
+                .map_err(|e| Error::Backup(format!("person id: {e}")))?;
+            let name = row["name"]
+                .as_str()
+                .ok_or_else(|| Error::Backup("person name missing".into()))?;
+            let email = row["email"].as_str();
+            let level = row["level"].as_str();
+            let directory_id = row["directory_id"].as_str();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO org.people (id, name, email, level, directory_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (id) DO UPDATE
+                    SET name         = EXCLUDED.name,
+                        email        = EXCLUDED.email,
+                        level        = EXCLUDED.level,
+                        directory_id = EXCLUDED.directory_id,
+                        updated_at   = now()
+                "#,
+                id,
+                name,
+                email,
+                level,
+                directory_id,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+            count += 1;
+        }
+        Ok(count)
+    }
+
+    // ---- teams (raw backup import) -----------------------------------------
+
+    /// Import teams from raw backup JSON rows. Upserts on `id`.
+    ///
+    /// Rows must be in topological order (parents before children) — the
+    /// backup archive preserves this ordering from the export.
+    pub async fn import_teams_raw(&self, rows: &[serde_json::Value]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for row in rows {
+            let id: uuid::Uuid = serde_json::from_value(row["id"].clone())
+                .map_err(|e| Error::Backup(format!("team id: {e}")))?;
+            let name = row["name"]
+                .as_str()
+                .ok_or_else(|| Error::Backup("team name missing".into()))?;
+            let org_name = row["org_name"]
+                .as_str()
+                .ok_or_else(|| Error::Backup("team org_name missing".into()))?;
+            let parent_team_id: Option<uuid::Uuid> =
+                serde_json::from_value(row["parent_team_id"].clone())
+                    .map_err(|e| Error::Backup(format!("parent_team_id: {e}")))?;
+            let lead_id: Option<uuid::Uuid> = serde_json::from_value(row["lead_id"].clone())
+                .map_err(|e| Error::Backup(format!("lead_id: {e}")))?;
+            let team_type_str = row["team_type"].as_str().unwrap_or("team");
+            let team_type = parse_team_type(team_type_str);
+
+            sqlx::query!(
+                r#"
+                INSERT INTO org.teams (id, name, org_name, parent_team_id, lead_id, team_type)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (id) DO UPDATE
+                    SET name           = EXCLUDED.name,
+                        org_name       = EXCLUDED.org_name,
+                        parent_team_id = EXCLUDED.parent_team_id,
+                        lead_id        = EXCLUDED.lead_id,
+                        team_type      = EXCLUDED.team_type
+                "#,
+                id,
+                name,
+                org_name,
+                parent_team_id,
+                lead_id,
+                team_type as TeamType,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+            count += 1;
+        }
+        Ok(count)
+    }
 }

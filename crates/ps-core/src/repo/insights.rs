@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::{InsightSnapshotRow, InsightSnapshotSourceRow};
 use sqlx::PgPool;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
@@ -1239,5 +1240,235 @@ impl InsightsRepo {
             notable_count: r.notable_count,
             routine_count: r.routine_count,
         }))
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import
+    // -----------------------------------------------------------------------
+
+    /// Count insight snapshots (for backup manifest).
+    pub async fn count_insight_snapshots(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM reasoning.insight_snapshots"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Count insight snapshot sources (for backup manifest).
+    pub async fn count_insight_snapshot_sources(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64" FROM reasoning.insight_snapshot_sources"#
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::from)
+    }
+
+    /// Export all insight snapshots for backup.
+    pub async fn export_insight_snapshots(&self) -> Result<Vec<InsightSnapshotRow>, Error> {
+        // Use runtime query because sqlx can't infer the type of the
+        // `INTEGER[]` depth_distribution column in offline mode.
+        #[derive(sqlx::FromRow)]
+        struct RawInsightSnapshot {
+            id: Uuid,
+            team_id: Uuid,
+            period_start: time::Date,
+            period_end: time::Date,
+            period_type: String,
+            avg_review_depth: Option<f64>,
+            rubber_stamp_pct: Option<f64>,
+            deep_review_pct: Option<f64>,
+            depth_distribution: Option<Vec<i32>>,
+            constructive_count: i32,
+            neutral_count: i32,
+            critical_count: i32,
+            hostile_count: i32,
+            significant_count: i32,
+            notable_count: i32,
+            routine_count: i32,
+            enrichment_coverage: serde_json::Value,
+            raw_insights: serde_json::Value,
+            conversation_id: Option<Uuid>,
+            computed_at: time::OffsetDateTime,
+        }
+
+        let rows: Vec<RawInsightSnapshot> = sqlx::query_as(
+            r"
+            SELECT id, team_id, period_start, period_end, period_type,
+                   avg_review_depth, rubber_stamp_pct, deep_review_pct,
+                   depth_distribution,
+                   constructive_count, neutral_count, critical_count, hostile_count,
+                   significant_count, notable_count, routine_count,
+                   enrichment_coverage, raw_insights, conversation_id, computed_at
+            FROM reasoning.insight_snapshots
+            ORDER BY id
+            ",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| InsightSnapshotRow {
+                id: r.id,
+                team_id: r.team_id,
+                period_start: r.period_start.to_string(),
+                period_end: r.period_end.to_string(),
+                period_type: r.period_type,
+                avg_review_depth: r.avg_review_depth,
+                rubber_stamp_pct: r.rubber_stamp_pct,
+                deep_review_pct: r.deep_review_pct,
+                depth_distribution: r.depth_distribution.unwrap_or_default(),
+                constructive_count: r.constructive_count,
+                neutral_count: r.neutral_count,
+                critical_count: r.critical_count,
+                hostile_count: r.hostile_count,
+                significant_count: r.significant_count,
+                notable_count: r.notable_count,
+                routine_count: r.routine_count,
+                enrichment_coverage: r.enrichment_coverage,
+                raw_insights: r.raw_insights,
+                conversation_id: r.conversation_id,
+                computed_at: r.computed_at,
+            })
+            .collect())
+    }
+
+    /// Export all insight snapshot sources for backup.
+    pub async fn export_insight_snapshot_sources(
+        &self,
+    ) -> Result<Vec<InsightSnapshotSourceRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT snapshot_id, enrichment_id
+            FROM reasoning.insight_snapshot_sources
+            ORDER BY snapshot_id, enrichment_id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| InsightSnapshotSourceRow {
+                snapshot_id: r.snapshot_id,
+                enrichment_id: r.enrichment_id,
+            })
+            .collect())
+    }
+
+    /// Import insight snapshots from backup. Upserts on
+    /// `(team_id, period_start, period_type)`.
+    pub async fn import_insight_snapshots(
+        &self,
+        rows: &[InsightSnapshotRow],
+    ) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(500) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let team_ids: Vec<Uuid> = chunk.iter().map(|r| r.team_id).collect();
+            let period_starts: Vec<Date> = chunk
+                .iter()
+                .map(|r| {
+                    Date::parse(
+                        &r.period_start,
+                        &time::format_description::well_known::Iso8601::DEFAULT,
+                    )
+                    .unwrap_or(Date::MIN)
+                })
+                .collect();
+            let period_ends: Vec<Date> = chunk
+                .iter()
+                .map(|r| {
+                    Date::parse(
+                        &r.period_end,
+                        &time::format_description::well_known::Iso8601::DEFAULT,
+                    )
+                    .unwrap_or(Date::MIN)
+                })
+                .collect();
+            let period_types: Vec<&str> = chunk.iter().map(|r| r.period_type.as_str()).collect();
+            let avg_review_depths: Vec<Option<f64>> =
+                chunk.iter().map(|r| r.avg_review_depth).collect();
+            let rubber_stamp_pcts: Vec<Option<f64>> =
+                chunk.iter().map(|r| r.rubber_stamp_pct).collect();
+            let deep_review_pcts: Vec<Option<f64>> =
+                chunk.iter().map(|r| r.deep_review_pct).collect();
+            let computed_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.computed_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO reasoning.insight_snapshots
+                    (id, team_id, period_start, period_end, period_type,
+                     avg_review_depth, rubber_stamp_pct, deep_review_pct, computed_at)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::date[]),
+                    unnest($4::date[]),
+                    unnest($5::text[]),
+                    unnest($6::float8[]),
+                    unnest($7::float8[]),
+                    unnest($8::float8[]),
+                    unnest($9::timestamptz[])
+                ON CONFLICT (team_id, period_start, period_type) DO UPDATE
+                    SET avg_review_depth = EXCLUDED.avg_review_depth,
+                        rubber_stamp_pct = EXCLUDED.rubber_stamp_pct,
+                        deep_review_pct  = EXCLUDED.deep_review_pct,
+                        computed_at      = EXCLUDED.computed_at
+                "#,
+                &ids,
+                &team_ids,
+                &period_starts,
+                &period_ends,
+                &period_types as &[&str],
+                &avg_review_depths as &[Option<f64>],
+                &rubber_stamp_pcts as &[Option<f64>],
+                &deep_review_pcts as &[Option<f64>],
+                &computed_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    /// Import insight snapshot sources from backup.
+    pub async fn import_insight_snapshot_sources(
+        &self,
+        rows: &[InsightSnapshotSourceRow],
+    ) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let snapshot_ids: Vec<Uuid> = chunk.iter().map(|r| r.snapshot_id).collect();
+            let enrichment_ids: Vec<Uuid> = chunk.iter().map(|r| r.enrichment_id).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO reasoning.insight_snapshot_sources (snapshot_id, enrichment_id)
+                SELECT unnest($1::uuid[]), unnest($2::uuid[])
+                ON CONFLICT DO NOTHING
+                "#,
+                &snapshot_ids,
+                &enrichment_ids,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
     }
 }

@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::UserBackupRow;
 use crate::models::Role;
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -268,5 +269,151 @@ impl AuthRepo {
                 })
             })
             .collect())
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import (full — includes password hashes)
+    // -----------------------------------------------------------------------
+
+    /// Export all users for backup, **including password hashes**.
+    ///
+    /// This is intentionally separate from `export_users` (which omits hashes)
+    /// and should only be called from the backup pipeline.
+    pub async fn export_users_for_backup(&self) -> Result<Vec<UserBackupRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, username, display_name, password_hash, role, is_active,
+                   person_id, created_at, updated_at
+            FROM auth.users
+            ORDER BY created_at
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| UserBackupRow {
+                id: r.id,
+                username: r.username,
+                display_name: r.display_name,
+                password_hash: r.password_hash,
+                role: r.role,
+                is_active: r.is_active,
+                person_id: r.person_id,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+
+    /// Import users from backup. Upserts on `username`.
+    ///
+    /// Existing users are updated with the backup values (including
+    /// password hash), so the restored instance is a faithful copy.
+    /// Returns the number of rows upserted.
+    pub async fn import_users(&self, rows: &[UserBackupRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let usernames: Vec<&str> = chunk.iter().map(|r| r.username.as_str()).collect();
+            let display_names: Vec<&str> = chunk.iter().map(|r| r.display_name.as_str()).collect();
+            let password_hashes: Vec<&str> =
+                chunk.iter().map(|r| r.password_hash.as_str()).collect();
+            let roles: Vec<&str> = chunk.iter().map(|r| r.role.as_str()).collect();
+            let is_actives: Vec<bool> = chunk.iter().map(|r| r.is_active).collect();
+            let person_ids: Vec<Option<Uuid>> = chunk.iter().map(|r| r.person_id).collect();
+            let created_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.created_at).collect();
+            let updated_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.updated_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO auth.users
+                    (id, username, display_name, password_hash, role, is_active,
+                     person_id, created_at, updated_at)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::text[]),
+                    unnest($3::text[]),
+                    unnest($4::text[]),
+                    unnest($5::text[]),
+                    unnest($6::bool[]),
+                    unnest($7::uuid[]),
+                    unnest($8::timestamptz[]),
+                    unnest($9::timestamptz[])
+                ON CONFLICT (username) DO UPDATE
+                    SET display_name  = EXCLUDED.display_name,
+                        password_hash = EXCLUDED.password_hash,
+                        role          = EXCLUDED.role,
+                        is_active     = EXCLUDED.is_active,
+                        person_id     = EXCLUDED.person_id,
+                        updated_at    = EXCLUDED.updated_at
+                "#,
+                &ids,
+                &usernames as &[&str],
+                &display_names as &[&str],
+                &password_hashes as &[&str],
+                &roles as &[&str],
+                &is_actives,
+                &person_ids as &[Option<Uuid>],
+                &created_ats,
+                &updated_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    /// Delete all users and sessions (used during full overwrite restore).
+    pub async fn delete_all_users(&self) -> Result<(), Error> {
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+        sqlx::query!("DELETE FROM auth.sessions")
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+        sqlx::query!("DELETE FROM auth.users")
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+        tx.commit().await.map_err(Error::from)
+    }
+
+    /// Return the first active admin user, if any, ordered by creation time.
+    ///
+    /// Used after restore to find an account to re-issue a session for.
+    pub async fn find_first_admin_user(&self) -> Result<Option<UserBackupRow>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT id, username, display_name, password_hash, role, is_active,
+                   person_id, created_at, updated_at
+            FROM auth.users
+            WHERE role = 'admin' AND is_active = true
+            ORDER BY created_at
+            LIMIT 1
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| UserBackupRow {
+            id: r.id,
+            username: r.username,
+            display_name: r.display_name,
+            password_hash: r.password_hash,
+            role: r.role,
+            is_active: r.is_active,
+            person_id: r.person_id,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
     }
 }

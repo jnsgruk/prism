@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::EmbeddingRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -441,5 +442,70 @@ impl ReasoningRepo {
             total_eligible: eligible,
             last_embedded_at: embedded.1,
         })
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import
+    // -----------------------------------------------------------------------
+
+    /// Count embedding rows (for backup manifest).
+    pub async fn count_embeddings(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM reasoning.embeddings"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all embeddings for backup.
+    ///
+    /// The vector is stored as a `Vec<f32>` JSON array. Large tables are read
+    /// fully into memory here; keyset pagination can be added if needed.
+    pub async fn export_embeddings(&self) -> Result<Vec<EmbeddingRow>, Error> {
+        // query! can't decode the pgvector `vector` type; use the runtime API.
+        #[derive(sqlx::FromRow)]
+        struct RawEmbedding {
+            id: Uuid,
+            contribution_id: Uuid,
+            embedding: Option<pgvector::Vector>,
+            model_name: String,
+            created_at: time::OffsetDateTime,
+        }
+
+        let rows: Vec<RawEmbedding> = sqlx::query_as(
+            r"
+            SELECT id, contribution_id, embedding, model_name, created_at
+            FROM reasoning.embeddings
+            ORDER BY id
+            ",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| EmbeddingRow {
+                id: r.id,
+                contribution_id: r.contribution_id,
+                embedding: r.embedding.map(|v| v.to_vec()).unwrap_or_default(),
+                model_name: r.model_name,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    /// Import embeddings from backup. Upserts on `(contribution_id, model_name)`.
+    pub async fn import_embeddings(&self, rows: &[EmbeddingRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for row in rows {
+            let vector = pgvector::Vector::from(row.embedding.clone());
+            self.upsert_embedding(row.contribution_id, &vector, &row.model_name)
+                .await?;
+            count += 1;
+        }
+        Ok(count)
     }
 }

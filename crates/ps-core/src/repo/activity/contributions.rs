@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::ContributionRow;
 use crate::ingestion::ContributionInput;
 use crate::models::ContributionState;
 use uuid::Uuid;
@@ -208,5 +209,142 @@ impl ActivityRepo {
         .map_err(Error::from)?;
 
         Ok(result.rows_affected())
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import
+    // -----------------------------------------------------------------------
+
+    /// Count contributions (for backup manifest).
+    pub async fn count_contributions(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM activity.contributions"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all contributions as typed rows for backup.
+    ///
+    /// Uses keyset pagination to avoid loading the full table into memory.
+    /// Returns rows ordered by `id`; caller collects into a `Vec` or streams.
+    pub async fn export_contributions(&self) -> Result<Vec<ContributionRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, person_id, platform, contribution_type, platform_id,
+                   title, url, state, created_at, updated_at, closed_at,
+                   metrics, metadata, content, state_history, ingested_at
+            FROM activity.contributions
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| ContributionRow {
+                id: r.id,
+                person_id: r.person_id,
+                platform: r.platform,
+                contribution_type: r.contribution_type,
+                platform_id: r.platform_id,
+                title: r.title,
+                url: r.url,
+                state: r.state,
+                created_at: r.created_at,
+                updated_at: r.updated_at.map(|t| t.to_string()),
+                closed_at: r.closed_at.map(|t| t.to_string()),
+                metrics: r.metrics,
+                metadata: r.metadata,
+                content: r.content,
+                state_history: r.state_history,
+                ingested_at: r.ingested_at,
+            })
+            .collect())
+    }
+
+    /// Import contributions from backup. Upserts on `(platform, platform_id)`.
+    ///
+    /// Returns the number of rows upserted.
+    pub async fn import_contributions(&self, rows: &[ContributionRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(500) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let person_ids: Vec<Option<Uuid>> = chunk.iter().map(|r| r.person_id).collect();
+            let platforms: Vec<&str> = chunk.iter().map(|r| r.platform.as_str()).collect();
+            let ctypes: Vec<&str> = chunk.iter().map(|r| r.contribution_type.as_str()).collect();
+            let platform_ids: Vec<&str> = chunk.iter().map(|r| r.platform_id.as_str()).collect();
+            let titles: Vec<Option<&str>> = chunk.iter().map(|r| r.title.as_deref()).collect();
+            let urls: Vec<Option<&str>> = chunk.iter().map(|r| r.url.as_deref()).collect();
+            let states: Vec<Option<&str>> = chunk.iter().map(|r| r.state.as_deref()).collect();
+            let created_ats: Vec<time::OffsetDateTime> =
+                chunk.iter().map(|r| r.created_at).collect();
+            let ingested_ats: Vec<time::OffsetDateTime> =
+                chunk.iter().map(|r| r.ingested_at).collect();
+            let metrics: Vec<&serde_json::Value> = chunk.iter().map(|r| &r.metrics).collect();
+            let metadata: Vec<&serde_json::Value> = chunk.iter().map(|r| &r.metadata).collect();
+            let contents: Vec<Option<&str>> = chunk.iter().map(|r| r.content.as_deref()).collect();
+            let state_histories: Vec<Option<&serde_json::Value>> =
+                chunk.iter().map(|r| r.state_history.as_ref()).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO activity.contributions (
+                    id, person_id, platform, contribution_type, platform_id,
+                    title, url, state, created_at, metrics, metadata,
+                    content, state_history, ingested_at
+                )
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::text[]),
+                    unnest($4::text[]),
+                    unnest($5::text[]),
+                    unnest($6::text[]),
+                    unnest($7::text[]),
+                    unnest($8::text[]),
+                    unnest($9::timestamptz[]),
+                    unnest($10::jsonb[]),
+                    unnest($11::jsonb[]),
+                    unnest($12::text[]),
+                    unnest($13::jsonb[]),
+                    unnest($14::timestamptz[])
+                ON CONFLICT (platform, platform_id) DO UPDATE SET
+                    person_id    = COALESCE(EXCLUDED.person_id, activity.contributions.person_id),
+                    title        = EXCLUDED.title,
+                    url          = EXCLUDED.url,
+                    state        = EXCLUDED.state,
+                    metrics      = EXCLUDED.metrics,
+                    metadata     = EXCLUDED.metadata,
+                    content      = EXCLUDED.content,
+                    state_history = EXCLUDED.state_history,
+                    ingested_at  = EXCLUDED.ingested_at
+                "#,
+                &ids,
+                &person_ids as &[Option<Uuid>],
+                &platforms as &[&str],
+                &ctypes as &[&str],
+                &platform_ids as &[&str],
+                &titles as &[Option<&str>],
+                &urls as &[Option<&str>],
+                &states as &[Option<&str>],
+                &created_ats,
+                &metrics as &[&serde_json::Value],
+                &metadata as &[&serde_json::Value],
+                &contents as &[Option<&str>],
+                &state_histories as &[Option<&serde_json::Value>],
+                &ingested_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
     }
 }

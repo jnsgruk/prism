@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::{base64_decode, base64_encode};
 use crate::models::{AiModel, AiProvider, GlobalSetting, Platform, SourceConfig};
 use sqlx::PgPool;
 use time::format_description::well_known::Rfc3339;
@@ -357,6 +358,174 @@ impl ConfigRepo {
     }
 
     // -----------------------------------------------------------------------
+    // Secrets backup export/import
+    // -----------------------------------------------------------------------
+
+    /// Export all rows from `config.secrets` as raw JSON for backup.
+    ///
+    /// Encrypted blobs are included as-is; they are never decrypted here.
+    pub async fn export_secrets(&self) -> Result<Vec<serde_json::Value>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, source_id, secret_key, encrypted_value, created_at, updated_at
+            FROM config.secrets
+            ORDER BY created_at
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "id": r.id,
+                    "source_id": r.source_id,
+                    "secret_key": r.secret_key,
+                    // Store BYTEA as a base64 string so it survives JSON round-trip.
+                    "encrypted_value": base64_encode(&r.encrypted_value),
+                    "created_at": r.created_at.to_string(),
+                    "updated_at": r.updated_at.to_string(),
+                })
+            })
+            .collect())
+    }
+
+    /// Count rows in `config.secrets` (for the backup manifest).
+    pub async fn count_secrets(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!("SELECT COUNT(*) FROM config.secrets")
+            .fetch_one(&self.pool)
+            .await
+            .map(|c| c.unwrap_or(0))
+            .map_err(Error::from)
+    }
+
+    /// Export all rows from `config.global_settings` as raw JSON for backup.
+    pub async fn export_global_settings(&self) -> Result<Vec<serde_json::Value>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT key, value, updated_at
+            FROM config.global_settings
+            ORDER BY key
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "key": r.key,
+                    "value": r.value,
+                    "updated_at": r.updated_at.to_string(),
+                })
+            })
+            .collect())
+    }
+
+    /// Count rows in `config.global_settings` (for the backup manifest).
+    pub async fn count_global_settings(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!("SELECT COUNT(*) FROM config.global_settings")
+            .fetch_one(&self.pool)
+            .await
+            .map(|c| c.unwrap_or(0))
+            .map_err(Error::from)
+    }
+
+    /// Import secrets from backup. Upserts on `(source_id, secret_key)` /
+    /// `(secret_key WHERE source_id IS NULL)` — safe to re-run.
+    ///
+    /// Returns the number of rows upserted.
+    pub async fn import_secrets(&self, rows: &[crate::backup::SecretRow]) -> Result<i64, Error> {
+        let mut count: i64 = 0;
+
+        // Two separate queries because the unique constraints are on separate
+        // partial indexes (one for source_id IS NULL, one for IS NOT NULL).
+        for row in rows {
+            let encrypted = base64_decode(&row.encrypted_value)
+                .map_err(|e| Error::Backup(format!("invalid base64 in secrets: {e}")))?;
+
+            if row.source_id.is_none() {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value, created_at, updated_at)
+                    VALUES ($1, NULL, $2, $3, $4, $5)
+                    ON CONFLICT (secret_key) WHERE source_id IS NULL
+                    DO UPDATE SET encrypted_value = EXCLUDED.encrypted_value, updated_at = EXCLUDED.updated_at
+                    "#,
+                    row.id,
+                    row.secret_key,
+                    encrypted.as_slice(),
+                    row.created_at,
+                    row.updated_at,
+                )
+                .execute(&self.pool)
+                .await
+                .map_err(Error::from)?;
+            } else {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO config.secrets (id, source_id, secret_key, encrypted_value, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (source_id, secret_key) WHERE source_id IS NOT NULL
+                    DO UPDATE SET encrypted_value = EXCLUDED.encrypted_value, updated_at = EXCLUDED.updated_at
+                    "#,
+                    row.id,
+                    row.source_id,
+                    row.secret_key,
+                    encrypted.as_slice(),
+                    row.created_at,
+                    row.updated_at,
+                )
+                .execute(&self.pool)
+                .await
+                .map_err(Error::from)?;
+            }
+            count += 1;
+        }
+        Ok(count)
+    }
+
+    /// Import global settings from backup. Upserts on `key`.
+    ///
+    /// Returns the number of rows upserted.
+    pub async fn import_global_settings(
+        &self,
+        rows: &[crate::backup::GlobalSettingRow],
+    ) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let keys: Vec<&str> = chunk.iter().map(|r| r.key.as_str()).collect();
+            let values: Vec<&serde_json::Value> = chunk.iter().map(|r| &r.value).collect();
+            let updated_ats: Vec<time::OffsetDateTime> =
+                chunk.iter().map(|r| r.updated_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO config.global_settings (key, value, updated_at)
+                SELECT unnest($1::text[]), unnest($2::jsonb[]), unnest($3::timestamptz[])
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+                "#,
+                &keys as &[&str],
+                &values as &[&serde_json::Value],
+                &updated_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    // -----------------------------------------------------------------------
     // Global secrets (source_id IS NULL)
     // -----------------------------------------------------------------------
 
@@ -689,6 +858,76 @@ impl ConfigRepo {
 
         tx.commit().await.map_err(Error::from)?;
         Ok(result)
+    }
+
+    /// Delete all config data in reverse-FK order for a full overwrite restore.
+    ///
+    /// Deleting `source_configs` cascades to `secrets` via FK.
+    pub async fn delete_all_for_restore(&self) -> Result<(), Error> {
+        let mut tx: sqlx::Transaction<'_, sqlx::Postgres> =
+            self.pool.begin().await.map_err(Error::from)?;
+
+        sqlx::query!("DELETE FROM config.global_settings")
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+        // Deleting source_configs cascades to secrets via FK.
+        sqlx::query!("DELETE FROM config.source_configs")
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
+        tx.commit().await.map_err(Error::from)
+    }
+
+    /// Import source configurations from raw backup JSON rows.
+    ///
+    /// Used during restore, where we have raw JSON produced by `export_sources`.
+    /// Upserts on `id`.
+    pub async fn import_sources_raw(&self, rows: &[serde_json::Value]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for row in rows {
+            let id: uuid::Uuid = serde_json::from_value(row["id"].clone())
+                .map_err(|e| Error::Backup(format!("source id: {e}")))?;
+            let source_type = row["source_type"]
+                .as_str()
+                .ok_or_else(|| Error::Backup("source_type missing".into()))?;
+            let name = row["name"]
+                .as_str()
+                .ok_or_else(|| Error::Backup("name missing".into()))?;
+            let enabled = row["enabled"].as_bool().unwrap_or(true);
+            let settings = row["settings"].clone();
+            let schedule_cron = row["schedule_cron"].as_str();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO config.source_configs
+                    (id, source_type, name, enabled, settings, schedule_cron)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (id) DO UPDATE
+                    SET source_type   = EXCLUDED.source_type,
+                        name          = EXCLUDED.name,
+                        enabled       = EXCLUDED.enabled,
+                        settings      = EXCLUDED.settings,
+                        schedule_cron = EXCLUDED.schedule_cron,
+                        updated_at    = now()
+                "#,
+                id,
+                source_type,
+                name,
+                enabled,
+                settings,
+                schedule_cron,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+            count += 1;
+        }
+        Ok(count)
     }
 }
 

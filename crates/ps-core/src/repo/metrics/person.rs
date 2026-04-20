@@ -1,4 +1,5 @@
 use super::*;
+use crate::backup::{IndividualProfileRow, SnapshotSourceRow};
 use crate::models::{ContributionType, Platform};
 
 use super::contributions::{ContributionDetailRow, ListPersonContributionsParams};
@@ -210,5 +211,186 @@ impl MetricsRepo {
         };
 
         Ok(Some((person_count, percentile, peer_count)))
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import — metrics.individual_profiles
+    // -----------------------------------------------------------------------
+
+    /// Count individual profiles (for backup manifest).
+    pub async fn count_individual_profiles(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM metrics.individual_profiles"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all individual profiles for backup.
+    pub async fn export_individual_profiles(&self) -> Result<Vec<IndividualProfileRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, person_id, period_start, period_end, period_type,
+                   activity_summary, peer_comparison, computed_at
+            FROM metrics.individual_profiles
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| IndividualProfileRow {
+                id: r.id,
+                person_id: r.person_id,
+                period_start: r.period_start.to_string(),
+                period_end: r.period_end.to_string(),
+                period_type: r.period_type,
+                activity_summary: r.activity_summary,
+                peer_comparison: r.peer_comparison,
+                computed_at: r.computed_at,
+            })
+            .collect())
+    }
+
+    /// Import individual profiles from backup. Upserts on
+    /// `(person_id, period_start, period_type)`.
+    pub async fn import_individual_profiles(
+        &self,
+        rows: &[IndividualProfileRow],
+    ) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(500) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let person_ids: Vec<Uuid> = chunk.iter().map(|r| r.person_id).collect();
+            let period_starts: Vec<Date> = chunk
+                .iter()
+                .map(|r| {
+                    Date::parse(
+                        &r.period_start,
+                        &time::format_description::well_known::Iso8601::DEFAULT,
+                    )
+                    .unwrap_or(Date::MIN)
+                })
+                .collect();
+            let period_ends: Vec<Date> = chunk
+                .iter()
+                .map(|r| {
+                    Date::parse(
+                        &r.period_end,
+                        &time::format_description::well_known::Iso8601::DEFAULT,
+                    )
+                    .unwrap_or(Date::MIN)
+                })
+                .collect();
+            let period_types: Vec<&str> = chunk.iter().map(|r| r.period_type.as_str()).collect();
+            let activity_summaries: Vec<&serde_json::Value> =
+                chunk.iter().map(|r| &r.activity_summary).collect();
+            let peer_comparisons: Vec<&serde_json::Value> =
+                chunk.iter().map(|r| &r.peer_comparison).collect();
+            let computed_ats: Vec<time::OffsetDateTime> =
+                chunk.iter().map(|r| r.computed_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO metrics.individual_profiles
+                    (id, person_id, period_start, period_end, period_type,
+                     activity_summary, peer_comparison, computed_at)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::date[]),
+                    unnest($4::date[]),
+                    unnest($5::text[]),
+                    unnest($6::jsonb[]),
+                    unnest($7::jsonb[]),
+                    unnest($8::timestamptz[])
+                ON CONFLICT (person_id, period_start, period_type) DO UPDATE
+                    SET activity_summary = EXCLUDED.activity_summary,
+                        peer_comparison  = EXCLUDED.peer_comparison,
+                        computed_at      = EXCLUDED.computed_at
+                "#,
+                &ids,
+                &person_ids,
+                &period_starts,
+                &period_ends,
+                &period_types as &[&str],
+                &activity_summaries as &[&serde_json::Value],
+                &peer_comparisons as &[&serde_json::Value],
+                &computed_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import — metrics.snapshot_sources
+    // -----------------------------------------------------------------------
+
+    /// Count snapshot source rows (for backup manifest).
+    pub async fn count_snapshot_sources(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM metrics.snapshot_sources"#)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(Error::from)
+    }
+
+    /// Export all snapshot source rows for backup.
+    pub async fn export_snapshot_sources(&self) -> Result<Vec<SnapshotSourceRow>, Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT snapshot_id, contribution_id
+            FROM metrics.snapshot_sources
+            ORDER BY snapshot_id, contribution_id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| SnapshotSourceRow {
+                snapshot_id: r.snapshot_id,
+                contribution_id: r.contribution_id,
+            })
+            .collect())
+    }
+
+    /// Import snapshot sources from backup. Uses `ON CONFLICT DO NOTHING`.
+    pub async fn import_snapshot_sources(&self, rows: &[SnapshotSourceRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(1000) {
+            let snapshot_ids: Vec<Uuid> = chunk.iter().map(|r| r.snapshot_id).collect();
+            let contribution_ids: Vec<Uuid> = chunk.iter().map(|r| r.contribution_id).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO metrics.snapshot_sources (snapshot_id, contribution_id)
+                SELECT unnest($1::uuid[]), unnest($2::uuid[])
+                ON CONFLICT DO NOTHING
+                "#,
+                &snapshot_ids,
+                &contribution_ids,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
     }
 }

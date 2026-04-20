@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::backup::{ConversationBackupRow, ConversationMessageBackupRow};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -656,8 +657,119 @@ impl ReasoningRepo {
                     "prompt_tokens": m.prompt_tokens,
                     "completion_tokens": m.completion_tokens,
                     "created_at": m.created_at.to_string(),
+                    "attached_files": m.attached_files,
+                    "mentions": m.mentions,
                 })
             })
             .collect())
+    }
+
+    // -----------------------------------------------------------------------
+    // Backup export/import
+    // -----------------------------------------------------------------------
+
+    /// Count conversation messages (for backup manifest).
+    pub async fn count_conversation_messages(&self) -> Result<i64, Error> {
+        sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64" FROM reasoning.conversation_messages"#
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::from)
+    }
+
+    /// Import conversations from backup. Upserts on `id`.
+    pub async fn import_conversations(&self, rows: &[ConversationBackupRow]) -> Result<i64, Error> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let mut count: i64 = 0;
+        for chunk in rows.chunks(500) {
+            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
+            let user_ids: Vec<Uuid> = chunk.iter().map(|r| r.user_id).collect();
+            let titles: Vec<Option<&str>> = chunk.iter().map(|r| r.title.as_deref()).collect();
+            let statuses: Vec<&str> = chunk.iter().map(|r| r.status.as_str()).collect();
+            let model_names: Vec<&str> = chunk.iter().map(|r| r.model_name.as_str()).collect();
+            let query_statuses: Vec<&str> = chunk.iter().map(|r| r.query_status.as_str()).collect();
+            let created_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.created_at).collect();
+            let last_activity_ats: Vec<OffsetDateTime> =
+                chunk.iter().map(|r| r.last_activity_at).collect();
+
+            sqlx::query!(
+                r#"
+                INSERT INTO reasoning.conversations
+                    (id, user_id, title, status, model_name, query_status,
+                     created_at, last_activity_at)
+                SELECT
+                    unnest($1::uuid[]),
+                    unnest($2::uuid[]),
+                    unnest($3::text[]),
+                    unnest($4::text[]),
+                    unnest($5::text[]),
+                    unnest($6::text[]),
+                    unnest($7::timestamptz[]),
+                    unnest($8::timestamptz[])
+                ON CONFLICT (id) DO UPDATE
+                    SET title            = EXCLUDED.title,
+                        status           = EXCLUDED.status,
+                        query_status     = EXCLUDED.query_status,
+                        last_activity_at = EXCLUDED.last_activity_at
+                "#,
+                &ids,
+                &user_ids,
+                &titles as &[Option<&str>],
+                &statuses as &[&str],
+                &model_names as &[&str],
+                &query_statuses as &[&str],
+                &created_ats,
+                &last_activity_ats,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+
+            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
+        }
+        Ok(count)
+    }
+
+    /// Import conversation messages from backup. Upserts on `id`.
+    pub async fn import_conversation_messages(
+        &self,
+        rows: &[ConversationMessageBackupRow],
+    ) -> Result<i64, Error> {
+        let mut count: i64 = 0;
+        for row in rows {
+            sqlx::query!(
+                r#"
+                INSERT INTO reasoning.conversation_messages
+                    (id, conversation_id, role, content, reasoning_trace, supporting_data,
+                     prompt_tokens, completion_tokens, attached_files, mentions, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ON CONFLICT (id) DO UPDATE
+                    SET content          = EXCLUDED.content,
+                        reasoning_trace  = EXCLUDED.reasoning_trace,
+                        supporting_data  = EXCLUDED.supporting_data,
+                        attached_files   = EXCLUDED.attached_files,
+                        mentions         = EXCLUDED.mentions
+                "#,
+                row.id,
+                row.conversation_id,
+                row.role,
+                row.content,
+                row.reasoning_trace,
+                row.supporting_data,
+                row.prompt_tokens,
+                row.completion_tokens,
+                &row.attached_files,
+                row.mentions,
+                row.created_at,
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(Error::from)?;
+            count += 1;
+        }
+        Ok(count)
     }
 }
