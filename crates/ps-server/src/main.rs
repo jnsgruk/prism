@@ -93,11 +93,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         workspaces_path.clone(),
         workspaces_capacity_bytes,
     );
+
+    // AI reasoning — task router with default config, providers set later via admin UI
+    let ai_config = ps_reasoning::types::AiConfig::default();
+    let router = Arc::new(tokio::sync::RwLock::new(
+        ps_reasoning::routing::TaskRouter::new(ai_config),
+    ));
+
+    // Post-restore hook to reload AI provider keys from the freshly-restored database.
+    let post_restore_hook: ps_server::features::backup::PostRestoreHook = {
+        let repos = repos.clone();
+        let secret_key = secret_key.clone();
+        let router = router.clone();
+        Arc::new(move || {
+            let repos = repos.clone();
+            let secret_key = secret_key.clone();
+            let router = router.clone();
+            Box::pin(async move {
+                ps_server::features::reasoning::reload_ai_providers(&repos, &secret_key, &router)
+                    .await;
+            })
+        })
+    };
+
     let backup_service = BackupServiceImpl::new(
         repos.clone(),
         secret_key.clone(),
         backups_path,
         backup_generator,
+        Some(post_restore_hook),
     );
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
@@ -107,12 +131,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let insights_service = InsightsServiceImpl::new(repos.clone());
     let handlers_service =
         HandlersServiceImpl::new(repos.clone(), restate_url.clone(), restate_admin_url);
-
-    // AI reasoning — task router with default config, providers set later via admin UI
-    let ai_config = ps_reasoning::types::AiConfig::default();
-    let router = Arc::new(tokio::sync::RwLock::new(
-        ps_reasoning::routing::TaskRouter::new(ai_config),
-    ));
 
     let reasoning_service = ReasoningServiceImpl::new(
         repos.clone(),

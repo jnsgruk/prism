@@ -253,6 +253,7 @@ impl TestServer {
             test_secret_key(),
             Some(backups_dir.path().to_path_buf()),
             generator,
+            None, // no post-restore hook needed in tests
         );
         let org_service = OrgServiceImpl::new(repos.clone());
         let config_service = ConfigServiceImpl::new(repos.clone(), test_secret_key());

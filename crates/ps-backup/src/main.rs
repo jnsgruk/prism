@@ -10,8 +10,8 @@ use tracing::{error, info, warn};
 /// Database schemas to include in the `pg_dump`.
 const SCHEMAS: &[&str] = &["config", "org", "activity", "metrics", "auth", "reasoning"];
 
-/// Tables to exclude from the dump (ephemeral, rebuilt on demand).
-const EXCLUDED_TABLES: &[&str] = &["activity.ingestion_runs"];
+/// Tables to exclude from the dump (currently none).
+const EXCLUDED_TABLES: &[&str] = &[];
 
 /// Directories to skip when walking workspace files (hidden dirs, build
 /// artefacts, and filesystem-level directories like `lost+found`).
@@ -193,9 +193,9 @@ fn ensure_extensions(database_url: &str) -> Result<()> {
     Ok(())
 }
 
-/// Drop all application schemas before `pg_restore` so that excluded tables
-/// (e.g. `activity.ingestion_runs`) and their FK constraints do not block
-/// the restore. `pg_restore` will recreate the schemas from the dump.
+/// Drop all application schemas before `pg_restore` so that the restore
+/// starts from a clean slate. `pg_restore` will recreate the schemas from
+/// the dump.
 fn drop_schemas(database_url: &str) -> Result<()> {
     let sql = SCHEMAS
         .iter()

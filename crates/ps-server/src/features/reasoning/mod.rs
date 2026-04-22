@@ -7,6 +7,8 @@ mod embeddings;
 mod enrichments;
 pub mod workspace;
 
+pub use ai_settings::reload_ai_providers;
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -75,7 +77,7 @@ impl ReasoningServiceImpl {
     ///
     /// Called at startup so that provider keys survive server restarts.
     pub async fn load_providers_from_db(&self) {
-        ai_settings::load_providers_from_db_impl(self).await;
+        ai_settings::reload_ai_providers(&self.repos, &self.secret_key, &self.router).await;
     }
 }
 

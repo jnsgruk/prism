@@ -6,9 +6,11 @@ use ps_proto::canonical::prism::v1::{
     TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
 };
 use ps_reasoning::types::{AiConfig, AiTaskConfig};
+use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use super::ReasoningServiceImpl;
 use crate::common::{
@@ -17,9 +19,8 @@ use crate::common::{
 };
 
 /// Load AI config from `global_settings`, falling back to defaults.
-pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Status> {
-    let settings = svc
-        .repos
+pub async fn load_ai_config_from_repos(repos: &ps_core::repo::Repos) -> Result<AiConfig, Status> {
+    let settings = repos
         .config
         .list_global_settings("ai.")
         .await
@@ -58,7 +59,7 @@ pub async fn load_ai_config(svc: &ReasoningServiceImpl) -> Result<AiConfig, Stat
 
 /// Build the proto `AiSettings` from current config + secret status.
 pub async fn build_ai_settings(svc: &ReasoningServiceImpl) -> Result<AiSettings, Status> {
-    let config = load_ai_config(svc).await?;
+    let config = load_ai_config_from_repos(&svc.repos).await?;
     let secret_keys = svc
         .repos
         .config
@@ -106,12 +107,16 @@ pub async fn trigger_catalogue_refresh(svc: &ReasoningServiceImpl) -> bool {
 
 /// Load AI config and provider API keys from the database into the router.
 ///
-/// Called at startup so that provider keys survive server restarts.
-pub async fn load_providers_from_db_impl(svc: &ReasoningServiceImpl) {
+/// Called at startup and after restore so that provider keys are always current.
+pub async fn reload_ai_providers(
+    repos: &ps_core::repo::Repos,
+    secret_key: &Zeroizing<[u8; 32]>,
+    router: &RwLock<ps_reasoning::routing::TaskRouter>,
+) {
     // Load config
-    match load_ai_config(svc).await {
+    match load_ai_config_from_repos(repos).await {
         Ok(config) => {
-            svc.router.write().await.update_config(config);
+            router.write().await.update_config(config);
         }
         Err(e) => {
             tracing::warn!(error = %e, "failed to load AI config from database");
@@ -119,11 +124,11 @@ pub async fn load_providers_from_db_impl(svc: &ReasoningServiceImpl) {
     }
 
     // Load Google API key
-    match svc.repos.config.get_global_secret("google_api_key").await {
-        Ok(Some(encrypted)) => match ps_core::crypto::decrypt(&svc.secret_key, &encrypted) {
+    match repos.config.get_global_secret("google_api_key").await {
+        Ok(Some(encrypted)) => match ps_core::crypto::decrypt(secret_key, &encrypted) {
             Ok(decrypted) => {
                 if let Ok(api_key) = String::from_utf8(decrypted) {
-                    svc.router.write().await.set_google(&api_key);
+                    router.write().await.set_google(&api_key);
                     info!("loaded Google AI provider key from database");
                 }
             }
@@ -238,7 +243,7 @@ pub async fn update_ai_settings(
             .map_err(db_err)?;
     }
     // Reload config into the router
-    let config = load_ai_config(svc).await?;
+    let config = load_ai_config_from_repos(&svc.repos).await?;
     svc.router.write().await.update_config(config);
 
     info!("AI settings updated");

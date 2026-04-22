@@ -83,6 +83,11 @@ pub async fn restore_backup(
 
     info!("restore Job completed successfully");
 
+    // Reload in-memory state from the freshly-restored database.
+    if let Some(hook) = &svc.post_restore_hook {
+        hook().await;
+    }
+
     // --- Find/create admin user and generate session token ---
     let admin_user = svc
         .repos
