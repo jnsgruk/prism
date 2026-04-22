@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ps_core::crypto::load_secret_key;
 use ps_proto::canonical::prism::v1::admin_service_server::AdminServiceServer;
 use ps_proto::canonical::prism::v1::auth_service_server::AuthServiceServer;
+use ps_proto::canonical::prism::v1::backup_service_server::BackupServiceServer;
 use ps_proto::canonical::prism::v1::config_service_server::ConfigServiceServer;
 use ps_proto::canonical::prism::v1::handlers_service_server::HandlersServiceServer;
 use ps_proto::canonical::prism::v1::insights_service_server::InsightsServiceServer;
@@ -11,6 +12,7 @@ use ps_proto::canonical::prism::v1::org_service_server::OrgServiceServer;
 use ps_proto::canonical::prism::v1::reasoning_service_server::ReasoningServiceServer;
 use ps_server::features::admin::AdminServiceImpl;
 use ps_server::features::auth::AuthServiceImpl;
+use ps_server::features::backup::BackupServiceImpl;
 use ps_server::features::config::ConfigServiceImpl;
 use ps_server::features::dispatch::HandlersServiceImpl;
 use ps_server::features::insights::InsightsServiceImpl;
@@ -62,15 +64,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|v| v.parse::<i64>().ok());
 
+    let backups_path = std::env::var("BACKUPS_PATH")
+        .ok()
+        .map(std::path::PathBuf::from);
+
+    let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
+
+    // Backup generator — K8s Job management
+    let backup_generator: std::sync::Arc<dyn ps_server::features::backup::BackupGenerator> = {
+        let kube_client = kube::Client::try_default()
+            .await
+            .map_err(|e| format!("failed to create kube client: {e}"))?;
+        let backup_image =
+            std::env::var("BACKUP_IMAGE").unwrap_or_else(|_| "prism/ps-backup:latest".into());
+        let pod_namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "prism".into());
+        std::sync::Arc::new(
+            ps_server::features::backup::generator::KubeBackupGenerator::new(
+                kube_client,
+                pod_namespace,
+                backup_image,
+            ),
+        )
+    };
+
     let auth_service = AuthServiceImpl::new(repos.clone());
     let admin_service = AdminServiceImpl::new(
         repos.clone(),
         workspaces_path.clone(),
         workspaces_capacity_bytes,
     );
+    let backup_service = BackupServiceImpl::new(
+        repos.clone(),
+        secret_key.clone(),
+        backups_path,
+        backup_generator,
+    );
     let org_service = OrgServiceImpl::new(repos.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
-    let restate_url = std::env::var("RESTATE_URL").unwrap_or_else(|_| "http://restate:8080".into());
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());
     let metrics_service = MetricsServiceImpl::new(repos.clone());
@@ -109,6 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(health_service)
         .add_service(AuthServiceServer::new(auth_service))
         .add_service(AdminServiceServer::new(admin_service))
+        .add_service(BackupServiceServer::new(backup_service))
         .add_service(OrgServiceServer::new(org_service))
         .add_service(ConfigServiceServer::new(config_service))
         .add_service(MetricsServiceServer::new(metrics_service))

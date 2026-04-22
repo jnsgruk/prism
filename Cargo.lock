@@ -3022,6 +3022,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ps-backup"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "ps-core",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tar",
+ "time",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "ps-core"
 version = "0.1.0"
 dependencies = [
@@ -3043,6 +3061,7 @@ dependencies = [
  "sha2 0.10.9",
  "sqlx",
  "tar",
+ "tempfile",
  "thiserror 2.0.18",
  "time",
  "tokio",
@@ -3057,6 +3076,7 @@ name = "ps-integration"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "flate2",
  "futures",
  "http",
  "libc",
@@ -3070,6 +3090,8 @@ dependencies = [
  "reqwest 0.12.28",
  "serde_json",
  "sqlx",
+ "tar",
+ "tempfile",
  "time",
  "tokio",
  "tokio-stream",
@@ -3160,10 +3182,14 @@ name = "ps-server"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "async-trait",
  "base64",
+ "flate2",
  "futures",
  "http",
  "http-body",
+ "k8s-openapi",
+ "kube",
  "nix",
  "prost-types",
  "ps-agent",
@@ -3178,6 +3204,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tar",
  "tempfile",
  "time",
  "tokio",
@@ -3231,6 +3258,7 @@ name = "psctl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "clap",
  "dotenvy",
  "prost-types",

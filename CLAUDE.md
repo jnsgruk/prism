@@ -140,7 +140,7 @@ Proto files live in `proto/canonical/prism/v1/`. After changes: `buf lint` → `
 - **LIKE pattern escaping** — always escape `%` and `_` in user-supplied search terms.
 - **Input validation** — validate external identifiers before interpolation.
 - **Secret material** — never decrypt secrets inside Restate `ctx.run()`. The journal persists side-effect results.
-- **Auth interceptor allow-list** — all RPCs require auth except: `GetSetupStatus`, `CompleteSetup`, `PreviewBackup`, `RestoreBackup`, `Login`. Update the interceptor when adding new public RPCs.
+- **Auth interceptor allow-list** — all RPCs require auth except: `GetSetupStatus`, `CompleteSetup`, `Login`. `PreviewBackup` and `RestoreBackup` are conditionally public: open on uninitialised instances (no users), require admin auth on live instances. Update the interceptor when adding new public RPCs.
 
 ### Performance Conventions
 
@@ -210,3 +210,4 @@ When working on specific subsystems, read the relevant doc for full architecture
 | Frontend UI, state, components | `docs/05-frontend.md` |
 | Containers, K8s, proto tooling | `docs/06-infrastructure.md` |
 | Tests, test contexts, naming conventions | `docs/07-development.md` |
+| Backup/restore system, archive format, CLI | `docs/09-backup-restore.md` |

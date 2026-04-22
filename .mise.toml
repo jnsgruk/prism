@@ -12,6 +12,7 @@ vp = "latest"
 tilt = "latest"
 kubectl = "latest"
 kubectx = "latest"
+kustomize = "latest"
 helm = "3"
 kubens = "latest"
 

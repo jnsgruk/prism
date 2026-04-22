@@ -28,6 +28,8 @@ spec:
         app: ps-workers
     spec:
       serviceAccountName: ps-workers
+      securityContext:
+        fsGroup: 1001
       containers:
         - name: ps-workers
           image: prism/ps-workers
@@ -55,12 +57,16 @@ spec:
                   fieldPath: metadata.namespace
             - name: WORKSPACES_PATH
               value: /workspaces
+            - name: BACKUPS_PATH
+              value: /backups
             - name: RUST_LOG
               # value: info,ps_workers=debug,ps_core=debug
               value: info
           volumeMounts:
             - name: workspaces
               mountPath: /workspaces
+            - name: backups
+              mountPath: /backups
           resources:
             requests:
               memory: 1Gi
@@ -71,3 +77,6 @@ spec:
         - name: workspaces
           persistentVolumeClaim:
             claimName: prism-workspaces
+        - name: backups
+          persistentVolumeClaim:
+            claimName: prism-backups

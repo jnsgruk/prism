@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::backup::EnrichmentRow;
+
 use crate::models::EnrichmentType;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -615,107 +615,5 @@ impl ReasoningRepo {
                 })
                 .collect(),
         })
-    }
-
-    // -----------------------------------------------------------------------
-    // Backup export/import
-    // -----------------------------------------------------------------------
-
-    /// Count enrichment rows (for backup manifest).
-    pub async fn count_enrichments(&self) -> Result<i64, Error> {
-        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM reasoning.enrichments"#)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(Error::from)
-    }
-
-    /// Export all enrichments for backup.
-    pub async fn export_enrichments(&self) -> Result<Vec<EnrichmentRow>, Error> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT id, contribution_id, enrichment_type, value, model_name,
-                   confidence, input_hash, input_preview, created_at
-            FROM reasoning.enrichments
-            ORDER BY id
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(rows
-            .into_iter()
-            .map(|r| EnrichmentRow {
-                id: r.id,
-                contribution_id: r.contribution_id,
-                enrichment_type: r.enrichment_type,
-                value: r.value,
-                model_name: r.model_name,
-                confidence: r.confidence,
-                input_hash: r.input_hash,
-                input_preview: r.input_preview,
-                created_at: r.created_at,
-            })
-            .collect())
-    }
-
-    /// Import enrichments from backup. Upserts on `(contribution_id, enrichment_type)`.
-    pub async fn import_enrichments(&self, rows: &[EnrichmentRow]) -> Result<i64, Error> {
-        if rows.is_empty() {
-            return Ok(0);
-        }
-        let mut count: i64 = 0;
-        for chunk in rows.chunks(500) {
-            let ids: Vec<Uuid> = chunk.iter().map(|r| r.id).collect();
-            let contribution_ids: Vec<Uuid> = chunk.iter().map(|r| r.contribution_id).collect();
-            let etypes: Vec<&str> = chunk.iter().map(|r| r.enrichment_type.as_str()).collect();
-            let values: Vec<&serde_json::Value> = chunk.iter().map(|r| &r.value).collect();
-            let model_names: Vec<&str> = chunk.iter().map(|r| r.model_name.as_str()).collect();
-            let confidences: Vec<Option<f32>> = chunk.iter().map(|r| r.confidence).collect();
-            let input_hashes: Vec<Option<&str>> =
-                chunk.iter().map(|r| r.input_hash.as_deref()).collect();
-            let input_previews: Vec<Option<&str>> =
-                chunk.iter().map(|r| r.input_preview.as_deref()).collect();
-            let created_ats: Vec<OffsetDateTime> = chunk.iter().map(|r| r.created_at).collect();
-
-            sqlx::query!(
-                r#"
-                INSERT INTO reasoning.enrichments
-                    (id, contribution_id, enrichment_type, value, model_name,
-                     confidence, input_hash, input_preview, created_at)
-                SELECT
-                    unnest($1::uuid[]),
-                    unnest($2::uuid[]),
-                    unnest($3::text[]),
-                    unnest($4::jsonb[]),
-                    unnest($5::text[]),
-                    unnest($6::real[]),
-                    unnest($7::text[]),
-                    unnest($8::text[]),
-                    unnest($9::timestamptz[])
-                ON CONFLICT (contribution_id, enrichment_type) DO UPDATE
-                    SET value        = EXCLUDED.value,
-                        model_name   = EXCLUDED.model_name,
-                        confidence   = EXCLUDED.confidence,
-                        input_hash   = EXCLUDED.input_hash,
-                        input_preview = EXCLUDED.input_preview
-                "#,
-                &ids,
-                &contribution_ids,
-                &etypes as &[&str],
-                &values as &[&serde_json::Value],
-                &model_names as &[&str],
-                &confidences as &[Option<f32>],
-                &input_hashes as &[Option<&str>],
-                &input_previews as &[Option<&str>],
-                &created_ats,
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(Error::from)?;
-
-            count += i64::try_from(chunk.len()).unwrap_or(i64::MAX);
-        }
-        Ok(count)
     }
 }

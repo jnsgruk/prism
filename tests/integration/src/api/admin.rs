@@ -1,5 +1,6 @@
 use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::admin_service_client::AdminServiceClient;
+use ps_proto::canonical::prism::v1::backup_service_client::BackupServiceClient;
 use ps_proto::canonical::prism::v1::{
     CreateApiTokenRequest, CreateBackupRequest, ListApiTokensRequest, ResetDataRequest,
     RevokeApiTokenRequest,
@@ -192,9 +193,12 @@ async fn create_backup_returns_data() {
     let server = &ctx.server;
 
     let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
-    let mut client = AdminServiceClient::new(server.channel.clone());
+    let mut client = BackupServiceClient::new(server.channel.clone());
 
-    let mut req = Request::new(CreateBackupRequest {});
+    let mut req = Request::new(CreateBackupRequest {
+        exclude_workspaces: false,
+        force: false,
+    });
     auth(&mut req, &token);
 
     let stream = client
@@ -212,7 +216,15 @@ async fn create_backup_returns_data() {
         .expect("all chunks ok");
 
     assert!(!chunks.is_empty());
-    let total_bytes: usize = chunks.iter().map(|c| c.chunk.len()).sum();
+    let total_bytes: usize = chunks
+        .iter()
+        .filter_map(|c| match &c.payload {
+            Some(ps_proto::canonical::prism::v1::create_backup_response::Payload::Chunk(data)) => {
+                Some(data.len())
+            }
+            _ => None,
+        })
+        .sum();
     assert!(total_bytes > 0, "backup should contain data");
 
     ctx.teardown().await;

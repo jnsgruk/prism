@@ -3,7 +3,7 @@ use crate::models::{HandlerMethod, HandlerName, SourceName};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{ActivityRepo, IngestionRunRow};
+use super::{ActivityRepo, BackupRunRow, IngestionRunRow};
 
 impl ActivityRepo {
     /// Create a new run record with status 'running'.
@@ -358,6 +358,10 @@ impl ActivityRepo {
     }
 
     /// Update the progress of a running ingestion with structured detail.
+    ///
+    /// The update is monotonic: progress is only written when `items_collected`
+    /// is >= the current value in the database. This prevents Restate handler
+    /// replays from overwriting forward progress with stale replay data.
     pub async fn update_run_progress_detail(
         &self,
         id: Uuid,
@@ -369,6 +373,7 @@ impl ActivityRepo {
             UPDATE activity.ingestion_runs
             SET items_collected = $2, progress = $3
             WHERE id = $1
+              AND (items_collected IS NULL OR items_collected <= $2)
             "#,
             id,
             items_collected,
@@ -379,5 +384,135 @@ impl ActivityRepo {
         .map_err(Error::from)?;
 
         Ok(())
+    }
+
+    /// Find the latest run for a given `source_name` and `handler_name`.
+    /// Used by ps-server to poll backup progress.
+    pub async fn find_latest_run_by_source_and_handler(
+        &self,
+        source_name: &str,
+        handler_name: &str,
+    ) -> Result<Option<BackupRunRow>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                status AS "status!",
+                items_collected,
+                error_message,
+                progress
+            FROM activity.ingestion_runs
+            WHERE source_name = $1 AND handler_name = $2
+            ORDER BY started_at DESC
+            LIMIT 1
+            "#,
+            source_name,
+            handler_name,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| BackupRunRow {
+            id: r.id,
+            status: r
+                .status
+                .parse()
+                .unwrap_or(crate::models::IngestionStatus::Failed),
+            items_collected: r.items_collected,
+            error_message: r.error_message,
+            progress: r.progress,
+        }))
+    }
+
+    /// Find any active (running) run for a given `handler_name`.
+    /// Used by ps-server to prevent concurrent backup invocations.
+    pub async fn find_active_run_by_handler(
+        &self,
+        handler_name: &str,
+    ) -> Result<Option<IngestionRunRow>, Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                source_name,
+                started_at,
+                completed_at,
+                status AS "status!",
+                items_collected,
+                error_message,
+                handler_name AS "handler_name!",
+                handler_method AS "handler_method!",
+                pipeline_id
+            FROM activity.ingestion_runs
+            WHERE handler_name = $1 AND status = 'running'
+            ORDER BY started_at DESC
+            LIMIT 1
+            "#,
+            handler_name,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(row.map(|r| IngestionRunRow {
+            id: r.id,
+            source_name: r.source_name,
+            started_at: r.started_at,
+            completed_at: r.completed_at,
+            status: r
+                .status
+                .parse()
+                .unwrap_or(crate::models::IngestionStatus::Failed),
+            items_collected: r.items_collected,
+            error_message: r.error_message,
+            handler_name: r.handler_name,
+            handler_method: r.handler_method,
+            pipeline_id: r.pipeline_id,
+        }))
+    }
+
+    /// Mark all active (running) runs for a handler as failed.
+    /// Used by the `force` flag on backup creation to clear orphaned runs
+    /// left behind when a Restate invocation is killed.
+    pub async fn fail_active_runs_by_handler(
+        &self,
+        handler_name: &str,
+        error_message: &str,
+    ) -> Result<u64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE activity.ingestion_runs
+            SET completed_at = now(), status = 'failed', error_message = $2
+            WHERE handler_name = $1 AND status = 'running'
+            "#,
+            handler_name,
+            error_message,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Check if a run has been cancelled. Used by `export_backup` for
+    /// cooperative cancellation between tables/pages.
+    pub async fn is_run_cancelled(&self, id: Uuid) -> Result<bool, Error> {
+        let status = sqlx::query_scalar!(
+            r#"
+            SELECT status AS "status!"
+            FROM activity.ingestion_runs
+            WHERE id = $1
+            "#,
+            id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(status
+            .and_then(|s| s.parse::<crate::models::IngestionStatus>().ok())
+            .is_some_and(|s| s == crate::models::IngestionStatus::Cancelled))
     }
 }

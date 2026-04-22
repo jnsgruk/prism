@@ -33,3 +33,4 @@ tar = "0.4"
 bytes.workspace = true
 url.workspace = true
 futures.workspace = true
+tempfile.workspace = true

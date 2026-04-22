@@ -620,30 +620,3 @@ async fn replace_and_list_ai_models() {
 
     ctx.teardown().await;
 }
-
-// ---------------------------------------------------------------------------
-// Backup helpers
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn count_and_export_sources() {
-    let ctx = RepoTestContext::new().await;
-    let repos = &ctx.repos;
-    let _pool = &ctx.pool;
-
-    assert_eq!(repos.config.count_sources().await.unwrap(), 0);
-
-    let settings = serde_json::json!({"org": "test"});
-    repos
-        .config
-        .create_source(Uuid::now_v7(), "github", "GH", &settings, None)
-        .await
-        .unwrap();
-
-    assert_eq!(repos.config.count_sources().await.unwrap(), 1);
-    let exported = repos.config.export_sources().await.unwrap();
-    assert_eq!(exported.len(), 1);
-    assert_eq!(exported[0]["name"], "GH");
-
-    ctx.teardown().await;
-}

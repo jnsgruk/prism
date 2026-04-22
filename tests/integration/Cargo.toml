@@ -39,8 +39,11 @@ serde_json.workspace = true
 http = "1"
 zeroize.workspace = true
 libc = "0.2"
+tempfile.workspace = true
 wiremock.workspace = true
 reqwest.workspace = true
 async-trait.workspace = true
 futures.workspace = true
 ps-reasoning = { path = "../../crates/ps-reasoning" }
+tar = "0.4"
+flate2 = "1"

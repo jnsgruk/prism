@@ -1,5 +1,6 @@
-// Administrative operations: backup export, API token management, and data
-// reset. All RPCs in this service require admin role authentication.
+// Administrative operations: API token management, data reset, and system
+// info. All RPCs in this service require admin role authentication.
+// Backup operations are in backup.proto (BackupService).
 syntax = "proto3";
 
 package canonical.prism.v1;
@@ -7,10 +8,8 @@ package canonical.prism.v1;
 import "google/protobuf/timestamp.proto";
 
 // AdminService provides privileged operations for instance administrators
-// including backup export, API token lifecycle, and data reset.
+// including API token lifecycle, data reset, and system info.
 service AdminService {
-  // CreateBackup streams a full database backup as chunked bytes.
-  rpc CreateBackup(CreateBackupRequest) returns (stream CreateBackupResponse);
   // CreateApiToken generates a new long-lived API token.
   rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
   // ListApiTokens returns metadata for all active API tokens.
@@ -21,13 +20,6 @@ service AdminService {
   rpc ResetData(ResetDataRequest) returns (ResetDataResponse);
   // GetSystemInfo returns storage usage statistics for the admin dashboard.
   rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse);
-}
-
-message CreateBackupRequest {}
-
-message CreateBackupResponse {
-  // Chunk of the backup archive.
-  bytes chunk = 1;
 }
 
 message CreateApiTokenRequest {

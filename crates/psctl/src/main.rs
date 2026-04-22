@@ -69,6 +69,12 @@ enum Command {
         /// Output file path (default: prism-backup-{date}.ps-backup)
         #[arg(short, long)]
         output: Option<String>,
+        /// Exclude workspace files from the backup
+        #[arg(long)]
+        no_workspaces: bool,
+        /// Force-clear any stale backup run before starting
+        #[arg(long)]
+        force: bool,
     },
 
     /// Restore from a backup file into a fresh instance
@@ -161,7 +167,11 @@ async fn main() -> Result<()> {
         Command::Backfill { source, since } => {
             commands::backfill(&mut clients, &source, &since).await
         }
-        Command::Backup { output } => commands::backup(&mut clients, output).await,
+        Command::Backup {
+            output,
+            no_workspaces,
+            force,
+        } => commands::backup(&mut clients, output, no_workspaces, force).await,
         Command::Restore { file } => commands::restore(&mut clients, &file).await,
         Command::Metrics { team, period } => commands::metrics(&mut clients, &team, &period).await,
         Command::People { team, unresolved } => {

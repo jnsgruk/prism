@@ -43,9 +43,15 @@ pub struct AuthContext {
 const PUBLIC_METHODS: &[&str] = &[
     "/canonical.prism.v1.AuthService/GetSetupStatus",
     "/canonical.prism.v1.AuthService/CompleteSetup",
-    "/canonical.prism.v1.AuthService/PreviewBackup",
-    "/canonical.prism.v1.AuthService/RestoreBackup",
     "/canonical.prism.v1.AuthService/Login",
+];
+
+/// RPCs that require authentication only on initialised instances (at least
+/// one user exists). On fresh/uninitialised instances these are open so that
+/// backup preview and restore can work before any admin account is created.
+const CONDITIONALLY_PUBLIC_METHODS: &[&str] = &[
+    "/canonical.prism.v1.BackupService/PreviewBackup",
+    "/canonical.prism.v1.BackupService/RestoreBackup",
 ];
 
 /// Validate a bearer token against the database and return an `AuthContext`.
@@ -147,6 +153,15 @@ where
             if PUBLIC_METHODS.contains(&path.as_str()) || !path.starts_with("/canonical.prism.v1.")
             {
                 return inner.call(req).await;
+            }
+
+            // Conditionally public: skip auth only when no users exist (fresh instance)
+            if CONDITIONALLY_PUBLIC_METHODS.contains(&path.as_str()) {
+                let setup_complete = auth_repo.any_users_exist().await.unwrap_or(true); // fail-closed: assume initialised on DB error
+                if !setup_complete {
+                    return inner.call(req).await;
+                }
+                // Fall through to normal auth validation for live instances
             }
 
             // Extract bearer token from authorization header

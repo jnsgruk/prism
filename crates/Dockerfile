@@ -77,6 +77,16 @@ USER prism
 ENTRYPOINT ["ps-migrate"]
 
 # ---------------------------------------------------------------------------
+# Backup — pg_dump + ps-backup binary (dev)
+# Uses the same pgvector base as the database server to guarantee
+# pg_dump/pg_restore version alignment.
+# ---------------------------------------------------------------------------
+FROM pgvector/pgvector:pg17 AS ps-backup-dev
+COPY --from=builder /out/ps-backup /usr/local/bin/ps-backup
+USER 65534:65534
+ENTRYPOINT ["ps-backup"]
+
+# ---------------------------------------------------------------------------
 # Chisel — minimal Ubuntu rootfs for prod
 # ---------------------------------------------------------------------------
 FROM ubuntu:24.04 AS chisel
@@ -111,3 +121,11 @@ COPY --from=chisel /rootfs /
 COPY --from=builder /out/ps-migrate /usr/local/bin/ps-migrate
 USER 65534:65534
 ENTRYPOINT ["ps-migrate"]
+
+# ---------------------------------------------------------------------------
+# Backup prod — uses pgvector base for pg_dump version alignment
+# ---------------------------------------------------------------------------
+FROM pgvector/pgvector:pg17 AS ps-backup
+COPY --from=builder /out/ps-backup /usr/local/bin/ps-backup
+USER 65534:65534
+ENTRYPOINT ["ps-backup"]

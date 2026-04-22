@@ -9,6 +9,7 @@ members = [
     "crates/ps-migrate",
     "crates/ps-agent",
     "crates/ps-mcp",
+    "crates/ps-backup",
     "crates/psctl",
     "tests/integration",
 ]
@@ -89,6 +90,7 @@ aes-gcm = "0.10"
 rand = "0.9"
 sha2 = "0.10"
 base64 = "0.22"
+tempfile = "3"
 
 # HTML parsing
 scraper = "0.22"

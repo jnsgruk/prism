@@ -3,6 +3,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "../../proto/canonical/prism/v1/common.proto",
         "../../proto/canonical/prism/v1/auth.proto",
         "../../proto/canonical/prism/v1/admin.proto",
+        "../../proto/canonical/prism/v1/backup.proto",
         "../../proto/canonical/prism/v1/org.proto",
         "../../proto/canonical/prism/v1/config.proto",
         "../../proto/canonical/prism/v1/handlers.proto",

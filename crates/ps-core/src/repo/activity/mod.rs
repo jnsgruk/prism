@@ -31,6 +31,17 @@ pub struct IngestionRunRow {
     pub pipeline_id: Option<Uuid>,
 }
 
+/// A row from `activity.ingestion_runs` with progress detail.
+/// Used by backup polling — includes the `progress` JSONB column
+/// that `IngestionRunRow` omits.
+pub struct BackupRunRow {
+    pub id: Uuid,
+    pub status: models::IngestionStatus,
+    pub items_collected: Option<i32>,
+    pub error_message: Option<String>,
+    pub progress: Option<serde_json::Value>,
+}
+
 /// A joined row from `config.source_configs` + `activity.ingestion_watermarks`.
 pub struct SourceStatusRow {
     pub name: String,

@@ -46,6 +46,7 @@ _tomls = [
     "crates/ps-migrate/Cargo.toml",
     "crates/ps-agent/Cargo.toml",
     "crates/ps-mcp/Cargo.toml",
+    "crates/ps-backup/Cargo.toml",
     "crates/psctl/Cargo.toml",
     "crates/ps-reasoning/Cargo.toml",
     "tests/integration/Cargo.toml",
@@ -103,6 +104,22 @@ custom_build(
 )
 
 # ---------------------------------------------------------------------------
+# Backup container — pg_dump + ps-backup binary
+# ---------------------------------------------------------------------------
+# Backup Jobs are created dynamically by ps-server, same pattern as agent pods.
+custom_build(
+    "prism/ps-backup",
+    "docker build -t $EXPECTED_REF" +
+    " -t prism/ps-backup:latest" +
+    " -t localhost:30500/prism_ps-backup:latest" +
+    " --target ps-backup-dev --build-arg PROFILE=debug --build-arg BIN=ps-backup" +
+    " -f crates/Dockerfile . " +
+    " && docker push localhost:30500/prism_ps-backup:latest",
+    deps=_meta + _tomls + ["crates/ps-backup", "crates/ps-core"],
+    skips_local_docker=False,
+)
+
+# ---------------------------------------------------------------------------
 # Frontend — Next.js standalone build
 # ---------------------------------------------------------------------------
 docker_build(
@@ -116,7 +133,7 @@ docker_build(
 # Resource configuration
 # ---------------------------------------------------------------------------
 k8s_resource("ps-migrate", resource_deps=["postgres"], labels=["prism"])
-k8s_resource("ps-server", resource_deps=["ps-migrate"], labels=["prism"],)
+k8s_resource("ps-server", port_forwards=["8080:8080"], resource_deps=["ps-migrate"], labels=["prism"],)
 k8s_resource("ps-workers", resource_deps=["ps-migrate"], labels=["prism"],)
 k8s_resource("ps-frontend", resource_deps=["ps-server"], labels=["prism"])
 
@@ -126,3 +143,4 @@ k8s_resource(workload="eg-gateway-helm-certgen", labels=["gateway"])
 k8s_resource("postgres", port_forwards=["5432:5432"], labels=["infra"],)
 k8s_resource("restate",  port_forwards=["9070:9070"], labels=["infra"])
 k8s_resource("prism-agent-image-builder", labels=["agent"])
+k8s_resource("ps-backup-image-builder", labels=["backup"])

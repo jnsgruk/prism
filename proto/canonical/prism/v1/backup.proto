@@ -1,0 +1,104 @@
+// Backup and restore operations. CreateBackup always requires admin
+// authentication. PreviewBackup and RestoreBackup are conditionally public:
+// they require no auth on uninitialised instances (no users exist) but
+// require admin auth on live instances.
+syntax = "proto3";
+
+package canonical.prism.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// BackupService provides backup export, preview, and restore operations.
+service BackupService {
+  // CreateBackup streams a full database backup as chunked bytes.
+  // Requires admin authentication.
+  rpc CreateBackup(CreateBackupRequest) returns (stream CreateBackupResponse);
+  // PreviewBackup accepts a streamed backup archive and returns its metadata
+  // without applying any changes. Open on uninitialised instances, requires
+  // admin auth on live instances.
+  rpc PreviewBackup(stream PreviewBackupRequest) returns (PreviewBackupResponse);
+  // RestoreBackup applies a streamed backup archive, replacing all data.
+  // Returns a new session token for the restored admin user. Open on
+  // uninitialised instances, requires admin auth on live instances.
+  rpc RestoreBackup(stream RestoreBackupRequest) returns (RestoreBackupResponse);
+  // CancelBackup cancels a running backup generation. Returns whether a
+  // backup was actually cancelled. Requires admin authentication.
+  rpc CancelBackup(CancelBackupRequest) returns (CancelBackupResponse);
+}
+
+message CreateBackupRequest {
+  // When true, workspace files are excluded from the backup archive.
+  bool exclude_workspaces = 1;
+  // When true, any stale "running" backup run is force-cleared before
+  // starting a new backup. Use when a previous backup was interrupted
+  // and left an orphaned run record.
+  bool force = 2;
+}
+
+message CreateBackupResponse {
+  oneof payload {
+    // Chunk of the backup archive.
+    bytes chunk = 1;
+    // Progress update during backup generation.
+    BackupProgress progress = 2;
+  }
+}
+
+message BackupProgress {
+  // Current phase: "generating", "streaming".
+  string phase = 1;
+  reserved 2, 3, 4, 5, 6, 7, 8;
+  reserved "current_table", "tables_done", "tables_total", "rows_exported", "rows_total", "table_rows_exported", "table_rows_total";
+}
+
+message PreviewBackupRequest {
+  // Chunk of the backup archive.
+  bytes chunk = 1;
+}
+
+message PreviewBackupResponse {
+  // Schema version of the backup.
+  int32 schema_version = 1;
+  // When the backup was originally exported.
+  google.protobuf.Timestamp exported_at = 2;
+  // Table name to row count mapping.
+  map<string, int32> table_counts = 3;
+  // Names of data sources included in the backup.
+  repeated string source_names = 4;
+  // Ingestion watermarks per source at time of export.
+  map<string, string> watermarks = 5;
+  // Number of workspace files included in the backup.
+  int32 workspace_file_count = 6;
+  // Total size of workspace files in bytes.
+  int64 workspace_total_bytes = 7;
+  // True if the PS_SECRET_KEY canary decrypted successfully.
+  bool secret_key_valid = 8;
+  // Non-empty if the secret key validation produced a warning or error.
+  string secret_key_warning = 9;
+  // True if the SHA-256 integrity checksum verified successfully.
+  bool checksum_valid = 10;
+  // Non-empty if the checksum verification failed.
+  string checksum_warning = 11;
+}
+
+message RestoreBackupRequest {
+  // Chunk of the backup archive.
+  bytes chunk = 1;
+}
+
+message RestoreBackupResponse {
+  // Session token for the restored admin user.
+  string session_token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  // Table name to restored row count mapping.
+  map<string, int32> tables_restored = 3;
+  // Auto-generated password for the restored admin user.
+  string generated_password = 4;
+}
+
+message CancelBackupRequest {}
+
+message CancelBackupResponse {
+  // True if a running backup was found and cancelled.
+  bool cancelled = 1;
+}

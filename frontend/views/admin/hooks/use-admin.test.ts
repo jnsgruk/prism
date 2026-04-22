@@ -38,8 +38,6 @@ vi.mock("@ps/api/transport", () => ({
       createApiToken: () => create(CreateApiTokenResponseSchema, { token: "new-token-value" }),
       revokeApiToken: () => create(RevokeApiTokenResponseSchema, {}),
       resetData: () => create(ResetDataResponseSchema, {}),
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      async *createBackup() {},
     });
     service(OrgService, {
       importDirectory: () => create(ImportDirectoryResponseSchema, { peopleImported: 5, teamsCreated: 2 }),

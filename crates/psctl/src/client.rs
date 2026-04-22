@@ -1,8 +1,7 @@
 use ps_proto::canonical::prism::v1::{
-    admin_service_client::AdminServiceClient, auth_service_client::AuthServiceClient,
-    config_service_client::ConfigServiceClient, handlers_service_client::HandlersServiceClient,
-    metrics_service_client::MetricsServiceClient, org_service_client::OrgServiceClient,
-    reasoning_service_client::ReasoningServiceClient,
+    backup_service_client::BackupServiceClient, config_service_client::ConfigServiceClient,
+    handlers_service_client::HandlersServiceClient, metrics_service_client::MetricsServiceClient,
+    org_service_client::OrgServiceClient, reasoning_service_client::ReasoningServiceClient,
 };
 use tonic::transport::Channel;
 
@@ -15,8 +14,7 @@ type AuthedChannel = tonic::service::interceptor::InterceptedService<Channel, Au
 
 /// Pre-constructed gRPC clients for all services, with auth interceptor.
 pub struct Clients {
-    pub admin: AdminServiceClient<AuthedChannel>,
-    pub auth: AuthServiceClient<AuthedChannel>,
+    pub backup: BackupServiceClient<AuthedChannel>,
     pub config: ConfigServiceClient<AuthedChannel>,
     pub handlers: HandlersServiceClient<AuthedChannel>,
     pub metrics: MetricsServiceClient<AuthedChannel>,
@@ -46,8 +44,7 @@ pub fn connect(server_url: &str, token: Option<&String>) -> anyhow::Result<Clien
         token: token.cloned(),
     };
     Ok(Clients {
-        admin: AdminServiceClient::with_interceptor(channel.clone(), auth.clone()),
-        auth: AuthServiceClient::with_interceptor(channel.clone(), auth.clone()),
+        backup: BackupServiceClient::with_interceptor(channel.clone(), auth.clone()),
         config: ConfigServiceClient::with_interceptor(channel.clone(), auth.clone()),
         handlers: HandlersServiceClient::with_interceptor(channel.clone(), auth.clone()),
         metrics: MetricsServiceClient::with_interceptor(channel.clone(), auth.clone()),

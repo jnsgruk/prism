@@ -10,6 +10,17 @@ spec:
       storage: 50Gi
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prism-backups
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: ps-server
@@ -35,6 +46,8 @@ spec:
         app: ps-server
     spec:
       serviceAccountName: ps-server
+      securityContext:
+        fsGroup: 1001
       containers:
         - name: ps-server
           image: prism/ps-server
@@ -61,11 +74,21 @@ spec:
               value: /workspaces
             - name: WORKSPACES_CAPACITY_BYTES
               value: "53687091200" # 50Gi
+            - name: BACKUPS_PATH
+              value: /backups
+            - name: BACKUP_IMAGE
+              value: localhost:30500/prism_ps-backup:latest
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: RUST_LOG
               value: info
           volumeMounts:
             - name: workspaces
               mountPath: /workspaces
+            - name: backups
+              mountPath: /backups
           readinessProbe:
             grpc:
               port: 8080
@@ -81,3 +104,6 @@ spec:
         - name: workspaces
           persistentVolumeClaim:
             claimName: prism-workspaces
+        - name: backups
+          persistentVolumeClaim:
+            claimName: prism-backups

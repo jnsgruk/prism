@@ -1,0 +1,19 @@
+# Dummy Job that references the ps-backup image so Tilt builds and pushes it.
+# Backup Jobs are created on-demand by ps-server, not as a standing deployment.
+# This Job runs "echo Done" and exits — its only purpose is to trigger the
+# image build.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ps-backup-image-builder
+  labels:
+    app: ps-backup-builder
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+        - name: backup
+          image: prism/ps-backup
+          command: ["echo", "Done"]
+      restartPolicy: Never

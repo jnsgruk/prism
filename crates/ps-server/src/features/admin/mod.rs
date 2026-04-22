@@ -1,24 +1,18 @@
-use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::pin::Pin;
 
 use ps_core::auth::{generate_token, hash_token};
-use ps_core::backup::{BackupManifest, BackupWriter};
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::admin_service_server::AdminService;
 use ps_proto::canonical::prism::v1::{
-    ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, CreateBackupRequest,
-    CreateBackupResponse, GetSystemInfoRequest, GetSystemInfoResponse, ListApiTokensRequest,
-    ListApiTokensResponse, ResetDataRequest, ResetDataResponse, RevokeApiTokenRequest,
-    RevokeApiTokenResponse,
+    ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse, GetSystemInfoRequest,
+    GetSystemInfoResponse, ListApiTokensRequest, ListApiTokensResponse, ResetDataRequest,
+    ResetDataResponse, RevokeApiTokenRequest, RevokeApiTokenResponse,
 };
-use time::OffsetDateTime;
-use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::common::{backup_err, db_err, require_admin, require_auth, to_timestamp};
+use crate::common::{db_err, require_admin, require_auth, to_timestamp};
 
 pub struct AdminServiceImpl {
     repos: Repos,
@@ -45,93 +39,6 @@ impl AdminServiceImpl {
 
 #[tonic::async_trait]
 impl AdminService for AdminServiceImpl {
-    type CreateBackupStream =
-        Pin<Box<dyn Stream<Item = Result<CreateBackupResponse, Status>> + Send>>;
-
-    async fn create_backup(
-        &self,
-        request: Request<CreateBackupRequest>,
-    ) -> Result<Response<Self::CreateBackupStream>, Status> {
-        let _ctx = require_admin(&request)?;
-
-        let repos = self.repos.clone();
-
-        let stream = async_stream::try_stream! {
-            let mut buf = Vec::new();
-
-            // Gather table counts in parallel
-            let (source_count, people_count, team_count, user_count, conversation_count) = tokio::try_join!(
-                async { repos.config.count_sources().await.map_err(db_err) },
-                async { repos.org.count_people().await.map_err(db_err) },
-                async { repos.org.count_teams().await.map_err(db_err) },
-                async { repos.auth.count_users().await.map_err(db_err) },
-                async { repos.reasoning.count_conversations().await.map_err(db_err) },
-            )?;
-
-            let mut table_counts = BTreeMap::new();
-            #[allow(clippy::cast_possible_truncation)]
-            {
-                table_counts.insert("source_configs".into(), source_count as i32);
-                table_counts.insert("people".into(), people_count as i32);
-                table_counts.insert("teams".into(), team_count as i32);
-                table_counts.insert("users".into(), user_count as i32);
-                table_counts.insert("conversations".into(), conversation_count as i32);
-            }
-
-            let manifest = BackupManifest {
-                schema_version: 5,
-                exported_at: OffsetDateTime::now_utc(),
-                table_counts,
-                app_version: env!("CARGO_PKG_VERSION").into(),
-            };
-
-            let mut writer = BackupWriter::new(&mut buf);
-            writer.write_manifest(&manifest)
-                .map_err(backup_err)?;
-
-            // Export source configs
-            let source_rows = repos.config.export_sources().await.map_err(db_err)?;
-
-            writer.write_table("source_configs", &source_rows)
-                .map_err(backup_err)?;
-
-            let people_rows = repos.org.export_people().await.map_err(db_err)?;
-            writer.write_table("people", &people_rows)
-                .map_err(backup_err)?;
-
-            let team_rows = repos.org.export_teams().await.map_err(db_err)?;
-            writer.write_table("teams", &team_rows)
-                .map_err(backup_err)?;
-
-            let user_rows = repos.auth.export_users().await.map_err(db_err)?;
-            writer.write_table("users", &user_rows)
-                .map_err(backup_err)?;
-
-            // Conversation tables (metadata only — workspace files on PVC are not included)
-            let conv_rows = repos.reasoning.export_conversations().await.map_err(db_err)?;
-            writer.write_table("conversations", &conv_rows)
-                .map_err(backup_err)?;
-
-            let msg_rows = repos.reasoning.export_conversation_messages().await.map_err(db_err)?;
-            writer.write_table("conversation_messages", &msg_rows)
-                .map_err(backup_err)?;
-
-            writer.finish()
-                .map_err(backup_err)?;
-
-            info!(size_bytes = buf.len(), "backup created");
-
-            // Stream the backup in 64KB chunks
-            for chunk in buf.chunks(65536) {
-                yield CreateBackupResponse {
-                    chunk: chunk.to_vec(),
-                };
-            }
-        };
-
-        Ok(Response::new(Box::pin(stream)))
-    }
-
     async fn create_api_token(
         &self,
         request: Request<CreateApiTokenRequest>,

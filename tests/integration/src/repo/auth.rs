@@ -364,33 +364,3 @@ async fn delete_api_token_wrong_user_returns_false() {
 
     ctx.teardown().await;
 }
-
-// ---------------------------------------------------------------------------
-// Backup helpers
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn count_users_and_export() {
-    let ctx = RepoTestContext::new().await;
-    let repos = &ctx.repos;
-    let _pool = &ctx.pool;
-
-    assert_eq!(repos.auth.count_users().await.unwrap(), 0);
-    assert!(repos.auth.export_users().await.unwrap().is_empty());
-
-    let hash = hash_password("pw").unwrap();
-    repos
-        .auth
-        .create_user(Uuid::now_v7(), "jan", "Jan J", &hash, Role::Admin)
-        .await
-        .unwrap();
-
-    assert_eq!(repos.auth.count_users().await.unwrap(), 1);
-    let exported = repos.auth.export_users().await.unwrap();
-    assert_eq!(exported.len(), 1);
-    assert_eq!(exported[0]["username"], "jan");
-    // Ensure password hash is NOT in export
-    assert!(exported[0].get("password_hash").is_none());
-
-    ctx.teardown().await;
-}

@@ -23,8 +23,6 @@ vi.mock("@ps/api/transport", () => ({
       login: () => create(LoginResponseSchema, { sessionToken: "test-token" }),
       logout: () => create(LogoutResponseSchema, {}),
       completeSetup: () => ({}),
-      previewBackup: async () => ({}),
-      restoreBackup: async () => ({}),
     });
   }),
 }));
