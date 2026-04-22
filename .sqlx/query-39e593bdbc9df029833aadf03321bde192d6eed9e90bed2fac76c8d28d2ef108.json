@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, username, display_name, role, is_active, person_id, created_at, updated_at FROM auth.users",
+  "query": "\n            SELECT id, username, display_name, password_hash, role, is_active,\n                   person_id, created_at, updated_at\n            FROM auth.users\n            WHERE role = 'admin' AND is_active = true\n            ORDER BY created_at\n            LIMIT 1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,26 +20,31 @@
       },
       {
         "ordinal": 3,
-        "name": "role",
+        "name": "password_hash",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "is_active",
         "type_info": "Bool"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "person_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -53,10 +58,11 @@
       false,
       false,
       false,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "650ff5979b6e39bae5ae6a58ab67fa7d92d0484fac91a8c0d08b73e356c5a6fe"
+  "hash": "39e593bdbc9df029833aadf03321bde192d6eed9e90bed2fac76c8d28d2ef108"
 }
