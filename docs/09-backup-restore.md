@@ -36,12 +36,12 @@ All application schemas are included in the `pg_dump`:
 |--------|----------|
 | config | `source_configs`, `secrets`, `global_settings` |
 | org | `people`, `teams`, `platform_identities`, `team_memberships`, `repositories` |
-| activity | `contributions`, `ingestion_watermarks`, `pipelines` |
+| activity | `contributions`, `ingestion_watermarks`, `pipelines`, `ingestion_runs` |
 | reasoning | `enrichments`, `embeddings`, `conversations`, `conversation_messages` |
 | metrics | `team_snapshots`, `individual_profiles`, `snapshot_sources`, `insight_snapshots`, `insight_snapshot_sources` |
 | auth | `users` |
 
-**Excluded tables:** `activity.ingestion_runs` (ephemeral, rebuilt on demand).
+All tables within the listed schemas are included — no tables are excluded.
 
 **Not in dump** (live in `public` schema or are session-scoped): `sessions`, `etag_cache`, `ai_models`, `enrichment_queue`, `embedding_queue`, `conversation_events`, `conversation_artifacts`, `api_usage`.
 
@@ -134,7 +134,7 @@ A running backup can be cancelled via the `CancelBackup` RPC. Cancellation delet
 
 ### Restore: Schema Drop Strategy
 
-Before running `pg_restore`, the restore Job drops all application schemas with `CASCADE`. This is necessary because `pg_dump` excludes certain tables (e.g. `activity.ingestion_runs`) whose foreign key constraints would block `pg_restore --clean` from dropping referenced tables. Dropping schemas with CASCADE removes all objects — including FK-dependent excluded tables — cleanly.
+Before running `pg_restore`, the restore Job drops all application schemas with `CASCADE`. This ensures a clean slate — all existing objects are removed so `pg_restore` can recreate them from the dump without conflicts.
 
 `pg_restore` then recreates schemas and all objects from the dump without needing `--clean`.
 
@@ -159,7 +159,7 @@ The interceptor uses a `CONDITIONALLY_PUBLIC_METHODS` list. For these RPCs, it q
 | Secret key canary | Encrypted known plaintext in manifest; mismatch detected before wipe |
 | Format version check | v1 JSONL archives are rejected with a clear error message |
 | Pre-restore extension check | pgvector extension is ensured before `pg_restore` runs |
-| Schema drop before restore | Avoids FK constraint conflicts with excluded tables |
+| Schema drop before restore | Ensures a clean slate for `pg_restore` |
 
 ## CLI Usage (`psctl`)
 
@@ -211,5 +211,4 @@ Conditional auth tests in the same file verify:
 
 - **Non-transactional restore** — failure mid-`pg_restore` leaves the database in an inconsistent state (schemas dropped but not fully restored). Take a manual PostgreSQL backup before restoring to an instance with existing data.
 - **Restate state is not migrated** — the target gets a fresh Restate; workers must be re-registered and any in-flight invocations are lost.
-- **Ingestion history not preserved** — `activity.ingestion_runs` is excluded (ephemeral operational data).
 - **v1 archives not supported** — old JSONL-format `.ps-backup` files are rejected. Use the Prism version that created them to restore, then re-backup with the current version.
