@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import type { AgentState, AgentStep } from "@/views/ask/hooks/use-ask-question";
+import { useAutoScroll } from "@/views/ask/hooks/use-auto-scroll";
 import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import type { ConversationMessage } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 
@@ -132,6 +133,7 @@ export const ConversationThread = ({
   conversationId,
   onFileClick,
   submittedFiles,
+  scrollContainerRef,
 }: {
   messages: ConversationMessage[];
   state: AgentState;
@@ -139,12 +141,9 @@ export const ConversationThread = ({
   conversationId?: string;
   onFileClick?: (path: string) => void;
   submittedFiles?: string[];
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }): React.ReactElement => {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, state]);
+  useAutoScroll(scrollContainerRef, [messages, state]);
 
   // When AgentResponse is active (streaming/completed), the refetched messages
   // may already include the assistant response for the current turn. Filter out
@@ -241,8 +240,6 @@ export const ConversationThread = ({
           }
         />
       )}
-
-      <div ref={bottomRef} />
     </div>
   );
 };

@@ -33,6 +33,7 @@ const AskPage = (): React.ReactElement => {
   const [filePreview, setFilePreview] = useState<PreviewState | null>(null);
   const [filePreviewOpen, setFilePreviewOpen] = useState(false);
   const previewBlobRef = useRef<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track files submitted with the current question so they appear immediately
   // in the optimistic user message (before the DB message is loaded).
   const [submittedFiles, setSubmittedFiles] = useState<string[]>([]);
@@ -260,7 +261,7 @@ const AskPage = (): React.ReactElement => {
             </div>
           ) : (
             <>
-              <div className="flex-1 overflow-y-auto px-6 pt-6">
+              <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 pt-6">
                 {showSuggestions ? (
                   <SuggestedQuestions onSelect={handleAsk} />
                 ) : (
@@ -272,6 +273,7 @@ const AskPage = (): React.ReactElement => {
                       conversationId={conversationId}
                       onFileClick={handleFileClick}
                       submittedFiles={submittedFiles}
+                      scrollContainerRef={scrollContainerRef}
                     />
                   </div>
                 )}
