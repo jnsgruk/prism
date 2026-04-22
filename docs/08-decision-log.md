@@ -4,6 +4,27 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-04-22 — Backup/Restore via `pg_dump`/`pg_restore` K8s Jobs
+
+**Context:** The initial backup system used custom JSONL serialization (~2800 lines) with streaming, pagination, per-table SHA-256 checksums, and a Restate handler for process isolation. This approach had compounding reliability problems: CPU-bound JSON serialization starved the tokio runtime, blocking HTTP/2 PING/PONG and causing Restate keep-alive timeouts; journal sequences were fragile across code changes; and every schema migration required updating both export and import paths. Several iterations (heartbeat journaling, per-table journal chunking, `spawn_blocking` writers) improved reliability incrementally but added complexity without addressing the root cause: we were reimplementing what `pg_dump` already does.
+
+**Decision:** Replace the entire custom backup pipeline with `pg_dump` and `pg_restore` running as Kubernetes Jobs via a new `ps-backup` container (`pgvector/pgvector:pg17` base, matching the DB server). The `BackupGenerator` trait abstracts K8s Job management (production) vs direct execution (tests). Drop v1 JSONL archive support entirely.
+
+**Key design choices:**
+- **K8s Jobs, not Restate handlers:** Jobs provide natural process isolation, automatic cleanup (TTL), and resource limits without the journal fragility that plagued the Restate approach
+- **Schema drop before restore:** `DROP SCHEMA ... CASCADE` before `pg_restore` (instead of `pg_restore --clean`) avoids FK conflicts with excluded tables like `activity.ingestion_runs`
+- **No backward compatibility:** v1 JSONL archives are rejected outright — the old code path is deleted, not maintained
+- **Container image:** `pgvector/pgvector:pg17` base guarantees pg tool version alignment with the database
+
+**Rationale:**
+- Eliminates ~4300 net lines of serialization, streaming, journaling, and backup-only repo code
+- Schema migrations no longer require backup code changes — `pg_dump` captures the schema automatically
+- `pg_dump` custom format includes built-in checksums, making manual integrity verification unnecessary
+- K8s Jobs provide process isolation (the original motivation for the Restate handler) without journal complexity
+- The `BackupGenerator` trait pattern is simpler than the previous wiremock-based Restate dispatch mock
+
+---
+
 ## 2026-04-15 — Fail Pipeline on Any Source Ingestion Failure
 
 **Context:** A GitHub ingestion run processed 31,835 items across 17 chunks over 3+ hours, then chunk 18 hit persistent GitHub 502 errors. Two problems surfaced: (1) the chunk error propagated via `?` and skipped `finalise_run()`, leaving the run record orphaned in `running` status; (2) the pipeline continued into downstream stages (metrics, enrichment, embedding) because the previous behaviour only halted if *all* source handlers failed.

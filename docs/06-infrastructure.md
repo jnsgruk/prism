@@ -37,7 +37,8 @@ Proto files live in `proto/canonical/prism/v1/` — one file per domain area:
 | File | Domain |
 | --- | --- |
 | `auth.proto` | Login, setup, session management |
-| `admin.proto` | API tokens, backup, reset |
+| `admin.proto` | API tokens, reset, system info |
+| `backup.proto` | Backup export, preview, restore |
 | `config.proto` | Source CRUD, secrets, connection tests |
 | `org.proto` | People, teams, identities, repositories |
 | `metrics.proto` | Snapshots, contributions, flow metrics |
@@ -96,3 +97,7 @@ The Tiltfile supports both Canonical K8s and Docker Desktop K8s for local develo
 - Live-reload on code changes
 
 The pre-commit gate is `prek run -av` — all lints, tests, and formatters must pass before committing.
+
+## Backup & Restore
+
+See [docs/09-backup-restore.md](09-backup-restore.md) for the full backup/restore system documentation — archive format, architecture, CLI usage, authentication, testing, and known limitations.

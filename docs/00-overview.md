@@ -32,6 +32,7 @@ Prism is an engineering insights platform for understanding team and individual 
 | `docs/06-infrastructure` | Containers, Kubernetes, proto tooling, local dev |
 | `docs/07-development` | Testing strategy, naming conventions, workflow |
 | `docs/08-decision-log` | Dated log of significant architectural decisions |
+| `docs/09-backup-restore` | Backup/restore system: archive format, architecture, CLI, testing |
 
 The docs describe **how things are now and why** — not a historical log of how we got here. When making significant changes, update the relevant doc and add a decision log entry.
 

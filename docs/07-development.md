@@ -47,6 +47,10 @@ Vitest + React Testing Library + happy-dom. API mocking via `createRouterTranspo
 
 Test custom hooks, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, React Router config, or CSS.
 
+### Backup/Restore Tests
+
+See [Backup & Restore > Testing](09-backup-restore.md#testing) for full details. Key points: roundtrip integration test seeds 10+ tables and verifies data survives backup/restore. Restate dispatch is mocked with wiremock (`BackupDispatchResponder`). Conditional auth tests cover fresh and live instance scenarios.
+
 ## Naming Conventions
 
 ### Rust

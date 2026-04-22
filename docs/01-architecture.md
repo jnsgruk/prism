@@ -42,7 +42,7 @@
 
 ### ps-core — Domain Foundation
 
-Domain types, models, enums, repository layer (all DB access), auth (password/token/session), crypto (AES-256-GCM), backup/restore. The shared foundation crate.
+Domain types, models, enums, repository layer (all DB access), auth (password/token/session), crypto (AES-256-GCM), backup manifest format and canary validation. The shared foundation crate. See [Backup & Restore](09-backup-restore.md) for operational details.
 
 **Belongs here:** domain models, repo methods, traits like `Source`, error types, anything shared across ps-server and ps-workers.
 **Does NOT belong here:** proto types, transport concerns, handler logic, provider-specific API clients.
@@ -101,6 +101,13 @@ Migration binary for K8s init container. Runs sqlx migrations against PostgreSQL
 
 **The app binary never runs migrations.** Only ps-migrate does.
 
+### ps-backup — Backup/Restore Job
+
+Standalone binary that runs as a Kubernetes Job for backup creation (`pg_dump`) and restore (`pg_restore`). Uses `pgvector/pgvector:pg17` as its base image to guarantee PostgreSQL client tool version alignment with the database server.
+
+**Belongs here:** `pg_dump`/`pg_restore` invocation, archive assembly/extraction, workspace file handling.
+**Does NOT belong here:** gRPC service logic, database queries (those stay in ps-server).
+
 ### psctl — CLI Client
 
 Lightweight CLI for administrative operations. Depends only on ps-proto.
@@ -114,6 +121,7 @@ Lightweight CLI for administrative operations. Depends only on ps-proto.
 psctl ──────────────────────────► ps-proto
 ps-server ──► ps-core, ps-proto, ps-metrics, ps-agent
 ps-workers ─► ps-core, ps-proto, ps-metrics, ps-agent
+ps-backup ──► ps-core
 ps-metrics ─► ps-core
 ps-reasoning ► ps-core
 ps-agent ───► ps-core (+ kube)
@@ -179,6 +187,7 @@ Both serve the same purpose: declare submodules and define the feature's public 
 
 - **Fail-closed auth** — missing auth header returns an error, never silently forwards. The interceptor rejects non-public RPCs without auth.
 - **Admin role enforcement** — privileged operations (reset, backup, token management) require `require_admin()`.
+- **Conditional auth** — backup preview/restore RPCs are open on uninitialised instances (no users exist) but require admin auth on live instances. See [Backup & Restore > Authentication Model](09-backup-restore.md#authentication-model).
 - **Error masking** — full database errors logged server-side with `tracing`, generic "internal error" returned to clients.
 - **Encrypted secrets** — AES-256-GCM for source credentials at rest. Never decrypt inside Restate `ctx.run()` (journal persists side-effect results).
 - **Input validation** — escape LIKE patterns, validate external identifiers before interpolation.
