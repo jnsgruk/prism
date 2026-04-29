@@ -286,8 +286,28 @@ pub async fn set_provider_secret(
 
     info!(provider = %provider_name, "provider secret set");
 
-    // Auto-trigger model catalogue refresh so the admin gets up-to-date models
-    trigger_catalogue_refresh(svc).await;
+    // Auto-trigger model catalogue refresh so the admin gets up-to-date models.
+    // Spawned as a background task so it never blocks the RPC response — the
+    // HTTP POST to Restate can hang if the ingress is unresponsive.
+    let url = format!(
+        "{}/ModelCatalogueHandler/refresh_catalogue/send",
+        svc.restate_url,
+    );
+    let client = svc.http_client.clone();
+    tokio::spawn(async move {
+        match client.post(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                info!("triggered model catalogue refresh via Restate");
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                tracing::warn!(%status, "failed to trigger model catalogue refresh");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to reach Restate for catalogue refresh");
+            }
+        }
+    });
 
     Ok(Response::new(SetProviderSecretResponse {}))
 }

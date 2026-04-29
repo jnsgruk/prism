@@ -68,7 +68,10 @@ impl ReasoningServiceImpl {
             router,
             workspaces_path,
             restate_url,
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .unwrap_or_default(),
             active_queries: Arc::new(Mutex::new(HashMap::new())),
         }
     }
