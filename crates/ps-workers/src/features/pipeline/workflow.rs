@@ -442,6 +442,10 @@ impl IngestionPipelineWorkflowImpl {
         // the awakeable id, and awaits the awakeable. The handler chain
         // resolves the awakeable from its final invocation when the queue is
         // drained, regardless of how many continuations it took to get there.
+        //
+        // The awakeable is raced against the cancel promise so that a cancel
+        // request can interrupt the stage immediately rather than waiting for
+        // the (potentially infinite) enrichment chain to complete.
         if !self
             .run_stage(
                 pipeline_id,
@@ -457,7 +461,12 @@ impl IngestionPipelineWorkflowImpl {
                             completion_awakeable: Some(awakeable_id),
                         }))
                         .send();
-                    fut.await
+                    restate_sdk::select! {
+                        result = fut => result,
+                        _ = ctx.promise::<()>("cancel") => {
+                            Err(TerminalError::new("pipeline cancelled"))
+                        }
+                    }
                 },
             )
             .await?
@@ -465,7 +474,8 @@ impl IngestionPipelineWorkflowImpl {
             return Ok(());
         }
 
-        // Embedding — same awakeable-based flat-chain pattern as enrichment.
+        // Embedding — same awakeable-based flat-chain pattern as enrichment,
+        // also raced against the cancel promise for the same reason.
         if !self
             .run_stage(
                 pipeline_id,
@@ -481,7 +491,12 @@ impl IngestionPipelineWorkflowImpl {
                             completion_awakeable: Some(awakeable_id),
                         }))
                         .send();
-                    fut.await
+                    restate_sdk::select! {
+                        result = fut => result,
+                        _ = ctx.promise::<()>("cancel") => {
+                            Err(TerminalError::new("pipeline cancelled"))
+                        }
+                    }
                 },
             )
             .await?
