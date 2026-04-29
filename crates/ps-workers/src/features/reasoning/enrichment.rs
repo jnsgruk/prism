@@ -238,6 +238,7 @@ impl EnrichmentHandlerImpl {
             }
         }
         let mut more_work_remaining = false;
+        let mut systemic_failure = false;
 
         loop {
             let batches = self.fetch_all_type_batches(ctx, s.iteration).await?;
@@ -258,6 +259,8 @@ impl EnrichmentHandlerImpl {
             );
             self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
+
+            let prev_processed = s.total_processed;
 
             // Journal the AI processing results so replays skip the
             // expensive AI calls entirely. Without this, every Restate
@@ -290,6 +293,21 @@ impl EnrichmentHandlerImpl {
             self.update_progress(run_id, s.total_processed, &s.progress)
                 .await;
 
+            // Detect systemic failure: if this iteration made zero progress
+            // (no successful enrichments) but encountered errors, continuing
+            // will re-fetch the same failing items forever. Break out and
+            // report the failure instead of chaining infinite continuations.
+            let iteration_errors: usize = results.iter().map(|r| r.errors).sum();
+            if s.total_processed == prev_processed && iteration_errors > 0 {
+                warn!(
+                    errors = iteration_errors,
+                    first_error = ?s.first_error,
+                    "systemic failure: all items in batch failed, aborting enrichment cycle"
+                );
+                systemic_failure = true;
+                break;
+            }
+
             s.iteration += 1;
 
             // Bound per-invocation journal growth. Chain a continuation
@@ -320,7 +338,18 @@ impl EnrichmentHandlerImpl {
             self.finalize_run(ctx, run_id, &mut s, start.elapsed())
                 .await;
             if let Some(awakeable_id) = args.completion_awakeable.as_deref() {
-                ctx.resolve_awakeable(awakeable_id, ());
+                if systemic_failure {
+                    let reason = s
+                        .first_error
+                        .as_deref()
+                        .unwrap_or("all enrichment items failed");
+                    ctx.reject_awakeable(
+                        awakeable_id,
+                        TerminalError::new(format!("enrichment failed: {reason}")),
+                    );
+                } else {
+                    ctx.resolve_awakeable(awakeable_id, ());
+                }
             }
         }
 
