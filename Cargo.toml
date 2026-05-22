@@ -82,6 +82,14 @@ tonic-web = "0.13"
 tonic-health = "0.13"
 prost = "0.13"
 prost-types = "0.13"
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["logging", "http1", "rustls-native-certs", "tls12"] }
+hyper = "1"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+http = "1"
+rustls = { version = "0.23", default-features = false, features = ["logging", "std", "tls12", "aws_lc_rs"] }
+rustls-native-certs = "0.8"
 
 # Crypto
 argon2 = "0.5"

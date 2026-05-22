@@ -10,8 +10,14 @@ mod format;
 #[derive(Parser)]
 #[command(name = "psctl", about = "Prism CLI client", version)]
 struct Cli {
-    /// Server URL
-    #[arg(long, env = "PS_SERVER_URL", default_value = "http://localhost:18080")]
+    /// Server URL (gRPC-Web over HTTP/1.1).
+    /// For local dev: `http://localhost:8080/api`
+    /// For remote via gateway: `https://prism.tailnet-d5da.ts.net/api`
+    #[arg(
+        long,
+        env = "PS_SERVER_URL",
+        default_value = "http://localhost:8080/api"
+    )]
     server: String,
 
     /// API token for authentication.

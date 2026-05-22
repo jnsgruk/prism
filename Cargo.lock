@@ -3258,16 +3258,25 @@ name = "psctl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-stream",
  "clap",
  "dotenvy",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
  "prost-types",
  "ps-proto",
+ "rustls",
+ "rustls-native-certs",
  "serde_json",
  "time",
  "tokio",
  "tokio-stream",
  "tonic",
+ "tonic-web",
+ "tower",
+ "tracing",
  "uuid",
 ]
 

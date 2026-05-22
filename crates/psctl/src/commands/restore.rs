@@ -1,8 +1,8 @@
-use std::io::Write;
-
 use anyhow::{Result, bail};
-use async_stream::stream;
-use ps_proto::canonical::prism::v1::{PreviewBackupRequest, RestoreBackupRequest};
+use ps_proto::canonical::prism::v1::{
+    PreviewBackupRequest, RestoreBackupRequest, UploadBackupChunkRequest,
+};
+use std::io::Write as _;
 use tokio::io::AsyncReadExt;
 
 use crate::client::Clients;
@@ -10,40 +10,81 @@ use crate::format;
 
 const CHUNK_SIZE: usize = 256 * 1024;
 
-/// Return a lazy async stream that reads `file_path` in `CHUNK_SIZE` chunks,
-/// mapping each chunk with `f`. Only one chunk is held in memory at a time.
-fn file_stream<T: 'static>(
-    file_path: String,
-    f: impl Fn(Vec<u8>) -> T + 'static,
-) -> impl tokio_stream::Stream<Item = T> {
-    stream! {
-        match tokio::fs::File::open(&file_path).await {
-            Err(_) => return,
-            Ok(mut file) => {
-                loop {
-                    let mut buf = vec![0u8; CHUNK_SIZE];
-                    match file.read(&mut buf).await {
-                        Ok(0) | Err(_) => break,
-                        Ok(n) => {
-                            buf.truncate(n);
-                            yield f(buf);
-                        }
-                    }
-                }
+/// Upload a backup file via chunked `UploadBackupChunk` calls and return the `upload_id`.
+async fn upload_file(clients: &mut Clients, file_path: &str) -> Result<String> {
+    let mut file = tokio::fs::File::open(file_path).await?;
+    let mut upload_id = String::new();
+    let mut total_bytes: u64 = 0;
+
+    loop {
+        let mut buf = vec![0u8; CHUNK_SIZE];
+        let n = file.read(&mut buf).await?;
+        if n == 0 {
+            break;
+        }
+        buf.truncate(n);
+
+        let is_first = upload_id.is_empty();
+        let is_final = {
+            let mut probe = [0u8; 1];
+            let peek = file.read(&mut probe).await?;
+            if peek > 0 {
+                buf.extend_from_slice(probe.as_slice());
+                total_bytes += peek as u64;
+                false
+            } else {
+                true
             }
+        };
+
+        let resp = clients
+            .backup
+            .upload_backup_chunk(UploadBackupChunkRequest {
+                upload_id: upload_id.clone(),
+                chunk: buf,
+                is_final,
+            })
+            .await?
+            .into_inner();
+
+        if is_first {
+            upload_id = resp.upload_id;
+        }
+        total_bytes += n as u64;
+    }
+
+    // If the file was exactly a multiple of CHUNK_SIZE, we may not have sent is_final=true.
+    // Send an empty final chunk to finalize.
+    if !upload_id.is_empty() {
+        let resp = clients
+            .backup
+            .upload_backup_chunk(UploadBackupChunkRequest {
+                upload_id: upload_id.clone(),
+                chunk: vec![],
+                is_final: true,
+            })
+            .await?
+            .into_inner();
+        if resp.received_bytes as u64 != total_bytes {
+            bail!(
+                "upload size mismatch: sent {total_bytes} bytes but server received {}",
+                resp.received_bytes
+            );
         }
     }
+
+    Ok(upload_id)
 }
 
 pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
-    // Preview: stream from disk lazily — never more than one chunk in memory
-    let preview_stream = file_stream(file_path.to_string(), |chunk| PreviewBackupRequest {
-        chunk,
-    });
+    eprintln!("Uploading backup...");
+    let upload_id = upload_file(clients, file_path).await?;
 
     let preview = clients
         .backup
-        .preview_backup(preview_stream)
+        .preview_backup(PreviewBackupRequest {
+            upload_id: upload_id.clone(),
+        })
         .await?
         .into_inner();
 
@@ -125,14 +166,9 @@ pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
         bail!("Restore cancelled.");
     }
 
-    // Restore: stream from disk lazily again — file is re-read, not buffered
-    let restore_stream = file_stream(file_path.to_string(), |chunk| RestoreBackupRequest {
-        chunk,
-    });
-
     let response = clients
         .backup
-        .restore_backup(restore_stream)
+        .restore_backup(RestoreBackupRequest { upload_id })
         .await?
         .into_inner();
 
