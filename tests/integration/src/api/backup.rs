@@ -2,6 +2,7 @@ use crate::common::server::ApiTestContext;
 use ps_proto::canonical::prism::v1::backup_service_client::BackupServiceClient;
 use ps_proto::canonical::prism::v1::{
     CancelBackupRequest, CreateBackupRequest, PreviewBackupRequest, RestoreBackupRequest,
+    UploadBackupChunkRequest,
 };
 use sqlx::PgPool;
 use tonic::Request;
@@ -138,7 +139,7 @@ async fn seed_data(pool: &PgPool, user_id: Uuid) -> (Uuid, Uuid, Uuid) {
     sqlx::query(
         "INSERT INTO reasoning.conversations \
          (id, user_id, title, status, model_name, container_status, query_status) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+         VALUES ($1, $2, $3, $4, $5, %6, $7)",
     )
     .bind(conversation_id)
     .bind(user_id)
@@ -205,6 +206,36 @@ async fn create_backup_bytes(
         .collect()
 }
 
+/// Upload backup bytes via chunked UploadBackupChunk calls and return the upload_id.
+async fn upload_backup_bytes(
+    client: &mut BackupServiceClient<tonic::transport::Channel>,
+    token: &str,
+    bytes: &[u8],
+) -> String {
+    let chunks: Vec<_> = bytes.chunks(CHUNK_SIZE).collect();
+    let total_chunks = chunks.len();
+    let mut upload_id = String::new();
+
+    for (i, chunk) in chunks.iter().enumerate() {
+        let is_final = i == total_chunks - 1;
+        let mut req = Request::new(UploadBackupChunkRequest {
+            upload_id: upload_id.clone(),
+            chunk: chunk.to_vec(),
+            is_final,
+        });
+        auth(&mut req, token);
+        let resp = client
+            .upload_backup_chunk(req)
+            .await
+            .expect("upload_backup_chunk");
+        if upload_id.is_empty() {
+            upload_id = resp.into_inner().upload_id;
+        }
+    }
+
+    upload_id
+}
+
 /// Count rows in a table (returns i64).
 async fn count_rows(pool: &PgPool, table: &str) -> i64 {
     let query = format!("SELECT COUNT(*)::bigint FROM {table}");
@@ -245,16 +276,12 @@ async fn backup_and_restore_roundtrip() {
     let backup_bytes = create_backup_bytes(&mut backup_client, &token).await;
     assert!(!backup_bytes.is_empty(), "backup should not be empty");
 
-    // 3. Preview backup via gRPC (with auth — instance is initialised)
-    let preview_stream = tokio_stream::iter(
-        backup_bytes
-            .chunks(CHUNK_SIZE)
-            .map(|chunk| PreviewBackupRequest {
-                chunk: chunk.to_vec(),
-            })
-            .collect::<Vec<_>>(),
-    );
-    let mut preview_req = Request::new(preview_stream);
+    // 3. Upload backup, then preview
+    let upload_id = upload_backup_bytes(&mut backup_client, &token, &backup_bytes).await;
+
+    let mut preview_req = Request::new(PreviewBackupRequest {
+        upload_id: upload_id.clone(),
+    });
     auth(&mut preview_req, &token);
     let preview = backup_client
         .preview_backup(preview_req)
@@ -267,15 +294,9 @@ async fn backup_and_restore_roundtrip() {
     assert!(preview.checksum_valid, "checksum should be valid");
 
     // 4. Restore backup via gRPC (with auth — instance is initialised)
-    let restore_stream = tokio_stream::iter(
-        backup_bytes
-            .chunks(CHUNK_SIZE)
-            .map(|chunk| RestoreBackupRequest {
-                chunk: chunk.to_vec(),
-            })
-            .collect::<Vec<_>>(),
-    );
-    let mut restore_req = Request::new(restore_stream);
+    let mut restore_req = Request::new(RestoreBackupRequest {
+        upload_id: upload_id.clone(),
+    });
     auth(&mut restore_req, &token);
     let restore = backup_client
         .restore_backup(restore_req)
@@ -337,22 +358,85 @@ async fn backup_and_restore_roundtrip() {
 // Conditional auth tests
 // ---------------------------------------------------------------------------
 
+/// On an uninitialised instance (no users), upload should work without auth.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn upload_without_auth_on_fresh_instance() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
+    let mut backup_client = BackupServiceClient::new(server.channel.clone());
+    let req = Request::new(UploadBackupChunkRequest {
+        upload_id: String::new(),
+        chunk: b"not a real backup".to_vec(),
+        is_final: true,
+    });
+
+    // Should not get UNAUTHENTICATED — the request should reach the handler
+    // and succeed (it's just uploading bytes, validation happens at preview).
+    let result = backup_client.upload_backup_chunk(req).await;
+    match result {
+        Err(status) => {
+            assert_ne!(
+                status.code(),
+                tonic::Code::Unauthenticated,
+                "fresh instance should not require auth for upload"
+            );
+        }
+        Ok(_) => {}
+    }
+
+    ctx.teardown().await;
+}
+
+/// On an initialised instance, upload without auth should be rejected.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn upload_without_auth_on_live_instance_rejected() {
+    let ctx = ApiTestContext::new().await;
+    let server = &ctx.server;
+
+    let (_user_id, _token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+
+    let mut backup_client = BackupServiceClient::new(server.channel.clone());
+    let req = Request::new(UploadBackupChunkRequest {
+        upload_id: String::new(),
+        chunk: b"not a real backup".to_vec(),
+        is_final: true,
+    });
+
+    let result = backup_client.upload_backup_chunk(req).await;
+    assert!(result.is_err(), "should be rejected without auth");
+    assert_eq!(
+        result.unwrap_err().code(),
+        tonic::Code::Unauthenticated,
+        "live instance should require auth for upload"
+    );
+
+    ctx.teardown().await;
+}
+
 /// On an uninitialised instance (no users), preview should work without auth.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn preview_without_auth_on_fresh_instance() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
-    // No users created — instance is uninitialised.
-    // Send a minimal (invalid) backup to test the auth gate, not the backup logic.
     let mut backup_client = BackupServiceClient::new(server.channel.clone());
-    let preview_stream = tokio_stream::iter(vec![PreviewBackupRequest {
-        chunk: b"not a real backup".to_vec(),
-    }]);
 
-    // Should not get UNAUTHENTICATED — the request should reach the handler
-    // and fail with INVALID_ARGUMENT (bad backup format), not auth rejection.
-    let result = backup_client.preview_backup(preview_stream).await;
+    // Upload first
+    let upload_resp = backup_client
+        .upload_backup_chunk(Request::new(UploadBackupChunkRequest {
+            upload_id: String::new(),
+            chunk: b"not a real backup".to_vec(),
+            is_final: true,
+        }))
+        .await
+        .expect("upload should succeed on fresh instance");
+    let upload_id = upload_resp.into_inner().upload_id;
+
+    // Preview — should not get UNAUTHENTICATED
+    let result = backup_client
+        .preview_backup(Request::new(PreviewBackupRequest { upload_id }))
+        .await;
     match result {
         Err(status) => {
             assert_ne!(
@@ -361,9 +445,7 @@ async fn preview_without_auth_on_fresh_instance() {
                 "fresh instance should not require auth for preview"
             );
         }
-        Ok(_) => {
-            // Unexpected success with garbage data, but auth passed — that's fine
-        }
+        Ok(_) => {}
     }
 
     ctx.teardown().await;
@@ -375,16 +457,16 @@ async fn preview_without_auth_on_live_instance_rejected() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
-    // Create an admin user — instance is now initialised
     let (_user_id, _token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     let mut backup_client = BackupServiceClient::new(server.channel.clone());
-    let preview_stream = tokio_stream::iter(vec![PreviewBackupRequest {
-        chunk: b"not a real backup".to_vec(),
-    }]);
 
     // Should get UNAUTHENTICATED — no auth header on a live instance
-    let result = backup_client.preview_backup(preview_stream).await;
+    let result = backup_client
+        .preview_backup(Request::new(PreviewBackupRequest {
+            upload_id: "00000000-0000-0000-0000-000000000000".to_string(),
+        }))
+        .await;
     assert!(result.is_err(), "should be rejected without auth");
     assert_eq!(
         result.unwrap_err().code(),
@@ -401,16 +483,15 @@ async fn restore_without_auth_on_live_instance_rejected() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
-    // Create an admin user — instance is now initialised
     let (_user_id, _token) = crate::common::fixtures::create_admin_user(&server.pool).await;
 
     let mut backup_client = BackupServiceClient::new(server.channel.clone());
-    let restore_stream = tokio_stream::iter(vec![RestoreBackupRequest {
-        chunk: b"not a real backup".to_vec(),
-    }]);
 
-    // Should get UNAUTHENTICATED — no auth header on a live instance
-    let result = backup_client.restore_backup(restore_stream).await;
+    let result = backup_client
+        .restore_backup(Request::new(RestoreBackupRequest {
+            upload_id: "00000000-0000-0000-0000-000000000000".to_string(),
+        }))
+        .await;
     assert!(result.is_err(), "should be rejected without auth");
     assert_eq!(
         result.unwrap_err().code(),
