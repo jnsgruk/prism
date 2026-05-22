@@ -52,6 +52,7 @@ const PUBLIC_METHODS: &[&str] = &[
 const CONDITIONALLY_PUBLIC_METHODS: &[&str] = &[
     "/canonical.prism.v1.BackupService/PreviewBackup",
     "/canonical.prism.v1.BackupService/RestoreBackup",
+    "/canonical.prism.v1.BackupService/UploadBackupChunk",
 ];
 
 /// Validate a bearer token against the database and return an `AuthContext`.

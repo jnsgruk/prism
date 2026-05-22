@@ -3,17 +3,14 @@ mod create;
 pub mod generator;
 mod preview;
 mod restore;
+mod upload;
 
-use std::io::Write as _;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::backup_service_server::BackupService;
-use tokio_stream::StreamExt;
-use tonic::{Request, Response, Status, Streaming};
-use tracing::error;
+use tonic::{Request, Response, Status};
 use zeroize::Zeroizing;
 
 pub use generator::{BackupGenerator, BackupJobStatus};
@@ -21,7 +18,7 @@ pub use generator::{BackupGenerator, BackupJobStatus};
 /// Hook invoked after a successful restore to reload in-memory state
 /// (e.g. AI provider keys) from the freshly-restored database.
 pub type PostRestoreHook =
-    Arc<dyn Fn() -> Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
+    Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
 
 pub struct BackupServiceImpl {
     repos: Repos,
@@ -47,40 +44,6 @@ impl BackupServiceImpl {
             post_restore_hook,
         }
     }
-
-    /// Collect all bytes from a client-streaming gRPC request into a temp file.
-    ///
-    /// Returns a `tempfile::NamedTempFile` containing the full upload. Using a
-    /// temp file avoids holding the entire backup in memory and removes the old
-    /// hard-coded 100 MB cap.
-    async fn stream_to_tempfile<T, F>(
-        stream: &mut Streaming<T>,
-        extract_chunk: F,
-    ) -> Result<tempfile::NamedTempFile, Status>
-    where
-        F: Fn(T) -> Vec<u8>,
-    {
-        let mut tmp = tempfile::NamedTempFile::new().map_err(|e| {
-            error!(error = %e, "failed to create temp file for backup upload");
-            Status::internal("internal error")
-        })?;
-
-        while let Some(msg) = stream.next().await {
-            let msg = msg?;
-            let chunk = extract_chunk(msg);
-            tmp.write_all(&chunk).map_err(|e| {
-                error!(error = %e, "failed to write backup chunk to temp file");
-                Status::internal("internal error")
-            })?;
-        }
-
-        tmp.flush().map_err(|e| {
-            error!(error = %e, "failed to flush backup temp file");
-            Status::internal("internal error")
-        })?;
-
-        Ok(tmp)
-    }
 }
 
 #[tonic::async_trait]
@@ -94,16 +57,23 @@ impl BackupService for BackupServiceImpl {
         create::create_backup(self, request).await
     }
 
+    async fn upload_backup_chunk(
+        &self,
+        request: Request<ps_proto::canonical::prism::v1::UploadBackupChunkRequest>,
+    ) -> Result<Response<ps_proto::canonical::prism::v1::UploadBackupChunkResponse>, Status> {
+        upload::upload_backup_chunk(self, request).await
+    }
+
     async fn preview_backup(
         &self,
-        request: Request<Streaming<ps_proto::canonical::prism::v1::PreviewBackupRequest>>,
+        request: Request<ps_proto::canonical::prism::v1::PreviewBackupRequest>,
     ) -> Result<Response<ps_proto::canonical::prism::v1::PreviewBackupResponse>, Status> {
         preview::preview_backup(self, request).await
     }
 
     async fn restore_backup(
         &self,
-        request: Request<Streaming<ps_proto::canonical::prism::v1::RestoreBackupRequest>>,
+        request: Request<ps_proto::canonical::prism::v1::RestoreBackupRequest>,
     ) -> Result<Response<ps_proto::canonical::prism::v1::RestoreBackupResponse>, Status> {
         restore::restore_backup(self, request).await
     }

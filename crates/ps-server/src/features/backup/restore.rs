@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use ps_core::backup::validate_secret_key_canary;
 use ps_core::repo::Repos;
-use ps_proto::canonical::prism::v1::{RestoreBackupRequest, RestoreBackupResponse};
+use ps_proto::canonical::prism::v1::RestoreBackupRequest;
 use rand::Rng as _;
-use tonic::{Request, Response, Status, Streaming};
+use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -17,23 +17,24 @@ use super::preview::read_manifest_from_archive;
 
 pub async fn restore_backup(
     svc: &BackupServiceImpl,
-    request: Request<Streaming<RestoreBackupRequest>>,
-) -> Result<Response<RestoreBackupResponse>, Status> {
-    // On live (initialised) instances the interceptor will have attached an
-    // AuthContext.  Verify the caller is an admin.  On uninitialised instances
-    // there is no AuthContext, which is intentional.
+    request: Request<RestoreBackupRequest>,
+) -> Result<Response<ps_proto::canonical::prism::v1::RestoreBackupResponse>, Status> {
     if let Some(ctx) = request.extensions().get::<AuthContext>()
         && ctx.role != ps_core::models::Role::Admin
     {
         return Err(Status::permission_denied("admin role required"));
     }
 
-    let mut stream = request.into_inner();
-    let tmp: tempfile::NamedTempFile =
-        BackupServiceImpl::stream_to_tempfile(&mut stream, |r| r.chunk).await?;
+    let backups_path = svc
+        .backups_path
+        .as_ref()
+        .ok_or_else(|| Status::internal("backups_path not configured — cannot run restore job"))?;
+
+    let inner = request.into_inner();
+    let uploaded_path = super::upload::get_uploaded_file_path(backups_path, &inner.upload_id)?;
 
     // --- Validate manifest before wiping any data ---
-    let manifest = read_manifest_from_archive(tmp.path())?;
+    let manifest = read_manifest_from_archive(&uploaded_path)?;
 
     if manifest.format_version < 2 {
         return Err(Status::failed_precondition(
@@ -46,15 +47,10 @@ pub async fn restore_backup(
         .map_err(|e| Status::failed_precondition(e.to_string()))?;
     info!("secret key canary validated successfully");
 
-    // --- Save archive to backups PVC for the restore Job ---
+    // --- Copy archive to restore staging path ---
     let restore_id = Uuid::now_v7().to_string();
-    let backups_path = svc
-        .backups_path
-        .as_ref()
-        .ok_or_else(|| Status::internal("backups_path not configured — cannot run restore job"))?;
-
     let archive_dest = backups_path.join(format!("{restore_id}.ps-backup"));
-    std::fs::copy(tmp.path(), &archive_dest).map_err(|e| {
+    std::fs::copy(&uploaded_path, &archive_dest).map_err(|e| {
         error!(error = %e, "failed to copy archive to backups PVC");
         Status::internal("failed to prepare restore")
     })?;
@@ -73,7 +69,6 @@ pub async fn restore_backup(
         match svc.generator.poll_status(&restore_id).await? {
             BackupJobStatus::Succeeded => break,
             BackupJobStatus::Failed(msg) => {
-                // Clean up the staged archive
                 let _ = std::fs::remove_file(&archive_dest);
                 return Err(Status::internal(format!("restore failed: {msg}")));
             }
@@ -128,14 +123,19 @@ pub async fn restore_backup(
         (token, exp, password)
     };
 
+    // Clean up the uploaded file now that restore is complete
+    let _ = std::fs::remove_file(&uploaded_path);
+
     info!("restore complete");
 
-    Ok(Response::new(RestoreBackupResponse {
-        session_token,
-        expires_at: Some(expires_at),
-        tables_restored: HashMap::new(), // v2 doesn't track per-table counts
-        generated_password,
-    }))
+    Ok(Response::new(
+        ps_proto::canonical::prism::v1::RestoreBackupResponse {
+            session_token,
+            expires_at: Some(expires_at),
+            tables_restored: HashMap::new(),
+            generated_password,
+        },
+    ))
 }
 
 /// Create a session for a user after restore, returning the raw token and expiry.
