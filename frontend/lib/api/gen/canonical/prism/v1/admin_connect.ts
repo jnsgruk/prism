@@ -7,20 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { CreateApiTokenRequest, CreateApiTokenResponse, GetSystemInfoRequest, GetSystemInfoResponse, ListApiTokensRequest, ListApiTokensResponse, ResetDataRequest, ResetDataResponse, RevokeApiTokenRequest, RevokeApiTokenResponse } from "./admin_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  CreateApiTokenRequest,
-  CreateApiTokenResponse,
-  GetSystemInfoRequest,
-  GetSystemInfoResponse,
-  ListApiTokensRequest,
-  ListApiTokensResponse,
-  ResetDataRequest,
-  ResetDataResponse,
-  RevokeApiTokenRequest,
-  RevokeApiTokenResponse,
-} from "./admin_pb.js";
 
 /**
  * AdminService provides privileged operations for instance administrators
@@ -86,5 +74,6 @@ export const AdminService = {
       O: GetSystemInfoResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

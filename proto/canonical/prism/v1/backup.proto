@@ -1,7 +1,7 @@
 // Backup and restore operations. CreateBackup always requires admin
-// authentication. PreviewBackup and RestoreBackup are conditionally public:
-// they require no auth on uninitialised instances (no users exist) but
-// require admin auth on live instances.
+// authentication. PreviewBackup, RestoreBackup, and UploadBackupChunk are
+// conditionally public: they require no auth on uninitialised instances
+// (no users exist) but require admin auth on live instances.
 syntax = "proto3";
 
 package canonical.prism.v1;
@@ -13,14 +13,20 @@ service BackupService {
   // CreateBackup streams a full database backup as chunked bytes.
   // Requires admin authentication.
   rpc CreateBackup(CreateBackupRequest) returns (stream CreateBackupResponse);
-  // PreviewBackup accepts a streamed backup archive and returns its metadata
-  // without applying any changes. Open on uninitialised instances, requires
-  // admin auth on live instances.
-  rpc PreviewBackup(stream PreviewBackupRequest) returns (PreviewBackupResponse);
-  // RestoreBackup applies a streamed backup archive, replacing all data.
-  // Returns a new session token for the restored admin user. Open on
+  // UploadBackupChunk uploads a single chunk of a backup archive. The first
+  // chunk (with empty upload_id) creates a new upload and returns the
+  // server-assigned upload_id. Subsequent chunks include the upload_id.
+  // Set is_final=true on the last chunk. Open on uninitialised instances,
+  // requires admin auth on live instances.
+  rpc UploadBackupChunk(UploadBackupChunkRequest) returns (UploadBackupChunkResponse);
+  // PreviewBackup inspects an already-uploaded backup archive and returns its
+  // metadata without applying any changes. Open on uninitialised instances,
+  // requires admin auth on live instances.
+  rpc PreviewBackup(PreviewBackupRequest) returns (PreviewBackupResponse);
+  // RestoreBackup applies an already-uploaded backup archive, replacing all
+  // data. Returns a new session token for the restored admin user. Open on
   // uninitialised instances, requires admin auth on live instances.
-  rpc RestoreBackup(stream RestoreBackupRequest) returns (RestoreBackupResponse);
+  rpc RestoreBackup(RestoreBackupRequest) returns (RestoreBackupResponse);
   // CancelBackup cancels a running backup generation. Returns whether a
   // backup was actually cancelled. Requires admin authentication.
   rpc CancelBackup(CancelBackupRequest) returns (CancelBackupResponse);
@@ -51,9 +57,27 @@ message BackupProgress {
   reserved "current_table", "tables_done", "tables_total", "rows_exported", "rows_total", "table_rows_exported", "table_rows_total";
 }
 
-message PreviewBackupRequest {
+message UploadBackupChunkRequest {
+  // Server-assigned upload ID. Empty on the first chunk to request a new
+  // upload; the response will contain the assigned ID.
+  string upload_id = 1;
   // Chunk of the backup archive.
-  bytes chunk = 1;
+  bytes chunk = 2;
+  // True when this is the final chunk of the upload.
+  bool is_final = 3;
+}
+
+message UploadBackupChunkResponse {
+  // Server-assigned upload ID. Echoed back on every call so the client
+  // can capture it from the first response.
+  string upload_id = 1;
+  // Total bytes received so far for this upload.
+  int64 received_bytes = 2;
+}
+
+message PreviewBackupRequest {
+  // Upload ID returned by UploadBackupChunk.
+  string upload_id = 1;
 }
 
 message PreviewBackupResponse {
@@ -82,8 +106,8 @@ message PreviewBackupResponse {
 }
 
 message RestoreBackupRequest {
-  // Chunk of the backup archive.
-  bytes chunk = 1;
+  // Upload ID returned by UploadBackupChunk.
+  string upload_id = 1;
 }
 
 message RestoreBackupResponse {

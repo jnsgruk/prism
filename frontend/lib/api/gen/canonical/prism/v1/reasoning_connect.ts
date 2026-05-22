@@ -7,62 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { AskQuestionRequest, AskQuestionResponse, CancelQueryRequest, CancelQueryResponse, DeleteConversationRequest, DeleteConversationResponse, DeleteEnrichmentsByTypeRequest, DeleteEnrichmentsByTypeResponse, DownloadWorkspaceFileRequest, DownloadWorkspaceFileResponse, FindSimilarRequest, FindSimilarResponse, GetAiSettingsRequest, GetAiSettingsResponse, GetConversationRequest, GetConversationResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse, GetEnrichmentPipelineStatusRequest, GetEnrichmentPipelineStatusResponse, GetEnrichmentsByContributionsRequest, GetEnrichmentsByContributionsResponse, GetEnrichmentsRequest, GetEnrichmentsResponse, GetUsageSummaryRequest, GetUsageSummaryResponse, GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse, ListConversationsRequest, ListConversationsResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse, RenameConversationRequest, RenameConversationResponse, ResumeStreamRequest, ResumeStreamResponse, SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest, SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse, UploadWorkspaceFileRequest, UploadWorkspaceFileResponse } from "./reasoning_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  AskQuestionRequest,
-  AskQuestionResponse,
-  CancelQueryRequest,
-  CancelQueryResponse,
-  DeleteConversationRequest,
-  DeleteConversationResponse,
-  DeleteEnrichmentsByTypeRequest,
-  DeleteEnrichmentsByTypeResponse,
-  DownloadWorkspaceFileRequest,
-  DownloadWorkspaceFileResponse,
-  FindSimilarRequest,
-  FindSimilarResponse,
-  GetAiSettingsRequest,
-  GetAiSettingsResponse,
-  GetConversationRequest,
-  GetConversationResponse,
-  GetEmbeddingStatusRequest,
-  GetEmbeddingStatusResponse,
-  GetEnrichmentPipelineStatusRequest,
-  GetEnrichmentPipelineStatusResponse,
-  GetEnrichmentsByContributionsRequest,
-  GetEnrichmentsByContributionsResponse,
-  GetEnrichmentsRequest,
-  GetEnrichmentsResponse,
-  GetUsageSummaryRequest,
-  GetUsageSummaryResponse,
-  GetWorkspaceFileRequest,
-  GetWorkspaceFileResponse,
-  ListAiModelsRequest,
-  ListAiModelsResponse,
-  ListConversationsRequest,
-  ListConversationsResponse,
-  ListWorkspaceFilesRequest,
-  ListWorkspaceFilesResponse,
-  RefreshModelCatalogueRequest,
-  RefreshModelCatalogueResponse,
-  RenameConversationRequest,
-  RenameConversationResponse,
-  ResumeStreamRequest,
-  ResumeStreamResponse,
-  SaveInsightFromConversationRequest,
-  SaveInsightFromConversationResponse,
-  SearchByTextRequest,
-  SearchByTextResponse,
-  SetProviderSecretRequest,
-  SetProviderSecretResponse,
-  TestProviderRequest,
-  TestProviderResponse,
-  UpdateAiSettingsRequest,
-  UpdateAiSettingsResponse,
-  UploadWorkspaceFileRequest,
-  UploadWorkspaceFileResponse,
-} from "./reasoning_pb.js";
 
 /**
  * ReasoningService manages the AI reasoning pipeline — provider configuration,
@@ -375,5 +321,6 @@ export const ReasoningService = {
       O: UploadWorkspaceFileResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

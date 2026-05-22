@@ -6,20 +6,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { CompleteSetupRequest, CompleteSetupResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetSetupStatusRequest, GetSetupStatusResponse, LoginRequest, LoginResponse, LogoutRequest, LogoutResponse } from "./auth_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  CompleteSetupRequest,
-  CompleteSetupResponse,
-  GetCurrentUserRequest,
-  GetCurrentUserResponse,
-  GetSetupStatusRequest,
-  GetSetupStatusResponse,
-  LoginRequest,
-  LoginResponse,
-  LogoutRequest,
-  LogoutResponse,
-} from "./auth_pb.js";
 
 /**
  * AuthService handles authentication, session management, and the initial
@@ -85,5 +73,6 @@ export const AuthService = {
       O: GetCurrentUserResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

@@ -7,56 +7,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest, AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest, DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse, DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse, ExportOrgRequest, ExportOrgResponse, GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse, GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse, ImportDirectoryRequest, ImportDirectoryResponse, ImportJiraUsersRequest, ImportJiraUsersResponse, ImportOrgRequest, ImportOrgResponse, ListGithubTeamsRequest, ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse, ListTeamGithubTeamsRequest, ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest, ListUnassignedPeopleResponse, ReactivatePersonRequest, ReactivatePersonResponse, RemovePersonFromTeamRequest, RemovePersonFromTeamResponse, UnassignGithubTeamRequest, UnassignGithubTeamResponse, UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest, UpdateTeamResponse } from "./org_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  AssignGithubTeamRequest,
-  AssignGithubTeamResponse,
-  AssignPersonToTeamRequest,
-  AssignPersonToTeamResponse,
-  CreateTeamRequest,
-  CreateTeamResponse,
-  DeactivatePersonRequest,
-  DeactivatePersonResponse,
-  DeleteTeamRequest,
-  DeleteTeamResponse,
-  DismissTeamMappingSuggestionRequest,
-  DismissTeamMappingSuggestionResponse,
-  ExportOrgRequest,
-  ExportOrgResponse,
-  GetTeamMappingSuggestionsRequest,
-  GetTeamMappingSuggestionsResponse,
-  GetTeamRequest,
-  GetTeamResponse,
-  GetTeamTreeRequest,
-  GetTeamTreeResponse,
-  ImportDirectoryRequest,
-  ImportDirectoryResponse,
-  ImportJiraUsersRequest,
-  ImportJiraUsersResponse,
-  ImportOrgRequest,
-  ImportOrgResponse,
-  ListGithubTeamsRequest,
-  ListGithubTeamsResponse,
-  ListPeopleRequest,
-  ListPeopleResponse,
-  ListTeamGithubTeamsRequest,
-  ListTeamGithubTeamsResponse,
-  ListTeamsRequest,
-  ListTeamsResponse,
-  ListUnassignedPeopleRequest,
-  ListUnassignedPeopleResponse,
-  ReactivatePersonRequest,
-  ReactivatePersonResponse,
-  RemovePersonFromTeamRequest,
-  RemovePersonFromTeamResponse,
-  UnassignGithubTeamRequest,
-  UnassignGithubTeamResponse,
-  UpdatePersonRequest,
-  UpdatePersonResponse,
-  UpdateTeamRequest,
-  UpdateTeamResponse,
-} from "./org_pb.js";
 
 /**
  * OrgService manages the organisational hierarchy — teams, people, platform
@@ -324,5 +276,6 @@ export const OrgService = {
       O: ImportOrgResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

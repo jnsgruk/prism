@@ -6,28 +6,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { CreateSourceRequest, CreateSourceResponse, DeleteSourceRequest, DeleteSourceResponse, ExportSourcesRequest, ExportSourcesResponse, GetSourceRequest, GetSourceResponse, ImportSourcesRequest, ImportSourcesResponse, ListSourcesRequest, ListSourcesResponse, SetSecretRequest, SetSecretResponse, TestConnectionRequest, TestConnectionResponse, UpdateSourceRequest, UpdateSourceResponse } from "./config_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  CreateSourceRequest,
-  CreateSourceResponse,
-  DeleteSourceRequest,
-  DeleteSourceResponse,
-  ExportSourcesRequest,
-  ExportSourcesResponse,
-  GetSourceRequest,
-  GetSourceResponse,
-  ImportSourcesRequest,
-  ImportSourcesResponse,
-  ListSourcesRequest,
-  ListSourcesResponse,
-  SetSecretRequest,
-  SetSecretResponse,
-  TestConnectionRequest,
-  TestConnectionResponse,
-  UpdateSourceRequest,
-  UpdateSourceResponse,
-} from "./config_pb.js";
 
 /**
  * ConfigService manages data source configurations — the external platforms
@@ -139,5 +119,6 @@ export const ConfigService = {
       O: ImportSourcesResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+
