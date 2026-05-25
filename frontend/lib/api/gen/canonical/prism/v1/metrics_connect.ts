@@ -7,8 +7,28 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CompareTeamsRequest, CompareTeamsResponse, GetContributionRequest, GetContributionResponse, GetDiscourseActivityRequest, GetDiscourseActivityResponse, GetFlowMetricsRequest, GetFlowMetricsResponse, GetIndividualProfileRequest, GetIndividualProfileResponse, GetTeamMetricsRequest, GetTeamMetricsResponse, ListPeriodsRequest, ListPeriodsResponse, ListPersonContributionsRequest, ListPersonContributionsResponse, ListTeamContributionsRequest, ListTeamContributionsResponse } from "./metrics_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
+
+import {
+  CompareTeamsRequest,
+  CompareTeamsResponse,
+  GetContributionRequest,
+  GetContributionResponse,
+  GetDiscourseActivityRequest,
+  GetDiscourseActivityResponse,
+  GetFlowMetricsRequest,
+  GetFlowMetricsResponse,
+  GetIndividualProfileRequest,
+  GetIndividualProfileResponse,
+  GetTeamMetricsRequest,
+  GetTeamMetricsResponse,
+  ListPeriodsRequest,
+  ListPeriodsResponse,
+  ListPersonContributionsRequest,
+  ListPersonContributionsResponse,
+  ListTeamContributionsRequest,
+  ListTeamContributionsResponse,
+} from "./metrics_pb.js";
 
 /**
  * MetricsService provides read access to pre-computed engineering metrics
@@ -125,6 +145,5 @@ export const MetricsService = {
       O: GetDiscourseActivityResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

@@ -6,17 +6,20 @@
 // @generated from file canonical/prism/v1/org.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+
 import type { PaginationRequest, PaginationResponse, PersonFilter, Platform, SortOrder } from "./common_pb";
 import { file_canonical_prism_v1_common } from "./common_pb";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/org.proto.
  */
-export const file_canonical_prism_v1_org: GenFile = /*@__PURE__*/
-  fileDesc("ChxjYW5vbmljYWwvcHJpc20vdjEvb3JnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEivwIKBFRlYW0SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIQCghvcmdfbmFtZRgDIAEoCRIbCg5wYXJlbnRfdGVhbV9pZBgEIAEoCUgAiAEBEhQKB2xlYWRfaWQYBSABKAlIAYgBARIUCgxtZW1iZXJfY291bnQYByABKAUSLwoJdGVhbV90eXBlGAggASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlRlYW1UeXBlEhoKEnRvdGFsX21lbWJlcl9jb3VudBgJIAEoBRIqCghjaGlsZHJlbhgKIAMoCzIYLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtEhYKCWxlYWRfbmFtZRgLIAEoCUgCiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEIMCgpfbGVhZF9uYW1lSgQIBhAHIvABCgZQZXJzb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgVlbWFpbBgDIAEoCUgAiAEBEhIKBWxldmVsGAQgASgJSAGIAQESOAoKaWRlbnRpdGllcxgFIAMoCzIkLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybUlkZW50aXR5Eg4KBmFjdGl2ZRgGIAEoCBIWCgl0ZWFtX25hbWUYByABKAlIAogBARIUCgd0ZWFtX2lkGAggASgJSAOIAQFCCAoGX2VtYWlsQggKBl9sZXZlbEIMCgpfdGVhbV9uYW1lQgoKCF90ZWFtX2lkIooBChBQbGF0Zm9ybUlkZW50aXR5Ei4KCHBsYXRmb3JtGAEgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlBsYXRmb3JtEhAKCHVzZXJuYW1lGAIgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAMgASgJSACIAQFCFAoSX3BsYXRmb3JtX2luc3RhbmNlIoYBChBMaXN0VGVhbXNSZXF1ZXN0EhsKDnBhcmVudF90ZWFtX2lkGAEgASgJSACIAQESNAoJdGVhbV90eXBlGAIgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlRlYW1UeXBlSAGIAQFCEQoPX3BhcmVudF90ZWFtX2lkQgwKCl90ZWFtX3R5cGUiPAoRTGlzdFRlYW1zUmVzcG9uc2USJwoFdGVhbXMYASADKAsyGC5jYW5vbmljYWwucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJImYKD0dldFRlYW1SZXNwb25zZRImCgR0ZWFtGAEgASgLMhguY2Fub25pY2FsLnByaXNtLnYxLlRlYW0SKwoHbWVtYmVycxgCIAMoCzIaLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb24iFAoSR2V0VGVhbVRyZWVSZXF1ZXN0Ij4KE0dldFRlYW1UcmVlUmVzcG9uc2USJwoFcm9vdHMYASADKAsyGC5jYW5vbmljYWwucHJpc20udjEuVGVhbSK8AQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIvCgl0ZWFtX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuVGVhbVR5cGUSGwoOcGFyZW50X3RlYW1faWQYAyABKAlIAIgBARIUCgdsZWFkX2lkGAQgASgJSAGIAQESEAoIb3JnX25hbWUYBiABKAlCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkSgQIBRAGIjwKEkNyZWF0ZVRlYW1SZXNwb25zZRImCgR0ZWFtGAEgASgLMhguY2Fub25pY2FsLnByaXNtLnYxLlRlYW0imAEKEVVwZGF0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhsKDnBhcmVudF90ZWFtX2lkGAMgASgJSAGIAQESFAoHbGVhZF9pZBgEIAEoCUgCiAEBQgcKBV9uYW1lQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEoECAUQBiI8ChJVcGRhdGVUZWFtUmVzcG9uc2USJgoEdGVhbRgBIAEoCzIYLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtIiQKEURlbGV0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkiFAoSRGVsZXRlVGVhbVJlc3BvbnNlIpkCChFMaXN0UGVvcGxlUmVxdWVzdBIYCgthY3RpdmVfb25seRgBIAEoCEgAiAEBEhMKBnNlYXJjaBgCIAEoCUgBiAEBEhQKB3RlYW1faWQYAyABKAlIAogBARIwCgZmaWx0ZXIYBCABKA4yIC5jYW5vbmljYWwucHJpc20udjEuUGVyc29uRmlsdGVyEjkKCnBhZ2luYXRpb24YCiABKAsyJS5jYW5vbmljYWwucHJpc20udjEuUGFnaW5hdGlvblJlcXVlc3QSKwoEc29ydBgLIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3J0T3JkZXJCDgoMX2FjdGl2ZV9vbmx5QgkKB19zZWFyY2hCCgoIX3RlYW1faWQifAoSTGlzdFBlb3BsZVJlc3BvbnNlEioKBnBlb3BsZRgBIAMoCzIaLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb24SOgoKcGFnaW5hdGlvbhgCIAEoCzImLmNhbm9uaWNhbC5wcmlzbS52MS5QYWdpbmF0aW9uUmVzcG9uc2UiLgoWSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBIUCgxmaWxlX2NvbnRlbnQYASABKAwixAEKF0ltcG9ydERpcmVjdG9yeVJlc3BvbnNlEhcKD3Blb3BsZV9pbXBvcnRlZBgBIAEoBRIVCg10ZWFtc19jcmVhdGVkGAIgASgFEhkKEWlkZW50aXRpZXNfbWFwcGVkGAMgASgFEhAKCHdhcm5pbmdzGAQgAygJEhYKDnBlb3BsZV91cGRhdGVkGAUgASgFEhoKEnN0YWxlX3Blb3BsZV9jb3VudBgGIAEoBRIYChB1bmFzc2lnbmVkX2NvdW50GAcgASgFIoABChNVcGRhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESEgoFZW1haWwYAyABKAlIAYgBARISCgVsZXZlbBgEIAEoCUgCiAEBQgcKBV9uYW1lQggKBl9lbWFpbEIICgZfbGV2ZWwiQgoUVXBkYXRlUGVyc29uUmVzcG9uc2USKgoGcGVyc29uGAEgASgLMhouY2Fub25pY2FsLnByaXNtLnYxLlBlcnNvbiIsChdEZWFjdGl2YXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkiGgoYRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlIiwKF1JlYWN0aXZhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCSIaChhSZWFjdGl2YXRlUGVyc29uUmVzcG9uc2UiPwoZQXNzaWduUGVyc29uVG9UZWFtUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSDwoHdGVhbV9pZBgCIAEoCSIcChpBc3NpZ25QZXJzb25Ub1RlYW1SZXNwb25zZSJBChtSZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJEg8KB3RlYW1faWQYAiABKAkiHgocUmVtb3ZlUGVyc29uRnJvbVRlYW1SZXNwb25zZSIdChtMaXN0VW5hc3NpZ25lZFBlb3BsZVJlcXVlc3QiSgocTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZRIqCgZwZW9wbGUYASADKAsyGi5jYW5vbmljYWwucHJpc20udjEuUGVyc29uIscBCgpHaXRIdWJUZWFtEgoKAmlkGAEgASgJEhEKCXNvdXJjZV9pZBgCIAEoCRISCgpnaXRodWJfb3JnGAMgASgJEhYKDmdpdGh1Yl90ZWFtX2lkGAQgASgDEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRIYCgtkZXNjcmlwdGlvbhgHIAEoCUgAiAEBEhQKDG1lbWJlcl9jb3VudBgIIAEoAxISCgpyZXBvX2NvdW50GAkgASgDQg4KDF9kZXNjcmlwdGlvbiLvAQoVVGVhbU1hcHBpbmdTdWdnZXN0aW9uEhYKDmdpdGh1Yl90ZWFtX2lkGAEgASgJEhgKEGdpdGh1Yl90ZWFtX25hbWUYAiABKAkSEgoKZ2l0aHViX29yZxgDIAEoCRIYChBnaXRodWJfdGVhbV9zbHVnGAQgASgJEhUKDXByaXNtX3RlYW1faWQYBSABKAkSFwoPcHJpc21fdGVhbV9uYW1lGAYgASgJEhUKDW92ZXJsYXBfY291bnQYByABKAMSFwoPZ2l0aHViX2NvdmVyYWdlGAggASgBEhYKDnByaXNtX2NvdmVyYWdlGAkgASgBImAKFkxpc3RHaXRodWJUZWFtc1JlcXVlc3QSEwoGc2VhcmNoGAEgASgJSACIAQESFwoKZ2l0aHViX29yZxgCIAEoCUgBiAEBQgkKB19zZWFyY2hCDQoLX2dpdGh1Yl9vcmciSAoXTGlzdEdpdGh1YlRlYW1zUmVzcG9uc2USLQoFdGVhbXMYASADKAsyHi5jYW5vbmljYWwucHJpc20udjEuR2l0SHViVGVhbSItChpMaXN0VGVhbUdpdGh1YlRlYW1zUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIkwKG0xpc3RUZWFtR2l0aHViVGVhbXNSZXNwb25zZRItCgV0ZWFtcxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5HaXRIdWJUZWFtIkIKF0Fzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSFgoOZ2l0aHViX3RlYW1faWQYAiABKAkiGgoYQXNzaWduR2l0aHViVGVhbVJlc3BvbnNlIkQKGVVuYXNzaWduR2l0aHViVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIWCg5naXRodWJfdGVhbV9pZBgCIAEoCSIcChpVbmFzc2lnbkdpdGh1YlRlYW1SZXNwb25zZSIiCiBHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVxdWVzdCJjCiFHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVzcG9uc2USPgoLc3VnZ2VzdGlvbnMYASADKAsyKS5jYW5vbmljYWwucHJpc20udjEuVGVhbU1hcHBpbmdTdWdnZXN0aW9uIk4KI0Rpc21pc3NUZWFtTWFwcGluZ1N1Z2dlc3Rpb25SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSFgoOZ2l0aHViX3RlYW1faWQYAiABKAkiJgokRGlzbWlzc1RlYW1NYXBwaW5nU3VnZ2VzdGlvblJlc3BvbnNlIkMKFkltcG9ydEppcmFVc2Vyc1JlcXVlc3QSFAoMZmlsZV9jb250ZW50GAEgASgMEhMKC3NvdXJjZV9uYW1lGAIgASgJIl8KF0ltcG9ydEppcmFVc2Vyc1Jlc3BvbnNlEhkKEWlkZW50aXRpZXNfbWFwcGVkGAEgASgFEhcKD3VubWF0Y2hlZF91c2VycxgCIAEoBRIQCgh3YXJuaW5ncxgDIAMoCSISChBFeHBvcnRPcmdSZXF1ZXN0IiYKEUV4cG9ydE9yZ1Jlc3BvbnNlEhEKCWpzb25fZGF0YRgBIAEoDCI2ChBJbXBvcnRPcmdSZXF1ZXN0EhEKCWpzb25fZGF0YRgBIAEoDBIPCgdyZXBsYWNlGAIgASgIIuEBChFJbXBvcnRPcmdSZXNwb25zZRIVCg10ZWFtc19jcmVhdGVkGAEgASgFEhUKDXRlYW1zX3VwZGF0ZWQYAiABKAUSFgoOcGVvcGxlX2NyZWF0ZWQYAyABKAUSFgoOcGVvcGxlX3VwZGF0ZWQYBCABKAUSGgoSaWRlbnRpdGllc19jcmVhdGVkGAUgASgFEh8KF2dpdGh1Yl9tYXBwaW5nc19jcmVhdGVkGAYgASgFEh8KF2dpdGh1Yl9tYXBwaW5nc19za2lwcGVkGAcgASgFEhAKCHdhcm5pbmdzGAggAygJKnYKCFRlYW1UeXBlEhkKFVRFQU1fVFlQRV9VTlNQRUNJRklFRBAAEhEKDVRFQU1fVFlQRV9PUkcQARITCg9URUFNX1RZUEVfR1JPVVAQAhISCg5URUFNX1RZUEVfVEVBTRADEhMKD1RFQU1fVFlQRV9TUVVBRBAEMq0TCgpPcmdTZXJ2aWNlElgKCUxpc3RUZWFtcxIkLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0VGVhbXNSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RUZWFtc1Jlc3BvbnNlElIKB0dldFRlYW0SIi5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbVJlcXVlc3QaIy5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbVJlc3BvbnNlEl4KC0dldFRlYW1UcmVlEiYuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1UcmVlUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRUZWFtVHJlZVJlc3BvbnNlElsKCkNyZWF0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlVGVhbVJlc3BvbnNlElsKClVwZGF0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlVGVhbVJlc3BvbnNlElsKCkRlbGV0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuRGVsZXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuRGVsZXRlVGVhbVJlc3BvbnNlElsKCkxpc3RQZW9wbGUSJS5jYW5vbmljYWwucHJpc20udjEuTGlzdFBlb3BsZVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuTGlzdFBlb3BsZVJlc3BvbnNlEmoKD0ltcG9ydERpcmVjdG9yeRIqLmNhbm9uaWNhbC5wcmlzbS52MS5JbXBvcnREaXJlY3RvcnlSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlc3BvbnNlEmEKDFVwZGF0ZVBlcnNvbhInLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVQZXJzb25SZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlVwZGF0ZVBlcnNvblJlc3BvbnNlEm0KEERlYWN0aXZhdGVQZXJzb24SKy5jYW5vbmljYWwucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlEm0KEFJlYWN0aXZhdGVQZXJzb24SKy5jYW5vbmljYWwucHJpc20udjEuUmVhY3RpdmF0ZVBlcnNvblJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuUmVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlEnMKEkFzc2lnblBlcnNvblRvVGVhbRItLmNhbm9uaWNhbC5wcmlzbS52MS5Bc3NpZ25QZXJzb25Ub1RlYW1SZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLkFzc2lnblBlcnNvblRvVGVhbVJlc3BvbnNlEnkKFFJlbW92ZVBlcnNvbkZyb21UZWFtEi8uY2Fub25pY2FsLnByaXNtLnYxLlJlbW92ZVBlcnNvbkZyb21UZWFtUmVxdWVzdBowLmNhbm9uaWNhbC5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlc3BvbnNlEnkKFExpc3RVbmFzc2lnbmVkUGVvcGxlEi8uY2Fub25pY2FsLnByaXNtLnYxLkxpc3RVbmFzc2lnbmVkUGVvcGxlUmVxdWVzdBowLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0VW5hc3NpZ25lZFBlb3BsZVJlc3BvbnNlEmoKD0ltcG9ydEppcmFVc2VycxIqLmNhbm9uaWNhbC5wcmlzbS52MS5JbXBvcnRKaXJhVXNlcnNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydEppcmFVc2Vyc1Jlc3BvbnNlEmoKD0xpc3RHaXRodWJUZWFtcxIqLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0R2l0aHViVGVhbXNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RHaXRodWJUZWFtc1Jlc3BvbnNlEnYKE0xpc3RUZWFtR2l0aHViVGVhbXMSLi5jYW5vbmljYWwucHJpc20udjEuTGlzdFRlYW1HaXRodWJUZWFtc1JlcXVlc3QaLy5jYW5vbmljYWwucHJpc20udjEuTGlzdFRlYW1HaXRodWJUZWFtc1Jlc3BvbnNlEm0KEEFzc2lnbkdpdGh1YlRlYW0SKy5jYW5vbmljYWwucHJpc20udjEuQXNzaWduR2l0aHViVGVhbVJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuQXNzaWduR2l0aHViVGVhbVJlc3BvbnNlEnMKElVuYXNzaWduR2l0aHViVGVhbRItLmNhbm9uaWNhbC5wcmlzbS52MS5VbmFzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLlVuYXNzaWduR2l0aHViVGVhbVJlc3BvbnNlEogBChlHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zEjQuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1NYXBwaW5nU3VnZ2VzdGlvbnNSZXF1ZXN0GjUuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1NYXBwaW5nU3VnZ2VzdGlvbnNSZXNwb25zZRKRAQocRGlzbWlzc1RlYW1NYXBwaW5nU3VnZ2VzdGlvbhI3LmNhbm9uaWNhbC5wcmlzbS52MS5EaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVxdWVzdBo4LmNhbm9uaWNhbC5wcmlzbS52MS5EaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVzcG9uc2USWAoJRXhwb3J0T3JnEiQuY2Fub25pY2FsLnByaXNtLnYxLkV4cG9ydE9yZ1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0T3JnUmVzcG9uc2USWAoJSW1wb3J0T3JnEiQuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydE9yZ1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0T3JnUmVzcG9uc2ViBnByb3RvMw", [file_canonical_prism_v1_common]);
+export const file_canonical_prism_v1_org: GenFile /*@__PURE__*/ = fileDesc(
+  "ChxjYW5vbmljYWwvcHJpc20vdjEvb3JnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEivwIKBFRlYW0SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIQCghvcmdfbmFtZRgDIAEoCRIbCg5wYXJlbnRfdGVhbV9pZBgEIAEoCUgAiAEBEhQKB2xlYWRfaWQYBSABKAlIAYgBARIUCgxtZW1iZXJfY291bnQYByABKAUSLwoJdGVhbV90eXBlGAggASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlRlYW1UeXBlEhoKEnRvdGFsX21lbWJlcl9jb3VudBgJIAEoBRIqCghjaGlsZHJlbhgKIAMoCzIYLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtEhYKCWxlYWRfbmFtZRgLIAEoCUgCiAEBQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEIMCgpfbGVhZF9uYW1lSgQIBhAHIvABCgZQZXJzb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgVlbWFpbBgDIAEoCUgAiAEBEhIKBWxldmVsGAQgASgJSAGIAQESOAoKaWRlbnRpdGllcxgFIAMoCzIkLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybUlkZW50aXR5Eg4KBmFjdGl2ZRgGIAEoCBIWCgl0ZWFtX25hbWUYByABKAlIAogBARIUCgd0ZWFtX2lkGAggASgJSAOIAQFCCAoGX2VtYWlsQggKBl9sZXZlbEIMCgpfdGVhbV9uYW1lQgoKCF90ZWFtX2lkIooBChBQbGF0Zm9ybUlkZW50aXR5Ei4KCHBsYXRmb3JtGAEgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlBsYXRmb3JtEhAKCHVzZXJuYW1lGAIgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAMgASgJSACIAQFCFAoSX3BsYXRmb3JtX2luc3RhbmNlIoYBChBMaXN0VGVhbXNSZXF1ZXN0EhsKDnBhcmVudF90ZWFtX2lkGAEgASgJSACIAQESNAoJdGVhbV90eXBlGAIgASgOMhwuY2Fub25pY2FsLnByaXNtLnYxLlRlYW1UeXBlSAGIAQFCEQoPX3BhcmVudF90ZWFtX2lkQgwKCl90ZWFtX3R5cGUiPAoRTGlzdFRlYW1zUmVzcG9uc2USJwoFdGVhbXMYASADKAsyGC5jYW5vbmljYWwucHJpc20udjEuVGVhbSIhCg5HZXRUZWFtUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJImYKD0dldFRlYW1SZXNwb25zZRImCgR0ZWFtGAEgASgLMhguY2Fub25pY2FsLnByaXNtLnYxLlRlYW0SKwoHbWVtYmVycxgCIAMoCzIaLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb24iFAoSR2V0VGVhbVRyZWVSZXF1ZXN0Ij4KE0dldFRlYW1UcmVlUmVzcG9uc2USJwoFcm9vdHMYASADKAsyGC5jYW5vbmljYWwucHJpc20udjEuVGVhbSK8AQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIvCgl0ZWFtX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuVGVhbVR5cGUSGwoOcGFyZW50X3RlYW1faWQYAyABKAlIAIgBARIUCgdsZWFkX2lkGAQgASgJSAGIAQESEAoIb3JnX25hbWUYBiABKAlCEQoPX3BhcmVudF90ZWFtX2lkQgoKCF9sZWFkX2lkSgQIBRAGIjwKEkNyZWF0ZVRlYW1SZXNwb25zZRImCgR0ZWFtGAEgASgLMhguY2Fub25pY2FsLnByaXNtLnYxLlRlYW0imAEKEVVwZGF0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhsKDnBhcmVudF90ZWFtX2lkGAMgASgJSAGIAQESFAoHbGVhZF9pZBgEIAEoCUgCiAEBQgcKBV9uYW1lQhEKD19wYXJlbnRfdGVhbV9pZEIKCghfbGVhZF9pZEoECAUQBiI8ChJVcGRhdGVUZWFtUmVzcG9uc2USJgoEdGVhbRgBIAEoCzIYLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtIiQKEURlbGV0ZVRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkiFAoSRGVsZXRlVGVhbVJlc3BvbnNlIpkCChFMaXN0UGVvcGxlUmVxdWVzdBIYCgthY3RpdmVfb25seRgBIAEoCEgAiAEBEhMKBnNlYXJjaBgCIAEoCUgBiAEBEhQKB3RlYW1faWQYAyABKAlIAogBARIwCgZmaWx0ZXIYBCABKA4yIC5jYW5vbmljYWwucHJpc20udjEuUGVyc29uRmlsdGVyEjkKCnBhZ2luYXRpb24YCiABKAsyJS5jYW5vbmljYWwucHJpc20udjEuUGFnaW5hdGlvblJlcXVlc3QSKwoEc29ydBgLIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3J0T3JkZXJCDgoMX2FjdGl2ZV9vbmx5QgkKB19zZWFyY2hCCgoIX3RlYW1faWQifAoSTGlzdFBlb3BsZVJlc3BvbnNlEioKBnBlb3BsZRgBIAMoCzIaLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb24SOgoKcGFnaW5hdGlvbhgCIAEoCzImLmNhbm9uaWNhbC5wcmlzbS52MS5QYWdpbmF0aW9uUmVzcG9uc2UiLgoWSW1wb3J0RGlyZWN0b3J5UmVxdWVzdBIUCgxmaWxlX2NvbnRlbnQYASABKAwixAEKF0ltcG9ydERpcmVjdG9yeVJlc3BvbnNlEhcKD3Blb3BsZV9pbXBvcnRlZBgBIAEoBRIVCg10ZWFtc19jcmVhdGVkGAIgASgFEhkKEWlkZW50aXRpZXNfbWFwcGVkGAMgASgFEhAKCHdhcm5pbmdzGAQgAygJEhYKDnBlb3BsZV91cGRhdGVkGAUgASgFEhoKEnN0YWxlX3Blb3BsZV9jb3VudBgGIAEoBRIYChB1bmFzc2lnbmVkX2NvdW50GAcgASgFIoABChNVcGRhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESEgoFZW1haWwYAyABKAlIAYgBARISCgVsZXZlbBgEIAEoCUgCiAEBQgcKBV9uYW1lQggKBl9lbWFpbEIICgZfbGV2ZWwiQgoUVXBkYXRlUGVyc29uUmVzcG9uc2USKgoGcGVyc29uGAEgASgLMhouY2Fub25pY2FsLnByaXNtLnYxLlBlcnNvbiIsChdEZWFjdGl2YXRlUGVyc29uUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkiGgoYRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlIiwKF1JlYWN0aXZhdGVQZXJzb25SZXF1ZXN0EhEKCXBlcnNvbl9pZBgBIAEoCSIaChhSZWFjdGl2YXRlUGVyc29uUmVzcG9uc2UiPwoZQXNzaWduUGVyc29uVG9UZWFtUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSDwoHdGVhbV9pZBgCIAEoCSIcChpBc3NpZ25QZXJzb25Ub1RlYW1SZXNwb25zZSJBChtSZW1vdmVQZXJzb25Gcm9tVGVhbVJlcXVlc3QSEQoJcGVyc29uX2lkGAEgASgJEg8KB3RlYW1faWQYAiABKAkiHgocUmVtb3ZlUGVyc29uRnJvbVRlYW1SZXNwb25zZSIdChtMaXN0VW5hc3NpZ25lZFBlb3BsZVJlcXVlc3QiSgocTGlzdFVuYXNzaWduZWRQZW9wbGVSZXNwb25zZRIqCgZwZW9wbGUYASADKAsyGi5jYW5vbmljYWwucHJpc20udjEuUGVyc29uIscBCgpHaXRIdWJUZWFtEgoKAmlkGAEgASgJEhEKCXNvdXJjZV9pZBgCIAEoCRISCgpnaXRodWJfb3JnGAMgASgJEhYKDmdpdGh1Yl90ZWFtX2lkGAQgASgDEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRIYCgtkZXNjcmlwdGlvbhgHIAEoCUgAiAEBEhQKDG1lbWJlcl9jb3VudBgIIAEoAxISCgpyZXBvX2NvdW50GAkgASgDQg4KDF9kZXNjcmlwdGlvbiLvAQoVVGVhbU1hcHBpbmdTdWdnZXN0aW9uEhYKDmdpdGh1Yl90ZWFtX2lkGAEgASgJEhgKEGdpdGh1Yl90ZWFtX25hbWUYAiABKAkSEgoKZ2l0aHViX29yZxgDIAEoCRIYChBnaXRodWJfdGVhbV9zbHVnGAQgASgJEhUKDXByaXNtX3RlYW1faWQYBSABKAkSFwoPcHJpc21fdGVhbV9uYW1lGAYgASgJEhUKDW92ZXJsYXBfY291bnQYByABKAMSFwoPZ2l0aHViX2NvdmVyYWdlGAggASgBEhYKDnByaXNtX2NvdmVyYWdlGAkgASgBImAKFkxpc3RHaXRodWJUZWFtc1JlcXVlc3QSEwoGc2VhcmNoGAEgASgJSACIAQESFwoKZ2l0aHViX29yZxgCIAEoCUgBiAEBQgkKB19zZWFyY2hCDQoLX2dpdGh1Yl9vcmciSAoXTGlzdEdpdGh1YlRlYW1zUmVzcG9uc2USLQoFdGVhbXMYASADKAsyHi5jYW5vbmljYWwucHJpc20udjEuR2l0SHViVGVhbSItChpMaXN0VGVhbUdpdGh1YlRlYW1zUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgJIkwKG0xpc3RUZWFtR2l0aHViVGVhbXNSZXNwb25zZRItCgV0ZWFtcxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5HaXRIdWJUZWFtIkIKF0Fzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSFgoOZ2l0aHViX3RlYW1faWQYAiABKAkiGgoYQXNzaWduR2l0aHViVGVhbVJlc3BvbnNlIkQKGVVuYXNzaWduR2l0aHViVGVhbVJlcXVlc3QSDwoHdGVhbV9pZBgBIAEoCRIWCg5naXRodWJfdGVhbV9pZBgCIAEoCSIcChpVbmFzc2lnbkdpdGh1YlRlYW1SZXNwb25zZSIiCiBHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVxdWVzdCJjCiFHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zUmVzcG9uc2USPgoLc3VnZ2VzdGlvbnMYASADKAsyKS5jYW5vbmljYWwucHJpc20udjEuVGVhbU1hcHBpbmdTdWdnZXN0aW9uIk4KI0Rpc21pc3NUZWFtTWFwcGluZ1N1Z2dlc3Rpb25SZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSFgoOZ2l0aHViX3RlYW1faWQYAiABKAkiJgokRGlzbWlzc1RlYW1NYXBwaW5nU3VnZ2VzdGlvblJlc3BvbnNlIkMKFkltcG9ydEppcmFVc2Vyc1JlcXVlc3QSFAoMZmlsZV9jb250ZW50GAEgASgMEhMKC3NvdXJjZV9uYW1lGAIgASgJIl8KF0ltcG9ydEppcmFVc2Vyc1Jlc3BvbnNlEhkKEWlkZW50aXRpZXNfbWFwcGVkGAEgASgFEhcKD3VubWF0Y2hlZF91c2VycxgCIAEoBRIQCgh3YXJuaW5ncxgDIAMoCSISChBFeHBvcnRPcmdSZXF1ZXN0IiYKEUV4cG9ydE9yZ1Jlc3BvbnNlEhEKCWpzb25fZGF0YRgBIAEoDCI2ChBJbXBvcnRPcmdSZXF1ZXN0EhEKCWpzb25fZGF0YRgBIAEoDBIPCgdyZXBsYWNlGAIgASgIIuEBChFJbXBvcnRPcmdSZXNwb25zZRIVCg10ZWFtc19jcmVhdGVkGAEgASgFEhUKDXRlYW1zX3VwZGF0ZWQYAiABKAUSFgoOcGVvcGxlX2NyZWF0ZWQYAyABKAUSFgoOcGVvcGxlX3VwZGF0ZWQYBCABKAUSGgoSaWRlbnRpdGllc19jcmVhdGVkGAUgASgFEh8KF2dpdGh1Yl9tYXBwaW5nc19jcmVhdGVkGAYgASgFEh8KF2dpdGh1Yl9tYXBwaW5nc19za2lwcGVkGAcgASgFEhAKCHdhcm5pbmdzGAggAygJKnYKCFRlYW1UeXBlEhkKFVRFQU1fVFlQRV9VTlNQRUNJRklFRBAAEhEKDVRFQU1fVFlQRV9PUkcQARITCg9URUFNX1RZUEVfR1JPVVAQAhISCg5URUFNX1RZUEVfVEVBTRADEhMKD1RFQU1fVFlQRV9TUVVBRBAEMq0TCgpPcmdTZXJ2aWNlElgKCUxpc3RUZWFtcxIkLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0VGVhbXNSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RUZWFtc1Jlc3BvbnNlElIKB0dldFRlYW0SIi5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbVJlcXVlc3QaIy5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbVJlc3BvbnNlEl4KC0dldFRlYW1UcmVlEiYuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1UcmVlUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRUZWFtVHJlZVJlc3BvbnNlElsKCkNyZWF0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuQ3JlYXRlVGVhbVJlc3BvbnNlElsKClVwZGF0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuVXBkYXRlVGVhbVJlc3BvbnNlElsKCkRlbGV0ZVRlYW0SJS5jYW5vbmljYWwucHJpc20udjEuRGVsZXRlVGVhbVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuRGVsZXRlVGVhbVJlc3BvbnNlElsKCkxpc3RQZW9wbGUSJS5jYW5vbmljYWwucHJpc20udjEuTGlzdFBlb3BsZVJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuTGlzdFBlb3BsZVJlc3BvbnNlEmoKD0ltcG9ydERpcmVjdG9yeRIqLmNhbm9uaWNhbC5wcmlzbS52MS5JbXBvcnREaXJlY3RvcnlSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydERpcmVjdG9yeVJlc3BvbnNlEmEKDFVwZGF0ZVBlcnNvbhInLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVQZXJzb25SZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlVwZGF0ZVBlcnNvblJlc3BvbnNlEm0KEERlYWN0aXZhdGVQZXJzb24SKy5jYW5vbmljYWwucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuRGVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlEm0KEFJlYWN0aXZhdGVQZXJzb24SKy5jYW5vbmljYWwucHJpc20udjEuUmVhY3RpdmF0ZVBlcnNvblJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuUmVhY3RpdmF0ZVBlcnNvblJlc3BvbnNlEnMKEkFzc2lnblBlcnNvblRvVGVhbRItLmNhbm9uaWNhbC5wcmlzbS52MS5Bc3NpZ25QZXJzb25Ub1RlYW1SZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLkFzc2lnblBlcnNvblRvVGVhbVJlc3BvbnNlEnkKFFJlbW92ZVBlcnNvbkZyb21UZWFtEi8uY2Fub25pY2FsLnByaXNtLnYxLlJlbW92ZVBlcnNvbkZyb21UZWFtUmVxdWVzdBowLmNhbm9uaWNhbC5wcmlzbS52MS5SZW1vdmVQZXJzb25Gcm9tVGVhbVJlc3BvbnNlEnkKFExpc3RVbmFzc2lnbmVkUGVvcGxlEi8uY2Fub25pY2FsLnByaXNtLnYxLkxpc3RVbmFzc2lnbmVkUGVvcGxlUmVxdWVzdBowLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0VW5hc3NpZ25lZFBlb3BsZVJlc3BvbnNlEmoKD0ltcG9ydEppcmFVc2VycxIqLmNhbm9uaWNhbC5wcmlzbS52MS5JbXBvcnRKaXJhVXNlcnNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydEppcmFVc2Vyc1Jlc3BvbnNlEmoKD0xpc3RHaXRodWJUZWFtcxIqLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0R2l0aHViVGVhbXNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RHaXRodWJUZWFtc1Jlc3BvbnNlEnYKE0xpc3RUZWFtR2l0aHViVGVhbXMSLi5jYW5vbmljYWwucHJpc20udjEuTGlzdFRlYW1HaXRodWJUZWFtc1JlcXVlc3QaLy5jYW5vbmljYWwucHJpc20udjEuTGlzdFRlYW1HaXRodWJUZWFtc1Jlc3BvbnNlEm0KEEFzc2lnbkdpdGh1YlRlYW0SKy5jYW5vbmljYWwucHJpc20udjEuQXNzaWduR2l0aHViVGVhbVJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuQXNzaWduR2l0aHViVGVhbVJlc3BvbnNlEnMKElVuYXNzaWduR2l0aHViVGVhbRItLmNhbm9uaWNhbC5wcmlzbS52MS5VbmFzc2lnbkdpdGh1YlRlYW1SZXF1ZXN0Gi4uY2Fub25pY2FsLnByaXNtLnYxLlVuYXNzaWduR2l0aHViVGVhbVJlc3BvbnNlEogBChlHZXRUZWFtTWFwcGluZ1N1Z2dlc3Rpb25zEjQuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1NYXBwaW5nU3VnZ2VzdGlvbnNSZXF1ZXN0GjUuY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1NYXBwaW5nU3VnZ2VzdGlvbnNSZXNwb25zZRKRAQocRGlzbWlzc1RlYW1NYXBwaW5nU3VnZ2VzdGlvbhI3LmNhbm9uaWNhbC5wcmlzbS52MS5EaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVxdWVzdBo4LmNhbm9uaWNhbC5wcmlzbS52MS5EaXNtaXNzVGVhbU1hcHBpbmdTdWdnZXN0aW9uUmVzcG9uc2USWAoJRXhwb3J0T3JnEiQuY2Fub25pY2FsLnByaXNtLnYxLkV4cG9ydE9yZ1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0T3JnUmVzcG9uc2USWAoJSW1wb3J0T3JnEiQuY2Fub25pY2FsLnByaXNtLnYxLkltcG9ydE9yZ1JlcXVlc3QaJS5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0T3JnUmVzcG9uc2ViBnByb3RvMw",
+  [file_canonical_prism_v1_common],
+);
 
 /**
  * Team represents a node in the organisational hierarchy.
@@ -91,8 +94,7 @@ export type Team = Message<"canonical.prism.v1.Team"> & {
  * Describes the message canonical.prism.v1.Team.
  * Use `create(TeamSchema)` to create a new message.
  */
-export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 0);
+export const TeamSchema: GenMessage<Team> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 0);
 
 /**
  * Person represents an individual contributor tracked by Prism.
@@ -153,8 +155,7 @@ export type Person = Message<"canonical.prism.v1.Person"> & {
  * Describes the message canonical.prism.v1.Person.
  * Use `create(PersonSchema)` to create a new message.
  */
-export const PersonSchema: GenMessage<Person> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 1);
+export const PersonSchema: GenMessage<Person> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 1);
 
 /**
  * PlatformIdentity links a person to an external platform account.
@@ -188,8 +189,10 @@ export type PlatformIdentity = Message<"canonical.prism.v1.PlatformIdentity"> & 
  * Describes the message canonical.prism.v1.PlatformIdentity.
  * Use `create(PlatformIdentitySchema)` to create a new message.
  */
-export const PlatformIdentitySchema: GenMessage<PlatformIdentity> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 2);
+export const PlatformIdentitySchema: GenMessage<PlatformIdentity> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamsRequest
@@ -214,8 +217,10 @@ export type ListTeamsRequest = Message<"canonical.prism.v1.ListTeamsRequest"> & 
  * Describes the message canonical.prism.v1.ListTeamsRequest.
  * Use `create(ListTeamsRequestSchema)` to create a new message.
  */
-export const ListTeamsRequestSchema: GenMessage<ListTeamsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 3);
+export const ListTeamsRequestSchema: GenMessage<ListTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamsResponse
@@ -231,8 +236,10 @@ export type ListTeamsResponse = Message<"canonical.prism.v1.ListTeamsResponse"> 
  * Describes the message canonical.prism.v1.ListTeamsResponse.
  * Use `create(ListTeamsResponseSchema)` to create a new message.
  */
-export const ListTeamsResponseSchema: GenMessage<ListTeamsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 4);
+export const ListTeamsResponseSchema: GenMessage<ListTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamRequest
@@ -248,8 +255,10 @@ export type GetTeamRequest = Message<"canonical.prism.v1.GetTeamRequest"> & {
  * Describes the message canonical.prism.v1.GetTeamRequest.
  * Use `create(GetTeamRequestSchema)` to create a new message.
  */
-export const GetTeamRequestSchema: GenMessage<GetTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 5);
+export const GetTeamRequestSchema: GenMessage<GetTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamResponse
@@ -272,21 +281,24 @@ export type GetTeamResponse = Message<"canonical.prism.v1.GetTeamResponse"> & {
  * Describes the message canonical.prism.v1.GetTeamResponse.
  * Use `create(GetTeamResponseSchema)` to create a new message.
  */
-export const GetTeamResponseSchema: GenMessage<GetTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 6);
+export const GetTeamResponseSchema: GenMessage<GetTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamTreeRequest
  */
-export type GetTeamTreeRequest = Message<"canonical.prism.v1.GetTeamTreeRequest"> & {
-};
+export type GetTeamTreeRequest = Message<"canonical.prism.v1.GetTeamTreeRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetTeamTreeRequest.
  * Use `create(GetTeamTreeRequestSchema)` to create a new message.
  */
-export const GetTeamTreeRequestSchema: GenMessage<GetTeamTreeRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 7);
+export const GetTeamTreeRequestSchema: GenMessage<GetTeamTreeRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamTreeResponse
@@ -304,8 +316,10 @@ export type GetTeamTreeResponse = Message<"canonical.prism.v1.GetTeamTreeRespons
  * Describes the message canonical.prism.v1.GetTeamTreeResponse.
  * Use `create(GetTeamTreeResponseSchema)` to create a new message.
  */
-export const GetTeamTreeResponseSchema: GenMessage<GetTeamTreeResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 8);
+export const GetTeamTreeResponseSchema: GenMessage<GetTeamTreeResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateTeamRequest
@@ -345,8 +359,10 @@ export type CreateTeamRequest = Message<"canonical.prism.v1.CreateTeamRequest"> 
  * Describes the message canonical.prism.v1.CreateTeamRequest.
  * Use `create(CreateTeamRequestSchema)` to create a new message.
  */
-export const CreateTeamRequestSchema: GenMessage<CreateTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 9);
+export const CreateTeamRequestSchema: GenMessage<CreateTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateTeamResponse
@@ -362,8 +378,10 @@ export type CreateTeamResponse = Message<"canonical.prism.v1.CreateTeamResponse"
  * Describes the message canonical.prism.v1.CreateTeamResponse.
  * Use `create(CreateTeamResponseSchema)` to create a new message.
  */
-export const CreateTeamResponseSchema: GenMessage<CreateTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 10);
+export const CreateTeamResponseSchema: GenMessage<CreateTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateTeamRequest
@@ -394,8 +412,10 @@ export type UpdateTeamRequest = Message<"canonical.prism.v1.UpdateTeamRequest"> 
  * Describes the message canonical.prism.v1.UpdateTeamRequest.
  * Use `create(UpdateTeamRequestSchema)` to create a new message.
  */
-export const UpdateTeamRequestSchema: GenMessage<UpdateTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 11);
+export const UpdateTeamRequestSchema: GenMessage<UpdateTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  11,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateTeamResponse
@@ -411,8 +431,10 @@ export type UpdateTeamResponse = Message<"canonical.prism.v1.UpdateTeamResponse"
  * Describes the message canonical.prism.v1.UpdateTeamResponse.
  * Use `create(UpdateTeamResponseSchema)` to create a new message.
  */
-export const UpdateTeamResponseSchema: GenMessage<UpdateTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 12);
+export const UpdateTeamResponseSchema: GenMessage<UpdateTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteTeamRequest
@@ -428,21 +450,24 @@ export type DeleteTeamRequest = Message<"canonical.prism.v1.DeleteTeamRequest"> 
  * Describes the message canonical.prism.v1.DeleteTeamRequest.
  * Use `create(DeleteTeamRequestSchema)` to create a new message.
  */
-export const DeleteTeamRequestSchema: GenMessage<DeleteTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 13);
+export const DeleteTeamRequestSchema: GenMessage<DeleteTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteTeamResponse
  */
-export type DeleteTeamResponse = Message<"canonical.prism.v1.DeleteTeamResponse"> & {
-};
+export type DeleteTeamResponse = Message<"canonical.prism.v1.DeleteTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.DeleteTeamResponse.
  * Use `create(DeleteTeamResponseSchema)` to create a new message.
  */
-export const DeleteTeamResponseSchema: GenMessage<DeleteTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 14);
+export const DeleteTeamResponseSchema: GenMessage<DeleteTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  14,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListPeopleRequest
@@ -489,8 +514,10 @@ export type ListPeopleRequest = Message<"canonical.prism.v1.ListPeopleRequest"> 
  * Describes the message canonical.prism.v1.ListPeopleRequest.
  * Use `create(ListPeopleRequestSchema)` to create a new message.
  */
-export const ListPeopleRequestSchema: GenMessage<ListPeopleRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 15);
+export const ListPeopleRequestSchema: GenMessage<ListPeopleRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  15,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListPeopleResponse
@@ -511,8 +538,10 @@ export type ListPeopleResponse = Message<"canonical.prism.v1.ListPeopleResponse"
  * Describes the message canonical.prism.v1.ListPeopleResponse.
  * Use `create(ListPeopleResponseSchema)` to create a new message.
  */
-export const ListPeopleResponseSchema: GenMessage<ListPeopleResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 16);
+export const ListPeopleResponseSchema: GenMessage<ListPeopleResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  16,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportDirectoryRequest
@@ -530,8 +559,10 @@ export type ImportDirectoryRequest = Message<"canonical.prism.v1.ImportDirectory
  * Describes the message canonical.prism.v1.ImportDirectoryRequest.
  * Use `create(ImportDirectoryRequestSchema)` to create a new message.
  */
-export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 17);
+export const ImportDirectoryRequestSchema: GenMessage<ImportDirectoryRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  17,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportDirectoryResponse
@@ -581,8 +612,10 @@ export type ImportDirectoryResponse = Message<"canonical.prism.v1.ImportDirector
  * Describes the message canonical.prism.v1.ImportDirectoryResponse.
  * Use `create(ImportDirectoryResponseSchema)` to create a new message.
  */
-export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 18);
+export const ImportDirectoryResponseSchema: GenMessage<ImportDirectoryResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  18,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdatePersonRequest
@@ -613,8 +646,10 @@ export type UpdatePersonRequest = Message<"canonical.prism.v1.UpdatePersonReques
  * Describes the message canonical.prism.v1.UpdatePersonRequest.
  * Use `create(UpdatePersonRequestSchema)` to create a new message.
  */
-export const UpdatePersonRequestSchema: GenMessage<UpdatePersonRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 19);
+export const UpdatePersonRequestSchema: GenMessage<UpdatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  19,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdatePersonResponse
@@ -630,8 +665,10 @@ export type UpdatePersonResponse = Message<"canonical.prism.v1.UpdatePersonRespo
  * Describes the message canonical.prism.v1.UpdatePersonResponse.
  * Use `create(UpdatePersonResponseSchema)` to create a new message.
  */
-export const UpdatePersonResponseSchema: GenMessage<UpdatePersonResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 20);
+export const UpdatePersonResponseSchema: GenMessage<UpdatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  20,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeactivatePersonRequest
@@ -647,21 +684,24 @@ export type DeactivatePersonRequest = Message<"canonical.prism.v1.DeactivatePers
  * Describes the message canonical.prism.v1.DeactivatePersonRequest.
  * Use `create(DeactivatePersonRequestSchema)` to create a new message.
  */
-export const DeactivatePersonRequestSchema: GenMessage<DeactivatePersonRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 21);
+export const DeactivatePersonRequestSchema: GenMessage<DeactivatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  21,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeactivatePersonResponse
  */
-export type DeactivatePersonResponse = Message<"canonical.prism.v1.DeactivatePersonResponse"> & {
-};
+export type DeactivatePersonResponse = Message<"canonical.prism.v1.DeactivatePersonResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.DeactivatePersonResponse.
  * Use `create(DeactivatePersonResponseSchema)` to create a new message.
  */
-export const DeactivatePersonResponseSchema: GenMessage<DeactivatePersonResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 22);
+export const DeactivatePersonResponseSchema: GenMessage<DeactivatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  22,
+);
 
 /**
  * @generated from message canonical.prism.v1.ReactivatePersonRequest
@@ -677,21 +717,24 @@ export type ReactivatePersonRequest = Message<"canonical.prism.v1.ReactivatePers
  * Describes the message canonical.prism.v1.ReactivatePersonRequest.
  * Use `create(ReactivatePersonRequestSchema)` to create a new message.
  */
-export const ReactivatePersonRequestSchema: GenMessage<ReactivatePersonRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 23);
+export const ReactivatePersonRequestSchema: GenMessage<ReactivatePersonRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  23,
+);
 
 /**
  * @generated from message canonical.prism.v1.ReactivatePersonResponse
  */
-export type ReactivatePersonResponse = Message<"canonical.prism.v1.ReactivatePersonResponse"> & {
-};
+export type ReactivatePersonResponse = Message<"canonical.prism.v1.ReactivatePersonResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ReactivatePersonResponse.
  * Use `create(ReactivatePersonResponseSchema)` to create a new message.
  */
-export const ReactivatePersonResponseSchema: GenMessage<ReactivatePersonResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 24);
+export const ReactivatePersonResponseSchema: GenMessage<ReactivatePersonResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  24,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignPersonToTeamRequest
@@ -712,21 +755,24 @@ export type AssignPersonToTeamRequest = Message<"canonical.prism.v1.AssignPerson
  * Describes the message canonical.prism.v1.AssignPersonToTeamRequest.
  * Use `create(AssignPersonToTeamRequestSchema)` to create a new message.
  */
-export const AssignPersonToTeamRequestSchema: GenMessage<AssignPersonToTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 25);
+export const AssignPersonToTeamRequestSchema: GenMessage<AssignPersonToTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  25,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignPersonToTeamResponse
  */
-export type AssignPersonToTeamResponse = Message<"canonical.prism.v1.AssignPersonToTeamResponse"> & {
-};
+export type AssignPersonToTeamResponse = Message<"canonical.prism.v1.AssignPersonToTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.AssignPersonToTeamResponse.
  * Use `create(AssignPersonToTeamResponseSchema)` to create a new message.
  */
-export const AssignPersonToTeamResponseSchema: GenMessage<AssignPersonToTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 26);
+export const AssignPersonToTeamResponseSchema: GenMessage<AssignPersonToTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  26,
+);
 
 /**
  * @generated from message canonical.prism.v1.RemovePersonFromTeamRequest
@@ -747,34 +793,38 @@ export type RemovePersonFromTeamRequest = Message<"canonical.prism.v1.RemovePers
  * Describes the message canonical.prism.v1.RemovePersonFromTeamRequest.
  * Use `create(RemovePersonFromTeamRequestSchema)` to create a new message.
  */
-export const RemovePersonFromTeamRequestSchema: GenMessage<RemovePersonFromTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 27);
+export const RemovePersonFromTeamRequestSchema: GenMessage<RemovePersonFromTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  27,
+);
 
 /**
  * @generated from message canonical.prism.v1.RemovePersonFromTeamResponse
  */
-export type RemovePersonFromTeamResponse = Message<"canonical.prism.v1.RemovePersonFromTeamResponse"> & {
-};
+export type RemovePersonFromTeamResponse = Message<"canonical.prism.v1.RemovePersonFromTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.RemovePersonFromTeamResponse.
  * Use `create(RemovePersonFromTeamResponseSchema)` to create a new message.
  */
-export const RemovePersonFromTeamResponseSchema: GenMessage<RemovePersonFromTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 28);
+export const RemovePersonFromTeamResponseSchema: GenMessage<RemovePersonFromTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  28,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListUnassignedPeopleRequest
  */
-export type ListUnassignedPeopleRequest = Message<"canonical.prism.v1.ListUnassignedPeopleRequest"> & {
-};
+export type ListUnassignedPeopleRequest = Message<"canonical.prism.v1.ListUnassignedPeopleRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListUnassignedPeopleRequest.
  * Use `create(ListUnassignedPeopleRequestSchema)` to create a new message.
  */
-export const ListUnassignedPeopleRequestSchema: GenMessage<ListUnassignedPeopleRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 29);
+export const ListUnassignedPeopleRequestSchema: GenMessage<ListUnassignedPeopleRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  29,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListUnassignedPeopleResponse
@@ -790,8 +840,10 @@ export type ListUnassignedPeopleResponse = Message<"canonical.prism.v1.ListUnass
  * Describes the message canonical.prism.v1.ListUnassignedPeopleResponse.
  * Use `create(ListUnassignedPeopleResponseSchema)` to create a new message.
  */
-export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeopleResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 30);
+export const ListUnassignedPeopleResponseSchema: GenMessage<ListUnassignedPeopleResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  30,
+);
 
 /**
  * GitHubTeam represents a team synced from a GitHub organisation.
@@ -851,8 +903,7 @@ export type GitHubTeam = Message<"canonical.prism.v1.GitHubTeam"> & {
  * Describes the message canonical.prism.v1.GitHubTeam.
  * Use `create(GitHubTeamSchema)` to create a new message.
  */
-export const GitHubTeamSchema: GenMessage<GitHubTeam> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 31);
+export const GitHubTeamSchema: GenMessage<GitHubTeam> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_org, 31);
 
 /**
  * TeamMappingSuggestion is an auto-detected mapping between a GitHub team and a
@@ -917,8 +968,10 @@ export type TeamMappingSuggestion = Message<"canonical.prism.v1.TeamMappingSugge
  * Describes the message canonical.prism.v1.TeamMappingSuggestion.
  * Use `create(TeamMappingSuggestionSchema)` to create a new message.
  */
-export const TeamMappingSuggestionSchema: GenMessage<TeamMappingSuggestion> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 32);
+export const TeamMappingSuggestionSchema: GenMessage<TeamMappingSuggestion> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  32,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListGithubTeamsRequest
@@ -943,8 +996,10 @@ export type ListGithubTeamsRequest = Message<"canonical.prism.v1.ListGithubTeams
  * Describes the message canonical.prism.v1.ListGithubTeamsRequest.
  * Use `create(ListGithubTeamsRequestSchema)` to create a new message.
  */
-export const ListGithubTeamsRequestSchema: GenMessage<ListGithubTeamsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 33);
+export const ListGithubTeamsRequestSchema: GenMessage<ListGithubTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  33,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListGithubTeamsResponse
@@ -960,8 +1015,10 @@ export type ListGithubTeamsResponse = Message<"canonical.prism.v1.ListGithubTeam
  * Describes the message canonical.prism.v1.ListGithubTeamsResponse.
  * Use `create(ListGithubTeamsResponseSchema)` to create a new message.
  */
-export const ListGithubTeamsResponseSchema: GenMessage<ListGithubTeamsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 34);
+export const ListGithubTeamsResponseSchema: GenMessage<ListGithubTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  34,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamGithubTeamsRequest
@@ -977,8 +1034,10 @@ export type ListTeamGithubTeamsRequest = Message<"canonical.prism.v1.ListTeamGit
  * Describes the message canonical.prism.v1.ListTeamGithubTeamsRequest.
  * Use `create(ListTeamGithubTeamsRequestSchema)` to create a new message.
  */
-export const ListTeamGithubTeamsRequestSchema: GenMessage<ListTeamGithubTeamsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 35);
+export const ListTeamGithubTeamsRequestSchema: GenMessage<ListTeamGithubTeamsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  35,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListTeamGithubTeamsResponse
@@ -994,8 +1053,10 @@ export type ListTeamGithubTeamsResponse = Message<"canonical.prism.v1.ListTeamGi
  * Describes the message canonical.prism.v1.ListTeamGithubTeamsResponse.
  * Use `create(ListTeamGithubTeamsResponseSchema)` to create a new message.
  */
-export const ListTeamGithubTeamsResponseSchema: GenMessage<ListTeamGithubTeamsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 36);
+export const ListTeamGithubTeamsResponseSchema: GenMessage<ListTeamGithubTeamsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  36,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignGithubTeamRequest
@@ -1016,21 +1077,24 @@ export type AssignGithubTeamRequest = Message<"canonical.prism.v1.AssignGithubTe
  * Describes the message canonical.prism.v1.AssignGithubTeamRequest.
  * Use `create(AssignGithubTeamRequestSchema)` to create a new message.
  */
-export const AssignGithubTeamRequestSchema: GenMessage<AssignGithubTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 37);
+export const AssignGithubTeamRequestSchema: GenMessage<AssignGithubTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  37,
+);
 
 /**
  * @generated from message canonical.prism.v1.AssignGithubTeamResponse
  */
-export type AssignGithubTeamResponse = Message<"canonical.prism.v1.AssignGithubTeamResponse"> & {
-};
+export type AssignGithubTeamResponse = Message<"canonical.prism.v1.AssignGithubTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.AssignGithubTeamResponse.
  * Use `create(AssignGithubTeamResponseSchema)` to create a new message.
  */
-export const AssignGithubTeamResponseSchema: GenMessage<AssignGithubTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 38);
+export const AssignGithubTeamResponseSchema: GenMessage<AssignGithubTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  38,
+);
 
 /**
  * @generated from message canonical.prism.v1.UnassignGithubTeamRequest
@@ -1051,33 +1115,35 @@ export type UnassignGithubTeamRequest = Message<"canonical.prism.v1.UnassignGith
  * Describes the message canonical.prism.v1.UnassignGithubTeamRequest.
  * Use `create(UnassignGithubTeamRequestSchema)` to create a new message.
  */
-export const UnassignGithubTeamRequestSchema: GenMessage<UnassignGithubTeamRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 39);
+export const UnassignGithubTeamRequestSchema: GenMessage<UnassignGithubTeamRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  39,
+);
 
 /**
  * @generated from message canonical.prism.v1.UnassignGithubTeamResponse
  */
-export type UnassignGithubTeamResponse = Message<"canonical.prism.v1.UnassignGithubTeamResponse"> & {
-};
+export type UnassignGithubTeamResponse = Message<"canonical.prism.v1.UnassignGithubTeamResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.UnassignGithubTeamResponse.
  * Use `create(UnassignGithubTeamResponseSchema)` to create a new message.
  */
-export const UnassignGithubTeamResponseSchema: GenMessage<UnassignGithubTeamResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 40);
+export const UnassignGithubTeamResponseSchema: GenMessage<UnassignGithubTeamResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  40,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamMappingSuggestionsRequest
  */
-export type GetTeamMappingSuggestionsRequest = Message<"canonical.prism.v1.GetTeamMappingSuggestionsRequest"> & {
-};
+export type GetTeamMappingSuggestionsRequest = Message<"canonical.prism.v1.GetTeamMappingSuggestionsRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetTeamMappingSuggestionsRequest.
  * Use `create(GetTeamMappingSuggestionsRequestSchema)` to create a new message.
  */
-export const GetTeamMappingSuggestionsRequestSchema: GenMessage<GetTeamMappingSuggestionsRequest> = /*@__PURE__*/
+export const GetTeamMappingSuggestionsRequestSchema: GenMessage<GetTeamMappingSuggestionsRequest> /*@__PURE__*/ =
   messageDesc(file_canonical_prism_v1_org, 41);
 
 /**
@@ -1094,7 +1160,7 @@ export type GetTeamMappingSuggestionsResponse = Message<"canonical.prism.v1.GetT
  * Describes the message canonical.prism.v1.GetTeamMappingSuggestionsResponse.
  * Use `create(GetTeamMappingSuggestionsResponseSchema)` to create a new message.
  */
-export const GetTeamMappingSuggestionsResponseSchema: GenMessage<GetTeamMappingSuggestionsResponse> = /*@__PURE__*/
+export const GetTeamMappingSuggestionsResponseSchema: GenMessage<GetTeamMappingSuggestionsResponse> /*@__PURE__*/ =
   messageDesc(file_canonical_prism_v1_org, 42);
 
 /**
@@ -1116,20 +1182,20 @@ export type DismissTeamMappingSuggestionRequest = Message<"canonical.prism.v1.Di
  * Describes the message canonical.prism.v1.DismissTeamMappingSuggestionRequest.
  * Use `create(DismissTeamMappingSuggestionRequestSchema)` to create a new message.
  */
-export const DismissTeamMappingSuggestionRequestSchema: GenMessage<DismissTeamMappingSuggestionRequest> = /*@__PURE__*/
+export const DismissTeamMappingSuggestionRequestSchema: GenMessage<DismissTeamMappingSuggestionRequest> /*@__PURE__*/ =
   messageDesc(file_canonical_prism_v1_org, 43);
 
 /**
  * @generated from message canonical.prism.v1.DismissTeamMappingSuggestionResponse
  */
-export type DismissTeamMappingSuggestionResponse = Message<"canonical.prism.v1.DismissTeamMappingSuggestionResponse"> & {
-};
+export type DismissTeamMappingSuggestionResponse =
+  Message<"canonical.prism.v1.DismissTeamMappingSuggestionResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.DismissTeamMappingSuggestionResponse.
  * Use `create(DismissTeamMappingSuggestionResponseSchema)` to create a new message.
  */
-export const DismissTeamMappingSuggestionResponseSchema: GenMessage<DismissTeamMappingSuggestionResponse> = /*@__PURE__*/
+export const DismissTeamMappingSuggestionResponseSchema: GenMessage<DismissTeamMappingSuggestionResponse> /*@__PURE__*/ =
   messageDesc(file_canonical_prism_v1_org, 44);
 
 /**
@@ -1155,8 +1221,10 @@ export type ImportJiraUsersRequest = Message<"canonical.prism.v1.ImportJiraUsers
  * Describes the message canonical.prism.v1.ImportJiraUsersRequest.
  * Use `create(ImportJiraUsersRequestSchema)` to create a new message.
  */
-export const ImportJiraUsersRequestSchema: GenMessage<ImportJiraUsersRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 45);
+export const ImportJiraUsersRequestSchema: GenMessage<ImportJiraUsersRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  45,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportJiraUsersResponse
@@ -1186,21 +1254,24 @@ export type ImportJiraUsersResponse = Message<"canonical.prism.v1.ImportJiraUser
  * Describes the message canonical.prism.v1.ImportJiraUsersResponse.
  * Use `create(ImportJiraUsersResponseSchema)` to create a new message.
  */
-export const ImportJiraUsersResponseSchema: GenMessage<ImportJiraUsersResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 46);
+export const ImportJiraUsersResponseSchema: GenMessage<ImportJiraUsersResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  46,
+);
 
 /**
  * @generated from message canonical.prism.v1.ExportOrgRequest
  */
-export type ExportOrgRequest = Message<"canonical.prism.v1.ExportOrgRequest"> & {
-};
+export type ExportOrgRequest = Message<"canonical.prism.v1.ExportOrgRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ExportOrgRequest.
  * Use `create(ExportOrgRequestSchema)` to create a new message.
  */
-export const ExportOrgRequestSchema: GenMessage<ExportOrgRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 47);
+export const ExportOrgRequestSchema: GenMessage<ExportOrgRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  47,
+);
 
 /**
  * @generated from message canonical.prism.v1.ExportOrgResponse
@@ -1218,8 +1289,10 @@ export type ExportOrgResponse = Message<"canonical.prism.v1.ExportOrgResponse"> 
  * Describes the message canonical.prism.v1.ExportOrgResponse.
  * Use `create(ExportOrgResponseSchema)` to create a new message.
  */
-export const ExportOrgResponseSchema: GenMessage<ExportOrgResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 48);
+export const ExportOrgResponseSchema: GenMessage<ExportOrgResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  48,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportOrgRequest
@@ -1245,8 +1318,10 @@ export type ImportOrgRequest = Message<"canonical.prism.v1.ImportOrgRequest"> & 
  * Describes the message canonical.prism.v1.ImportOrgRequest.
  * Use `create(ImportOrgRequestSchema)` to create a new message.
  */
-export const ImportOrgRequestSchema: GenMessage<ImportOrgRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 49);
+export const ImportOrgRequestSchema: GenMessage<ImportOrgRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  49,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportOrgResponse
@@ -1297,8 +1372,10 @@ export type ImportOrgResponse = Message<"canonical.prism.v1.ImportOrgResponse"> 
  * Describes the message canonical.prism.v1.ImportOrgResponse.
  * Use `create(ImportOrgResponseSchema)` to create a new message.
  */
-export const ImportOrgResponseSchema: GenMessage<ImportOrgResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_org, 50);
+export const ImportOrgResponseSchema: GenMessage<ImportOrgResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_org,
+  50,
+);
 
 /**
  * TeamType classifies teams in the organisational hierarchy from broad (org) to
@@ -1336,8 +1413,7 @@ export enum TeamType {
 /**
  * Describes the enum canonical.prism.v1.TeamType.
  */
-export const TeamTypeSchema: GenEnum<TeamType> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_org, 0);
+export const TeamTypeSchema: GenEnum<TeamType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_org, 0);
 
 /**
  * OrgService manages the organisational hierarchy — teams, people, platform
@@ -1355,7 +1431,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListTeamsRequestSchema;
     output: typeof ListTeamsResponseSchema;
-  },
+  };
   /**
    * GetTeam returns a single team with its members.
    *
@@ -1365,7 +1441,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamRequestSchema;
     output: typeof GetTeamResponseSchema;
-  },
+  };
   /**
    * GetTeamTree returns the full team hierarchy as a forest of roots with nested children.
    *
@@ -1375,7 +1451,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamTreeRequestSchema;
     output: typeof GetTeamTreeResponseSchema;
-  },
+  };
   /**
    * CreateTeam creates a new team in the org hierarchy.
    *
@@ -1385,7 +1461,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof CreateTeamRequestSchema;
     output: typeof CreateTeamResponseSchema;
-  },
+  };
   /**
    * UpdateTeam modifies a team's name, parent, or lead.
    *
@@ -1395,7 +1471,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTeamRequestSchema;
     output: typeof UpdateTeamResponseSchema;
-  },
+  };
   /**
    * DeleteTeam removes a team and unassigns its members.
    *
@@ -1405,7 +1481,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof DeleteTeamRequestSchema;
     output: typeof DeleteTeamResponseSchema;
-  },
+  };
   /**
    * ListPeople returns people with optional search, filtering, pagination, and sorting.
    *
@@ -1415,7 +1491,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListPeopleRequestSchema;
     output: typeof ListPeopleResponseSchema;
-  },
+  };
   /**
    * ImportDirectory imports people, teams, and identities from a CSV directory export.
    *
@@ -1425,7 +1501,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ImportDirectoryRequestSchema;
     output: typeof ImportDirectoryResponseSchema;
-  },
+  };
   /**
    * UpdatePerson modifies a person's name, email, or level.
    *
@@ -1435,7 +1511,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof UpdatePersonRequestSchema;
     output: typeof UpdatePersonResponseSchema;
-  },
+  };
   /**
    * DeactivatePerson marks a person as inactive, excluding them from future metrics.
    *
@@ -1445,7 +1521,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof DeactivatePersonRequestSchema;
     output: typeof DeactivatePersonResponseSchema;
-  },
+  };
   /**
    * ReactivatePerson restores an inactive person.
    *
@@ -1455,7 +1531,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ReactivatePersonRequestSchema;
     output: typeof ReactivatePersonResponseSchema;
-  },
+  };
   /**
    * AssignPersonToTeam assigns a person to a team.
    *
@@ -1465,7 +1541,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof AssignPersonToTeamRequestSchema;
     output: typeof AssignPersonToTeamResponseSchema;
-  },
+  };
   /**
    * RemovePersonFromTeam removes a person from a team.
    *
@@ -1475,7 +1551,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof RemovePersonFromTeamRequestSchema;
     output: typeof RemovePersonFromTeamResponseSchema;
-  },
+  };
   /**
    * ListUnassignedPeople returns all people not assigned to any team.
    *
@@ -1485,7 +1561,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListUnassignedPeopleRequestSchema;
     output: typeof ListUnassignedPeopleResponseSchema;
-  },
+  };
   /**
    * ImportJiraUsers imports Jira user identities from a CSV export and maps them
    * to existing people by name or email.
@@ -1496,7 +1572,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ImportJiraUsersRequestSchema;
     output: typeof ImportJiraUsersResponseSchema;
-  },
+  };
   /**
    * ListGithubTeams returns GitHub teams synced from configured GitHub sources.
    *
@@ -1506,7 +1582,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListGithubTeamsRequestSchema;
     output: typeof ListGithubTeamsResponseSchema;
-  },
+  };
   /**
    * ListTeamGithubTeams returns GitHub teams currently mapped to a Prism team.
    *
@@ -1516,7 +1592,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListTeamGithubTeamsRequestSchema;
     output: typeof ListTeamGithubTeamsResponseSchema;
-  },
+  };
   /**
    * AssignGithubTeam maps a GitHub team to a Prism team for repo-scoped ingestion.
    *
@@ -1526,7 +1602,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof AssignGithubTeamRequestSchema;
     output: typeof AssignGithubTeamResponseSchema;
-  },
+  };
   /**
    * UnassignGithubTeam removes a GitHub team mapping from a Prism team.
    *
@@ -1536,7 +1612,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof UnassignGithubTeamRequestSchema;
     output: typeof UnassignGithubTeamResponseSchema;
-  },
+  };
   /**
    * GetTeamMappingSuggestions returns auto-detected mapping suggestions based on
    * member overlap between GitHub teams and Prism teams.
@@ -1547,7 +1623,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamMappingSuggestionsRequestSchema;
     output: typeof GetTeamMappingSuggestionsResponseSchema;
-  },
+  };
   /**
    * DismissTeamMappingSuggestion hides a mapping suggestion so it is not shown again.
    *
@@ -1557,7 +1633,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof DismissTeamMappingSuggestionRequestSchema;
     output: typeof DismissTeamMappingSuggestionResponseSchema;
-  },
+  };
   /**
    * ExportOrg exports the full organisation structure as a portable JSON document
    * containing teams, people, identities, and GitHub team mappings.
@@ -1568,7 +1644,7 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ExportOrgRequestSchema;
     output: typeof ExportOrgResponseSchema;
-  },
+  };
   /**
    * ImportOrg imports an organisation structure from a previously exported JSON
    * document. Supports merge (default) and replace modes.
@@ -1579,7 +1655,5 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ImportOrgRequestSchema;
     output: typeof ImportOrgResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_org, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_org, 0);

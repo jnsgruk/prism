@@ -7,17 +7,19 @@
 // @generated from file canonical/prism/v1/backup.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/backup.proto.
  */
-export const file_canonical_prism_v1_backup: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jYW5vbmljYWwvcHJpc20vdjEvYmFja3VwLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiQAoTQ3JlYXRlQmFja3VwUmVxdWVzdBIaChJleGNsdWRlX3dvcmtzcGFjZXMYASABKAgSDQoFZm9yY2UYAiABKAgiagoUQ3JlYXRlQmFja3VwUmVzcG9uc2USDwoFY2h1bmsYASABKAxIABI2Cghwcm9ncmVzcxgCIAEoCzIiLmNhbm9uaWNhbC5wcmlzbS52MS5CYWNrdXBQcm9ncmVzc0gAQgkKB3BheWxvYWQitQEKDkJhY2t1cFByb2dyZXNzEg0KBXBoYXNlGAEgASgJSgQIAhADSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQICBAJUg1jdXJyZW50X3RhYmxlUgt0YWJsZXNfZG9uZVIMdGFibGVzX3RvdGFsUg1yb3dzX2V4cG9ydGVkUgpyb3dzX3RvdGFsUhN0YWJsZV9yb3dzX2V4cG9ydGVkUhB0YWJsZV9yb3dzX3RvdGFsIk4KGFVwbG9hZEJhY2t1cENodW5rUmVxdWVzdBIRCgl1cGxvYWRfaWQYASABKAkSDQoFY2h1bmsYAiABKAwSEAoIaXNfZmluYWwYAyABKAgiRgoZVXBsb2FkQmFja3VwQ2h1bmtSZXNwb25zZRIRCgl1cGxvYWRfaWQYASABKAkSFgoOcmVjZWl2ZWRfYnl0ZXMYAiABKAMiKQoUUHJldmlld0JhY2t1cFJlcXVlc3QSEQoJdXBsb2FkX2lkGAEgASgJIqMEChVQcmV2aWV3QmFja3VwUmVzcG9uc2USFgoOc2NoZW1hX3ZlcnNpb24YASABKAUSLwoLZXhwb3J0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wElAKDHRhYmxlX2NvdW50cxgDIAMoCzI6LmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2UuVGFibGVDb3VudHNFbnRyeRIUCgxzb3VyY2VfbmFtZXMYBCADKAkSTQoKd2F0ZXJtYXJrcxgFIAMoCzI5LmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2UuV2F0ZXJtYXJrc0VudHJ5EhwKFHdvcmtzcGFjZV9maWxlX2NvdW50GAYgASgFEh0KFXdvcmtzcGFjZV90b3RhbF9ieXRlcxgHIAEoAxIYChBzZWNyZXRfa2V5X3ZhbGlkGAggASgIEhoKEnNlY3JldF9rZXlfd2FybmluZxgJIAEoCRIWCg5jaGVja3N1bV92YWxpZBgKIAEoCBIYChBjaGVja3N1bV93YXJuaW5nGAsgASgJGjIKEFRhYmxlQ291bnRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ARoxCg9XYXRlcm1hcmtzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIpChRSZXN0b3JlQmFja3VwUmVxdWVzdBIRCgl1cGxvYWRfaWQYASABKAkiiQIKFVJlc3RvcmVCYWNrdXBSZXNwb25zZRIVCg1zZXNzaW9uX3Rva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wElYKD3RhYmxlc19yZXN0b3JlZBgDIAMoCzI9LmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVzcG9uc2UuVGFibGVzUmVzdG9yZWRFbnRyeRIaChJnZW5lcmF0ZWRfcGFzc3dvcmQYBCABKAkaNQoTVGFibGVzUmVzdG9yZWRFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBIhUKE0NhbmNlbEJhY2t1cFJlcXVlc3QiKQoUQ2FuY2VsQmFja3VwUmVzcG9uc2USEQoJY2FuY2VsbGVkGAEgASgIMpUECg1CYWNrdXBTZXJ2aWNlEmMKDENyZWF0ZUJhY2t1cBInLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVCYWNrdXBSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUJhY2t1cFJlc3BvbnNlMAEScAoRVXBsb2FkQmFja3VwQ2h1bmsSLC5jYW5vbmljYWwucHJpc20udjEuVXBsb2FkQmFja3VwQ2h1bmtSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLlVwbG9hZEJhY2t1cENodW5rUmVzcG9uc2USZAoNUHJldmlld0JhY2t1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2USZAoNUmVzdG9yZUJhY2t1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVzcG9uc2USYQoMQ2FuY2VsQmFja3VwEicuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbEJhY2t1cFJlcXVlc3QaKC5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsQmFja3VwUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+export const file_canonical_prism_v1_backup: GenFile /*@__PURE__*/ = fileDesc(
+  "Ch9jYW5vbmljYWwvcHJpc20vdjEvYmFja3VwLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiQAoTQ3JlYXRlQmFja3VwUmVxdWVzdBIaChJleGNsdWRlX3dvcmtzcGFjZXMYASABKAgSDQoFZm9yY2UYAiABKAgiagoUQ3JlYXRlQmFja3VwUmVzcG9uc2USDwoFY2h1bmsYASABKAxIABI2Cghwcm9ncmVzcxgCIAEoCzIiLmNhbm9uaWNhbC5wcmlzbS52MS5CYWNrdXBQcm9ncmVzc0gAQgkKB3BheWxvYWQitQEKDkJhY2t1cFByb2dyZXNzEg0KBXBoYXNlGAEgASgJSgQIAhADSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQICBAJUg1jdXJyZW50X3RhYmxlUgt0YWJsZXNfZG9uZVIMdGFibGVzX3RvdGFsUg1yb3dzX2V4cG9ydGVkUgpyb3dzX3RvdGFsUhN0YWJsZV9yb3dzX2V4cG9ydGVkUhB0YWJsZV9yb3dzX3RvdGFsIk4KGFVwbG9hZEJhY2t1cENodW5rUmVxdWVzdBIRCgl1cGxvYWRfaWQYASABKAkSDQoFY2h1bmsYAiABKAwSEAoIaXNfZmluYWwYAyABKAgiRgoZVXBsb2FkQmFja3VwQ2h1bmtSZXNwb25zZRIRCgl1cGxvYWRfaWQYASABKAkSFgoOcmVjZWl2ZWRfYnl0ZXMYAiABKAMiKQoUUHJldmlld0JhY2t1cFJlcXVlc3QSEQoJdXBsb2FkX2lkGAEgASgJIqMEChVQcmV2aWV3QmFja3VwUmVzcG9uc2USFgoOc2NoZW1hX3ZlcnNpb24YASABKAUSLwoLZXhwb3J0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wElAKDHRhYmxlX2NvdW50cxgDIAMoCzI6LmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2UuVGFibGVDb3VudHNFbnRyeRIUCgxzb3VyY2VfbmFtZXMYBCADKAkSTQoKd2F0ZXJtYXJrcxgFIAMoCzI5LmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2UuV2F0ZXJtYXJrc0VudHJ5EhwKFHdvcmtzcGFjZV9maWxlX2NvdW50GAYgASgFEh0KFXdvcmtzcGFjZV90b3RhbF9ieXRlcxgHIAEoAxIYChBzZWNyZXRfa2V5X3ZhbGlkGAggASgIEhoKEnNlY3JldF9rZXlfd2FybmluZxgJIAEoCRIWCg5jaGVja3N1bV92YWxpZBgKIAEoCBIYChBjaGVja3N1bV93YXJuaW5nGAsgASgJGjIKEFRhYmxlQ291bnRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ARoxCg9XYXRlcm1hcmtzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIpChRSZXN0b3JlQmFja3VwUmVxdWVzdBIRCgl1cGxvYWRfaWQYASABKAkiiQIKFVJlc3RvcmVCYWNrdXBSZXNwb25zZRIVCg1zZXNzaW9uX3Rva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wElYKD3RhYmxlc19yZXN0b3JlZBgDIAMoCzI9LmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVzcG9uc2UuVGFibGVzUmVzdG9yZWRFbnRyeRIaChJnZW5lcmF0ZWRfcGFzc3dvcmQYBCABKAkaNQoTVGFibGVzUmVzdG9yZWRFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBIhUKE0NhbmNlbEJhY2t1cFJlcXVlc3QiKQoUQ2FuY2VsQmFja3VwUmVzcG9uc2USEQoJY2FuY2VsbGVkGAEgASgIMpUECg1CYWNrdXBTZXJ2aWNlEmMKDENyZWF0ZUJhY2t1cBInLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVCYWNrdXBSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUJhY2t1cFJlc3BvbnNlMAEScAoRVXBsb2FkQmFja3VwQ2h1bmsSLC5jYW5vbmljYWwucHJpc20udjEuVXBsb2FkQmFja3VwQ2h1bmtSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLlVwbG9hZEJhY2t1cENodW5rUmVzcG9uc2USZAoNUHJldmlld0JhY2t1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5QcmV2aWV3QmFja3VwUmVzcG9uc2USZAoNUmVzdG9yZUJhY2t1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5SZXN0b3JlQmFja3VwUmVzcG9uc2USYQoMQ2FuY2VsQmFja3VwEicuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbEJhY2t1cFJlcXVlc3QaKC5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsQmFja3VwUmVzcG9uc2ViBnByb3RvMw",
+  [file_google_protobuf_timestamp],
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateBackupRequest
@@ -44,8 +46,10 @@ export type CreateBackupRequest = Message<"canonical.prism.v1.CreateBackupReques
  * Describes the message canonical.prism.v1.CreateBackupRequest.
  * Use `create(CreateBackupRequestSchema)` to create a new message.
  */
-export const CreateBackupRequestSchema: GenMessage<CreateBackupRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 0);
+export const CreateBackupRequestSchema: GenMessage<CreateBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  0,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateBackupResponse
@@ -54,31 +58,36 @@ export type CreateBackupResponse = Message<"canonical.prism.v1.CreateBackupRespo
   /**
    * @generated from oneof canonical.prism.v1.CreateBackupResponse.payload
    */
-  payload: {
-    /**
-     * Chunk of the backup archive.
-     *
-     * @generated from field: bytes chunk = 1;
-     */
-    value: Uint8Array;
-    case: "chunk";
-  } | {
-    /**
-     * Progress update during backup generation.
-     *
-     * @generated from field: canonical.prism.v1.BackupProgress progress = 2;
-     */
-    value: BackupProgress;
-    case: "progress";
-  } | { case: undefined; value?: undefined };
+  payload:
+    | {
+        /**
+         * Chunk of the backup archive.
+         *
+         * @generated from field: bytes chunk = 1;
+         */
+        value: Uint8Array;
+        case: "chunk";
+      }
+    | {
+        /**
+         * Progress update during backup generation.
+         *
+         * @generated from field: canonical.prism.v1.BackupProgress progress = 2;
+         */
+        value: BackupProgress;
+        case: "progress";
+      }
+    | { case: undefined; value?: undefined };
 };
 
 /**
  * Describes the message canonical.prism.v1.CreateBackupResponse.
  * Use `create(CreateBackupResponseSchema)` to create a new message.
  */
-export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 1);
+export const CreateBackupResponseSchema: GenMessage<CreateBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.BackupProgress
@@ -96,8 +105,10 @@ export type BackupProgress = Message<"canonical.prism.v1.BackupProgress"> & {
  * Describes the message canonical.prism.v1.BackupProgress.
  * Use `create(BackupProgressSchema)` to create a new message.
  */
-export const BackupProgressSchema: GenMessage<BackupProgress> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 2);
+export const BackupProgressSchema: GenMessage<BackupProgress> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.UploadBackupChunkRequest
@@ -130,8 +141,10 @@ export type UploadBackupChunkRequest = Message<"canonical.prism.v1.UploadBackupC
  * Describes the message canonical.prism.v1.UploadBackupChunkRequest.
  * Use `create(UploadBackupChunkRequestSchema)` to create a new message.
  */
-export const UploadBackupChunkRequestSchema: GenMessage<UploadBackupChunkRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 3);
+export const UploadBackupChunkRequestSchema: GenMessage<UploadBackupChunkRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.UploadBackupChunkResponse
@@ -157,8 +170,10 @@ export type UploadBackupChunkResponse = Message<"canonical.prism.v1.UploadBackup
  * Describes the message canonical.prism.v1.UploadBackupChunkResponse.
  * Use `create(UploadBackupChunkResponseSchema)` to create a new message.
  */
-export const UploadBackupChunkResponseSchema: GenMessage<UploadBackupChunkResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 4);
+export const UploadBackupChunkResponseSchema: GenMessage<UploadBackupChunkResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.PreviewBackupRequest
@@ -176,8 +191,10 @@ export type PreviewBackupRequest = Message<"canonical.prism.v1.PreviewBackupRequ
  * Describes the message canonical.prism.v1.PreviewBackupRequest.
  * Use `create(PreviewBackupRequestSchema)` to create a new message.
  */
-export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 5);
+export const PreviewBackupRequestSchema: GenMessage<PreviewBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.PreviewBackupResponse
@@ -265,8 +282,10 @@ export type PreviewBackupResponse = Message<"canonical.prism.v1.PreviewBackupRes
  * Describes the message canonical.prism.v1.PreviewBackupResponse.
  * Use `create(PreviewBackupResponseSchema)` to create a new message.
  */
-export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 6);
+export const PreviewBackupResponseSchema: GenMessage<PreviewBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.RestoreBackupRequest
@@ -284,8 +303,10 @@ export type RestoreBackupRequest = Message<"canonical.prism.v1.RestoreBackupRequ
  * Describes the message canonical.prism.v1.RestoreBackupRequest.
  * Use `create(RestoreBackupRequestSchema)` to create a new message.
  */
-export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 7);
+export const RestoreBackupRequestSchema: GenMessage<RestoreBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.RestoreBackupResponse
@@ -322,21 +343,24 @@ export type RestoreBackupResponse = Message<"canonical.prism.v1.RestoreBackupRes
  * Describes the message canonical.prism.v1.RestoreBackupResponse.
  * Use `create(RestoreBackupResponseSchema)` to create a new message.
  */
-export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 8);
+export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelBackupRequest
  */
-export type CancelBackupRequest = Message<"canonical.prism.v1.CancelBackupRequest"> & {
-};
+export type CancelBackupRequest = Message<"canonical.prism.v1.CancelBackupRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.CancelBackupRequest.
  * Use `create(CancelBackupRequestSchema)` to create a new message.
  */
-export const CancelBackupRequestSchema: GenMessage<CancelBackupRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 9);
+export const CancelBackupRequestSchema: GenMessage<CancelBackupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelBackupResponse
@@ -354,8 +378,10 @@ export type CancelBackupResponse = Message<"canonical.prism.v1.CancelBackupRespo
  * Describes the message canonical.prism.v1.CancelBackupResponse.
  * Use `create(CancelBackupResponseSchema)` to create a new message.
  */
-export const CancelBackupResponseSchema: GenMessage<CancelBackupResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_backup, 10);
+export const CancelBackupResponseSchema: GenMessage<CancelBackupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_backup,
+  10,
+);
 
 /**
  * BackupService provides backup export, preview, and restore operations.
@@ -373,7 +399,7 @@ export const BackupService: GenService<{
     methodKind: "server_streaming";
     input: typeof CreateBackupRequestSchema;
     output: typeof CreateBackupResponseSchema;
-  },
+  };
   /**
    * UploadBackupChunk uploads a single chunk of a backup archive. The first
    * chunk (with empty upload_id) creates a new upload and returns the
@@ -387,7 +413,7 @@ export const BackupService: GenService<{
     methodKind: "unary";
     input: typeof UploadBackupChunkRequestSchema;
     output: typeof UploadBackupChunkResponseSchema;
-  },
+  };
   /**
    * PreviewBackup inspects an already-uploaded backup archive and returns its
    * metadata without applying any changes. Open on uninitialised instances,
@@ -399,7 +425,7 @@ export const BackupService: GenService<{
     methodKind: "unary";
     input: typeof PreviewBackupRequestSchema;
     output: typeof PreviewBackupResponseSchema;
-  },
+  };
   /**
    * RestoreBackup applies an already-uploaded backup archive, replacing all
    * data. Returns a new session token for the restored admin user. Open on
@@ -411,7 +437,7 @@ export const BackupService: GenService<{
     methodKind: "unary";
     input: typeof RestoreBackupRequestSchema;
     output: typeof RestoreBackupResponseSchema;
-  },
+  };
   /**
    * CancelBackup cancels a running backup generation. Returns whether a
    * backup was actually cancelled. Requires admin authentication.
@@ -422,7 +448,5 @@ export const BackupService: GenService<{
     methodKind: "unary";
     input: typeof CancelBackupRequestSchema;
     output: typeof CancelBackupResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_backup, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_backup, 0);

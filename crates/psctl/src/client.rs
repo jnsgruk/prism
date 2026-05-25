@@ -64,12 +64,30 @@ pub fn connect(server_url: &str, token: Option<&String>) -> anyhow::Result<Clien
 
     let token = token.cloned();
     Ok(Clients {
-        backup: BackupServiceClient::with_origin(make_authed(grpc_web.clone(), token.as_ref()), origin.clone()),
-        config: ConfigServiceClient::with_origin(make_authed(grpc_web.clone(), token.as_ref()), origin.clone()),
-        handlers: HandlersServiceClient::with_origin(make_authed(grpc_web.clone(), token.as_ref()), origin.clone()),
-        metrics: MetricsServiceClient::with_origin(make_authed(grpc_web.clone(), token.as_ref()), origin.clone()),
-        org: OrgServiceClient::with_origin(make_authed(grpc_web.clone(), token.as_ref()), origin.clone()),
-        reasoning: ReasoningServiceClient::with_origin(make_authed(grpc_web, token.as_ref()), origin),
+        backup: BackupServiceClient::with_origin(
+            make_authed(grpc_web.clone(), token.as_ref()),
+            origin.clone(),
+        ),
+        config: ConfigServiceClient::with_origin(
+            make_authed(grpc_web.clone(), token.as_ref()),
+            origin.clone(),
+        ),
+        handlers: HandlersServiceClient::with_origin(
+            make_authed(grpc_web.clone(), token.as_ref()),
+            origin.clone(),
+        ),
+        metrics: MetricsServiceClient::with_origin(
+            make_authed(grpc_web.clone(), token.as_ref()),
+            origin.clone(),
+        ),
+        org: OrgServiceClient::with_origin(
+            make_authed(grpc_web.clone(), token.as_ref()),
+            origin.clone(),
+        ),
+        reasoning: ReasoningServiceClient::with_origin(
+            make_authed(grpc_web, token.as_ref()),
+            origin,
+        ),
     })
 }
 
@@ -92,10 +110,7 @@ pub struct AuthService<S> {
 
 impl<S, ReqBody> Service<Request<ReqBody>> for AuthService<S>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResponseBody>>
-        + Clone
-        + Send
-        + 'static,
+    S: Service<Request<ReqBody>, Response = Response<ResponseBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
     S::Error: Send + 'static,
     ReqBody: Send + 'static,

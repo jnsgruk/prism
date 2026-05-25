@@ -6,17 +6,20 @@
 // @generated from file canonical/prism/v1/insights.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+
 import type { InsightPeriod } from "./common_pb";
 import { file_canonical_prism_v1_common } from "./common_pb";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/insights.proto.
  */
-export const file_canonical_prism_v1_insights: GenFile = /*@__PURE__*/
-  fileDesc("CiFjYW5vbmljYWwvcHJpc20vdjEvaW5zaWdodHMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKEAQoSRW5yaWNobWVudENvdmVyYWdlEhsKE3RvdGFsX2NvbnRyaWJ1dGlvbnMYASABKAUSHgoWZW5yaWNoZWRfY29udHJpYnV0aW9ucxgCIAEoBRIxCgdieV90eXBlGAMgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLlR5cGVDb3ZlcmFnZSJLCgxUeXBlQ292ZXJhZ2USFwoPZW5yaWNobWVudF90eXBlGAEgASgJEhAKCGVsaWdpYmxlGAIgASgFEhAKCGVucmljaGVkGAMgASgFIqsCChRSZXZpZXdRdWFsaXR5U3VtbWFyeRIRCglhdmdfZGVwdGgYASABKAESGgoSZGVwdGhfZGlzdHJpYnV0aW9uGAIgAygFEhUKDXRvdGFsX3Jldmlld3MYAyABKAUSGAoQcnViYmVyX3N0YW1wX3BjdBgEIAEoARIXCg9kZWVwX3Jldmlld19wY3QYBSABKAESGgoSY29uc3RydWN0aXZlX2NvdW50GAYgASgFEhUKDW5ldXRyYWxfY291bnQYByABKAUSFgoOY3JpdGljYWxfY291bnQYCCABKAUSFQoNaG9zdGlsZV9jb3VudBgJIAEoBRI4Cg10b3BfcmV2aWV3ZXJzGAogAygLMiEuY2Fub25pY2FsLnByaXNtLnYxLlJldmlld2VyRGVwdGgiYAoNUmV2aWV3ZXJEZXB0aBIRCglwZXJzb25faWQYASABKAkSEwoLcGVyc29uX25hbWUYAiABKAkSFAoMcmV2aWV3X2NvdW50GAMgASgFEhEKCWF2Z19kZXB0aBgEIAEoASJ2ChNTaWduaWZpY2FuY2VTdW1tYXJ5EhkKEXNpZ25pZmljYW50X2NvdW50GAEgASgFEhUKDW5vdGFibGVfY291bnQYAiABKAUSFQoNcm91dGluZV9jb3VudBgDIAEoBRIWCg5hdmdfY29uZmlkZW5jZRgEIAEoASJsChRUb3BpY0NhdGVnb3J5U3VtbWFyeRI6CgpjYXRlZ29yaWVzGAEgAygLMiYuY2Fub25pY2FsLnByaXNtLnYxLlRvcGljQ2F0ZWdvcnlDb3VudBIYChB0b3RhbF9jbGFzc2lmaWVkGAIgASgFIjUKElRvcGljQ2F0ZWdvcnlDb3VudBIQCghjYXRlZ29yeRgBIAEoCRINCgVjb3VudBgCIAEoBSLjAQoTTm90YWJsZUNvbnRyaWJ1dGlvbhIXCg9jb250cmlidXRpb25faWQYASABKAkSDQoFdGl0bGUYAiABKAkSCwoDdXJsGAMgASgJEhMKC3BlcnNvbl9uYW1lGAQgASgJEhAKCHBsYXRmb3JtGAUgASgJEhkKEWNvbnRyaWJ1dGlvbl90eXBlGAYgASgJEhcKD2VucmljaG1lbnRfdHlwZRgHIAEoCRIVCg12YWx1ZV9zdW1tYXJ5GAggASgJEhEKCXJhdGlvbmFsZRgJIAEoCRISCgpjb25maWRlbmNlGAogASgBIsgBChNEZXB0aEJ5U2lnbmlmaWNhbmNlEh0KFWF2Z19kZXB0aF9zaWduaWZpY2FudBgBIAEoARIZChFhdmdfZGVwdGhfbm90YWJsZRgCIAEoARIZChFhdmdfZGVwdGhfcm91dGluZRgDIAEoARIgChhzaWduaWZpY2FudF9yZXZpZXdfY291bnQYBCABKAUSHAoUbm90YWJsZV9yZXZpZXdfY291bnQYBSABKAUSHAoUcm91dGluZV9yZXZpZXdfY291bnQYBiABKAUiuQEKDEluc2lnaHRUcmVuZBIUCgxoYXNfcHJldmlvdXMYASABKAgSFwoPYXZnX2RlcHRoX2RlbHRhGAIgASgBEh4KFnJ1YmJlcl9zdGFtcF9wY3RfZGVsdGEYAyABKAESHQoVZGVlcF9yZXZpZXdfcGN0X2RlbHRhGAQgASgBEhoKEnJldmlld19jb3VudF9kZWx0YRgFIAEoBRIfChdzaWduaWZpY2FudF9jb3VudF9kZWx0YRgGIAEoBSJ5ChZHZXRUZWFtSW5zaWdodHNSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSMQoGcGVyaW9kGAIgASgOMiEuY2Fub25pY2FsLnByaXNtLnYxLkluc2lnaHRQZXJpb2QSGwoTaW5jbHVkZV9kZXNjZW5kYW50cxgDIAEoCCJNChdHZXRUZWFtSW5zaWdodHNSZXNwb25zZRIyCghpbnNpZ2h0cxgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtSW5zaWdodHMiyQMKDFRlYW1JbnNpZ2h0cxI4Cghjb3ZlcmFnZRgBIAEoCzImLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50Q292ZXJhZ2USQAoOcmV2aWV3X3F1YWxpdHkYAiABKAsyKC5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3UXVhbGl0eVN1bW1hcnkSQAoPcHJfc2lnbmlmaWNhbmNlGAMgASgLMicuY2Fub25pY2FsLnByaXNtLnYxLlNpZ25pZmljYW5jZVN1bW1hcnkSQgoQZGlzY291cnNlX3RvcGljcxgEIAEoCzIoLmNhbm9uaWNhbC5wcmlzbS52MS5Ub3BpY0NhdGVnb3J5U3VtbWFyeRI+Cg1ub3RhYmxlX2l0ZW1zGAUgAygLMicuY2Fub25pY2FsLnByaXNtLnYxLk5vdGFibGVDb250cmlidXRpb24SRgoVZGVwdGhfYnlfc2lnbmlmaWNhbmNlGAYgASgLMicuY2Fub25pY2FsLnByaXNtLnYxLkRlcHRoQnlTaWduaWZpY2FuY2USLwoFdHJlbmQYByABKAsyIC5jYW5vbmljYWwucHJpc20udjEuSW5zaWdodFRyZW5kImAKGEdldFBlcnNvbkluc2lnaHRzUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSMQoGcGVyaW9kGAIgASgOMiEuY2Fub25pY2FsLnByaXNtLnYxLkluc2lnaHRQZXJpb2QiUQoZR2V0UGVyc29uSW5zaWdodHNSZXNwb25zZRI0CghpbnNpZ2h0cxgBIAEoCzIiLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb25JbnNpZ2h0cyKMAwoOUGVyc29uSW5zaWdodHMSOAoIY292ZXJhZ2UYASABKAsyJi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudENvdmVyYWdlEj0KEHJldmlld2VyX3Byb2ZpbGUYAiABKAsyIy5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3ZXJQcm9maWxlEkQKEHJldmlld3NfcmVjZWl2ZWQYAyABKAsyKi5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3c1JlY2VpdmVkU3VtbWFyeRI6Cglwcl9pbXBhY3QYBCABKAsyJy5jYW5vbmljYWwucHJpc20udjEuU2lnbmlmaWNhbmNlU3VtbWFyeRJCChBkaXNjb3Vyc2VfdG9waWNzGAUgASgLMiguY2Fub25pY2FsLnByaXNtLnYxLlRvcGljQ2F0ZWdvcnlTdW1tYXJ5EjsKCmhpZ2hsaWdodHMYBiADKAsyJy5jYW5vbmljYWwucHJpc20udjEuTm90YWJsZUNvbnRyaWJ1dGlvbiLCAQoPUmV2aWV3ZXJQcm9maWxlEhEKCWF2Z19kZXB0aBgBIAEoARIaChJkZXB0aF9kaXN0cmlidXRpb24YAiADKAUSGwoTdG90YWxfcmV2aWV3c19naXZlbhgDIAEoBRIYChBydWJiZXJfc3RhbXBfcGN0GAQgASgBEhoKEmNvbnN0cnVjdGl2ZV9jb3VudBgFIAEoBRIVCg1uZXV0cmFsX2NvdW50GAYgASgFEhYKDmNyaXRpY2FsX2NvdW50GAcgASgFIm0KFlJldmlld3NSZWNlaXZlZFN1bW1hcnkSGgoSYXZnX2RlcHRoX3JlY2VpdmVkGAEgASgBEh4KFnRvdGFsX3Jldmlld3NfcmVjZWl2ZWQYAiABKAUSFwoPZGVlcF9yZXZpZXdfcGN0GAMgASgBMu8BCg9JbnNpZ2h0c1NlcnZpY2USagoPR2V0VGVhbUluc2lnaHRzEiouY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1JbnNpZ2h0c1JlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbUluc2lnaHRzUmVzcG9uc2UScAoRR2V0UGVyc29uSW5zaWdodHMSLC5jYW5vbmljYWwucHJpc20udjEuR2V0UGVyc29uSW5zaWdodHNSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLkdldFBlcnNvbkluc2lnaHRzUmVzcG9uc2ViBnByb3RvMw", [file_canonical_prism_v1_common]);
+export const file_canonical_prism_v1_insights: GenFile /*@__PURE__*/ = fileDesc(
+  "CiFjYW5vbmljYWwvcHJpc20vdjEvaW5zaWdodHMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKEAQoSRW5yaWNobWVudENvdmVyYWdlEhsKE3RvdGFsX2NvbnRyaWJ1dGlvbnMYASABKAUSHgoWZW5yaWNoZWRfY29udHJpYnV0aW9ucxgCIAEoBRIxCgdieV90eXBlGAMgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLlR5cGVDb3ZlcmFnZSJLCgxUeXBlQ292ZXJhZ2USFwoPZW5yaWNobWVudF90eXBlGAEgASgJEhAKCGVsaWdpYmxlGAIgASgFEhAKCGVucmljaGVkGAMgASgFIqsCChRSZXZpZXdRdWFsaXR5U3VtbWFyeRIRCglhdmdfZGVwdGgYASABKAESGgoSZGVwdGhfZGlzdHJpYnV0aW9uGAIgAygFEhUKDXRvdGFsX3Jldmlld3MYAyABKAUSGAoQcnViYmVyX3N0YW1wX3BjdBgEIAEoARIXCg9kZWVwX3Jldmlld19wY3QYBSABKAESGgoSY29uc3RydWN0aXZlX2NvdW50GAYgASgFEhUKDW5ldXRyYWxfY291bnQYByABKAUSFgoOY3JpdGljYWxfY291bnQYCCABKAUSFQoNaG9zdGlsZV9jb3VudBgJIAEoBRI4Cg10b3BfcmV2aWV3ZXJzGAogAygLMiEuY2Fub25pY2FsLnByaXNtLnYxLlJldmlld2VyRGVwdGgiYAoNUmV2aWV3ZXJEZXB0aBIRCglwZXJzb25faWQYASABKAkSEwoLcGVyc29uX25hbWUYAiABKAkSFAoMcmV2aWV3X2NvdW50GAMgASgFEhEKCWF2Z19kZXB0aBgEIAEoASJ2ChNTaWduaWZpY2FuY2VTdW1tYXJ5EhkKEXNpZ25pZmljYW50X2NvdW50GAEgASgFEhUKDW5vdGFibGVfY291bnQYAiABKAUSFQoNcm91dGluZV9jb3VudBgDIAEoBRIWCg5hdmdfY29uZmlkZW5jZRgEIAEoASJsChRUb3BpY0NhdGVnb3J5U3VtbWFyeRI6CgpjYXRlZ29yaWVzGAEgAygLMiYuY2Fub25pY2FsLnByaXNtLnYxLlRvcGljQ2F0ZWdvcnlDb3VudBIYChB0b3RhbF9jbGFzc2lmaWVkGAIgASgFIjUKElRvcGljQ2F0ZWdvcnlDb3VudBIQCghjYXRlZ29yeRgBIAEoCRINCgVjb3VudBgCIAEoBSLjAQoTTm90YWJsZUNvbnRyaWJ1dGlvbhIXCg9jb250cmlidXRpb25faWQYASABKAkSDQoFdGl0bGUYAiABKAkSCwoDdXJsGAMgASgJEhMKC3BlcnNvbl9uYW1lGAQgASgJEhAKCHBsYXRmb3JtGAUgASgJEhkKEWNvbnRyaWJ1dGlvbl90eXBlGAYgASgJEhcKD2VucmljaG1lbnRfdHlwZRgHIAEoCRIVCg12YWx1ZV9zdW1tYXJ5GAggASgJEhEKCXJhdGlvbmFsZRgJIAEoCRISCgpjb25maWRlbmNlGAogASgBIsgBChNEZXB0aEJ5U2lnbmlmaWNhbmNlEh0KFWF2Z19kZXB0aF9zaWduaWZpY2FudBgBIAEoARIZChFhdmdfZGVwdGhfbm90YWJsZRgCIAEoARIZChFhdmdfZGVwdGhfcm91dGluZRgDIAEoARIgChhzaWduaWZpY2FudF9yZXZpZXdfY291bnQYBCABKAUSHAoUbm90YWJsZV9yZXZpZXdfY291bnQYBSABKAUSHAoUcm91dGluZV9yZXZpZXdfY291bnQYBiABKAUiuQEKDEluc2lnaHRUcmVuZBIUCgxoYXNfcHJldmlvdXMYASABKAgSFwoPYXZnX2RlcHRoX2RlbHRhGAIgASgBEh4KFnJ1YmJlcl9zdGFtcF9wY3RfZGVsdGEYAyABKAESHQoVZGVlcF9yZXZpZXdfcGN0X2RlbHRhGAQgASgBEhoKEnJldmlld19jb3VudF9kZWx0YRgFIAEoBRIfChdzaWduaWZpY2FudF9jb3VudF9kZWx0YRgGIAEoBSJ5ChZHZXRUZWFtSW5zaWdodHNSZXF1ZXN0Eg8KB3RlYW1faWQYASABKAkSMQoGcGVyaW9kGAIgASgOMiEuY2Fub25pY2FsLnByaXNtLnYxLkluc2lnaHRQZXJpb2QSGwoTaW5jbHVkZV9kZXNjZW5kYW50cxgDIAEoCCJNChdHZXRUZWFtSW5zaWdodHNSZXNwb25zZRIyCghpbnNpZ2h0cxgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5UZWFtSW5zaWdodHMiyQMKDFRlYW1JbnNpZ2h0cxI4Cghjb3ZlcmFnZRgBIAEoCzImLmNhbm9uaWNhbC5wcmlzbS52MS5FbnJpY2htZW50Q292ZXJhZ2USQAoOcmV2aWV3X3F1YWxpdHkYAiABKAsyKC5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3UXVhbGl0eVN1bW1hcnkSQAoPcHJfc2lnbmlmaWNhbmNlGAMgASgLMicuY2Fub25pY2FsLnByaXNtLnYxLlNpZ25pZmljYW5jZVN1bW1hcnkSQgoQZGlzY291cnNlX3RvcGljcxgEIAEoCzIoLmNhbm9uaWNhbC5wcmlzbS52MS5Ub3BpY0NhdGVnb3J5U3VtbWFyeRI+Cg1ub3RhYmxlX2l0ZW1zGAUgAygLMicuY2Fub25pY2FsLnByaXNtLnYxLk5vdGFibGVDb250cmlidXRpb24SRgoVZGVwdGhfYnlfc2lnbmlmaWNhbmNlGAYgASgLMicuY2Fub25pY2FsLnByaXNtLnYxLkRlcHRoQnlTaWduaWZpY2FuY2USLwoFdHJlbmQYByABKAsyIC5jYW5vbmljYWwucHJpc20udjEuSW5zaWdodFRyZW5kImAKGEdldFBlcnNvbkluc2lnaHRzUmVxdWVzdBIRCglwZXJzb25faWQYASABKAkSMQoGcGVyaW9kGAIgASgOMiEuY2Fub25pY2FsLnByaXNtLnYxLkluc2lnaHRQZXJpb2QiUQoZR2V0UGVyc29uSW5zaWdodHNSZXNwb25zZRI0CghpbnNpZ2h0cxgBIAEoCzIiLmNhbm9uaWNhbC5wcmlzbS52MS5QZXJzb25JbnNpZ2h0cyKMAwoOUGVyc29uSW5zaWdodHMSOAoIY292ZXJhZ2UYASABKAsyJi5jYW5vbmljYWwucHJpc20udjEuRW5yaWNobWVudENvdmVyYWdlEj0KEHJldmlld2VyX3Byb2ZpbGUYAiABKAsyIy5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3ZXJQcm9maWxlEkQKEHJldmlld3NfcmVjZWl2ZWQYAyABKAsyKi5jYW5vbmljYWwucHJpc20udjEuUmV2aWV3c1JlY2VpdmVkU3VtbWFyeRI6Cglwcl9pbXBhY3QYBCABKAsyJy5jYW5vbmljYWwucHJpc20udjEuU2lnbmlmaWNhbmNlU3VtbWFyeRJCChBkaXNjb3Vyc2VfdG9waWNzGAUgASgLMiguY2Fub25pY2FsLnByaXNtLnYxLlRvcGljQ2F0ZWdvcnlTdW1tYXJ5EjsKCmhpZ2hsaWdodHMYBiADKAsyJy5jYW5vbmljYWwucHJpc20udjEuTm90YWJsZUNvbnRyaWJ1dGlvbiLCAQoPUmV2aWV3ZXJQcm9maWxlEhEKCWF2Z19kZXB0aBgBIAEoARIaChJkZXB0aF9kaXN0cmlidXRpb24YAiADKAUSGwoTdG90YWxfcmV2aWV3c19naXZlbhgDIAEoBRIYChBydWJiZXJfc3RhbXBfcGN0GAQgASgBEhoKEmNvbnN0cnVjdGl2ZV9jb3VudBgFIAEoBRIVCg1uZXV0cmFsX2NvdW50GAYgASgFEhYKDmNyaXRpY2FsX2NvdW50GAcgASgFIm0KFlJldmlld3NSZWNlaXZlZFN1bW1hcnkSGgoSYXZnX2RlcHRoX3JlY2VpdmVkGAEgASgBEh4KFnRvdGFsX3Jldmlld3NfcmVjZWl2ZWQYAiABKAUSFwoPZGVlcF9yZXZpZXdfcGN0GAMgASgBMu8BCg9JbnNpZ2h0c1NlcnZpY2USagoPR2V0VGVhbUluc2lnaHRzEiouY2Fub25pY2FsLnByaXNtLnYxLkdldFRlYW1JbnNpZ2h0c1JlcXVlc3QaKy5jYW5vbmljYWwucHJpc20udjEuR2V0VGVhbUluc2lnaHRzUmVzcG9uc2UScAoRR2V0UGVyc29uSW5zaWdodHMSLC5jYW5vbmljYWwucHJpc20udjEuR2V0UGVyc29uSW5zaWdodHNSZXF1ZXN0Gi0uY2Fub25pY2FsLnByaXNtLnYxLkdldFBlcnNvbkluc2lnaHRzUmVzcG9uc2ViBnByb3RvMw",
+  [file_canonical_prism_v1_common],
+);
 
 /**
  * EnrichmentCoverage reports what fraction of contributions have been enriched.
@@ -46,8 +49,10 @@ export type EnrichmentCoverage = Message<"canonical.prism.v1.EnrichmentCoverage"
  * Describes the message canonical.prism.v1.EnrichmentCoverage.
  * Use `create(EnrichmentCoverageSchema)` to create a new message.
  */
-export const EnrichmentCoverageSchema: GenMessage<EnrichmentCoverage> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 0);
+export const EnrichmentCoverageSchema: GenMessage<EnrichmentCoverage> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  0,
+);
 
 /**
  * TypeCoverage reports enrichment coverage for a single enrichment type.
@@ -81,8 +86,10 @@ export type TypeCoverage = Message<"canonical.prism.v1.TypeCoverage"> & {
  * Describes the message canonical.prism.v1.TypeCoverage.
  * Use `create(TypeCoverageSchema)` to create a new message.
  */
-export const TypeCoverageSchema: GenMessage<TypeCoverage> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 1);
+export const TypeCoverageSchema: GenMessage<TypeCoverage> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  1,
+);
 
 /**
  * ReviewQualitySummary aggregates review depth and sentiment analysis across
@@ -158,8 +165,10 @@ export type ReviewQualitySummary = Message<"canonical.prism.v1.ReviewQualitySumm
  * Describes the message canonical.prism.v1.ReviewQualitySummary.
  * Use `create(ReviewQualitySummarySchema)` to create a new message.
  */
-export const ReviewQualitySummarySchema: GenMessage<ReviewQualitySummary> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 2);
+export const ReviewQualitySummarySchema: GenMessage<ReviewQualitySummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  2,
+);
 
 /**
  * ReviewerDepth identifies a reviewer and their average review depth.
@@ -192,8 +201,10 @@ export type ReviewerDepth = Message<"canonical.prism.v1.ReviewerDepth"> & {
  * Describes the message canonical.prism.v1.ReviewerDepth.
  * Use `create(ReviewerDepthSchema)` to create a new message.
  */
-export const ReviewerDepthSchema: GenMessage<ReviewerDepth> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 3);
+export const ReviewerDepthSchema: GenMessage<ReviewerDepth> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  3,
+);
 
 /**
  * SignificanceSummary counts PRs by significance tier.
@@ -226,8 +237,10 @@ export type SignificanceSummary = Message<"canonical.prism.v1.SignificanceSummar
  * Describes the message canonical.prism.v1.SignificanceSummary.
  * Use `create(SignificanceSummarySchema)` to create a new message.
  */
-export const SignificanceSummarySchema: GenMessage<SignificanceSummary> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 4);
+export const SignificanceSummarySchema: GenMessage<SignificanceSummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  4,
+);
 
 /**
  * TopicCategorySummary aggregates Discourse topic classification results.
@@ -250,8 +263,10 @@ export type TopicCategorySummary = Message<"canonical.prism.v1.TopicCategorySumm
  * Describes the message canonical.prism.v1.TopicCategorySummary.
  * Use `create(TopicCategorySummarySchema)` to create a new message.
  */
-export const TopicCategorySummarySchema: GenMessage<TopicCategorySummary> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 5);
+export const TopicCategorySummarySchema: GenMessage<TopicCategorySummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  5,
+);
 
 /**
  * TopicCategoryCount is a single topic category and its count.
@@ -274,8 +289,10 @@ export type TopicCategoryCount = Message<"canonical.prism.v1.TopicCategoryCount"
  * Describes the message canonical.prism.v1.TopicCategoryCount.
  * Use `create(TopicCategoryCountSchema)` to create a new message.
  */
-export const TopicCategoryCountSchema: GenMessage<TopicCategoryCount> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 6);
+export const TopicCategoryCountSchema: GenMessage<TopicCategoryCount> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  6,
+);
 
 /**
  * NotableContribution highlights a contribution flagged by an enrichment as
@@ -349,8 +366,10 @@ export type NotableContribution = Message<"canonical.prism.v1.NotableContributio
  * Describes the message canonical.prism.v1.NotableContribution.
  * Use `create(NotableContributionSchema)` to create a new message.
  */
-export const NotableContributionSchema: GenMessage<NotableContribution> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 7);
+export const NotableContributionSchema: GenMessage<NotableContribution> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  7,
+);
 
 /**
  * DepthBySignificance cross-references review depth with PR significance tier.
@@ -393,8 +412,10 @@ export type DepthBySignificance = Message<"canonical.prism.v1.DepthBySignificanc
  * Describes the message canonical.prism.v1.DepthBySignificance.
  * Use `create(DepthBySignificanceSchema)` to create a new message.
  */
-export const DepthBySignificanceSchema: GenMessage<DepthBySignificance> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 8);
+export const DepthBySignificanceSchema: GenMessage<DepthBySignificance> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  8,
+);
 
 /**
  * InsightTrend carries period-over-period deltas from stored snapshots.
@@ -443,8 +464,10 @@ export type InsightTrend = Message<"canonical.prism.v1.InsightTrend"> & {
  * Describes the message canonical.prism.v1.InsightTrend.
  * Use `create(InsightTrendSchema)` to create a new message.
  */
-export const InsightTrendSchema: GenMessage<InsightTrend> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 9);
+export const InsightTrendSchema: GenMessage<InsightTrend> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamInsightsRequest
@@ -474,8 +497,10 @@ export type GetTeamInsightsRequest = Message<"canonical.prism.v1.GetTeamInsights
  * Describes the message canonical.prism.v1.GetTeamInsightsRequest.
  * Use `create(GetTeamInsightsRequestSchema)` to create a new message.
  */
-export const GetTeamInsightsRequestSchema: GenMessage<GetTeamInsightsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 10);
+export const GetTeamInsightsRequestSchema: GenMessage<GetTeamInsightsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetTeamInsightsResponse
@@ -491,8 +516,10 @@ export type GetTeamInsightsResponse = Message<"canonical.prism.v1.GetTeamInsight
  * Describes the message canonical.prism.v1.GetTeamInsightsResponse.
  * Use `create(GetTeamInsightsResponseSchema)` to create a new message.
  */
-export const GetTeamInsightsResponseSchema: GenMessage<GetTeamInsightsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 11);
+export const GetTeamInsightsResponseSchema: GenMessage<GetTeamInsightsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  11,
+);
 
 /**
  * TeamInsights bundles all enrichment-derived insights for a team.
@@ -540,8 +567,10 @@ export type TeamInsights = Message<"canonical.prism.v1.TeamInsights"> & {
  * Describes the message canonical.prism.v1.TeamInsights.
  * Use `create(TeamInsightsSchema)` to create a new message.
  */
-export const TeamInsightsSchema: GenMessage<TeamInsights> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 12);
+export const TeamInsightsSchema: GenMessage<TeamInsights> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPersonInsightsRequest
@@ -564,8 +593,10 @@ export type GetPersonInsightsRequest = Message<"canonical.prism.v1.GetPersonInsi
  * Describes the message canonical.prism.v1.GetPersonInsightsRequest.
  * Use `create(GetPersonInsightsRequestSchema)` to create a new message.
  */
-export const GetPersonInsightsRequestSchema: GenMessage<GetPersonInsightsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 13);
+export const GetPersonInsightsRequestSchema: GenMessage<GetPersonInsightsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPersonInsightsResponse
@@ -581,8 +612,10 @@ export type GetPersonInsightsResponse = Message<"canonical.prism.v1.GetPersonIns
  * Describes the message canonical.prism.v1.GetPersonInsightsResponse.
  * Use `create(GetPersonInsightsResponseSchema)` to create a new message.
  */
-export const GetPersonInsightsResponseSchema: GenMessage<GetPersonInsightsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 14);
+export const GetPersonInsightsResponseSchema: GenMessage<GetPersonInsightsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  14,
+);
 
 /**
  * PersonInsights bundles all enrichment-derived insights for an individual.
@@ -631,8 +664,10 @@ export type PersonInsights = Message<"canonical.prism.v1.PersonInsights"> & {
  * Describes the message canonical.prism.v1.PersonInsights.
  * Use `create(PersonInsightsSchema)` to create a new message.
  */
-export const PersonInsightsSchema: GenMessage<PersonInsights> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 15);
+export const PersonInsightsSchema: GenMessage<PersonInsights> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  15,
+);
 
 /**
  * ReviewerProfile describes a person's review behaviour.
@@ -688,8 +723,10 @@ export type ReviewerProfile = Message<"canonical.prism.v1.ReviewerProfile"> & {
  * Describes the message canonical.prism.v1.ReviewerProfile.
  * Use `create(ReviewerProfileSchema)` to create a new message.
  */
-export const ReviewerProfileSchema: GenMessage<ReviewerProfile> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 16);
+export const ReviewerProfileSchema: GenMessage<ReviewerProfile> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  16,
+);
 
 /**
  * ReviewsReceivedSummary describes the quality of reviews a person has received.
@@ -719,8 +756,10 @@ export type ReviewsReceivedSummary = Message<"canonical.prism.v1.ReviewsReceived
  * Describes the message canonical.prism.v1.ReviewsReceivedSummary.
  * Use `create(ReviewsReceivedSummarySchema)` to create a new message.
  */
-export const ReviewsReceivedSummarySchema: GenMessage<ReviewsReceivedSummary> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_insights, 17);
+export const ReviewsReceivedSummarySchema: GenMessage<ReviewsReceivedSummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_insights,
+  17,
+);
 
 /**
  * InsightsService provides aggregated views over AI enrichment data at
@@ -741,7 +780,7 @@ export const InsightsService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamInsightsRequestSchema;
     output: typeof GetTeamInsightsResponseSchema;
-  },
+  };
   /**
    * GetPersonInsights returns enrichment-based insights for an individual
    * including their reviewer profile and reviews received quality.
@@ -752,7 +791,5 @@ export const InsightsService: GenService<{
     methodKind: "unary";
     input: typeof GetPersonInsightsRequestSchema;
     output: typeof GetPersonInsightsResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_insights, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_insights, 0);

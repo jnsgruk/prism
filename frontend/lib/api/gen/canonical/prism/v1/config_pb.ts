@@ -5,19 +5,22 @@
 // @generated from file canonical/prism/v1/config.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { JsonObject, Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Platform } from "./common_pb";
-import { file_canonical_prism_v1_common } from "./common_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { JsonObject, Message } from "@bufbuild/protobuf";
+
+import type { Platform } from "./common_pb";
+import { file_canonical_prism_v1_common } from "./common_pb";
 
 /**
  * Describes the file canonical/prism/v1/config.proto.
  */
-export const file_canonical_prism_v1_config: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jYW5vbmljYWwvcHJpc20vdjEvY29uZmlnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEi2wMKDFNvdXJjZUNvbmZpZxIKCgJpZBgBIAEoCRIxCgtzb3VyY2VfdHlwZRgCIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIMCgRuYW1lGAMgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAogASgJSACIAQESDwoHZW5hYmxlZBgEIAEoCBIpCghzZXR0aW5ncxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSSQoNc2VjcmV0X3N0YXR1cxgGIAMoCzIyLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcuU2VjcmV0U3RhdHVzRW50cnkSGgoNc2NoZWR1bGVfY3JvbhgHIAEoCUgBiAEBEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGjMKEVNlY3JldFN0YXR1c0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCDoCOAFCFAoSX3BsYXRmb3JtX2luc3RhbmNlQhAKDl9zY2hlZHVsZV9jcm9uIhQKEkxpc3RTb3VyY2VzUmVxdWVzdCJIChNMaXN0U291cmNlc1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlQ29uZmlnIiUKEEdldFNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJIkUKEUdldFNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcirwEKE0NyZWF0ZVNvdXJjZVJlcXVlc3QSMQoLc291cmNlX3R5cGUYASABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SDAoEbmFtZRgCIAEoCRIpCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGgoNc2NoZWR1bGVfY3JvbhgEIAEoCUgAiAEBQhAKDl9zY2hlZHVsZV9jcm9uIkgKFENyZWF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcitQEKE1VwZGF0ZVNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJEhQKB2VuYWJsZWQYAiABKAhIAIgBARIuCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIAYgBARIaCg1zY2hlZHVsZV9jcm9uGAQgASgJSAKIAQFCCgoIX2VuYWJsZWRCCwoJX3NldHRpbmdzQhAKDl9zY2hlZHVsZV9jcm9uIkgKFFVwZGF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWciKAoTRGVsZXRlU291cmNlUmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkiFgoURGVsZXRlU291cmNlUmVzcG9uc2UiTwoQU2V0U2VjcmV0UmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkSEgoKc2VjcmV0X2tleRgCIAEoCRIUCgxzZWNyZXRfdmFsdWUYAyABKAkiEwoRU2V0U2VjcmV0UmVzcG9uc2UiKgoVVGVzdENvbm5lY3Rpb25SZXF1ZXN0EhEKCXNvdXJjZV9pZBgBIAEoCSK6AQoWVGVzdENvbm5lY3Rpb25SZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSSAoHZGV0YWlscxgDIAMoCzI3LmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlLkRldGFpbHNFbnRyeRouCgxEZXRhaWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIWChRFeHBvcnRTb3VyY2VzUmVxdWVzdCIqChVFeHBvcnRTb3VyY2VzUmVzcG9uc2USEQoJanNvbl9kYXRhGAEgASgMIjoKFEltcG9ydFNvdXJjZXNSZXF1ZXN0EhEKCWpzb25fZGF0YRgBIAEoDBIPCgdyZXBsYWNlGAIgASgIIlsKFUltcG9ydFNvdXJjZXNSZXNwb25zZRIXCg9zb3VyY2VzX2NyZWF0ZWQYASABKAUSFwoPc291cmNlc19za2lwcGVkGAIgASgFEhAKCHdhcm5pbmdzGAMgAygJMoEHCg1Db25maWdTZXJ2aWNlEl4KC0xpc3RTb3VyY2VzEiYuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RTb3VyY2VzUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0U291cmNlc1Jlc3BvbnNlElgKCUdldFNvdXJjZRIkLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTb3VyY2VSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkdldFNvdXJjZVJlc3BvbnNlEmEKDENyZWF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZVNvdXJjZVJlc3BvbnNlEmEKDFVwZGF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlVwZGF0ZVNvdXJjZVJlc3BvbnNlEmEKDERlbGV0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkRlbGV0ZVNvdXJjZVJlc3BvbnNlElgKCVNldFNlY3JldBIkLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRTZWNyZXRSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlNldFNlY3JldFJlc3BvbnNlEmcKDlRlc3RDb25uZWN0aW9uEikuY2Fub25pY2FsLnByaXNtLnYxLlRlc3RDb25uZWN0aW9uUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlEmQKDUV4cG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1Jlc3BvbnNlEmQKDUltcG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1Jlc3BvbnNlYgZwcm90bzM", [file_canonical_prism_v1_common, file_google_protobuf_struct, file_google_protobuf_timestamp]);
+export const file_canonical_prism_v1_config: GenFile /*@__PURE__*/ = fileDesc(
+  "Ch9jYW5vbmljYWwvcHJpc20vdjEvY29uZmlnLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEi2wMKDFNvdXJjZUNvbmZpZxIKCgJpZBgBIAEoCRIxCgtzb3VyY2VfdHlwZRgCIAEoDjIcLmNhbm9uaWNhbC5wcmlzbS52MS5QbGF0Zm9ybRIMCgRuYW1lGAMgASgJEh4KEXBsYXRmb3JtX2luc3RhbmNlGAogASgJSACIAQESDwoHZW5hYmxlZBgEIAEoCBIpCghzZXR0aW5ncxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSSQoNc2VjcmV0X3N0YXR1cxgGIAMoCzIyLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcuU2VjcmV0U3RhdHVzRW50cnkSGgoNc2NoZWR1bGVfY3JvbhgHIAEoCUgBiAEBEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGjMKEVNlY3JldFN0YXR1c0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCDoCOAFCFAoSX3BsYXRmb3JtX2luc3RhbmNlQhAKDl9zY2hlZHVsZV9jcm9uIhQKEkxpc3RTb3VyY2VzUmVxdWVzdCJIChNMaXN0U291cmNlc1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlQ29uZmlnIiUKEEdldFNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJIkUKEUdldFNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcirwEKE0NyZWF0ZVNvdXJjZVJlcXVlc3QSMQoLc291cmNlX3R5cGUYASABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SDAoEbmFtZRgCIAEoCRIpCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGgoNc2NoZWR1bGVfY3JvbhgEIAEoCUgAiAEBQhAKDl9zY2hlZHVsZV9jcm9uIkgKFENyZWF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWcitQEKE1VwZGF0ZVNvdXJjZVJlcXVlc3QSEQoJc291cmNlX2lkGAEgASgJEhQKB2VuYWJsZWQYAiABKAhIAIgBARIuCghzZXR0aW5ncxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIAYgBARIaCg1zY2hlZHVsZV9jcm9uGAQgASgJSAKIAQFCCgoIX2VuYWJsZWRCCwoJX3NldHRpbmdzQhAKDl9zY2hlZHVsZV9jcm9uIkgKFFVwZGF0ZVNvdXJjZVJlc3BvbnNlEjAKBnNvdXJjZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VDb25maWciKAoTRGVsZXRlU291cmNlUmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkiFgoURGVsZXRlU291cmNlUmVzcG9uc2UiTwoQU2V0U2VjcmV0UmVxdWVzdBIRCglzb3VyY2VfaWQYASABKAkSEgoKc2VjcmV0X2tleRgCIAEoCRIUCgxzZWNyZXRfdmFsdWUYAyABKAkiEwoRU2V0U2VjcmV0UmVzcG9uc2UiKgoVVGVzdENvbm5lY3Rpb25SZXF1ZXN0EhEKCXNvdXJjZV9pZBgBIAEoCSK6AQoWVGVzdENvbm5lY3Rpb25SZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSSAoHZGV0YWlscxgDIAMoCzI3LmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlLkRldGFpbHNFbnRyeRouCgxEZXRhaWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIWChRFeHBvcnRTb3VyY2VzUmVxdWVzdCIqChVFeHBvcnRTb3VyY2VzUmVzcG9uc2USEQoJanNvbl9kYXRhGAEgASgMIjoKFEltcG9ydFNvdXJjZXNSZXF1ZXN0EhEKCWpzb25fZGF0YRgBIAEoDBIPCgdyZXBsYWNlGAIgASgIIlsKFUltcG9ydFNvdXJjZXNSZXNwb25zZRIXCg9zb3VyY2VzX2NyZWF0ZWQYASABKAUSFwoPc291cmNlc19za2lwcGVkGAIgASgFEhAKCHdhcm5pbmdzGAMgAygJMoEHCg1Db25maWdTZXJ2aWNlEl4KC0xpc3RTb3VyY2VzEiYuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RTb3VyY2VzUmVxdWVzdBonLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0U291cmNlc1Jlc3BvbnNlElgKCUdldFNvdXJjZRIkLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTb3VyY2VSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkdldFNvdXJjZVJlc3BvbnNlEmEKDENyZWF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZVNvdXJjZVJlc3BvbnNlEmEKDFVwZGF0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5VcGRhdGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLlVwZGF0ZVNvdXJjZVJlc3BvbnNlEmEKDERlbGV0ZVNvdXJjZRInLmNhbm9uaWNhbC5wcmlzbS52MS5EZWxldGVTb3VyY2VSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkRlbGV0ZVNvdXJjZVJlc3BvbnNlElgKCVNldFNlY3JldBIkLmNhbm9uaWNhbC5wcmlzbS52MS5TZXRTZWNyZXRSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlNldFNlY3JldFJlc3BvbnNlEmcKDlRlc3RDb25uZWN0aW9uEikuY2Fub25pY2FsLnByaXNtLnYxLlRlc3RDb25uZWN0aW9uUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5UZXN0Q29ubmVjdGlvblJlc3BvbnNlEmQKDUV4cG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuRXhwb3J0U291cmNlc1Jlc3BvbnNlEmQKDUltcG9ydFNvdXJjZXMSKC5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuSW1wb3J0U291cmNlc1Jlc3BvbnNlYgZwcm90bzM",
+  [file_canonical_prism_v1_common, file_google_protobuf_struct, file_google_protobuf_timestamp],
+);
 
 /**
  * SourceConfig represents a configured data source. Secret values are never
@@ -96,21 +99,24 @@ export type SourceConfig = Message<"canonical.prism.v1.SourceConfig"> & {
  * Describes the message canonical.prism.v1.SourceConfig.
  * Use `create(SourceConfigSchema)` to create a new message.
  */
-export const SourceConfigSchema: GenMessage<SourceConfig> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 0);
+export const SourceConfigSchema: GenMessage<SourceConfig> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  0,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListSourcesRequest
  */
-export type ListSourcesRequest = Message<"canonical.prism.v1.ListSourcesRequest"> & {
-};
+export type ListSourcesRequest = Message<"canonical.prism.v1.ListSourcesRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListSourcesRequest.
  * Use `create(ListSourcesRequestSchema)` to create a new message.
  */
-export const ListSourcesRequestSchema: GenMessage<ListSourcesRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 1);
+export const ListSourcesRequestSchema: GenMessage<ListSourcesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListSourcesResponse
@@ -126,8 +132,10 @@ export type ListSourcesResponse = Message<"canonical.prism.v1.ListSourcesRespons
  * Describes the message canonical.prism.v1.ListSourcesResponse.
  * Use `create(ListSourcesResponseSchema)` to create a new message.
  */
-export const ListSourcesResponseSchema: GenMessage<ListSourcesResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 2);
+export const ListSourcesResponseSchema: GenMessage<ListSourcesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSourceRequest
@@ -143,8 +151,10 @@ export type GetSourceRequest = Message<"canonical.prism.v1.GetSourceRequest"> & 
  * Describes the message canonical.prism.v1.GetSourceRequest.
  * Use `create(GetSourceRequestSchema)` to create a new message.
  */
-export const GetSourceRequestSchema: GenMessage<GetSourceRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 3);
+export const GetSourceRequestSchema: GenMessage<GetSourceRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSourceResponse
@@ -160,8 +170,10 @@ export type GetSourceResponse = Message<"canonical.prism.v1.GetSourceResponse"> 
  * Describes the message canonical.prism.v1.GetSourceResponse.
  * Use `create(GetSourceResponseSchema)` to create a new message.
  */
-export const GetSourceResponseSchema: GenMessage<GetSourceResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 4);
+export const GetSourceResponseSchema: GenMessage<GetSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateSourceRequest
@@ -194,8 +206,10 @@ export type CreateSourceRequest = Message<"canonical.prism.v1.CreateSourceReques
  * Describes the message canonical.prism.v1.CreateSourceRequest.
  * Use `create(CreateSourceRequestSchema)` to create a new message.
  */
-export const CreateSourceRequestSchema: GenMessage<CreateSourceRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 5);
+export const CreateSourceRequestSchema: GenMessage<CreateSourceRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateSourceResponse
@@ -211,8 +225,10 @@ export type CreateSourceResponse = Message<"canonical.prism.v1.CreateSourceRespo
  * Describes the message canonical.prism.v1.CreateSourceResponse.
  * Use `create(CreateSourceResponseSchema)` to create a new message.
  */
-export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 6);
+export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateSourceRequest
@@ -243,8 +259,10 @@ export type UpdateSourceRequest = Message<"canonical.prism.v1.UpdateSourceReques
  * Describes the message canonical.prism.v1.UpdateSourceRequest.
  * Use `create(UpdateSourceRequestSchema)` to create a new message.
  */
-export const UpdateSourceRequestSchema: GenMessage<UpdateSourceRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 7);
+export const UpdateSourceRequestSchema: GenMessage<UpdateSourceRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.UpdateSourceResponse
@@ -260,8 +278,10 @@ export type UpdateSourceResponse = Message<"canonical.prism.v1.UpdateSourceRespo
  * Describes the message canonical.prism.v1.UpdateSourceResponse.
  * Use `create(UpdateSourceResponseSchema)` to create a new message.
  */
-export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 8);
+export const UpdateSourceResponseSchema: GenMessage<UpdateSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteSourceRequest
@@ -277,21 +297,24 @@ export type DeleteSourceRequest = Message<"canonical.prism.v1.DeleteSourceReques
  * Describes the message canonical.prism.v1.DeleteSourceRequest.
  * Use `create(DeleteSourceRequestSchema)` to create a new message.
  */
-export const DeleteSourceRequestSchema: GenMessage<DeleteSourceRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 9);
+export const DeleteSourceRequestSchema: GenMessage<DeleteSourceRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.DeleteSourceResponse
  */
-export type DeleteSourceResponse = Message<"canonical.prism.v1.DeleteSourceResponse"> & {
-};
+export type DeleteSourceResponse = Message<"canonical.prism.v1.DeleteSourceResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.DeleteSourceResponse.
  * Use `create(DeleteSourceResponseSchema)` to create a new message.
  */
-export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 10);
+export const DeleteSourceResponseSchema: GenMessage<DeleteSourceResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.SetSecretRequest
@@ -321,21 +344,24 @@ export type SetSecretRequest = Message<"canonical.prism.v1.SetSecretRequest"> & 
  * Describes the message canonical.prism.v1.SetSecretRequest.
  * Use `create(SetSecretRequestSchema)` to create a new message.
  */
-export const SetSecretRequestSchema: GenMessage<SetSecretRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 11);
+export const SetSecretRequestSchema: GenMessage<SetSecretRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  11,
+);
 
 /**
  * @generated from message canonical.prism.v1.SetSecretResponse
  */
-export type SetSecretResponse = Message<"canonical.prism.v1.SetSecretResponse"> & {
-};
+export type SetSecretResponse = Message<"canonical.prism.v1.SetSecretResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.SetSecretResponse.
  * Use `create(SetSecretResponseSchema)` to create a new message.
  */
-export const SetSecretResponseSchema: GenMessage<SetSecretResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 12);
+export const SetSecretResponseSchema: GenMessage<SetSecretResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.TestConnectionRequest
@@ -351,8 +377,10 @@ export type TestConnectionRequest = Message<"canonical.prism.v1.TestConnectionRe
  * Describes the message canonical.prism.v1.TestConnectionRequest.
  * Use `create(TestConnectionRequestSchema)` to create a new message.
  */
-export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 13);
+export const TestConnectionRequestSchema: GenMessage<TestConnectionRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  13,
+);
 
 /**
  * @generated from message canonical.prism.v1.TestConnectionResponse
@@ -382,21 +410,24 @@ export type TestConnectionResponse = Message<"canonical.prism.v1.TestConnectionR
  * Describes the message canonical.prism.v1.TestConnectionResponse.
  * Use `create(TestConnectionResponseSchema)` to create a new message.
  */
-export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 14);
+export const TestConnectionResponseSchema: GenMessage<TestConnectionResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  14,
+);
 
 /**
  * @generated from message canonical.prism.v1.ExportSourcesRequest
  */
-export type ExportSourcesRequest = Message<"canonical.prism.v1.ExportSourcesRequest"> & {
-};
+export type ExportSourcesRequest = Message<"canonical.prism.v1.ExportSourcesRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ExportSourcesRequest.
  * Use `create(ExportSourcesRequestSchema)` to create a new message.
  */
-export const ExportSourcesRequestSchema: GenMessage<ExportSourcesRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 15);
+export const ExportSourcesRequestSchema: GenMessage<ExportSourcesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  15,
+);
 
 /**
  * @generated from message canonical.prism.v1.ExportSourcesResponse
@@ -414,8 +445,10 @@ export type ExportSourcesResponse = Message<"canonical.prism.v1.ExportSourcesRes
  * Describes the message canonical.prism.v1.ExportSourcesResponse.
  * Use `create(ExportSourcesResponseSchema)` to create a new message.
  */
-export const ExportSourcesResponseSchema: GenMessage<ExportSourcesResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 16);
+export const ExportSourcesResponseSchema: GenMessage<ExportSourcesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  16,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportSourcesRequest
@@ -441,8 +474,10 @@ export type ImportSourcesRequest = Message<"canonical.prism.v1.ImportSourcesRequ
  * Describes the message canonical.prism.v1.ImportSourcesRequest.
  * Use `create(ImportSourcesRequestSchema)` to create a new message.
  */
-export const ImportSourcesRequestSchema: GenMessage<ImportSourcesRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 17);
+export const ImportSourcesRequestSchema: GenMessage<ImportSourcesRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  17,
+);
 
 /**
  * @generated from message canonical.prism.v1.ImportSourcesResponse
@@ -468,8 +503,10 @@ export type ImportSourcesResponse = Message<"canonical.prism.v1.ImportSourcesRes
  * Describes the message canonical.prism.v1.ImportSourcesResponse.
  * Use `create(ImportSourcesResponseSchema)` to create a new message.
  */
-export const ImportSourcesResponseSchema: GenMessage<ImportSourcesResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_config, 18);
+export const ImportSourcesResponseSchema: GenMessage<ImportSourcesResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_config,
+  18,
+);
 
 /**
  * ConfigService manages data source configurations — the external platforms
@@ -487,7 +524,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof ListSourcesRequestSchema;
     output: typeof ListSourcesResponseSchema;
-  },
+  };
   /**
    * GetSource returns a single data source by ID.
    *
@@ -497,7 +534,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof GetSourceRequestSchema;
     output: typeof GetSourceResponseSchema;
-  },
+  };
   /**
    * CreateSource adds a new data source configuration.
    *
@@ -507,7 +544,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof CreateSourceRequestSchema;
     output: typeof CreateSourceResponseSchema;
-  },
+  };
   /**
    * UpdateSource modifies a source's settings, schedule, or enabled state.
    *
@@ -517,7 +554,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof UpdateSourceRequestSchema;
     output: typeof UpdateSourceResponseSchema;
-  },
+  };
   /**
    * DeleteSource removes a data source and its associated secrets.
    *
@@ -527,7 +564,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof DeleteSourceRequestSchema;
     output: typeof DeleteSourceResponseSchema;
-  },
+  };
   /**
    * SetSecret stores an encrypted secret (API token, password) for a source.
    *
@@ -537,7 +574,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof SetSecretRequestSchema;
     output: typeof SetSecretResponseSchema;
-  },
+  };
   /**
    * TestConnection verifies connectivity to the source's external platform.
    *
@@ -547,7 +584,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof TestConnectionRequestSchema;
     output: typeof TestConnectionResponseSchema;
-  },
+  };
   /**
    * ExportSources exports all source configurations as a portable JSON document.
    * Secrets are never included — only configuration and settings.
@@ -558,7 +595,7 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof ExportSourcesRequestSchema;
     output: typeof ExportSourcesResponseSchema;
-  },
+  };
   /**
    * ImportSources imports source configurations from a previously exported JSON
    * document. Supports merge (default) and replace modes.
@@ -569,7 +606,5 @@ export const ConfigService: GenService<{
     methodKind: "unary";
     input: typeof ImportSourcesRequestSchema;
     output: typeof ImportSourcesResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_config, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_config, 0);

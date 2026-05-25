@@ -7,8 +7,14 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetPersonInsightsRequest, GetPersonInsightsResponse, GetTeamInsightsRequest, GetTeamInsightsResponse } from "./insights_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
+
+import {
+  GetPersonInsightsRequest,
+  GetPersonInsightsResponse,
+  GetTeamInsightsRequest,
+  GetTeamInsightsResponse,
+} from "./insights_pb.js";
 
 /**
  * InsightsService provides aggregated views over AI enrichment data at
@@ -45,6 +51,5 @@ export const InsightsService = {
       O: GetPersonInsightsResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

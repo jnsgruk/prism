@@ -5,30 +5,33 @@
 // @generated from file canonical/prism/v1/auth.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/auth.proto.
  */
-export const file_canonical_prism_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("Ch1jYW5vbmljYWwvcHJpc20vdjEvYXV0aC5wcm90bxISY2Fub25pY2FsLnByaXNtLnYxIhcKFUdldFNldHVwU3RhdHVzUmVxdWVzdCIwChZHZXRTZXR1cFN0YXR1c1Jlc3BvbnNlEhYKDnNldHVwX2NvbXBsZXRlGAEgASgIIlAKFENvbXBsZXRlU2V0dXBSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSIuChVDb21wbGV0ZVNldHVwUmVzcG9uc2USFQoNc2Vzc2lvbl90b2tlbhgBIAEoCSIyCgxMb2dpblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiVgoNTG9naW5SZXNwb25zZRIVCg1zZXNzaW9uX3Rva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDUxvZ291dFJlcXVlc3QiEAoOTG9nb3V0UmVzcG9uc2UiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0Il8KFkdldEN1cnJlbnRVc2VyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDAoEcm9sZRgEIAEoCTLkAwoLQXV0aFNlcnZpY2USZwoOR2V0U2V0dXBTdGF0dXMSKS5jYW5vbmljYWwucHJpc20udjEuR2V0U2V0dXBTdGF0dXNSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLkdldFNldHVwU3RhdHVzUmVzcG9uc2USZAoNQ29tcGxldGVTZXR1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5Db21wbGV0ZVNldHVwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5Db21wbGV0ZVNldHVwUmVzcG9uc2USTAoFTG9naW4SIC5jYW5vbmljYWwucHJpc20udjEuTG9naW5SZXF1ZXN0GiEuY2Fub25pY2FsLnByaXNtLnYxLkxvZ2luUmVzcG9uc2USTwoGTG9nb3V0EiEuY2Fub25pY2FsLnByaXNtLnYxLkxvZ291dFJlcXVlc3QaIi5jYW5vbmljYWwucHJpc20udjEuTG9nb3V0UmVzcG9uc2USZwoOR2V0Q3VycmVudFVzZXISKS5jYW5vbmljYWwucHJpc20udjEuR2V0Q3VycmVudFVzZXJSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLkdldEN1cnJlbnRVc2VyUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+export const file_canonical_prism_v1_auth: GenFile /*@__PURE__*/ = fileDesc(
+  "Ch1jYW5vbmljYWwvcHJpc20vdjEvYXV0aC5wcm90bxISY2Fub25pY2FsLnByaXNtLnYxIhcKFUdldFNldHVwU3RhdHVzUmVxdWVzdCIwChZHZXRTZXR1cFN0YXR1c1Jlc3BvbnNlEhYKDnNldHVwX2NvbXBsZXRlGAEgASgIIlAKFENvbXBsZXRlU2V0dXBSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSIuChVDb21wbGV0ZVNldHVwUmVzcG9uc2USFQoNc2Vzc2lvbl90b2tlbhgBIAEoCSIyCgxMb2dpblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiVgoNTG9naW5SZXNwb25zZRIVCg1zZXNzaW9uX3Rva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDUxvZ291dFJlcXVlc3QiEAoOTG9nb3V0UmVzcG9uc2UiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0Il8KFkdldEN1cnJlbnRVc2VyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDAoEcm9sZRgEIAEoCTLkAwoLQXV0aFNlcnZpY2USZwoOR2V0U2V0dXBTdGF0dXMSKS5jYW5vbmljYWwucHJpc20udjEuR2V0U2V0dXBTdGF0dXNSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLkdldFNldHVwU3RhdHVzUmVzcG9uc2USZAoNQ29tcGxldGVTZXR1cBIoLmNhbm9uaWNhbC5wcmlzbS52MS5Db21wbGV0ZVNldHVwUmVxdWVzdBopLmNhbm9uaWNhbC5wcmlzbS52MS5Db21wbGV0ZVNldHVwUmVzcG9uc2USTAoFTG9naW4SIC5jYW5vbmljYWwucHJpc20udjEuTG9naW5SZXF1ZXN0GiEuY2Fub25pY2FsLnByaXNtLnYxLkxvZ2luUmVzcG9uc2USTwoGTG9nb3V0EiEuY2Fub25pY2FsLnByaXNtLnYxLkxvZ291dFJlcXVlc3QaIi5jYW5vbmljYWwucHJpc20udjEuTG9nb3V0UmVzcG9uc2USZwoOR2V0Q3VycmVudFVzZXISKS5jYW5vbmljYWwucHJpc20udjEuR2V0Q3VycmVudFVzZXJSZXF1ZXN0GiouY2Fub25pY2FsLnByaXNtLnYxLkdldEN1cnJlbnRVc2VyUmVzcG9uc2ViBnByb3RvMw",
+  [file_google_protobuf_timestamp],
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSetupStatusRequest
  */
-export type GetSetupStatusRequest = Message<"canonical.prism.v1.GetSetupStatusRequest"> & {
-};
+export type GetSetupStatusRequest = Message<"canonical.prism.v1.GetSetupStatusRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetSetupStatusRequest.
  * Use `create(GetSetupStatusRequestSchema)` to create a new message.
  */
-export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 0);
+export const GetSetupStatusRequestSchema: GenMessage<GetSetupStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  0,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSetupStatusResponse
@@ -46,8 +49,10 @@ export type GetSetupStatusResponse = Message<"canonical.prism.v1.GetSetupStatusR
  * Describes the message canonical.prism.v1.GetSetupStatusResponse.
  * Use `create(GetSetupStatusResponseSchema)` to create a new message.
  */
-export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 1);
+export const GetSetupStatusResponseSchema: GenMessage<GetSetupStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.CompleteSetupRequest
@@ -73,8 +78,10 @@ export type CompleteSetupRequest = Message<"canonical.prism.v1.CompleteSetupRequ
  * Describes the message canonical.prism.v1.CompleteSetupRequest.
  * Use `create(CompleteSetupRequestSchema)` to create a new message.
  */
-export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 2);
+export const CompleteSetupRequestSchema: GenMessage<CompleteSetupRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.CompleteSetupResponse
@@ -92,8 +99,10 @@ export type CompleteSetupResponse = Message<"canonical.prism.v1.CompleteSetupRes
  * Describes the message canonical.prism.v1.CompleteSetupResponse.
  * Use `create(CompleteSetupResponseSchema)` to create a new message.
  */
-export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 3);
+export const CompleteSetupResponseSchema: GenMessage<CompleteSetupResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.LoginRequest
@@ -114,8 +123,7 @@ export type LoginRequest = Message<"canonical.prism.v1.LoginRequest"> & {
  * Describes the message canonical.prism.v1.LoginRequest.
  * Use `create(LoginRequestSchema)` to create a new message.
  */
-export const LoginRequestSchema: GenMessage<LoginRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 4);
+export const LoginRequestSchema: GenMessage<LoginRequest> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_auth, 4);
 
 /**
  * @generated from message canonical.prism.v1.LoginResponse
@@ -136,47 +144,52 @@ export type LoginResponse = Message<"canonical.prism.v1.LoginResponse"> & {
  * Describes the message canonical.prism.v1.LoginResponse.
  * Use `create(LoginResponseSchema)` to create a new message.
  */
-export const LoginResponseSchema: GenMessage<LoginResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 5);
+export const LoginResponseSchema: GenMessage<LoginResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.LogoutRequest
  */
-export type LogoutRequest = Message<"canonical.prism.v1.LogoutRequest"> & {
-};
+export type LogoutRequest = Message<"canonical.prism.v1.LogoutRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.LogoutRequest.
  * Use `create(LogoutRequestSchema)` to create a new message.
  */
-export const LogoutRequestSchema: GenMessage<LogoutRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 6);
+export const LogoutRequestSchema: GenMessage<LogoutRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.LogoutResponse
  */
-export type LogoutResponse = Message<"canonical.prism.v1.LogoutResponse"> & {
-};
+export type LogoutResponse = Message<"canonical.prism.v1.LogoutResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.LogoutResponse.
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
-export const LogoutResponseSchema: GenMessage<LogoutResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 7);
+export const LogoutResponseSchema: GenMessage<LogoutResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetCurrentUserRequest
  */
-export type GetCurrentUserRequest = Message<"canonical.prism.v1.GetCurrentUserRequest"> & {
-};
+export type GetCurrentUserRequest = Message<"canonical.prism.v1.GetCurrentUserRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetCurrentUserRequest.
  * Use `create(GetCurrentUserRequestSchema)` to create a new message.
  */
-export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 8);
+export const GetCurrentUserRequestSchema: GenMessage<GetCurrentUserRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetCurrentUserResponse
@@ -209,8 +222,10 @@ export type GetCurrentUserResponse = Message<"canonical.prism.v1.GetCurrentUserR
  * Describes the message canonical.prism.v1.GetCurrentUserResponse.
  * Use `create(GetCurrentUserResponseSchema)` to create a new message.
  */
-export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_auth, 9);
+export const GetCurrentUserResponseSchema: GenMessage<GetCurrentUserResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_auth,
+  9,
+);
 
 /**
  * AuthService handles authentication, session management, and the initial
@@ -228,7 +243,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetSetupStatusRequestSchema;
     output: typeof GetSetupStatusResponseSchema;
-  },
+  };
   /**
    * CompleteSetup creates the first admin user and returns a session token.
    *
@@ -238,7 +253,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof CompleteSetupRequestSchema;
     output: typeof CompleteSetupResponseSchema;
-  },
+  };
   /**
    * Login authenticates a user by username and password.
    *
@@ -248,7 +263,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof LoginRequestSchema;
     output: typeof LoginResponseSchema;
-  },
+  };
   /**
    * Logout invalidates the current session.
    *
@@ -258,7 +273,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof LogoutRequestSchema;
     output: typeof LogoutResponseSchema;
-  },
+  };
   /**
    * GetCurrentUser returns the authenticated user's profile.
    *
@@ -268,7 +283,5 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetCurrentUserRequestSchema;
     output: typeof GetCurrentUserResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_auth, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_auth, 0);

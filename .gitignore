@@ -4,6 +4,9 @@ target/
 # mise local overrides
 .mise.local.toml
 
+# Prism backups
+*.ps-backup
+
 # Database
 *.db
 *.db-journal

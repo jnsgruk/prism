@@ -6,15 +6,16 @@
 // @generated from file canonical/prism/v1/common.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/common.proto.
  */
-export const file_canonical_prism_v1_common: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jYW5vbmljYWwvcHJpc20vdjEvY29tbW9uLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiOgoRUGFnaW5hdGlvblJlcXVlc3QSEQoJcGFnZV9zaXplGAEgASgFEhIKCnBhZ2VfdG9rZW4YAiABKAkiQgoSUGFnaW5hdGlvblJlc3BvbnNlEhcKD25leHRfcGFnZV90b2tlbhgBIAEoCRITCgt0b3RhbF9jb3VudBgCIAEoBSIuCglTb3J0T3JkZXISDQoFZmllbGQYASABKAkSEgoKZGVzY2VuZGluZxgCIAEoCCrLAQoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABITCg9QTEFURk9STV9HSVRIVUIQARIRCg1QTEFURk9STV9KSVJBEAISFgoSUExBVEZPUk1fRElTQ09VUlNFEAMSFgoSUExBVEZPUk1fTEFVTkNIUEFEEAQSFwoTUExBVEZPUk1fTUFUVEVSTU9TVBAFEhkKFVBMQVRGT1JNX0dPT0dMRV9EUklWRRAGEhkKFVBMQVRGT1JNX01BSUxJTkdfTElTVBAHKpACChBDb250cmlidXRpb25UeXBlEiEKHUNPTlRSSUJVVElPTl9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeQ09OVFJJQlVUSU9OX1RZUEVfUFVMTF9SRVFVRVNUEAESHwobQ09OVFJJQlVUSU9OX1RZUEVfUFJfUkVWSUVXEAISIQodQ09OVFJJQlVUSU9OX1RZUEVfSklSQV9USUNLRVQQAxIlCiFDT05UUklCVVRJT05fVFlQRV9ESVNDT1VSU0VfVE9QSUMQBBIkCiBDT05UUklCVVRJT05fVFlQRV9ESVNDT1VSU0VfUE9TVBAFEiQKIENPTlRSSUJVVElPTl9UWVBFX0RJU0NPVVJTRV9MSUtFEAYqggMKEUNvbnRyaWJ1dGlvblN0YXRlEiIKHkNPTlRSSUJVVElPTl9TVEFURV9VTlNQRUNJRklFRBAAEhsKF0NPTlRSSUJVVElPTl9TVEFURV9PUEVOEAESHQoZQ09OVFJJQlVUSU9OX1NUQVRFX0NMT1NFRBACEh0KGUNPTlRSSUJVVElPTl9TVEFURV9NRVJHRUQQAxIiCh5DT05UUklCVVRJT05fU1RBVEVfSU5fUFJPR1JFU1MQBBIfChtDT05UUklCVVRJT05fU1RBVEVfQVBQUk9WRUQQBRIoCiRDT05UUklCVVRJT05fU1RBVEVfQ0hBTkdFU19SRVFVRVNURUQQBhIgChxDT05UUklCVVRJT05fU1RBVEVfQ09NTUVOVEVEEAcSHgoaQ09OVFJJQlVUSU9OX1NUQVRFX1BFTkRJTkcQCBIgChxDT05UUklCVVRJT05fU1RBVEVfRElTTUlTU0VEEAkSGwoXQ09OVFJJQlVUSU9OX1NUQVRFX0RPTkUQCiqyAQoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIWChJSVU5fU1RBVFVTX1JVTk5JTkcQARIYChRSVU5fU1RBVFVTX0NPTVBMRVRFRBACEiYKIlJVTl9TVEFUVVNfQ09NUExFVEVEX1dJVEhfV0FSTklOR1MQAxIVChFSVU5fU1RBVFVTX0ZBSUxFRBAEEhgKFFJVTl9TVEFUVVNfQ0FOQ0VMTEVEEAUqRwoKQWlQcm92aWRlchIbChdBSV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEhYKEkFJX1BST1ZJREVSX0dPT0dMRRABIgQIAhACKq8BCg5FbnJpY2htZW50VHlwZRIfChtFTlJJQ0hNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIgChxFTlJJQ0hNRU5UX1RZUEVfUkVWSUVXX0RFUFRIEAESHQoZRU5SSUNITUVOVF9UWVBFX1NFTlRJTUVOVBACEiAKHEVOUklDSE1FTlRfVFlQRV9TSUdOSUZJQ0FOQ0UQAxIZChVFTlJJQ0hNRU5UX1RZUEVfVE9QSUMQBCpnCgxQZXJzb25GaWx0ZXISHQoZUEVSU09OX0ZJTFRFUl9VTlNQRUNJRklFRBAAEhwKGFBFUlNPTl9GSUxURVJfVU5BU1NJR05FRBABEhoKFlBFUlNPTl9GSUxURVJfSU5BQ1RJVkUQAiqrAQoNSW5zaWdodFBlcmlvZBIeChpJTlNJR0hUX1BFUklPRF9VTlNQRUNJRklFRBAAEhwKGElOU0lHSFRfUEVSSU9EX0xBU1RfV0VFSxABEh0KGUlOU0lHSFRfUEVSSU9EX0xBU1RfTU9OVEgQAhIfChtJTlNJR0hUX1BFUklPRF9MQVNUX1FVQVJURVIQAxIcChhJTlNJR0hUX1BFUklPRF9MQVNUX1lFQVIQBGIGcHJvdG8z");
+export const file_canonical_prism_v1_common: GenFile /*@__PURE__*/ = fileDesc(
+  "Ch9jYW5vbmljYWwvcHJpc20vdjEvY29tbW9uLnByb3RvEhJjYW5vbmljYWwucHJpc20udjEiOgoRUGFnaW5hdGlvblJlcXVlc3QSEQoJcGFnZV9zaXplGAEgASgFEhIKCnBhZ2VfdG9rZW4YAiABKAkiQgoSUGFnaW5hdGlvblJlc3BvbnNlEhcKD25leHRfcGFnZV90b2tlbhgBIAEoCRITCgt0b3RhbF9jb3VudBgCIAEoBSIuCglTb3J0T3JkZXISDQoFZmllbGQYASABKAkSEgoKZGVzY2VuZGluZxgCIAEoCCrLAQoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABITCg9QTEFURk9STV9HSVRIVUIQARIRCg1QTEFURk9STV9KSVJBEAISFgoSUExBVEZPUk1fRElTQ09VUlNFEAMSFgoSUExBVEZPUk1fTEFVTkNIUEFEEAQSFwoTUExBVEZPUk1fTUFUVEVSTU9TVBAFEhkKFVBMQVRGT1JNX0dPT0dMRV9EUklWRRAGEhkKFVBMQVRGT1JNX01BSUxJTkdfTElTVBAHKpACChBDb250cmlidXRpb25UeXBlEiEKHUNPTlRSSUJVVElPTl9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeQ09OVFJJQlVUSU9OX1RZUEVfUFVMTF9SRVFVRVNUEAESHwobQ09OVFJJQlVUSU9OX1RZUEVfUFJfUkVWSUVXEAISIQodQ09OVFJJQlVUSU9OX1RZUEVfSklSQV9USUNLRVQQAxIlCiFDT05UUklCVVRJT05fVFlQRV9ESVNDT1VSU0VfVE9QSUMQBBIkCiBDT05UUklCVVRJT05fVFlQRV9ESVNDT1VSU0VfUE9TVBAFEiQKIENPTlRSSUJVVElPTl9UWVBFX0RJU0NPVVJTRV9MSUtFEAYqggMKEUNvbnRyaWJ1dGlvblN0YXRlEiIKHkNPTlRSSUJVVElPTl9TVEFURV9VTlNQRUNJRklFRBAAEhsKF0NPTlRSSUJVVElPTl9TVEFURV9PUEVOEAESHQoZQ09OVFJJQlVUSU9OX1NUQVRFX0NMT1NFRBACEh0KGUNPTlRSSUJVVElPTl9TVEFURV9NRVJHRUQQAxIiCh5DT05UUklCVVRJT05fU1RBVEVfSU5fUFJPR1JFU1MQBBIfChtDT05UUklCVVRJT05fU1RBVEVfQVBQUk9WRUQQBRIoCiRDT05UUklCVVRJT05fU1RBVEVfQ0hBTkdFU19SRVFVRVNURUQQBhIgChxDT05UUklCVVRJT05fU1RBVEVfQ09NTUVOVEVEEAcSHgoaQ09OVFJJQlVUSU9OX1NUQVRFX1BFTkRJTkcQCBIgChxDT05UUklCVVRJT05fU1RBVEVfRElTTUlTU0VEEAkSGwoXQ09OVFJJQlVUSU9OX1NUQVRFX0RPTkUQCiqyAQoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIWChJSVU5fU1RBVFVTX1JVTk5JTkcQARIYChRSVU5fU1RBVFVTX0NPTVBMRVRFRBACEiYKIlJVTl9TVEFUVVNfQ09NUExFVEVEX1dJVEhfV0FSTklOR1MQAxIVChFSVU5fU1RBVFVTX0ZBSUxFRBAEEhgKFFJVTl9TVEFUVVNfQ0FOQ0VMTEVEEAUqRwoKQWlQcm92aWRlchIbChdBSV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEhYKEkFJX1BST1ZJREVSX0dPT0dMRRABIgQIAhACKq8BCg5FbnJpY2htZW50VHlwZRIfChtFTlJJQ0hNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIgChxFTlJJQ0hNRU5UX1RZUEVfUkVWSUVXX0RFUFRIEAESHQoZRU5SSUNITUVOVF9UWVBFX1NFTlRJTUVOVBACEiAKHEVOUklDSE1FTlRfVFlQRV9TSUdOSUZJQ0FOQ0UQAxIZChVFTlJJQ0hNRU5UX1RZUEVfVE9QSUMQBCpnCgxQZXJzb25GaWx0ZXISHQoZUEVSU09OX0ZJTFRFUl9VTlNQRUNJRklFRBAAEhwKGFBFUlNPTl9GSUxURVJfVU5BU1NJR05FRBABEhoKFlBFUlNPTl9GSUxURVJfSU5BQ1RJVkUQAiqrAQoNSW5zaWdodFBlcmlvZBIeChpJTlNJR0hUX1BFUklPRF9VTlNQRUNJRklFRBAAEhwKGElOU0lHSFRfUEVSSU9EX0xBU1RfV0VFSxABEh0KGUlOU0lHSFRfUEVSSU9EX0xBU1RfTU9OVEgQAhIfChtJTlNJR0hUX1BFUklPRF9MQVNUX1FVQVJURVIQAxIcChhJTlNJR0hUX1BFUklPRF9MQVNUX1lFQVIQBGIGcHJvdG8z",
+);
 
 /**
  * PaginationRequest carries page size and cursor for paginated list RPCs.
@@ -42,8 +43,10 @@ export type PaginationRequest = Message<"canonical.prism.v1.PaginationRequest"> 
  * Describes the message canonical.prism.v1.PaginationRequest.
  * Use `create(PaginationRequestSchema)` to create a new message.
  */
-export const PaginationRequestSchema: GenMessage<PaginationRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_common, 0);
+export const PaginationRequestSchema: GenMessage<PaginationRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_common,
+  0,
+);
 
 /**
  * PaginationResponse carries the cursor for the next page and the total count
@@ -71,8 +74,10 @@ export type PaginationResponse = Message<"canonical.prism.v1.PaginationResponse"
  * Describes the message canonical.prism.v1.PaginationResponse.
  * Use `create(PaginationResponseSchema)` to create a new message.
  */
-export const PaginationResponseSchema: GenMessage<PaginationResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_common, 1);
+export const PaginationResponseSchema: GenMessage<PaginationResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_common,
+  1,
+);
 
 /**
  * SortOrder specifies the field and direction for sorting list results.
@@ -99,8 +104,7 @@ export type SortOrder = Message<"canonical.prism.v1.SortOrder"> & {
  * Describes the message canonical.prism.v1.SortOrder.
  * Use `create(SortOrderSchema)` to create a new message.
  */
-export const SortOrderSchema: GenMessage<SortOrder> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_common, 2);
+export const SortOrderSchema: GenMessage<SortOrder> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_common, 2);
 
 /**
  * Platform identifies the external platform a data source connects to. For
@@ -154,8 +158,7 @@ export enum Platform {
 /**
  * Describes the enum canonical.prism.v1.Platform.
  */
-export const PlatformSchema: GenEnum<Platform> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 0);
+export const PlatformSchema: GenEnum<Platform> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 0);
 
 /**
  * ContributionType classifies the kind of work item ingested from an external
@@ -203,8 +206,10 @@ export enum ContributionType {
 /**
  * Describes the enum canonical.prism.v1.ContributionType.
  */
-export const ContributionTypeSchema: GenEnum<ContributionType> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 1);
+export const ContributionTypeSchema: GenEnum<ContributionType> /*@__PURE__*/ = enumDesc(
+  file_canonical_prism_v1_common,
+  1,
+);
 
 /**
  * ContributionState represents the lifecycle state of a contribution. Values
@@ -277,8 +282,10 @@ export enum ContributionState {
 /**
  * Describes the enum canonical.prism.v1.ContributionState.
  */
-export const ContributionStateSchema: GenEnum<ContributionState> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 2);
+export const ContributionStateSchema: GenEnum<ContributionState> /*@__PURE__*/ = enumDesc(
+  file_canonical_prism_v1_common,
+  2,
+);
 
 /**
  * RunStatus represents the outcome of a Restate handler run.
@@ -320,8 +327,7 @@ export enum RunStatus {
 /**
  * Describes the enum canonical.prism.v1.RunStatus.
  */
-export const RunStatusSchema: GenEnum<RunStatus> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 3);
+export const RunStatusSchema: GenEnum<RunStatus> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 3);
 
 /**
  * AiProvider identifies a supported AI inference provider.
@@ -343,8 +349,7 @@ export enum AiProvider {
 /**
  * Describes the enum canonical.prism.v1.AiProvider.
  */
-export const AiProviderSchema: GenEnum<AiProvider> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 4);
+export const AiProviderSchema: GenEnum<AiProvider> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 4);
 
 /**
  * EnrichmentType classifies the kind of AI enrichment applied to a
@@ -382,8 +387,7 @@ export enum EnrichmentType {
 /**
  * Describes the enum canonical.prism.v1.EnrichmentType.
  */
-export const EnrichmentTypeSchema: GenEnum<EnrichmentType> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 5);
+export const EnrichmentTypeSchema: GenEnum<EnrichmentType> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 5);
 
 /**
  * PersonFilter selects a preset filter for the ListPeople RPC.
@@ -414,8 +418,7 @@ export enum PersonFilter {
 /**
  * Describes the enum canonical.prism.v1.PersonFilter.
  */
-export const PersonFilterSchema: GenEnum<PersonFilter> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 6);
+export const PersonFilterSchema: GenEnum<PersonFilter> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 6);
 
 /**
  * InsightPeriod selects the time window for insight aggregation.
@@ -452,6 +455,4 @@ export enum InsightPeriod {
 /**
  * Describes the enum canonical.prism.v1.InsightPeriod.
  */
-export const InsightPeriodSchema: GenEnum<InsightPeriod> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_common, 7);
-
+export const InsightPeriodSchema: GenEnum<InsightPeriod> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_common, 7);

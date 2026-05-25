@@ -6,17 +6,19 @@
 // @generated from file canonical/prism/v1/admin.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file canonical/prism/v1/admin.proto.
  */
-export const file_canonical_prism_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Ch5jYW5vbmljYWwvcHJpc20vdjEvYWRtaW4ucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSIlChVDcmVhdGVBcGlUb2tlblJlcXVlc3QSDAoEbmFtZRgBIAEoCSJHChZDcmVhdGVBcGlUb2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkiFgoUTGlzdEFwaVRva2Vuc1JlcXVlc3QiSQoVTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEjAKBnRva2VucxgBIAMoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BcGlUb2tlbkluZm8ikAEKDEFwaVRva2VuSW5mbxIQCgh0b2tlbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGxhc3RfdXNlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiKQoVUmV2b2tlQXBpVG9rZW5SZXF1ZXN0EhAKCHRva2VuX2lkGAEgASgJIhgKFlJldm9rZUFwaVRva2VuUmVzcG9uc2UiIwoQUmVzZXREYXRhUmVxdWVzdBIPCgdjb25maXJtGAEgASgIImEKEVJlc2V0RGF0YVJlc3BvbnNlEhYKDnBlb3BsZV9kZWxldGVkGAEgASgFEhUKDXRlYW1zX2RlbGV0ZWQYAiABKAUSHQoVY29udHJpYnV0aW9uc19kZWxldGVkGAMgASgFIhYKFEdldFN5c3RlbUluZm9SZXF1ZXN0InEKFUdldFN5c3RlbUluZm9SZXNwb25zZRIbChNkYXRhYmFzZV9zaXplX2J5dGVzGAEgASgDEhwKFHdvcmtzcGFjZV91c2VkX2J5dGVzGAIgASgDEh0KFXdvcmtzcGFjZV90b3RhbF9ieXRlcxgDIAEoAzKGBAoMQWRtaW5TZXJ2aWNlEmcKDkNyZWF0ZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVBcGlUb2tlblJlc3BvbnNlEmQKDUxpc3RBcGlUb2tlbnMSKC5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEmcKDlJldm9rZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLlJldm9rZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlc3BvbnNlElgKCVJlc2V0RGF0YRIkLmNhbm9uaWNhbC5wcmlzbS52MS5SZXNldERhdGFSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlJlc2V0RGF0YVJlc3BvbnNlEmQKDUdldFN5c3RlbUluZm8SKC5jYW5vbmljYWwucHJpc20udjEuR2V0U3lzdGVtSW5mb1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuR2V0U3lzdGVtSW5mb1Jlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
+export const file_canonical_prism_v1_admin: GenFile /*@__PURE__*/ = fileDesc(
+  "Ch5jYW5vbmljYWwvcHJpc20vdjEvYWRtaW4ucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSIlChVDcmVhdGVBcGlUb2tlblJlcXVlc3QSDAoEbmFtZRgBIAEoCSJHChZDcmVhdGVBcGlUb2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkiFgoUTGlzdEFwaVRva2Vuc1JlcXVlc3QiSQoVTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEjAKBnRva2VucxgBIAMoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5BcGlUb2tlbkluZm8ikAEKDEFwaVRva2VuSW5mbxIQCgh0b2tlbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGxhc3RfdXNlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiKQoVUmV2b2tlQXBpVG9rZW5SZXF1ZXN0EhAKCHRva2VuX2lkGAEgASgJIhgKFlJldm9rZUFwaVRva2VuUmVzcG9uc2UiIwoQUmVzZXREYXRhUmVxdWVzdBIPCgdjb25maXJtGAEgASgIImEKEVJlc2V0RGF0YVJlc3BvbnNlEhYKDnBlb3BsZV9kZWxldGVkGAEgASgFEhUKDXRlYW1zX2RlbGV0ZWQYAiABKAUSHQoVY29udHJpYnV0aW9uc19kZWxldGVkGAMgASgFIhYKFEdldFN5c3RlbUluZm9SZXF1ZXN0InEKFUdldFN5c3RlbUluZm9SZXNwb25zZRIbChNkYXRhYmFzZV9zaXplX2J5dGVzGAEgASgDEhwKFHdvcmtzcGFjZV91c2VkX2J5dGVzGAIgASgDEh0KFXdvcmtzcGFjZV90b3RhbF9ieXRlcxgDIAEoAzKGBAoMQWRtaW5TZXJ2aWNlEmcKDkNyZWF0ZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLkNyZWF0ZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5DcmVhdGVBcGlUb2tlblJlc3BvbnNlEmQKDUxpc3RBcGlUb2tlbnMSKC5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuTGlzdEFwaVRva2Vuc1Jlc3BvbnNlEmcKDlJldm9rZUFwaVRva2VuEikuY2Fub25pY2FsLnByaXNtLnYxLlJldm9rZUFwaVRva2VuUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5SZXZva2VBcGlUb2tlblJlc3BvbnNlElgKCVJlc2V0RGF0YRIkLmNhbm9uaWNhbC5wcmlzbS52MS5SZXNldERhdGFSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLlJlc2V0RGF0YVJlc3BvbnNlEmQKDUdldFN5c3RlbUluZm8SKC5jYW5vbmljYWwucHJpc20udjEuR2V0U3lzdGVtSW5mb1JlcXVlc3QaKS5jYW5vbmljYWwucHJpc20udjEuR2V0U3lzdGVtSW5mb1Jlc3BvbnNlYgZwcm90bzM",
+  [file_google_protobuf_timestamp],
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateApiTokenRequest
@@ -34,8 +36,10 @@ export type CreateApiTokenRequest = Message<"canonical.prism.v1.CreateApiTokenRe
  * Describes the message canonical.prism.v1.CreateApiTokenRequest.
  * Use `create(CreateApiTokenRequestSchema)` to create a new message.
  */
-export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 0);
+export const CreateApiTokenRequestSchema: GenMessage<CreateApiTokenRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  0,
+);
 
 /**
  * @generated from message canonical.prism.v1.CreateApiTokenResponse
@@ -63,21 +67,24 @@ export type CreateApiTokenResponse = Message<"canonical.prism.v1.CreateApiTokenR
  * Describes the message canonical.prism.v1.CreateApiTokenResponse.
  * Use `create(CreateApiTokenResponseSchema)` to create a new message.
  */
-export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 1);
+export const CreateApiTokenResponseSchema: GenMessage<CreateApiTokenResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  1,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListApiTokensRequest
  */
-export type ListApiTokensRequest = Message<"canonical.prism.v1.ListApiTokensRequest"> & {
-};
+export type ListApiTokensRequest = Message<"canonical.prism.v1.ListApiTokensRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListApiTokensRequest.
  * Use `create(ListApiTokensRequestSchema)` to create a new message.
  */
-export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 2);
+export const ListApiTokensRequestSchema: GenMessage<ListApiTokensRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListApiTokensResponse
@@ -93,8 +100,10 @@ export type ListApiTokensResponse = Message<"canonical.prism.v1.ListApiTokensRes
  * Describes the message canonical.prism.v1.ListApiTokensResponse.
  * Use `create(ListApiTokensResponseSchema)` to create a new message.
  */
-export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 3);
+export const ListApiTokensResponseSchema: GenMessage<ListApiTokensResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  3,
+);
 
 /**
  * ApiTokenInfo contains metadata about an API token. The token value itself
@@ -130,8 +139,7 @@ export type ApiTokenInfo = Message<"canonical.prism.v1.ApiTokenInfo"> & {
  * Describes the message canonical.prism.v1.ApiTokenInfo.
  * Use `create(ApiTokenInfoSchema)` to create a new message.
  */
-export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 4);
+export const ApiTokenInfoSchema: GenMessage<ApiTokenInfo> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_admin, 4);
 
 /**
  * @generated from message canonical.prism.v1.RevokeApiTokenRequest
@@ -147,21 +155,24 @@ export type RevokeApiTokenRequest = Message<"canonical.prism.v1.RevokeApiTokenRe
  * Describes the message canonical.prism.v1.RevokeApiTokenRequest.
  * Use `create(RevokeApiTokenRequestSchema)` to create a new message.
  */
-export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 5);
+export const RevokeApiTokenRequestSchema: GenMessage<RevokeApiTokenRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.RevokeApiTokenResponse
  */
-export type RevokeApiTokenResponse = Message<"canonical.prism.v1.RevokeApiTokenResponse"> & {
-};
+export type RevokeApiTokenResponse = Message<"canonical.prism.v1.RevokeApiTokenResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.RevokeApiTokenResponse.
  * Use `create(RevokeApiTokenResponseSchema)` to create a new message.
  */
-export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 6);
+export const RevokeApiTokenResponseSchema: GenMessage<RevokeApiTokenResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.ResetDataRequest
@@ -179,8 +190,10 @@ export type ResetDataRequest = Message<"canonical.prism.v1.ResetDataRequest"> & 
  * Describes the message canonical.prism.v1.ResetDataRequest.
  * Use `create(ResetDataRequestSchema)` to create a new message.
  */
-export const ResetDataRequestSchema: GenMessage<ResetDataRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 7);
+export const ResetDataRequestSchema: GenMessage<ResetDataRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.ResetDataResponse
@@ -206,21 +219,24 @@ export type ResetDataResponse = Message<"canonical.prism.v1.ResetDataResponse"> 
  * Describes the message canonical.prism.v1.ResetDataResponse.
  * Use `create(ResetDataResponseSchema)` to create a new message.
  */
-export const ResetDataResponseSchema: GenMessage<ResetDataResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 8);
+export const ResetDataResponseSchema: GenMessage<ResetDataResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSystemInfoRequest
  */
-export type GetSystemInfoRequest = Message<"canonical.prism.v1.GetSystemInfoRequest"> & {
-};
+export type GetSystemInfoRequest = Message<"canonical.prism.v1.GetSystemInfoRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetSystemInfoRequest.
  * Use `create(GetSystemInfoRequestSchema)` to create a new message.
  */
-export const GetSystemInfoRequestSchema: GenMessage<GetSystemInfoRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 9);
+export const GetSystemInfoRequestSchema: GenMessage<GetSystemInfoRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetSystemInfoResponse
@@ -252,8 +268,10 @@ export type GetSystemInfoResponse = Message<"canonical.prism.v1.GetSystemInfoRes
  * Describes the message canonical.prism.v1.GetSystemInfoResponse.
  * Use `create(GetSystemInfoResponseSchema)` to create a new message.
  */
-export const GetSystemInfoResponseSchema: GenMessage<GetSystemInfoResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_admin, 10);
+export const GetSystemInfoResponseSchema: GenMessage<GetSystemInfoResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_admin,
+  10,
+);
 
 /**
  * AdminService provides privileged operations for instance administrators
@@ -271,7 +289,7 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof CreateApiTokenRequestSchema;
     output: typeof CreateApiTokenResponseSchema;
-  },
+  };
   /**
    * ListApiTokens returns metadata for all active API tokens.
    *
@@ -281,7 +299,7 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof ListApiTokensRequestSchema;
     output: typeof ListApiTokensResponseSchema;
-  },
+  };
   /**
    * RevokeApiToken permanently invalidates an API token.
    *
@@ -291,7 +309,7 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof RevokeApiTokenRequestSchema;
     output: typeof RevokeApiTokenResponseSchema;
-  },
+  };
   /**
    * ResetData deletes all people, teams, and contributions. Requires confirm=true.
    *
@@ -301,7 +319,7 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof ResetDataRequestSchema;
     output: typeof ResetDataResponseSchema;
-  },
+  };
   /**
    * GetSystemInfo returns storage usage statistics for the admin dashboard.
    *
@@ -311,7 +329,5 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof GetSystemInfoRequestSchema;
     output: typeof GetSystemInfoResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_admin, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_admin, 0);

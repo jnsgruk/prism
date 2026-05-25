@@ -8,8 +8,20 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CancelBackupRequest, CancelBackupResponse, CreateBackupRequest, CreateBackupResponse, PreviewBackupRequest, PreviewBackupResponse, RestoreBackupRequest, RestoreBackupResponse, UploadBackupChunkRequest, UploadBackupChunkResponse } from "./backup_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
+
+import {
+  CancelBackupRequest,
+  CancelBackupResponse,
+  CreateBackupRequest,
+  CreateBackupResponse,
+  PreviewBackupRequest,
+  PreviewBackupResponse,
+  RestoreBackupRequest,
+  RestoreBackupResponse,
+  UploadBackupChunkRequest,
+  UploadBackupChunkResponse,
+} from "./backup_pb.js";
 
 /**
  * BackupService provides backup export, preview, and restore operations.
@@ -84,6 +96,5 @@ export const BackupService = {
       O: CancelBackupResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

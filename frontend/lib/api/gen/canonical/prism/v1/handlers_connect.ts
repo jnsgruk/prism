@@ -7,8 +7,36 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CancelHandlerRunRequest, CancelHandlerRunResponse, CancelPipelineRequest, CancelPipelineResponse, CancelRunRequest, CancelRunResponse, GetPipelineStatusRequest, GetPipelineStatusResponse, GetStatusRequest, GetStatusResponse, ListHandlersRequest, ListHandlersResponse, ListPipelineRunsRequest, ListPipelineRunsResponse, ListRunsRequest, ListRunsResponse, TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest, TriggerHandlerResponse, TriggerPipelineRequest, TriggerPipelineResponse, TriggerRunRequest, TriggerRunResponse, TriggerTeamSyncRequest, TriggerTeamSyncResponse } from "./handlers_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
+
+import {
+  CancelHandlerRunRequest,
+  CancelHandlerRunResponse,
+  CancelPipelineRequest,
+  CancelPipelineResponse,
+  CancelRunRequest,
+  CancelRunResponse,
+  GetPipelineStatusRequest,
+  GetPipelineStatusResponse,
+  GetStatusRequest,
+  GetStatusResponse,
+  ListHandlersRequest,
+  ListHandlersResponse,
+  ListPipelineRunsRequest,
+  ListPipelineRunsResponse,
+  ListRunsRequest,
+  ListRunsResponse,
+  TriggerBackfillRequest,
+  TriggerBackfillResponse,
+  TriggerHandlerRequest,
+  TriggerHandlerResponse,
+  TriggerPipelineRequest,
+  TriggerPipelineResponse,
+  TriggerRunRequest,
+  TriggerRunResponse,
+  TriggerTeamSyncRequest,
+  TriggerTeamSyncResponse,
+} from "./handlers_pb.js";
 
 /**
  * HandlersService provides visibility and control over Restate-based background
@@ -162,6 +190,5 @@ export const HandlersService = {
       O: ListPipelineRunsResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

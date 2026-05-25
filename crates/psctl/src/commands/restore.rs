@@ -3,74 +3,40 @@ use ps_proto::canonical::prism::v1::{
     PreviewBackupRequest, RestoreBackupRequest, UploadBackupChunkRequest,
 };
 use std::io::Write as _;
-use tokio::io::AsyncReadExt;
 
 use crate::client::Clients;
 use crate::format;
 
 const CHUNK_SIZE: usize = 256 * 1024;
 
-/// Upload a backup file via chunked `UploadBackupChunk` calls and return the `upload_id`.
 async fn upload_file(clients: &mut Clients, file_path: &str) -> Result<String> {
-    let mut file = tokio::fs::File::open(file_path).await?;
+    let bytes = tokio::fs::read(file_path).await?;
+    let total_bytes = bytes.len() as u64;
+    let chunks: Vec<_> = bytes.chunks(CHUNK_SIZE).collect();
+    let total_chunks = chunks.len();
     let mut upload_id = String::new();
-    let mut total_bytes: u64 = 0;
+    let mut last_received: i64 = 0;
 
-    loop {
-        let mut buf = vec![0u8; CHUNK_SIZE];
-        let n = file.read(&mut buf).await?;
-        if n == 0 {
-            break;
-        }
-        buf.truncate(n);
-
-        let is_first = upload_id.is_empty();
-        let is_final = {
-            let mut probe = [0u8; 1];
-            let peek = file.read(&mut probe).await?;
-            if peek > 0 {
-                buf.extend_from_slice(probe.as_slice());
-                total_bytes += peek as u64;
-                false
-            } else {
-                true
-            }
-        };
-
+    for (i, chunk) in chunks.iter().enumerate() {
+        let is_final = i == total_chunks - 1;
         let resp = clients
             .backup
             .upload_backup_chunk(UploadBackupChunkRequest {
                 upload_id: upload_id.clone(),
-                chunk: buf,
+                chunk: chunk.to_vec(),
                 is_final,
             })
             .await?
             .into_inner();
 
-        if is_first {
+        if upload_id.is_empty() {
             upload_id = resp.upload_id;
         }
-        total_bytes += n as u64;
+        last_received = resp.received_bytes;
     }
 
-    // If the file was exactly a multiple of CHUNK_SIZE, we may not have sent is_final=true.
-    // Send an empty final chunk to finalize.
-    if !upload_id.is_empty() {
-        let resp = clients
-            .backup
-            .upload_backup_chunk(UploadBackupChunkRequest {
-                upload_id: upload_id.clone(),
-                chunk: vec![],
-                is_final: true,
-            })
-            .await?
-            .into_inner();
-        if resp.received_bytes as u64 != total_bytes {
-            bail!(
-                "upload size mismatch: sent {total_bytes} bytes but server received {}",
-                resp.received_bytes
-            );
-        }
+    if total_bytes > 0 && last_received as u64 != total_bytes {
+        bail!("upload size mismatch: sent {total_bytes} bytes but server received {last_received}");
     }
 
     Ok(upload_id)

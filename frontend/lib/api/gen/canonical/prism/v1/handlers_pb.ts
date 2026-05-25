@@ -6,19 +6,22 @@
 // @generated from file canonical/prism/v1/handlers.proto (package canonical.prism.v1, syntax proto3)
 /* eslint-disable */
 
+import type { Message } from "@bufbuild/protobuf";
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Platform, RunStatus } from "./common_pb";
-import { file_canonical_prism_v1_common } from "./common_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Message } from "@bufbuild/protobuf";
+
+import type { Platform, RunStatus } from "./common_pb";
+import { file_canonical_prism_v1_common } from "./common_pb";
 
 /**
  * Describes the file canonical/prism/v1/handlers.proto.
  */
-export const file_canonical_prism_v1_handlers: GenFile = /*@__PURE__*/
-  fileDesc("CiFjYW5vbmljYWwvcHJpc20vdjEvaGFuZGxlcnMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKzAwoMU291cmNlU3RhdHVzEgwKBG5hbWUYASABKAkSMQoLc291cmNlX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SLgoFc3RhdGUYAyABKA4yHy5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkwKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIzLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5EhUKDXByb2dyZXNzX2pzb24YCCABKAkaNAoSUmF0ZUxpbWl0SW5mb0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCCwoJX2xhc3RfcnVuQgsKCV9uZXh0X3J1biKVAwoKSGFuZGxlclJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESLQoGc3RhdHVzGAUgASgOMh0uY2Fub25pY2FsLnByaXNtLnYxLlJ1blN0YXR1cxIXCg9pdGVtc19jb2xsZWN0ZWQYBiABKAUSGgoNZXJyb3JfbWVzc2FnZRgHIAEoCUgBiAEBEiAKGHJhdGVfbGltaXRfd2FpdHNfc2Vjb25kcxgIIAEoBRIUCgxoYW5kbGVyX25hbWUYCSABKAkSFgoOaGFuZGxlcl9tZXRob2QYCiABKAkSGAoLcGlwZWxpbmVfaWQYCyABKAlIAogBAUIPCg1fY29tcGxldGVkX2F0QhAKDl9lcnJvcl9tZXNzYWdlQg4KDF9waXBlbGluZV9pZCISChBHZXRTdGF0dXNSZXF1ZXN0IkYKEUdldFN0YXR1c1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdHVzIn8KD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBEhYKDmluZ2VzdGlvbl9vbmx5GAMgASgIQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIkAKEExpc3RSdW5zUmVzcG9uc2USLAoEcnVucxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuIigKEVRyaWdnZXJSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhQKElRyaWdnZXJSdW5SZXNwb25zZSJBChZUcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJEhIKCnNpbmNlX2RhdGUYAiABKAkiGQoXVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2UiJwoQQ2FuY2VsUnVuUmVxdWVzdBITCgtzb3VyY2VfbmFtZRgBIAEoCSITChFDYW5jZWxSdW5SZXNwb25zZSItChZUcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhkKF1RyaWdnZXJUZWFtU3luY1Jlc3BvbnNlInUKCUFjdGl2ZVJ1bhIOCgZydW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEhAKA2tleRgDIAEoCUgAiAEBEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgYKBF9rZXkingEKC0hhbmRsZXJJbmZvEgwKBG5hbWUYASABKAkSDwoHbWV0aG9kcxgCIAMoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIUCgxyZXF1aXJlc19rZXkYBCABKAgSNgoKYWN0aXZlX3J1bhgFIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5BY3RpdmVSdW5IAIgBAUINCgtfYWN0aXZlX3J1biIVChNMaXN0SGFuZGxlcnNSZXF1ZXN0IkkKFExpc3RIYW5kbGVyc1Jlc3BvbnNlEjEKCGhhbmRsZXJzGAEgAygLMh8uY2Fub25pY2FsLnByaXNtLnYxLkhhbmRsZXJJbmZvImwKFVRyaWdnZXJIYW5kbGVyUmVxdWVzdBIUCgxoYW5kbGVyX25hbWUYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA2tleRgDIAEoCRIUCgdwYXlsb2FkGAQgASgJSACIAQFCCgoIX3BheWxvYWQiLwoWVHJpZ2dlckhhbmRsZXJSZXNwb25zZRIVCg1pbnZvY2F0aW9uX2lkGAEgASgJIikKF0NhbmNlbEhhbmRsZXJSdW5SZXF1ZXN0Eg4KBnJ1bl9pZBgBIAEoCSIaChhDYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UiGgoYR2V0UGlwZWxpbmVTdGF0dXNSZXF1ZXN0IpEBChlHZXRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlEjYKB2N1cnJlbnQYASABKAsyIC5jYW5vbmljYWwucHJpc20udjEuUGlwZWxpbmVJbmZvSACIAQESMAoGcmVjZW50GAIgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLlBpcGVsaW5lSW5mb0IKCghfY3VycmVudCLsAQoMUGlwZWxpbmVJbmZvEgoKAmlkGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIVCg1jdXJyZW50X3N0YWdlGAMgASgJEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjUKDGNvbXBsZXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARITCgtzdGFnZXNfanNvbhgGIAEoCRISCgVlcnJvchgHIAEoCUgBiAEBQg8KDV9jb21wbGV0ZWRfYXRCCAoGX2Vycm9yIkAKFlRyaWdnZXJQaXBlbGluZVJlcXVlc3QSFwoKc2luY2VfZGF0ZRgBIAEoCUgAiAEBQg0KC19zaW5jZV9kYXRlIi4KF1RyaWdnZXJQaXBlbGluZVJlc3BvbnNlEhMKC3BpcGVsaW5lX2lkGAEgASgJIiwKFUNhbmNlbFBpcGVsaW5lUmVxdWVzdBITCgtwaXBlbGluZV9pZBgBIAEoCSIYChZDYW5jZWxQaXBlbGluZVJlc3BvbnNlIhkKF0xpc3RQaXBlbGluZVJ1bnNSZXF1ZXN0IlUKGExpc3RQaXBlbGluZVJ1bnNSZXNwb25zZRI5CglwaXBlbGluZXMYASADKAsyJi5jYW5vbmljYWwucHJpc20udjEuUGlwZWxpbmVSdW5TdW1tYXJ5InYKElBpcGVsaW5lUnVuU3VtbWFyeRIyCghwaXBlbGluZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5QaXBlbGluZUluZm8SLAoEcnVucxgCIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuKpEBCgtTb3VyY2VTdGF0ZRIcChhTT1VSQ0VfU1RBVEVfVU5TUEVDSUZJRUQQABIVChFTT1VSQ0VfU1RBVEVfSURMRRABEhsKF1NPVVJDRV9TVEFURV9DT0xMRUNUSU5HEAISGAoUU09VUkNFX1NUQVRFX1dBSVRJTkcQAxIWChJTT1VSQ0VfU1RBVEVfRVJST1IQBDLCCgoPSGFuZGxlcnNTZXJ2aWNlElgKCUdldFN0YXR1cxIkLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTdGF0dXNSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlElUKCExpc3RSdW5zEiMuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RSdW5zUmVxdWVzdBokLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0UnVuc1Jlc3BvbnNlElsKClRyaWdnZXJSdW4SJS5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclJ1blJlc3BvbnNlEmoKD1RyaWdnZXJCYWNrZmlsbBIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlElgKCUNhbmNlbFJ1bhIkLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxSdW5SZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFJ1blJlc3BvbnNlEmoKD1RyaWdnZXJUZWFtU3luYxIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJUZWFtU3luY1Jlc3BvbnNlEmEKDExpc3RIYW5kbGVycxInLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0SGFuZGxlcnNSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkxpc3RIYW5kbGVyc1Jlc3BvbnNlEmcKDlRyaWdnZXJIYW5kbGVyEikuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJIYW5kbGVyUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VySGFuZGxlclJlc3BvbnNlEm0KEENhbmNlbEhhbmRsZXJSdW4SKy5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsSGFuZGxlclJ1blJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsSGFuZGxlclJ1blJlc3BvbnNlEnAKEUdldFBpcGVsaW5lU3RhdHVzEiwuY2Fub25pY2FsLnByaXNtLnYxLkdldFBpcGVsaW5lU3RhdHVzUmVxdWVzdBotLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlEmoKD1RyaWdnZXJQaXBlbGluZRIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUGlwZWxpbmVSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJQaXBlbGluZVJlc3BvbnNlEmcKDkNhbmNlbFBpcGVsaW5lEikuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFBpcGVsaW5lUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxQaXBlbGluZVJlc3BvbnNlEm0KEExpc3RQaXBlbGluZVJ1bnMSKy5jYW5vbmljYWwucHJpc20udjEuTGlzdFBpcGVsaW5lUnVuc1JlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuTGlzdFBpcGVsaW5lUnVuc1Jlc3BvbnNlYgZwcm90bzM", [file_canonical_prism_v1_common, file_google_protobuf_timestamp]);
+export const file_canonical_prism_v1_handlers: GenFile /*@__PURE__*/ = fileDesc(
+  "CiFjYW5vbmljYWwvcHJpc20vdjEvaGFuZGxlcnMucHJvdG8SEmNhbm9uaWNhbC5wcmlzbS52MSKzAwoMU291cmNlU3RhdHVzEgwKBG5hbWUYASABKAkSMQoLc291cmNlX3R5cGUYAiABKA4yHC5jYW5vbmljYWwucHJpc20udjEuUGxhdGZvcm0SLgoFc3RhdGUYAyABKA4yHy5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdGUSMQoIbGFzdF9ydW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESMQoIbmV4dF9ydW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESFwoPaXRlbXNfY29sbGVjdGVkGAYgASgFEkwKD3JhdGVfbGltaXRfaW5mbxgHIAMoCzIzLmNhbm9uaWNhbC5wcmlzbS52MS5Tb3VyY2VTdGF0dXMuUmF0ZUxpbWl0SW5mb0VudHJ5EhUKDXByb2dyZXNzX2pzb24YCCABKAkaNAoSUmF0ZUxpbWl0SW5mb0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCCwoJX2xhc3RfcnVuQgsKCV9uZXh0X3J1biKVAwoKSGFuZGxlclJ1bhIKCgJpZBgBIAEoCRITCgtzb3VyY2VfbmFtZRgCIAEoCRIuCgpzdGFydGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSACIAQESLQoGc3RhdHVzGAUgASgOMh0uY2Fub25pY2FsLnByaXNtLnYxLlJ1blN0YXR1cxIXCg9pdGVtc19jb2xsZWN0ZWQYBiABKAUSGgoNZXJyb3JfbWVzc2FnZRgHIAEoCUgBiAEBEiAKGHJhdGVfbGltaXRfd2FpdHNfc2Vjb25kcxgIIAEoBRIUCgxoYW5kbGVyX25hbWUYCSABKAkSFgoOaGFuZGxlcl9tZXRob2QYCiABKAkSGAoLcGlwZWxpbmVfaWQYCyABKAlIAogBAUIPCg1fY29tcGxldGVkX2F0QhAKDl9lcnJvcl9tZXNzYWdlQg4KDF9waXBlbGluZV9pZCISChBHZXRTdGF0dXNSZXF1ZXN0IkYKEUdldFN0YXR1c1Jlc3BvbnNlEjEKB3NvdXJjZXMYASADKAsyIC5jYW5vbmljYWwucHJpc20udjEuU291cmNlU3RhdHVzIn8KD0xpc3RSdW5zUmVxdWVzdBIYCgtzb3VyY2VfbmFtZRgBIAEoCUgAiAEBEhkKDGhhbmRsZXJfbmFtZRgCIAEoCUgBiAEBEhYKDmluZ2VzdGlvbl9vbmx5GAMgASgIQg4KDF9zb3VyY2VfbmFtZUIPCg1faGFuZGxlcl9uYW1lIkAKEExpc3RSdW5zUmVzcG9uc2USLAoEcnVucxgBIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuIigKEVRyaWdnZXJSdW5SZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhQKElRyaWdnZXJSdW5SZXNwb25zZSJBChZUcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJEhIKCnNpbmNlX2RhdGUYAiABKAkiGQoXVHJpZ2dlckJhY2tmaWxsUmVzcG9uc2UiJwoQQ2FuY2VsUnVuUmVxdWVzdBITCgtzb3VyY2VfbmFtZRgBIAEoCSITChFDYW5jZWxSdW5SZXNwb25zZSItChZUcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0EhMKC3NvdXJjZV9uYW1lGAEgASgJIhkKF1RyaWdnZXJUZWFtU3luY1Jlc3BvbnNlInUKCUFjdGl2ZVJ1bhIOCgZydW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEhAKA2tleRgDIAEoCUgAiAEBEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgYKBF9rZXkingEKC0hhbmRsZXJJbmZvEgwKBG5hbWUYASABKAkSDwoHbWV0aG9kcxgCIAMoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIUCgxyZXF1aXJlc19rZXkYBCABKAgSNgoKYWN0aXZlX3J1bhgFIAEoCzIdLmNhbm9uaWNhbC5wcmlzbS52MS5BY3RpdmVSdW5IAIgBAUINCgtfYWN0aXZlX3J1biIVChNMaXN0SGFuZGxlcnNSZXF1ZXN0IkkKFExpc3RIYW5kbGVyc1Jlc3BvbnNlEjEKCGhhbmRsZXJzGAEgAygLMh8uY2Fub25pY2FsLnByaXNtLnYxLkhhbmRsZXJJbmZvImwKFVRyaWdnZXJIYW5kbGVyUmVxdWVzdBIUCgxoYW5kbGVyX25hbWUYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA2tleRgDIAEoCRIUCgdwYXlsb2FkGAQgASgJSACIAQFCCgoIX3BheWxvYWQiLwoWVHJpZ2dlckhhbmRsZXJSZXNwb25zZRIVCg1pbnZvY2F0aW9uX2lkGAEgASgJIikKF0NhbmNlbEhhbmRsZXJSdW5SZXF1ZXN0Eg4KBnJ1bl9pZBgBIAEoCSIaChhDYW5jZWxIYW5kbGVyUnVuUmVzcG9uc2UiGgoYR2V0UGlwZWxpbmVTdGF0dXNSZXF1ZXN0IpEBChlHZXRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlEjYKB2N1cnJlbnQYASABKAsyIC5jYW5vbmljYWwucHJpc20udjEuUGlwZWxpbmVJbmZvSACIAQESMAoGcmVjZW50GAIgAygLMiAuY2Fub25pY2FsLnByaXNtLnYxLlBpcGVsaW5lSW5mb0IKCghfY3VycmVudCLsAQoMUGlwZWxpbmVJbmZvEgoKAmlkGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIVCg1jdXJyZW50X3N0YWdlGAMgASgJEi4KCnN0YXJ0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjUKDGNvbXBsZXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARITCgtzdGFnZXNfanNvbhgGIAEoCRISCgVlcnJvchgHIAEoCUgBiAEBQg8KDV9jb21wbGV0ZWRfYXRCCAoGX2Vycm9yIkAKFlRyaWdnZXJQaXBlbGluZVJlcXVlc3QSFwoKc2luY2VfZGF0ZRgBIAEoCUgAiAEBQg0KC19zaW5jZV9kYXRlIi4KF1RyaWdnZXJQaXBlbGluZVJlc3BvbnNlEhMKC3BpcGVsaW5lX2lkGAEgASgJIiwKFUNhbmNlbFBpcGVsaW5lUmVxdWVzdBITCgtwaXBlbGluZV9pZBgBIAEoCSIYChZDYW5jZWxQaXBlbGluZVJlc3BvbnNlIhkKF0xpc3RQaXBlbGluZVJ1bnNSZXF1ZXN0IlUKGExpc3RQaXBlbGluZVJ1bnNSZXNwb25zZRI5CglwaXBlbGluZXMYASADKAsyJi5jYW5vbmljYWwucHJpc20udjEuUGlwZWxpbmVSdW5TdW1tYXJ5InYKElBpcGVsaW5lUnVuU3VtbWFyeRIyCghwaXBlbGluZRgBIAEoCzIgLmNhbm9uaWNhbC5wcmlzbS52MS5QaXBlbGluZUluZm8SLAoEcnVucxgCIAMoCzIeLmNhbm9uaWNhbC5wcmlzbS52MS5IYW5kbGVyUnVuKpEBCgtTb3VyY2VTdGF0ZRIcChhTT1VSQ0VfU1RBVEVfVU5TUEVDSUZJRUQQABIVChFTT1VSQ0VfU1RBVEVfSURMRRABEhsKF1NPVVJDRV9TVEFURV9DT0xMRUNUSU5HEAISGAoUU09VUkNFX1NUQVRFX1dBSVRJTkcQAxIWChJTT1VSQ0VfU1RBVEVfRVJST1IQBDLCCgoPSGFuZGxlcnNTZXJ2aWNlElgKCUdldFN0YXR1cxIkLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRTdGF0dXNSZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkdldFN0YXR1c1Jlc3BvbnNlElUKCExpc3RSdW5zEiMuY2Fub25pY2FsLnByaXNtLnYxLkxpc3RSdW5zUmVxdWVzdBokLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0UnVuc1Jlc3BvbnNlElsKClRyaWdnZXJSdW4SJS5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclJ1blJlcXVlc3QaJi5jYW5vbmljYWwucHJpc20udjEuVHJpZ2dlclJ1blJlc3BvbnNlEmoKD1RyaWdnZXJCYWNrZmlsbBIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyQmFja2ZpbGxSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJCYWNrZmlsbFJlc3BvbnNlElgKCUNhbmNlbFJ1bhIkLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxSdW5SZXF1ZXN0GiUuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFJ1blJlc3BvbnNlEmoKD1RyaWdnZXJUZWFtU3luYxIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyVGVhbVN5bmNSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJUZWFtU3luY1Jlc3BvbnNlEmEKDExpc3RIYW5kbGVycxInLmNhbm9uaWNhbC5wcmlzbS52MS5MaXN0SGFuZGxlcnNSZXF1ZXN0GiguY2Fub25pY2FsLnByaXNtLnYxLkxpc3RIYW5kbGVyc1Jlc3BvbnNlEmcKDlRyaWdnZXJIYW5kbGVyEikuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJIYW5kbGVyUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VySGFuZGxlclJlc3BvbnNlEm0KEENhbmNlbEhhbmRsZXJSdW4SKy5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsSGFuZGxlclJ1blJlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuQ2FuY2VsSGFuZGxlclJ1blJlc3BvbnNlEnAKEUdldFBpcGVsaW5lU3RhdHVzEiwuY2Fub25pY2FsLnByaXNtLnYxLkdldFBpcGVsaW5lU3RhdHVzUmVxdWVzdBotLmNhbm9uaWNhbC5wcmlzbS52MS5HZXRQaXBlbGluZVN0YXR1c1Jlc3BvbnNlEmoKD1RyaWdnZXJQaXBlbGluZRIqLmNhbm9uaWNhbC5wcmlzbS52MS5UcmlnZ2VyUGlwZWxpbmVSZXF1ZXN0GisuY2Fub25pY2FsLnByaXNtLnYxLlRyaWdnZXJQaXBlbGluZVJlc3BvbnNlEmcKDkNhbmNlbFBpcGVsaW5lEikuY2Fub25pY2FsLnByaXNtLnYxLkNhbmNlbFBpcGVsaW5lUmVxdWVzdBoqLmNhbm9uaWNhbC5wcmlzbS52MS5DYW5jZWxQaXBlbGluZVJlc3BvbnNlEm0KEExpc3RQaXBlbGluZVJ1bnMSKy5jYW5vbmljYWwucHJpc20udjEuTGlzdFBpcGVsaW5lUnVuc1JlcXVlc3QaLC5jYW5vbmljYWwucHJpc20udjEuTGlzdFBpcGVsaW5lUnVuc1Jlc3BvbnNlYgZwcm90bzM",
+  [file_canonical_prism_v1_common, file_google_protobuf_timestamp],
+);
 
 /**
  * SourceStatus summarises the current state of an ingestion source including
@@ -82,8 +85,10 @@ export type SourceStatus = Message<"canonical.prism.v1.SourceStatus"> & {
  * Describes the message canonical.prism.v1.SourceStatus.
  * Use `create(SourceStatusSchema)` to create a new message.
  */
-export const SourceStatusSchema: GenMessage<SourceStatus> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 0);
+export const SourceStatusSchema: GenMessage<SourceStatus> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  0,
+);
 
 /**
  * HandlerRun represents a single execution of a Restate handler.
@@ -163,21 +168,21 @@ export type HandlerRun = Message<"canonical.prism.v1.HandlerRun"> & {
  * Describes the message canonical.prism.v1.HandlerRun.
  * Use `create(HandlerRunSchema)` to create a new message.
  */
-export const HandlerRunSchema: GenMessage<HandlerRun> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 1);
+export const HandlerRunSchema: GenMessage<HandlerRun> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_handlers, 1);
 
 /**
  * @generated from message canonical.prism.v1.GetStatusRequest
  */
-export type GetStatusRequest = Message<"canonical.prism.v1.GetStatusRequest"> & {
-};
+export type GetStatusRequest = Message<"canonical.prism.v1.GetStatusRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetStatusRequest.
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
-export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 2);
+export const GetStatusRequestSchema: GenMessage<GetStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  2,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetStatusResponse
@@ -193,8 +198,10 @@ export type GetStatusResponse = Message<"canonical.prism.v1.GetStatusResponse"> 
  * Describes the message canonical.prism.v1.GetStatusResponse.
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
-export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 3);
+export const GetStatusResponseSchema: GenMessage<GetStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  3,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListRunsRequest
@@ -226,8 +233,10 @@ export type ListRunsRequest = Message<"canonical.prism.v1.ListRunsRequest"> & {
  * Describes the message canonical.prism.v1.ListRunsRequest.
  * Use `create(ListRunsRequestSchema)` to create a new message.
  */
-export const ListRunsRequestSchema: GenMessage<ListRunsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 4);
+export const ListRunsRequestSchema: GenMessage<ListRunsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  4,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListRunsResponse
@@ -243,8 +252,10 @@ export type ListRunsResponse = Message<"canonical.prism.v1.ListRunsResponse"> & 
  * Describes the message canonical.prism.v1.ListRunsResponse.
  * Use `create(ListRunsResponseSchema)` to create a new message.
  */
-export const ListRunsResponseSchema: GenMessage<ListRunsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 5);
+export const ListRunsResponseSchema: GenMessage<ListRunsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  5,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerRunRequest
@@ -260,21 +271,24 @@ export type TriggerRunRequest = Message<"canonical.prism.v1.TriggerRunRequest"> 
  * Describes the message canonical.prism.v1.TriggerRunRequest.
  * Use `create(TriggerRunRequestSchema)` to create a new message.
  */
-export const TriggerRunRequestSchema: GenMessage<TriggerRunRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 6);
+export const TriggerRunRequestSchema: GenMessage<TriggerRunRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  6,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerRunResponse
  */
-export type TriggerRunResponse = Message<"canonical.prism.v1.TriggerRunResponse"> & {
-};
+export type TriggerRunResponse = Message<"canonical.prism.v1.TriggerRunResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.TriggerRunResponse.
  * Use `create(TriggerRunResponseSchema)` to create a new message.
  */
-export const TriggerRunResponseSchema: GenMessage<TriggerRunResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 7);
+export const TriggerRunResponseSchema: GenMessage<TriggerRunResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  7,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerBackfillRequest
@@ -297,21 +311,24 @@ export type TriggerBackfillRequest = Message<"canonical.prism.v1.TriggerBackfill
  * Describes the message canonical.prism.v1.TriggerBackfillRequest.
  * Use `create(TriggerBackfillRequestSchema)` to create a new message.
  */
-export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 8);
+export const TriggerBackfillRequestSchema: GenMessage<TriggerBackfillRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  8,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerBackfillResponse
  */
-export type TriggerBackfillResponse = Message<"canonical.prism.v1.TriggerBackfillResponse"> & {
-};
+export type TriggerBackfillResponse = Message<"canonical.prism.v1.TriggerBackfillResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.TriggerBackfillResponse.
  * Use `create(TriggerBackfillResponseSchema)` to create a new message.
  */
-export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 9);
+export const TriggerBackfillResponseSchema: GenMessage<TriggerBackfillResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  9,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelRunRequest
@@ -327,21 +344,24 @@ export type CancelRunRequest = Message<"canonical.prism.v1.CancelRunRequest"> & 
  * Describes the message canonical.prism.v1.CancelRunRequest.
  * Use `create(CancelRunRequestSchema)` to create a new message.
  */
-export const CancelRunRequestSchema: GenMessage<CancelRunRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 10);
+export const CancelRunRequestSchema: GenMessage<CancelRunRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  10,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelRunResponse
  */
-export type CancelRunResponse = Message<"canonical.prism.v1.CancelRunResponse"> & {
-};
+export type CancelRunResponse = Message<"canonical.prism.v1.CancelRunResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.CancelRunResponse.
  * Use `create(CancelRunResponseSchema)` to create a new message.
  */
-export const CancelRunResponseSchema: GenMessage<CancelRunResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 11);
+export const CancelRunResponseSchema: GenMessage<CancelRunResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  11,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerTeamSyncRequest
@@ -357,21 +377,24 @@ export type TriggerTeamSyncRequest = Message<"canonical.prism.v1.TriggerTeamSync
  * Describes the message canonical.prism.v1.TriggerTeamSyncRequest.
  * Use `create(TriggerTeamSyncRequestSchema)` to create a new message.
  */
-export const TriggerTeamSyncRequestSchema: GenMessage<TriggerTeamSyncRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 12);
+export const TriggerTeamSyncRequestSchema: GenMessage<TriggerTeamSyncRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  12,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerTeamSyncResponse
  */
-export type TriggerTeamSyncResponse = Message<"canonical.prism.v1.TriggerTeamSyncResponse"> & {
-};
+export type TriggerTeamSyncResponse = Message<"canonical.prism.v1.TriggerTeamSyncResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.TriggerTeamSyncResponse.
  * Use `create(TriggerTeamSyncResponseSchema)` to create a new message.
  */
-export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 13);
+export const TriggerTeamSyncResponseSchema: GenMessage<TriggerTeamSyncResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  13,
+);
 
 /**
  * ActiveRun represents a currently executing handler invocation.
@@ -410,8 +433,7 @@ export type ActiveRun = Message<"canonical.prism.v1.ActiveRun"> & {
  * Describes the message canonical.prism.v1.ActiveRun.
  * Use `create(ActiveRunSchema)` to create a new message.
  */
-export const ActiveRunSchema: GenMessage<ActiveRun> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 14);
+export const ActiveRunSchema: GenMessage<ActiveRun> /*@__PURE__*/ = messageDesc(file_canonical_prism_v1_handlers, 14);
 
 /**
  * HandlerInfo describes a registered Restate handler and its current state.
@@ -459,21 +481,24 @@ export type HandlerInfo = Message<"canonical.prism.v1.HandlerInfo"> & {
  * Describes the message canonical.prism.v1.HandlerInfo.
  * Use `create(HandlerInfoSchema)` to create a new message.
  */
-export const HandlerInfoSchema: GenMessage<HandlerInfo> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 15);
+export const HandlerInfoSchema: GenMessage<HandlerInfo> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  15,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListHandlersRequest
  */
-export type ListHandlersRequest = Message<"canonical.prism.v1.ListHandlersRequest"> & {
-};
+export type ListHandlersRequest = Message<"canonical.prism.v1.ListHandlersRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListHandlersRequest.
  * Use `create(ListHandlersRequestSchema)` to create a new message.
  */
-export const ListHandlersRequestSchema: GenMessage<ListHandlersRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 16);
+export const ListHandlersRequestSchema: GenMessage<ListHandlersRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  16,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListHandlersResponse
@@ -489,8 +514,10 @@ export type ListHandlersResponse = Message<"canonical.prism.v1.ListHandlersRespo
  * Describes the message canonical.prism.v1.ListHandlersResponse.
  * Use `create(ListHandlersResponseSchema)` to create a new message.
  */
-export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 17);
+export const ListHandlersResponseSchema: GenMessage<ListHandlersResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  17,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerHandlerRequest
@@ -525,8 +552,10 @@ export type TriggerHandlerRequest = Message<"canonical.prism.v1.TriggerHandlerRe
  * Describes the message canonical.prism.v1.TriggerHandlerRequest.
  * Use `create(TriggerHandlerRequestSchema)` to create a new message.
  */
-export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 18);
+export const TriggerHandlerRequestSchema: GenMessage<TriggerHandlerRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  18,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerHandlerResponse
@@ -544,8 +573,10 @@ export type TriggerHandlerResponse = Message<"canonical.prism.v1.TriggerHandlerR
  * Describes the message canonical.prism.v1.TriggerHandlerResponse.
  * Use `create(TriggerHandlerResponseSchema)` to create a new message.
  */
-export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 19);
+export const TriggerHandlerResponseSchema: GenMessage<TriggerHandlerResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  19,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelHandlerRunRequest
@@ -563,34 +594,38 @@ export type CancelHandlerRunRequest = Message<"canonical.prism.v1.CancelHandlerR
  * Describes the message canonical.prism.v1.CancelHandlerRunRequest.
  * Use `create(CancelHandlerRunRequestSchema)` to create a new message.
  */
-export const CancelHandlerRunRequestSchema: GenMessage<CancelHandlerRunRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 20);
+export const CancelHandlerRunRequestSchema: GenMessage<CancelHandlerRunRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  20,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelHandlerRunResponse
  */
-export type CancelHandlerRunResponse = Message<"canonical.prism.v1.CancelHandlerRunResponse"> & {
-};
+export type CancelHandlerRunResponse = Message<"canonical.prism.v1.CancelHandlerRunResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.CancelHandlerRunResponse.
  * Use `create(CancelHandlerRunResponseSchema)` to create a new message.
  */
-export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 21);
+export const CancelHandlerRunResponseSchema: GenMessage<CancelHandlerRunResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  21,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPipelineStatusRequest
  */
-export type GetPipelineStatusRequest = Message<"canonical.prism.v1.GetPipelineStatusRequest"> & {
-};
+export type GetPipelineStatusRequest = Message<"canonical.prism.v1.GetPipelineStatusRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.GetPipelineStatusRequest.
  * Use `create(GetPipelineStatusRequestSchema)` to create a new message.
  */
-export const GetPipelineStatusRequestSchema: GenMessage<GetPipelineStatusRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 22);
+export const GetPipelineStatusRequestSchema: GenMessage<GetPipelineStatusRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  22,
+);
 
 /**
  * @generated from message canonical.prism.v1.GetPipelineStatusResponse
@@ -615,8 +650,10 @@ export type GetPipelineStatusResponse = Message<"canonical.prism.v1.GetPipelineS
  * Describes the message canonical.prism.v1.GetPipelineStatusResponse.
  * Use `create(GetPipelineStatusResponseSchema)` to create a new message.
  */
-export const GetPipelineStatusResponseSchema: GenMessage<GetPipelineStatusResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 23);
+export const GetPipelineStatusResponseSchema: GenMessage<GetPipelineStatusResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  23,
+);
 
 /**
  * PipelineInfo describes a single pipeline run.
@@ -666,8 +703,10 @@ export type PipelineInfo = Message<"canonical.prism.v1.PipelineInfo"> & {
  * Describes the message canonical.prism.v1.PipelineInfo.
  * Use `create(PipelineInfoSchema)` to create a new message.
  */
-export const PipelineInfoSchema: GenMessage<PipelineInfo> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 24);
+export const PipelineInfoSchema: GenMessage<PipelineInfo> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  24,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerPipelineRequest
@@ -686,8 +725,10 @@ export type TriggerPipelineRequest = Message<"canonical.prism.v1.TriggerPipeline
  * Describes the message canonical.prism.v1.TriggerPipelineRequest.
  * Use `create(TriggerPipelineRequestSchema)` to create a new message.
  */
-export const TriggerPipelineRequestSchema: GenMessage<TriggerPipelineRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 25);
+export const TriggerPipelineRequestSchema: GenMessage<TriggerPipelineRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  25,
+);
 
 /**
  * @generated from message canonical.prism.v1.TriggerPipelineResponse
@@ -705,8 +746,10 @@ export type TriggerPipelineResponse = Message<"canonical.prism.v1.TriggerPipelin
  * Describes the message canonical.prism.v1.TriggerPipelineResponse.
  * Use `create(TriggerPipelineResponseSchema)` to create a new message.
  */
-export const TriggerPipelineResponseSchema: GenMessage<TriggerPipelineResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 26);
+export const TriggerPipelineResponseSchema: GenMessage<TriggerPipelineResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  26,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelPipelineRequest
@@ -724,34 +767,38 @@ export type CancelPipelineRequest = Message<"canonical.prism.v1.CancelPipelineRe
  * Describes the message canonical.prism.v1.CancelPipelineRequest.
  * Use `create(CancelPipelineRequestSchema)` to create a new message.
  */
-export const CancelPipelineRequestSchema: GenMessage<CancelPipelineRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 27);
+export const CancelPipelineRequestSchema: GenMessage<CancelPipelineRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  27,
+);
 
 /**
  * @generated from message canonical.prism.v1.CancelPipelineResponse
  */
-export type CancelPipelineResponse = Message<"canonical.prism.v1.CancelPipelineResponse"> & {
-};
+export type CancelPipelineResponse = Message<"canonical.prism.v1.CancelPipelineResponse"> & {};
 
 /**
  * Describes the message canonical.prism.v1.CancelPipelineResponse.
  * Use `create(CancelPipelineResponseSchema)` to create a new message.
  */
-export const CancelPipelineResponseSchema: GenMessage<CancelPipelineResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 28);
+export const CancelPipelineResponseSchema: GenMessage<CancelPipelineResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  28,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListPipelineRunsRequest
  */
-export type ListPipelineRunsRequest = Message<"canonical.prism.v1.ListPipelineRunsRequest"> & {
-};
+export type ListPipelineRunsRequest = Message<"canonical.prism.v1.ListPipelineRunsRequest"> & {};
 
 /**
  * Describes the message canonical.prism.v1.ListPipelineRunsRequest.
  * Use `create(ListPipelineRunsRequestSchema)` to create a new message.
  */
-export const ListPipelineRunsRequestSchema: GenMessage<ListPipelineRunsRequest> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 29);
+export const ListPipelineRunsRequestSchema: GenMessage<ListPipelineRunsRequest> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  29,
+);
 
 /**
  * @generated from message canonical.prism.v1.ListPipelineRunsResponse
@@ -767,8 +814,10 @@ export type ListPipelineRunsResponse = Message<"canonical.prism.v1.ListPipelineR
  * Describes the message canonical.prism.v1.ListPipelineRunsResponse.
  * Use `create(ListPipelineRunsResponseSchema)` to create a new message.
  */
-export const ListPipelineRunsResponseSchema: GenMessage<ListPipelineRunsResponse> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 30);
+export const ListPipelineRunsResponseSchema: GenMessage<ListPipelineRunsResponse> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  30,
+);
 
 /**
  * PipelineRunSummary bundles a pipeline with all handler runs it triggered.
@@ -793,8 +842,10 @@ export type PipelineRunSummary = Message<"canonical.prism.v1.PipelineRunSummary"
  * Describes the message canonical.prism.v1.PipelineRunSummary.
  * Use `create(PipelineRunSummarySchema)` to create a new message.
  */
-export const PipelineRunSummarySchema: GenMessage<PipelineRunSummary> = /*@__PURE__*/
-  messageDesc(file_canonical_prism_v1_handlers, 31);
+export const PipelineRunSummarySchema: GenMessage<PipelineRunSummary> /*@__PURE__*/ = messageDesc(
+  file_canonical_prism_v1_handlers,
+  31,
+);
 
 /**
  * SourceState represents the current operational state of an ingestion source.
@@ -839,8 +890,7 @@ export enum SourceState {
 /**
  * Describes the enum canonical.prism.v1.SourceState.
  */
-export const SourceStateSchema: GenEnum<SourceState> = /*@__PURE__*/
-  enumDesc(file_canonical_prism_v1_handlers, 0);
+export const SourceStateSchema: GenEnum<SourceState> /*@__PURE__*/ = enumDesc(file_canonical_prism_v1_handlers, 0);
 
 /**
  * HandlersService provides visibility and control over Restate-based background
@@ -858,7 +908,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof GetStatusRequestSchema;
     output: typeof GetStatusResponseSchema;
-  },
+  };
   /**
    * ListRuns returns recent handler run history, optionally filtered by source or handler.
    *
@@ -868,7 +918,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof ListRunsRequestSchema;
     output: typeof ListRunsResponseSchema;
-  },
+  };
   /**
    * TriggerRun starts an incremental ingestion run for a source.
    *
@@ -878,7 +928,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerRunRequestSchema;
     output: typeof TriggerRunResponseSchema;
-  },
+  };
   /**
    * TriggerBackfill starts a backfill ingestion run from a specific date.
    *
@@ -888,7 +938,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerBackfillRequestSchema;
     output: typeof TriggerBackfillResponseSchema;
-  },
+  };
   /**
    * CancelRun cancels an active ingestion run for a source.
    *
@@ -898,7 +948,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof CancelRunRequestSchema;
     output: typeof CancelRunResponseSchema;
-  },
+  };
   /**
    * TriggerTeamSync starts a GitHub team sync run for a source.
    *
@@ -908,7 +958,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerTeamSyncRequestSchema;
     output: typeof TriggerTeamSyncResponseSchema;
-  },
+  };
   /**
    * ListHandlers returns all registered Restate handlers with their active run status.
    *
@@ -918,7 +968,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof ListHandlersRequestSchema;
     output: typeof ListHandlersResponseSchema;
-  },
+  };
   /**
    * TriggerHandler starts a run on any registered Restate handler by name and method.
    *
@@ -928,7 +978,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerHandlerRequestSchema;
     output: typeof TriggerHandlerResponseSchema;
-  },
+  };
   /**
    * CancelHandlerRun cancels an active run by its Restate invocation ID.
    *
@@ -938,7 +988,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof CancelHandlerRunRequestSchema;
     output: typeof CancelHandlerRunResponseSchema;
-  },
+  };
   /**
    * GetPipelineStatus returns the current/most recent pipeline and recent history.
    *
@@ -948,7 +998,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof GetPipelineStatusRequestSchema;
     output: typeof GetPipelineStatusResponseSchema;
-  },
+  };
   /**
    * TriggerPipeline starts a full pipeline run (team sync → ingestion → processing).
    *
@@ -958,7 +1008,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof TriggerPipelineRequestSchema;
     output: typeof TriggerPipelineResponseSchema;
-  },
+  };
   /**
    * CancelPipeline cooperatively cancels a running pipeline after the current stage.
    *
@@ -968,7 +1018,7 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof CancelPipelineRequestSchema;
     output: typeof CancelPipelineResponseSchema;
-  },
+  };
   /**
    * ListPipelineRuns returns recent pipelines with their associated handler runs.
    *
@@ -978,7 +1028,5 @@ export const HandlersService: GenService<{
     methodKind: "unary";
     input: typeof ListPipelineRunsRequestSchema;
     output: typeof ListPipelineRunsResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_canonical_prism_v1_handlers, 0);
-
+  };
+}> /*@__PURE__*/ = serviceDesc(file_canonical_prism_v1_handlers, 0);
