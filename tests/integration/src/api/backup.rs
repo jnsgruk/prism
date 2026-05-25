@@ -139,7 +139,7 @@ async fn seed_data(pool: &PgPool, user_id: Uuid) -> (Uuid, Uuid, Uuid) {
     sqlx::query(
         "INSERT INTO reasoning.conversations \
          (id, user_id, title, status, model_name, container_status, query_status) \
-         VALUES ($1, $2, $3, $4, $5, %6, $7)",
+         VALUES ($1, $2, $3, $4, $5, $6, $7)",
     )
     .bind(conversation_id)
     .bind(user_id)
