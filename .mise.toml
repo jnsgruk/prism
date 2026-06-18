@@ -8,7 +8,10 @@ node = "24"
 buf = "latest"
 protoc = "latest"
 prek = "latest"
-vp = "latest"
+# Pinned to 0.1.x: vp 0.2's standalone test runner can't resolve the project's
+# happy-dom from node_modules, breaking `mise run test:ts`. Keep aligned with
+# the vite-plus devDependency (0.1.24) until 0.2 fixes test resolution.
+vp = "0.1"
 tilt = "latest"
 kubectl = "latest"
 kubectx = "latest"
