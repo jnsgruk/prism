@@ -120,7 +120,7 @@ describe("admin hooks", () => {
       const { useImportDirectory } = await import("./use-admin");
       const { result } = renderHook(() => useImportDirectory(), { wrapper: TestWrapper });
 
-      result.current.mutate(new Uint8Array([1, 2, 3]));
+      result.current.mutate({ fileContent: new Uint8Array([1, 2, 3]), deactivateStale: false });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data?.peopleImported).toBe(5);

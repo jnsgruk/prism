@@ -3,7 +3,7 @@ use ps_core::repo::{PageRequest, Repos, SortParams};
 use ps_proto::canonical::prism::v1::{
     AssignPersonToTeamResponse, DeactivatePersonResponse, ImportDirectoryResponse,
     ImportJiraUsersResponse, ListPeopleResponse, ListUnassignedPeopleResponse, PaginationResponse,
-    ReactivatePersonResponse, RemovePersonFromTeamResponse, UpdatePersonResponse,
+    ReactivatePersonResponse, RemovePersonFromTeamResponse, StalePerson, UpdatePersonResponse,
 };
 use tonic::{Response, Status};
 use tracing::{info, warn};
@@ -66,6 +66,7 @@ pub(super) async fn handle_list_people(
 pub(super) async fn handle_import_directory(
     repos: &Repos,
     file_content: Vec<u8>,
+    deactivate_stale: bool,
 ) -> Result<Response<ImportDirectoryResponse>, Status> {
     let content = String::from_utf8(file_content)
         .map_err(|_| Status::invalid_argument("file content is not valid UTF-8"))?;
@@ -75,14 +76,17 @@ pub(super) async fn handle_import_directory(
 
     let result = repos
         .org
-        .import_records(&import_records)
+        .import_records(&import_records, deactivate_stale)
         .await
         .map_err(db_err)?;
 
     info!(
         people_imported = result.people_imported,
+        people_updated = result.people_updated,
         teams_created = result.teams_created,
         identities_mapped = result.identities_mapped,
+        stale_people = result.stale_people_count,
+        people_deactivated = result.people_deactivated,
         warnings = result.warnings.len(),
         "directory import complete"
     );
@@ -121,6 +125,16 @@ pub(super) async fn handle_import_directory(
         }
     }
 
+    let stale_people = result
+        .stale_people
+        .into_iter()
+        .map(|p| StalePerson {
+            id: p.id.to_string(),
+            name: p.name,
+            email: p.email.unwrap_or_default(),
+        })
+        .collect();
+
     Ok(Response::new(ImportDirectoryResponse {
         people_imported: result.people_imported,
         teams_created: result.teams_created,
@@ -129,6 +143,9 @@ pub(super) async fn handle_import_directory(
         people_updated: result.people_updated,
         stale_people_count: result.stale_people_count,
         unassigned_count: result.unassigned_count,
+        stale_people,
+        people_deactivated: result.people_deactivated,
+        deactivation_skipped_guard: result.deactivation_skipped_guard,
     }))
 }
 

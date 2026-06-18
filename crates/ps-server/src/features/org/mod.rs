@@ -131,7 +131,7 @@ impl OrgService for OrgServiceImpl {
     ) -> Result<Response<ImportDirectoryResponse>, Status> {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
-        people::handle_import_directory(&self.repos, req.file_content).await
+        people::handle_import_directory(&self.repos, req.file_content, req.deactivate_stale).await
     }
 
     async fn update_person(

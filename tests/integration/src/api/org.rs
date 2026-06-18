@@ -75,6 +75,7 @@ async fn import_directory_creates_people_and_teams() {
 
     let mut req = Request::new(ImportDirectoryRequest {
         file_content: payload,
+        deactivate_stale: false,
     });
     req.metadata_mut().insert(
         "authorization",
@@ -120,6 +121,7 @@ async fn list_people_after_import() {
 
     let mut req = Request::new(ImportDirectoryRequest {
         file_content: payload,
+        deactivate_stale: false,
     });
     req.metadata_mut().insert(
         "authorization",
@@ -194,6 +196,7 @@ async fn get_team_returns_members() {
 
     let mut req = Request::new(ImportDirectoryRequest {
         file_content: payload,
+        deactivate_stale: false,
     });
     req.metadata_mut().insert(
         "authorization",
@@ -267,6 +270,7 @@ async fn import_directory_upserts_by_directory_id() {
 
     let mut req = Request::new(ImportDirectoryRequest {
         file_content: payload,
+        deactivate_stale: false,
     });
     req.metadata_mut().insert(
         "authorization",
@@ -293,6 +297,7 @@ async fn import_directory_upserts_by_directory_id() {
 
     let mut req = Request::new(ImportDirectoryRequest {
         file_content: payload,
+        deactivate_stale: false,
     });
     req.metadata_mut().insert(
         "authorization",

@@ -203,6 +203,19 @@ message ListPeopleResponse {
 message ImportDirectoryRequest {
   // CSV file content for directory import.
   bytes file_content = 1;
+  // When true, people previously seen by a directory import but absent from
+  // this file (leavers) are deactivated. Guarded against partial/truncated
+  // files: deactivation is skipped if the stale fraction exceeds a safety
+  // threshold. Defaults to false (stale people are only reported).
+  bool deactivate_stale = 2;
+}
+
+// A person previously seen by a directory import but absent from the most
+// recent file — a likely leaver.
+message StalePerson {
+  string id = 1;
+  string name = 2;
+  string email = 3;
 }
 
 message ImportDirectoryResponse {
@@ -215,6 +228,14 @@ message ImportDirectoryResponse {
   int32 stale_people_count = 6;
   // Number of people not assigned to any team after import.
   int32 unassigned_count = 7;
+  // Import-managed people absent from this file (likely leavers).
+  repeated StalePerson stale_people = 8;
+  // Number of stale people deactivated by this import (0 unless
+  // deactivate_stale was requested and the safety guard passed).
+  int32 people_deactivated = 9;
+  // True when deactivate_stale was requested but skipped because the stale
+  // fraction exceeded the safety threshold (likely a partial/truncated file).
+  bool deactivation_skipped_guard = 10;
 }
 
 message UpdatePersonRequest {

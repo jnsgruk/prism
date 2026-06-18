@@ -472,7 +472,7 @@ async fn import_records_creates_teams_and_people() {
         },
     ];
 
-    let result = repos.org.import_records(&records).await.unwrap();
+    let result = repos.org.import_records(&records, false).await.unwrap();
     assert_eq!(result.people_imported, 2);
     assert!(result.teams_created >= 1);
 
@@ -480,6 +480,135 @@ async fn import_records_creates_teams_and_people() {
     let teams = repos.org.list_teams(None, None).await.unwrap();
     let kernel = teams.iter().find(|t| t.name == "Kernel").unwrap();
     assert_eq!(kernel.member_count, 2);
+
+    ctx.teardown().await;
+}
+
+/// Build an HTML-style import record (no `directory_id`, matched by email).
+fn html_record(name: &str, email: &str, team: &str) -> ps_core::repo::org::ImportRecord {
+    ps_core::repo::org::ImportRecord {
+        name: name.into(),
+        email: Some(email.into()),
+        level: None,
+        directory_id: None,
+        team: Some(team.into()),
+        team_type: Some(TeamType::Team),
+        org: Some("Canonical".into()),
+        identities: vec![],
+        manager_name: None,
+        depth: None,
+        has_reports: false,
+        group: None,
+    }
+}
+
+#[tokio::test]
+async fn html_reimport_matches_by_email_without_duplicating() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+
+    let records = vec![
+        html_record("Alice A", "alice@example.com", "Kernel"),
+        html_record("Bob B", "bob@example.com", "Kernel"),
+    ];
+
+    // First import: two genuine new people.
+    let first = repos.org.import_records(&records, false).await.unwrap();
+    assert_eq!(first.people_imported, 2);
+    assert_eq!(first.people_updated, 0);
+
+    // Re-import the same file (case-varied email proves case-insensitive match).
+    let again = vec![
+        html_record("Alice A", "ALICE@example.com", "Kernel"),
+        html_record("Bob B", "bob@example.com", "Kernel"),
+    ];
+    let second = repos.org.import_records(&again, false).await.unwrap();
+    assert_eq!(
+        second.people_imported, 0,
+        "re-import must not insert duplicates"
+    );
+    assert_eq!(second.people_updated, 2);
+
+    // Still exactly two people — the re-import updated in place, no duplicates.
+    let people = repos.org.list_people(false).await.unwrap();
+    assert_eq!(people.len(), 2);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn stale_people_detected_and_deactivated_on_reimport() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+
+    // Baseline of ten import-managed people, so a single leaver (10%) stays
+    // under the 20% safety guard.
+    let baseline: Vec<_> = (1..=10)
+        .map(|i| {
+            html_record(
+                &format!("Person {i}"),
+                &format!("p{i}@example.com"),
+                "Kernel",
+            )
+        })
+        .collect();
+    repos.org.import_records(&baseline, false).await.unwrap();
+
+    // Next import drops "Person 10" (a leaver) and opts into deactivation.
+    let next: Vec<_> = (1..=9)
+        .map(|i| {
+            html_record(
+                &format!("Person {i}"),
+                &format!("p{i}@example.com"),
+                "Kernel",
+            )
+        })
+        .collect();
+    let result = repos.org.import_records(&next, true).await.unwrap();
+
+    assert_eq!(result.stale_people_count, 1);
+    assert_eq!(result.stale_people[0].name, "Person 10");
+    assert_eq!(result.people_deactivated, 1);
+    assert!(!result.deactivation_skipped_guard);
+
+    // Person 10 is now inactive; Person 1 remains active.
+    let people = repos.org.list_people(false).await.unwrap();
+    let leaver = people.iter().find(|p| p.name == "Person 10").unwrap();
+    assert!(!leaver.active);
+    let stayer = people.iter().find(|p| p.name == "Person 1").unwrap();
+    assert!(stayer.active);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn stale_deactivation_skipped_when_guard_trips() {
+    let ctx = RepoTestContext::new().await;
+    let repos = &ctx.repos;
+
+    // Baseline of five import-managed people.
+    let baseline = vec![
+        html_record("P1", "p1@example.com", "Kernel"),
+        html_record("P2", "p2@example.com", "Kernel"),
+        html_record("P3", "p3@example.com", "Kernel"),
+        html_record("P4", "p4@example.com", "Kernel"),
+        html_record("P5", "p5@example.com", "Kernel"),
+    ];
+    repos.org.import_records(&baseline, false).await.unwrap();
+
+    // A "truncated" file with only one person leaves 4/5 (80%) stale — well
+    // over the 20% guard — so deactivation must be skipped.
+    let truncated = vec![html_record("P1", "p1@example.com", "Kernel")];
+    let result = repos.org.import_records(&truncated, true).await.unwrap();
+
+    assert_eq!(result.stale_people_count, 4);
+    assert_eq!(result.people_deactivated, 0);
+    assert!(result.deactivation_skipped_guard);
+
+    // Everyone still active — nothing was deactivated.
+    let people = repos.org.list_people(false).await.unwrap();
+    let active = people.iter().filter(|p| p.active).count();
+    assert_eq!(active, 5);
 
     ctx.teardown().await;
 }

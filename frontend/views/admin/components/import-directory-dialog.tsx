@@ -1,5 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useImportDirectory } from "@/views/admin/hooks/use-admin";
 import { AlertCircle, Upload } from "lucide-react";
@@ -16,10 +17,11 @@ export const ImportDirectoryDialog = ({
 }): React.ReactElement => {
   const importDirectory = useImportDirectory();
   const [dragActive, setDragActive] = useState(false);
+  const [deactivateStale, setDeactivateStale] = useState(false);
 
   const handleFile = async (file: File): Promise<void> => {
     const buffer = await file.arrayBuffer();
-    importDirectory.mutate(new Uint8Array(buffer));
+    importDirectory.mutate({ fileContent: new Uint8Array(buffer), deactivateStale });
   };
 
   const handleDrop = (e: React.DragEvent): void => {
@@ -63,16 +65,57 @@ export const ImportDirectoryDialog = ({
           </Button>
         </div>
 
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox
+            checked={deactivateStale}
+            onCheckedChange={(checked) => setDeactivateStale(checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Deactivate people who have left
+            <span className="block text-xs text-muted-foreground">
+              People previously imported but absent from this file are deactivated. Skipped automatically if too many
+              are missing (likely a partial file).
+            </span>
+          </span>
+        </label>
+
         {importDirectory.isPending && <p className="text-sm text-muted-foreground">Importing...</p>}
 
         {importDirectory.isSuccess && (
           <div className="rounded border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
             <p className="text-sm font-medium text-green-800 dark:text-green-200">Import complete</p>
             <ul className="mt-1 text-xs text-green-700 dark:text-green-300">
-              <li>{importDirectory.data.peopleImported} people imported</li>
+              <li>{importDirectory.data.peopleImported} people added</li>
+              <li>{importDirectory.data.peopleUpdated} people updated</li>
               <li>{importDirectory.data.teamsCreated} teams created</li>
               <li>{importDirectory.data.identitiesMapped} identities mapped</li>
+              {importDirectory.data.peopleDeactivated > 0 && (
+                <li>{importDirectory.data.peopleDeactivated} people deactivated (left)</li>
+              )}
             </ul>
+
+            {importDirectory.data.deactivationSkippedGuard && (
+              <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                Deactivation skipped: too many people were missing from this file. Re-upload a complete file or
+                deactivate the leavers manually.
+              </p>
+            )}
+
+            {importDirectory.data.stalePeople.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {importDirectory.data.peopleDeactivated > 0 ? "Deactivated" : "Not in this file"} (
+                  {importDirectory.data.stalePeople.length}):
+                </p>
+                <ul className="mt-1 max-h-32 overflow-y-auto text-xs text-muted-foreground">
+                  {importDirectory.data.stalePeople.map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {importDirectory.data.warnings.length > 0 && (
               <div className="mt-2">
                 <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Warnings:</p>

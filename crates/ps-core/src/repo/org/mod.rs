@@ -94,6 +94,14 @@ pub struct ImportIdentity {
     pub username: String,
 }
 
+/// A person previously seen by a directory import but absent from the most
+/// recent import batch — a likely leaver.
+pub struct StalePersonRow {
+    pub id: Uuid,
+    pub name: String,
+    pub email: Option<String>,
+}
+
 /// Result of a directory import operation.
 pub struct ImportResult {
     pub people_imported: i32,
@@ -103,6 +111,14 @@ pub struct ImportResult {
     pub warnings: Vec<String>,
     pub stale_people_count: i32,
     pub unassigned_count: i32,
+    /// Import-managed people absent from this batch (likely leavers).
+    pub stale_people: Vec<StalePersonRow>,
+    /// Number of stale people deactivated by this import (0 unless requested
+    /// and the safety guard passed).
+    pub people_deactivated: i32,
+    /// True when stale deactivation was requested but skipped because the
+    /// stale fraction exceeded the safety threshold.
+    pub deactivation_skipped_guard: bool,
 }
 
 impl OrgRepo {

@@ -82,10 +82,14 @@ export const useResetData = (): UseMutationResult<ResetDataResponse, Error, void
   });
 };
 
-export const useImportDirectory = (): UseMutationResult<ImportDirectoryResponse, Error, Uint8Array> => {
+export const useImportDirectory = (): UseMutationResult<
+  ImportDirectoryResponse,
+  Error,
+  { fileContent: Uint8Array; deactivateStale: boolean }
+> => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (fileContent: Uint8Array) => orgClient.importDirectory({ fileContent }),
+    mutationFn: ({ fileContent, deactivateStale }) => orgClient.importDirectory({ fileContent, deactivateStale }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.all });
     },
