@@ -4,6 +4,25 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-06-18 — Directory Re-import as a Safe Merge
+
+**Context:** HTML directory imports (`directory.html`) carry no `directory_id`, so the upsert path matched people only by `directory_id` and otherwise inserted unconditionally. Re-importing therefore created a fresh `org.people` row for every record on every upload — duplicating the entire org and migrating platform identities onto the duplicates via the `ON CONFLICT (platform, platform_username)` remap. The "safe re-import" guarantees in the code only ever applied to JSON imports that supply a `directory_id`. There was also no handling of leavers: stale people were merely counted, and only for `directory_id` rows (never set by HTML), so HTML imports always reported zero.
+
+**Decision:** Make directory re-import a true merge. `upsert_person` matches an existing person by `directory_id` (JSON) or, failing that, by email (HTML, case-insensitive) before inserting, so re-imports update in place and only genuine new joiners are inserted. Leavers (active, import-managed people absent from the file) are detected via `last_import_at` and, when `deactivate_stale` is set, deactivated — guarded by a maximum stale fraction (20%) that skips deactivation on partial/truncated files.
+
+**Key design choices:**
+- **Email as the HTML match key:** the directory has no stable per-person id; email is unique-enough in practice and already present on every record. Duplicate emails (no DB constraint) resolve to the oldest row for determinism.
+- **`last_import_at IS NOT NULL` = "import-managed":** distinguishes directory people from manually-added ones, so manual entries are never treated as leavers. The first import under this logic is a safe baseline (no deactivations) because no one is yet marked managed.
+- **Opt-in, guarded deactivation:** `deactivate_stale` defaults off (stale people are only reported); the fraction guard prevents a truncated upload from mass-deactivating the org. Deactivation is reversible (sets `active = false`, ends memberships).
+- **Manual structure preserved:** team memberships are only assigned when a person has none, and lead/parent wiring only fills NULLs.
+
+**Rationale:**
+- Fixes silent, catastrophic duplication on the most common import path
+- Gives leaver handling that matches operator intent (add joiners, remove leavers) without clobbering manually-curated org structure
+- The guard plus opt-in default keeps the destructive path safe by construction
+
+---
+
 ## 2026-04-22 — Backup/Restore via `pg_dump`/`pg_restore` K8s Jobs
 
 **Context:** The initial backup system used custom JSONL serialization (~2800 lines) with streaming, pagination, per-table SHA-256 checksums, and a Restate handler for process isolation. This approach had compounding reliability problems: CPU-bound JSON serialization starved the tokio runtime, blocking HTTP/2 PING/PONG and causing Restate keep-alive timeouts; journal sequences were fragile across code changes; and every schema migration required updating both export and import paths. Several iterations (heartbeat journaling, per-table journal chunking, `spawn_blocking` writers) improved reliability incrementally but added complexity without addressing the root cause: we were reimplementing what `pg_dump` already does.
