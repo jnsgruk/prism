@@ -14,6 +14,11 @@
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
+# vite-plus (>=0.2) initialises a native HTTP client at build startup and
+# aborts if the system trust store is empty; oven/bun ships without it.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first (layer caching)
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile

@@ -38,6 +38,12 @@ export default defineConfig({
       "max-lines-per-function": ["error", { max: 400, skipComments: true, skipBlankLines: true }],
       "no-nested-ternary": "error",
       "no-unneeded-ternary": "error",
+      // Leading underscore marks an intentionally-unused binding (params and
+      // values kept for documentation), an established convention here.
+      "no-underscore-dangle": "off",
+      // Render functions passed to react-markdown's `components` prop are the
+      // canonical use case the rule's allowAsProps option exists for.
+      "react/no-unstable-nested-components": ["error", { allowAsProps: true }],
       "no-restricted-imports": [
         "error",
         {
