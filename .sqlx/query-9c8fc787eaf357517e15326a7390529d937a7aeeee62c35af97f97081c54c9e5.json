@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE org.people\n        SET name = $1, email = $2, level = $3,\n            last_import_at = now(), updated_at = now()\n        WHERE id = $4\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c8fc787eaf357517e15326a7390529d937a7aeeee62c35af97f97081c54c9e5"
+}
