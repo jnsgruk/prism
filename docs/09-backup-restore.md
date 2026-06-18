@@ -124,6 +124,14 @@ A dedicated `prism-backups` PVC is mounted on both ps-server and the ps-backup J
 - ps-server reads and streams it to the client, then deletes it
 - For restore, ps-server stages the uploaded archive on the PVC for the Job to consume
 
+The PVC is **staging only** — completed archives are streamed to the client and
+not retained. However, ps-server's post-stream cleanup only runs if the stream
+future completes; if the client disconnects mid-download (e.g. a gateway
+timeout), the archive is orphaned. To stop orphans accumulating until the PVC
+fills, every backup Job sweeps all pre-existing `*.ps-backup` and
+`*.ps-backup.tmp` files from the PVC before generating a new archive
+(`sweep_orphaned_backups` in `ps-backup`).
+
 ### Concurrent Backup Prevention
 
 ps-server checks for active K8s Jobs with label `app=ps-backup` before creating a new one. If an active job exists, the RPC returns `ALREADY_EXISTS`. The `--force` flag deletes existing jobs before creating a new one.
