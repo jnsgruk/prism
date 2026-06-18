@@ -61,6 +61,13 @@ fn run_backup() -> Result<()> {
 
     info!(backup_id = %backup_id, "starting backup");
 
+    // Sweep orphaned archives left behind when a client disconnected mid-download
+    // (the server-side stream future is dropped before its cleanup step runs).
+    // The backups PVC is staging only — completed archives are streamed to the
+    // client and not retained here — so anything present now is an orphan that
+    // would otherwise accumulate until the PVC fills and backups fail.
+    sweep_orphaned_backups(Path::new(&backups_path));
+
     let secret_key = load_secret_key()?;
     let canary = create_secret_key_canary(&secret_key)
         .map_err(|e| anyhow::anyhow!("failed to create canary: {e}"))?;
@@ -326,6 +333,55 @@ fn extract_workspace_files(archive_path: &Path, workspaces_path: &Path) -> Resul
 // Shared helpers
 // ---------------------------------------------------------------------------
 
+/// Remove orphaned backup archives from the staging PVC before a new backup
+/// runs.
+///
+/// Deletes every `*.ps-backup` and `*.ps-backup.tmp` file in `backups_path`.
+/// These are staging artefacts only: a completed archive is streamed to the
+/// client and then deleted, and `.tmp` files belong to runs that never
+/// finished. Anything still present at the start of a new backup is therefore
+/// safe to remove, and sweeping it keeps the PVC from filling over time.
+fn sweep_orphaned_backups(backups_path: &Path) {
+    let entries = match std::fs::read_dir(backups_path) {
+        Ok(entries) => entries,
+        Err(e) => {
+            warn!(path = %backups_path.display(), error = %e, "could not read backups_path to sweep orphans");
+            return;
+        }
+    };
+
+    let mut removed = 0usize;
+    let mut freed_bytes: u64 = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !(name.ends_with(".ps-backup") || name.ends_with(".ps-backup.tmp")) {
+            continue;
+        }
+
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        match std::fs::remove_file(&path) {
+            Ok(()) => {
+                removed += 1;
+                freed_bytes += size;
+                info!(path = %path.display(), "removed orphaned backup archive");
+            }
+            Err(e) => {
+                warn!(path = %path.display(), error = %e, "failed to remove orphaned backup archive");
+            }
+        }
+    }
+
+    if removed > 0 {
+        info!(
+            count = removed,
+            freed_mb = freed_bytes / (1024 * 1024),
+            "swept orphaned backup archives from staging PVC"
+        );
+    }
+}
+
 /// Parse the Postgres major version from `pg_dump --version`.
 fn get_pg_version() -> Result<String> {
     let output = std::process::Command::new("pg_dump")
@@ -579,4 +635,39 @@ fn restore_workspace_file(
         .with_context(|| format!("failed to write workspace file {}", target.display()))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sweep_removes_only_backup_artefacts() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path();
+
+        // Orphaned archives and a stale temp file — should be removed.
+        std::fs::write(path.join("019e5ebc.ps-backup"), b"old archive").unwrap();
+        std::fs::write(path.join("019e63f1.ps-backup"), b"old archive").unwrap();
+        std::fs::write(path.join("019edb2c.ps-backup.tmp"), b"partial").unwrap();
+
+        // Unrelated entries — should be left untouched.
+        std::fs::write(path.join("notes.txt"), b"keep me").unwrap();
+        std::fs::create_dir(path.join("lost+found")).unwrap();
+
+        sweep_orphaned_backups(path);
+
+        assert!(!path.join("019e5ebc.ps-backup").exists());
+        assert!(!path.join("019e63f1.ps-backup").exists());
+        assert!(!path.join("019edb2c.ps-backup.tmp").exists());
+        assert!(path.join("notes.txt").exists());
+        assert!(path.join("lost+found").is_dir());
+    }
+
+    #[test]
+    fn sweep_missing_dir_is_noop() {
+        // A non-existent path must not panic — sweep is best-effort.
+        sweep_orphaned_backups(Path::new("/nonexistent/backups/path"));
+    }
 }
