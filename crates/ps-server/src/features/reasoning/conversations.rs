@@ -146,8 +146,7 @@ pub async fn delete_conversation(
         tokio::spawn(async move {
             // Cancel running query if a pod exists.
             if pod_name.is_some() {
-                let cancel_url =
-                    format!("{restate_url}/AgenticQueryHandler/{conv_id}/cancel/send",);
+                let cancel_url = format!("{restate_url}/AgenticQueryHandler/{conv_id}/cancel/send");
                 if let Err(e) = client
                     .post(&cancel_url)
                     .header("content-type", "application/json")
@@ -161,7 +160,7 @@ pub async fn delete_conversation(
 
             // Clean up pod and workspace PVC.
             let cleanup_url =
-                format!("{restate_url}/AgenticQueryHandler/{conv_id}/cleanup_storage/send",);
+                format!("{restate_url}/AgenticQueryHandler/{conv_id}/cleanup_storage/send");
             if let Err(e) = client
                 .post(&cleanup_url)
                 .header("content-type", "application/json")

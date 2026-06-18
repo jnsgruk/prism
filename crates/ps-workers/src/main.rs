@@ -75,7 +75,7 @@ async fn connect_database() -> Result<sqlx::PgPool, Box<dyn std::error::Error>> 
 #[allow(clippy::expect_used)]
 fn build_http_client() -> reqwest::Client {
     reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
+        .timeout(std::time::Duration::from_mins(1))
         .build()
         .expect("failed to build HTTP client")
 }

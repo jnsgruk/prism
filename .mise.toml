@@ -1,5 +1,5 @@
 [tools]
-rust = { version = "1.94", components = "rustfmt,clippy,rust-analyzer,rust-src" }
+rust = { version = "1.96", components = "rustfmt,clippy,rust-analyzer,rust-src" }
 bun = "latest"
 node = "24"
 "github:nextest-rs/nextest" = "latest"

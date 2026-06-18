@@ -292,7 +292,7 @@ async fn chunk_fetch_store_loop(
                 let global = items_offset + total_items;
                 chunk_update_progress!(ing_ctx, run_id, global, tracker, &cursor, &batch);
 
-                if last_progress_log.elapsed() >= std::time::Duration::from_secs(60) {
+                if last_progress_log.elapsed() >= std::time::Duration::from_mins(1) {
                     tracing::info!(total_items, batches, "progress");
                     last_progress_log = std::time::Instant::now();
                 }

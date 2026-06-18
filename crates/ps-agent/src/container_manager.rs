@@ -17,10 +17,10 @@ use tracing::{error, info, warn};
 
 /// Size of each workspace PVC.
 /// How long a container can be idle before being reaped.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(30 * 60); // 30 minutes
+const IDLE_TIMEOUT: Duration = Duration::from_mins(30); // 30 minutes
 
 /// Maximum container lifetime regardless of activity.
-const MAX_LIFETIME: Duration = Duration::from_secs(2 * 60 * 60); // 2 hours
+const MAX_LIFETIME: Duration = Duration::from_hours(2); // 2 hours
 
 /// Maximum concurrent agent containers.
 const MAX_CONTAINERS: usize = 20;
@@ -183,7 +183,7 @@ impl ContainerManager {
     /// Returns the pod IP on success, or an error string if the pod
     /// disappears or the 60-second deadline elapses.
     pub async fn wait_for_ready(&self, session_id: &str) -> Result<String, String> {
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(60);
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_mins(1);
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
 
         loop {

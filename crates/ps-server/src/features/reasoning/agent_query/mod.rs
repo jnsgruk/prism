@@ -19,11 +19,11 @@ use crate::common::{db_err, require_auth};
 /// Maximum time the gRPC stream stays open (client-facing).
 /// 10 minutes — agents often compile code, install packages, or run
 /// multi-step pipelines that need more than a few minutes.
-const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(10);
 
 /// Maximum time to wait for Restate `prepare_query` to return the pod IP.
 /// Must be < `STREAM_TIMEOUT` to leave budget for SSE streaming.
-const PREPARE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+const PREPARE_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
 
 pub type AskQuestionStream =
     tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
@@ -362,7 +362,7 @@ async fn run_query_stream(
     let elapsed = stream_start.elapsed();
     let sse_timeout = STREAM_TIMEOUT
         .checked_sub(elapsed)
-        .unwrap_or(std::time::Duration::from_secs(60));
+        .unwrap_or(std::time::Duration::from_mins(1));
 
     let loop_result = event_loop::run_event_loop(
         repos,

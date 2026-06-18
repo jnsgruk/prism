@@ -93,8 +93,7 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
                     .filter(|p| {
                         p.session_id
                             .parse::<uuid::Uuid>()
-                            .map(|id| !existing_set.contains(&id))
-                            .unwrap_or(false)
+                            .is_ok_and(|id| !existing_set.contains(&id))
                     })
                     .collect();
 
@@ -135,7 +134,7 @@ impl AgentPodReaperHandler for AgentPodReaperHandlerImpl {
         // Schedule next run in 60 seconds (same key — serialized, no forks).
         ctx.object_client::<AgentPodReaperHandlerClient>(REAPER_KEY)
             .reap()
-            .send_after(std::time::Duration::from_secs(60));
+            .send_after(std::time::Duration::from_mins(1));
 
         info!("agent pod reaper complete, next run in 60s");
         Ok(())

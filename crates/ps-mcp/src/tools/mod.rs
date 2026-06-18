@@ -43,7 +43,7 @@ impl std::fmt::Debug for PrismTools {
 impl PrismTools {
     pub fn new(client: PrismClient) -> Self {
         let http = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(std::time::Duration::from_mins(2))
             .build()
             .unwrap_or_default();
         Self {

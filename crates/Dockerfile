@@ -19,7 +19,7 @@ ARG PROFILE=release
 # ---------------------------------------------------------------------------
 # Builder — toolchain, system deps, compile
 # ---------------------------------------------------------------------------
-FROM rust:1.94-bookworm AS builder
+FROM rust:1.96-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     libprotobuf-dev \

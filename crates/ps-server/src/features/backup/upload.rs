@@ -66,7 +66,7 @@ pub async fn upload_backup_chunk(
     })?;
 
     #[allow(clippy::cast_possible_wrap)]
-    let received_bytes = file.metadata().map(|m| m.len()).unwrap_or(0) as i64;
+    let received_bytes = file.metadata().map_or(0, |m| m.len()) as i64;
 
     if inner.is_final {
         file.flush().map_err(|e| {

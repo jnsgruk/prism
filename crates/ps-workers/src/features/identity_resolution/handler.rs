@@ -249,7 +249,7 @@ impl IdentityResolutionHandlerImpl {
                         resolved_count,
                         "rate limited during resolution, sleeping 60s"
                     );
-                    ctx.sleep(std::time::Duration::from_secs(60)).await?;
+                    ctx.sleep(std::time::Duration::from_mins(1)).await?;
                 }
                 Err(e) => {
                     warn!(

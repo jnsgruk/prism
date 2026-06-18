@@ -64,7 +64,7 @@ pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
     if !preview.table_counts.is_empty() {
         println!("  Tables:");
         let mut tables: Vec<_> = preview.table_counts.iter().collect();
-        tables.sort_by(|(a, _), (b, _)| a.cmp(b));
+        tables.sort_by_key(|(a, _)| *a);
         for (table, count) in &tables {
             println!("    {table}: {count} rows");
         }
@@ -77,7 +77,7 @@ pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
     if !preview.watermarks.is_empty() {
         println!("  Watermarks:");
         let mut marks: Vec<_> = preview.watermarks.iter().collect();
-        marks.sort_by(|(a, _), (b, _)| a.cmp(b));
+        marks.sort_by_key(|(a, _)| *a);
         for (source, watermark) in &marks {
             println!("    {source}: {watermark}");
         }
@@ -150,7 +150,7 @@ pub async fn restore(clients: &mut Clients, file_path: &str) -> Result<()> {
     if !response.tables_restored.is_empty() {
         println!("  Tables restored:");
         let mut tables: Vec<_> = response.tables_restored.iter().collect();
-        tables.sort_by(|(a, _), (b, _)| a.cmp(b));
+        tables.sort_by_key(|(a, _)| *a);
         for (table, count) in &tables {
             println!("    {table}: {count} rows");
         }

@@ -360,7 +360,7 @@ fn sweep_orphaned_backups(backups_path: &Path) {
             continue;
         }
 
-        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        let size = entry.metadata().map_or(0, |m| m.len());
         match std::fs::remove_file(&path) {
             Ok(()) => {
                 removed += 1;
