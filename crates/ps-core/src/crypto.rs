@@ -15,10 +15,10 @@ pub fn encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<Vec<u8>, Error> {
 
     let mut nonce_bytes = [0u8; NONCE_LEN];
     rand::fill(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce = Nonce::from(nonce_bytes);
 
     let ciphertext = cipher
-        .encrypt(nonce, plaintext)
+        .encrypt(&nonce, plaintext)
         .map_err(|e| Error::Encryption(format!("encryption failed: {e}")))?;
 
     let mut result = Vec::with_capacity(NONCE_LEN + ciphertext.len());
@@ -35,13 +35,16 @@ pub fn decrypt(key: &[u8; 32], data: &[u8]) -> Result<Vec<u8>, Error> {
     }
 
     let (nonce_bytes, ciphertext) = data.split_at(NONCE_LEN);
-    let nonce = Nonce::from_slice(nonce_bytes);
+    let nonce_array: [u8; NONCE_LEN] = nonce_bytes
+        .try_into()
+        .map_err(|_| Error::Encryption("invalid nonce length".into()))?;
+    let nonce = Nonce::from(nonce_array);
 
     let cipher = Aes256Gcm::new_from_slice(key)
         .map_err(|e| Error::Encryption(format!("invalid key: {e}")))?;
 
     cipher
-        .decrypt(nonce, ciphertext)
+        .decrypt(&nonce, ciphertext)
         .map_err(|e| Error::Encryption(format!("decryption failed: {e}")))
 }
 
