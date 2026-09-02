@@ -13,6 +13,18 @@ spec:
       port: 9070
       targetPort: 9070
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restate-data
+  annotations:
+    prism.canonical.com/storage-purpose: durable-workflow-state
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -61,15 +73,7 @@ spec:
               cpu: 100m
             limits:
               memory: 4Gi
-  volumeClaimTemplates:
-    - metadata:
-        name: restate-data
-        annotations:
-          # Restate journals and RocksDB compactions need substantially more
-          # headroom than the original development-sized 1 GiB volume.
-          prism.canonical.com/storage-purpose: durable-workflow-state
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 20Gi
+      volumes:
+        - name: restate-data
+          persistentVolumeClaim:
+            claimName: restate-data
