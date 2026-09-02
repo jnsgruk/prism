@@ -4,6 +4,19 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-09-02 — Reuse the Workspace Claim for Development Restate State
+
+**Context:** Restate needs durable state across pod restarts, but the development cluster's rawfile CSI pool could not allocate another persistent volume. The existing 50 GiB `prism-workspaces` ReadWriteMany claim had sufficient headroom.
+
+**Decision:** Mount `prism-workspaces` into the Restate StatefulSet at `/restate-data` with the dedicated `restate-data` subpath, and keep `RESTATE_BASE_DIR` at `/restate-data/store`.
+
+**Rationale:**
+- Restate state survives pod replacement without requiring another scarce development volume
+- The subpath prevents Restate files from mixing with per-conversation workspace directories
+- The tradeoff is shared capacity and a shared storage failure domain; production deployments should use a dedicated durable Restate volume
+
+---
+
 ## 2026-09-02 — Codex-Native Repository Guidance
 
 **Context:** Repository guidance used Claude Code-specific discovery paths (`CLAUDE.md`, `.claude/rules`, and `.claude/skills`). Codex does not natively discover those path-scoped rule files, and Claude-specific skill metadata and tool names are not portable.

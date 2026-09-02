@@ -79,7 +79,7 @@ k8s/
 
 **Agent pods** are created dynamically by ps-agent via the K8s API when agentic queries are initiated. RBAC grants ps-workers permission to create/delete pods in the namespace.
 
-**Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by both ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). This allows ps-server to serve workspace file listings directly from the filesystem. Agent pods are isolated to their own conversation subdirectory. Workspace directories are cleaned up when conversations are deleted. Requires an RWX-capable storage class; production needs NFS, EFS, or similar.
+**Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). Restate also stores its durable local state on this claim at `/restate-data`, isolated with `subPath: restate-data`. This reuse avoids exhausting the development cluster's rawfile CSI volume pool while retaining state across pod restarts. Workspace directories are cleaned up when conversations are deleted. The claim requires an RWX-capable storage class; production should give Restate a dedicated durable volume to isolate orchestration state from workspace capacity and failure domains.
 
 ## Gateway
 
