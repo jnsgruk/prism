@@ -1,5 +1,6 @@
 import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { DataTable } from "@/components/data-table/data-table";
+import type { DataTableColumnDef as ColumnDef } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,6 @@ import { platformLabel } from "@/lib/proto-display";
 import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { SortingState } from "@tanstack/react-table";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";

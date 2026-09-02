@@ -1,14 +1,22 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { flexRender, type OnChangeFn, type RowData, type SortingState } from "@tanstack/react-table";
 import {
-  type LegacyColumnDef as ColumnDef,
-  getCoreRowModel as createCoreRowModel,
-  useLegacyTable as useReactTable,
-} from "@tanstack/react-table/legacy";
+  flexRender,
+  type ColumnDef,
+  type OnChangeFn,
+  type RowData,
+  rowSortingFeature,
+  type SortingState,
+  tableFeatures,
+  useTable,
+} from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
+const dataTableFeatures = tableFeatures({ rowSortingFeature });
+
+export type DataTableColumnDef<TData extends RowData> = ColumnDef<typeof dataTableFeatures, TData>;
+
 interface DataTableProps<TData extends RowData> {
-  columns: ColumnDef<TData>[];
+  columns: DataTableColumnDef<TData>[];
   data: TData[];
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
@@ -22,12 +30,12 @@ export const DataTable = <TData extends RowData>({
   onSortingChange,
   onRowClick,
 }: DataTableProps<TData>): React.ReactElement => {
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
     state: { sorting: sorting ?? [] },
     onSortingChange,
-    getCoreRowModel: createCoreRowModel<TData>(),
     manualSorting: true,
   });
 
@@ -77,7 +85,7 @@ export const DataTable = <TData extends RowData>({
               className={onRowClick ? "cursor-pointer" : undefined}
               onClick={() => onRowClick?.(row.original)}
             >
-              {row.getVisibleCells().map((cell) => (
+              {row.getAllCells().map((cell) => (
                 <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
               ))}
             </TableRow>

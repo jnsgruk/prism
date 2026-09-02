@@ -1,5 +1,5 @@
+import type { DataTableColumnDef as ColumnDef } from "@/components/data-table/data-table";
 import { Badge } from "@/components/ui/badge";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 
 import type { Person } from "@ps/api/gen/canonical/prism/v1/org_pb";
 

@@ -1,11 +1,11 @@
 import { DataTable } from "@/components/data-table/data-table";
+import type { DataTableColumnDef as ColumnDef } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { RunDetailDialog } from "@/components/run-detail-dialog";
 import { StatusFilterButtons } from "@/components/status-filter-buttons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { StatusFilter } from "@/lib/run-status";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 

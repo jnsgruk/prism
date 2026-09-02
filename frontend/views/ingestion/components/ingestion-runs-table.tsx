@@ -1,3 +1,4 @@
+import type { DataTableColumnDef as ColumnDef } from "@/components/data-table/data-table";
 import { RunHistoryCard } from "@/components/run-history-card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -5,7 +6,6 @@ import { formatDuration, formatTimestamp } from "@/lib/format";
 import { useNow } from "@/lib/hooks/use-now";
 import { defaultStatus, statusConfig } from "@/lib/run-status";
 import { useCancelHandlerRun } from "@/views/ingestion/hooks/use-ingestion";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 

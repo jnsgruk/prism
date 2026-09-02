@@ -1,4 +1,5 @@
 import { DataTable } from "@/components/data-table/data-table";
+import type { DataTableColumnDef as ColumnDef } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,6 @@ import { contributionStateLabel, platformLabel } from "@/lib/proto-display";
 import { create } from "@bufbuild/protobuf";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { SortingState } from "@tanstack/react-table";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ExternalLink, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
