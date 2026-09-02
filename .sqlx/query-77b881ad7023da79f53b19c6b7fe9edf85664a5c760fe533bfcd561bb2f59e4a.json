@@ -6,52 +6,112 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "source_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "source_name"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "started_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "started_at"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "completed_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "completed_at"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "status!",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "status"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "items_collected",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "items_collected"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "error_message",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "error_message"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "handler_name!",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "handler_name"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "handler_method!",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "handler_method"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "pipeline_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "pipeline_id"
+          }
+        }
       }
     ],
     "parameters": {

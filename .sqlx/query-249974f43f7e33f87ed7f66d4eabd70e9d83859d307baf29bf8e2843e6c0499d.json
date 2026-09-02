@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "source_id!: Uuid",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config.secrets",
+            "name": "source_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "secret_key",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config.secrets",
+            "name": "secret_key"
+          }
+        }
       }
     ],
     "parameters": {

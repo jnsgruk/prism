@@ -6,27 +6,42 @@
       {
         "ordinal": 0,
         "name": "person_id!",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "name!",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "name"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "topics!",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": "Expression"
       },
       {
         "ordinal": 3,
         "name": "posts!",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": "Expression"
       },
       {
         "ordinal": 4,
         "name": "likes_received!",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": "Expression"
       }
     ],
     "parameters": {

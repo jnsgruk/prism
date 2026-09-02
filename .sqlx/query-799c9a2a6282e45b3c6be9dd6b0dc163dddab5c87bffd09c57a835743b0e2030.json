@@ -6,77 +6,167 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "user_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "user_id"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "title",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "title"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "status",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "status"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "model_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "model_name"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "container_pod_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "container_pod_name"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "container_status",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "container_status"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "opencode_session_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "opencode_session_id"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "container_pod_ip",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "container_pod_ip"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "total_tool_calls",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "total_tool_calls"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "total_prompt_tokens",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "total_prompt_tokens"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "total_completion_tokens",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "total_completion_tokens"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "query_status",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "query_status"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "created_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "created_at"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "last_activity_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "reasoning.conversations",
+            "name": "last_activity_at"
+          }
+        }
       }
     ],
     "parameters": {

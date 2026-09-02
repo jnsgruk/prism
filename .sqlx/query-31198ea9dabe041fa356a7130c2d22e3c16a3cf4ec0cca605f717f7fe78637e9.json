@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "snapshot_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "metrics.snapshot_sources",
+            "name": "snapshot_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "platform",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "platform"
+          }
+        }
       }
     ],
     "parameters": {

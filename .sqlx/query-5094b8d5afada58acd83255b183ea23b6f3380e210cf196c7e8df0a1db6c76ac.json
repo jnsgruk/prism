@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "github_org",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.github_team_repos",
+            "name": "github_org"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "github_repo",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.github_team_repos",
+            "name": "github_repo"
+          }
+        }
       }
     ],
     "parameters": {
