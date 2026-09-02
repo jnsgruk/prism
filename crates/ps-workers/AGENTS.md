@@ -1,8 +1,3 @@
----
-paths:
-  - "crates/ps-workers/**"
----
-
 # Restate Handler Rules
 
 ## Handler Types

@@ -30,7 +30,7 @@ pub trait AgenticQueryHandler {
 // ---------------------------------------------------------------------------
 // Journaled step ordering matters — changing the sequence of `journaled!`
 // calls breaks in-flight Restate invocations. See the "Journal Compatibility"
-// section in CLAUDE.md before reordering.
+// section in AGENTS.md before reordering.
 // ---------------------------------------------------------------------------
 
 impl AgenticQueryHandler for AgenticQueryHandlerImpl {

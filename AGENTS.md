@@ -1,4 +1,4 @@
-# Claude Code Guidelines for Prism
+# Codex Guidelines for Prism
 
 ## Project Overview
 
@@ -114,7 +114,7 @@ Code is organised **feature-first, layer-second**. See `docs/01-architecture.md`
 
 ### Repository Layer
 
-All `sqlx::query!` calls live in `ps-core/src/repo/` — services and ingestion sources never contain direct SQL. Services receive `Repos`, never a raw `PgPool`. One repo per schema. See `.claude/rules/repository.md` for full layering rules.
+All `sqlx::query!` calls live in `ps-core/src/repo/` — services and ingestion sources never contain direct SQL. Services receive `Repos`, never a raw `PgPool`. One repo per schema. See `crates/ps-core/src/repo/AGENTS.md` for full layering rules.
 
 ### Domain Enums — Strong Typing with TEXT Storage
 
@@ -151,11 +151,11 @@ Proto files live in `proto/canonical/prism/v1/`. After changes: `buf lint` → `
 
 ### Restate — All Background Work
 
-All long-running work **must** run as Restate handlers — never as synchronous gRPC RPCs. See `.claude/rules/restate-handlers.md` for journaling rules, macros, and handler patterns.
+All long-running work **must** run as Restate handlers — never as synchronous gRPC RPCs. See `crates/ps-workers/AGENTS.md` for journaling rules, macros, and handler patterns.
 
 ### Frontend
 
-shadcn/ui (built on `@base-ui/react`, not Radix) is the standard component library — never hand-roll with raw Tailwind. See `.claude/rules/frontend-ui.md` for detailed UI conventions. Key rules:
+shadcn/ui (built on `@base-ui/react`, not Radix) is the standard component library — never hand-roll with raw Tailwind. See `frontend/AGENTS.md` for detailed UI conventions. Key rules:
 
 - **No horizontal overflow** — use `min-w-0`, `overflow-hidden`, `overflow-x-auto`
 - **DataTable** for all tables — never raw `<Table>` primitives

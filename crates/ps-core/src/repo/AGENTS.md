@@ -1,9 +1,3 @@
----
-paths:
-  - "crates/ps-core/src/repo/**"
-  - "migrations/**"
----
-
 # Repository Layer Rules
 
 All database access is centralised in `ps-core/src/repo/`. Each repo maps to one database schema (bounded context):

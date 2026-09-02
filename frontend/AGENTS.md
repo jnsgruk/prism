@@ -1,8 +1,3 @@
----
-paths:
-  - "frontend/**"
----
-
 # Frontend UI Rules
 
 ## Stack
@@ -13,12 +8,12 @@ Vite + React Router SPA + shadcn/ui (`@base-ui/react` primitives) + TypeScript (
 
 React Query is the **only** state management library. No Redux, Jotai, nanostores.
 
-| State type | Tool |
-| --- | --- |
-| Server data | React Query (custom hooks with hierarchical query keys) |
-| Component-local UI | `useState` |
-| Shared UI within subtree | React Context |
-| Persisted preference | Cookie / `localStorage` |
+| State type               | Tool                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| Server data              | React Query (custom hooks with hierarchical query keys) |
+| Component-local UI       | `useState`                                              |
+| Shared UI within subtree | React Context                                           |
+| Persisted preference     | Cookie / `localStorage`                                 |
 
 If cross-component client state is genuinely needed in future, prefer Zustand.
 
@@ -78,12 +73,12 @@ Only icon library. `size-4` for buttons/tables, `size-3`/`size-3.5` for badges, 
 
 ## Badges
 
-| State | Variant |
-| --- | --- |
-| Active, merged, approved | `default` |
-| Counts, secondary info | `secondary` |
-| Error, closed, inactive | `destructive` |
-| Neutral, open | `outline` |
+| State                    | Variant       |
+| ------------------------ | ------------- |
+| Active, merged, approved | `default`     |
+| Counts, secondary info   | `secondary`   |
+| Error, closed, inactive  | `destructive` |
+| Neutral, open            | `outline`     |
 
 State text: `text-[10px] uppercase`. Icon badge: `className="gap-1"`.
 

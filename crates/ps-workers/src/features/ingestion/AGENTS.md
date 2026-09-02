@@ -1,9 +1,3 @@
----
-paths:
-  - "crates/ps-workers/src/features/ingestion/**"
-  - "crates/ps-core/src/ingestion.rs"
----
-
 # Ingestion Pipeline Rules
 
 The three ingestion handlers (GitHub, Jira, Discourse) share unified orchestration via `execute_ingestion_chunked()` in `features/ingestion/lib/`. Platform-specific logic is abstracted behind the `Source` trait.
