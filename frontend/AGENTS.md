@@ -24,7 +24,7 @@ Do **not** use for: proto responses (Connect handles this), simple `required` ch
 
 ## Tables — DataTable
 
-All tables use the shared `DataTable` (`components/data-table/`) on TanStack React Table v8. Never build from raw `<Table>` primitives.
+All tables use the shared `DataTable` (`components/data-table/`) on TanStack React Table v9. Never build from raw `<Table>` primitives. Use the native v9 `useTable` and explicit feature registration; do not use the deprecated `@tanstack/react-table/legacy` bridge.
 
 - Manual sorting (`manualSorting: true`) — server-driven via gRPC `sort_field`/`sort_ascending`
 - Pagination via `DataTablePagination` — "1–10 of 47" (en-dash), page size 10/25/50/100

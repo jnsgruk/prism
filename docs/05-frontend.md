@@ -10,6 +10,7 @@ Vite + React Router SPA with shadcn/ui components, Connect gRPC clients, React Q
 | Routing | React Router (explicit routes in `app.tsx`, lazy imports) |
 | UI components | shadcn/ui (built on `@base-ui/react` primitives, not Radix) |
 | Server state | React Query (custom hooks with hierarchical query keys) |
+| Tables | TanStack React Table v9 via the shared `DataTable` |
 | API transport | Connect (generated from protobuf, type-safe) |
 | Charts | Recharts |
 | Styling | Tailwind CSS |
@@ -66,3 +67,4 @@ Key principles:
 - **No horizontal overflow** — all content stays within viewport width
 - **shadcn/ui is the standard component library** — always use `@/components/ui/` components, never hand-roll with raw Tailwind
 - **Zod at boundaries only** — form validation, file uploads, localStorage reads. Not for proto responses or internal function arguments.
+- **Tables use the native TanStack v9 API** — register only the required features and keep the deprecated legacy bridge out of application code.
