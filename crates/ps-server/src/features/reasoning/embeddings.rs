@@ -2,6 +2,7 @@ use ps_proto::canonical::prism::v1::{
     FindSimilarRequest, FindSimilarResponse, GetEmbeddingStatusRequest, GetEmbeddingStatusResponse,
     SearchByTextRequest, SearchByTextResponse,
 };
+use ps_reasoning::rig::embeddings::EmbeddingModel as _;
 use tonic::{Request, Response, Status};
 use tracing::error;
 use uuid::Uuid;

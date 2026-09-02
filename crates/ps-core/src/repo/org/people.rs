@@ -199,11 +199,13 @@ impl OrgRepo {
         );
 
         // Execute count + data in parallel.
-        let mut cq = sqlx::query_scalar::<_, i64>(&count_sql);
+        // Every interpolated fragment above is selected from fixed SQL literals;
+        // user-provided values remain bind parameters.
+        let mut cq = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(count_sql));
         for val in binds.get(..count_bind_len).unwrap_or(&binds) {
             cq = cq.bind(val);
         }
-        let mut dq = sqlx::query_as::<_, PeopleQueryRow>(&data_sql);
+        let mut dq = sqlx::query_as::<_, PeopleQueryRow>(sqlx::AssertSqlSafe(data_sql));
         for val in &binds {
             dq = dq.bind(val);
         }

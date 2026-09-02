@@ -39,7 +39,9 @@ impl TestDb {
             Some(tmpl) => format!("CREATE DATABASE \"{test_db}\" TEMPLATE \"{tmpl}\""),
             None => format!("CREATE DATABASE \"{test_db}\""),
         };
-        sqlx::query(&create_sql)
+        // Names are generated internally or supplied by the test harness, and
+        // both identifiers are quoted before this audited dynamic statement.
+        sqlx::query(sqlx::AssertSqlSafe(create_sql))
             .execute(&admin_pool)
             .await
             .expect("create test database");
@@ -74,10 +76,13 @@ impl TestDb {
         let admin_pool = PgPool::connect(&self.database_url)
             .await
             .expect("reconnect to admin database");
-        sqlx::query(&format!("DROP DATABASE \"{}\" WITH (FORCE)", self.test_db))
-            .execute(&admin_pool)
-            .await
-            .expect("drop test database");
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "DROP DATABASE \"{}\" WITH (FORCE)",
+            self.test_db
+        )))
+        .execute(&admin_pool)
+        .await
+        .expect("drop test database");
         admin_pool.close().await;
     }
 }

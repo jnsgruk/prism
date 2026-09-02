@@ -58,12 +58,9 @@ impl BatchResult {
 
 /// Process a batch of queued contributions: build text, embed via Rig, store vectors.
 ///
-/// Uses the deprecated `EmbeddingModelDyn` trait for dynamic dispatch, since
-/// `EmbeddingModel` is not object-safe (has associated types and consts).
-#[allow(deprecated)]
-pub async fn process_embedding_batch(
+pub async fn process_embedding_batch<M: rig::embeddings::EmbeddingModel>(
     items: &[QueuedEmbedding],
-    model: &dyn rig::embeddings::EmbeddingModelDyn,
+    model: &M,
     repos: &Repos,
     model_name: &str,
 ) -> Result<BatchResult, EmbeddingError> {

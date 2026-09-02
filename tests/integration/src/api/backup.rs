@@ -239,7 +239,8 @@ async fn upload_backup_bytes(
 /// Count rows in a table (returns i64).
 async fn count_rows(pool: &PgPool, table: &str) -> i64 {
     let query = format!("SELECT COUNT(*)::bigint FROM {table}");
-    let row: (i64,) = sqlx::query_as(&query)
+    // Callers pass fixed table-name literals from this test module.
+    let row: (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(query))
         .fetch_one(pool)
         .await
         .unwrap_or_else(|e| panic!("count {table}: {e}"));

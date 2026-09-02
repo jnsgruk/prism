@@ -4,7 +4,7 @@
 //! type, using a macro to avoid per-variant boilerplate.
 
 use ps_core::models::TaskType;
-use rig::client::CompletionClient;
+use rig::client::{AgentClientExt as _, CompletionClient};
 use rig::completion::Usage;
 
 use crate::routing::TaskRouter;
@@ -60,7 +60,7 @@ async fn extract_with_client<C>(
 ) -> Result<(serde_json::Value, f32, Usage), crate::routing::ProviderError>
 where
     C: CompletionClient,
-    C::CompletionModel: Send + Sync,
+    C::CompletionModel: Send + Sync + 'static,
 {
     match enrichment_type {
         EnrichmentType::ReviewDepth => {

@@ -175,7 +175,7 @@ fn build_input_from_queue(
 fn hash_input(text: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(text.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 /// Truncate text to approximately `max_chars` for the input preview.

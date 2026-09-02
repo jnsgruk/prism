@@ -150,7 +150,7 @@ impl EmbeddingHandlerImpl {
             // Step 4: Process batch (NOT journaled — API calls are idempotent on replay)
             let result = match embeddings::process_embedding_batch(
                 &items,
-                embedding_model.as_ref(),
+                &embedding_model,
                 &self.state.repos,
                 &model_name,
             )

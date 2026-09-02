@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 ps-proto = { path = "../ps-proto" }
 
-rmcp = { version = "1.2", features = ["server", "transport-io"] }
+rmcp = { version = "3.2", features = ["server", "transport-io"] }
 tonic.workspace = true
 tokio.workspace = true
 serde = { workspace = true, features = ["derive"] }

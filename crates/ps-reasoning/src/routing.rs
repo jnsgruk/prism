@@ -1,8 +1,6 @@
 use ps_core::models::{AiProvider, TaskType};
 use rig::client::{CompletionClient as _, EmbeddingsClient as _};
 use rig::completion::CompletionModel as _;
-#[allow(deprecated)]
-use rig::embeddings::EmbeddingModelDyn;
 use rig::providers::gemini;
 use tracing::info;
 
@@ -108,13 +106,11 @@ impl TaskRouter {
 
     /// Build an embedding model for the configured embeddings task.
     ///
-    /// Returns a boxed `EmbeddingModelDyn` for dynamic dispatch.
-    #[allow(deprecated)]
-    pub fn embedding_model(&self) -> Result<Box<dyn EmbeddingModelDyn>, ProviderError> {
+    pub fn embedding_model(&self) -> Result<gemini::EmbeddingModel, ProviderError> {
         let task_config = self.config.tasks.get(TaskType::Embeddings);
         let client = self.google_client()?;
         let model = client.embedding_model(&task_config.model);
-        Ok(Box::new(model))
+        Ok(model)
     }
 
     /// Test the provider's connection by making a minimal completion request.

@@ -331,7 +331,7 @@ impl ReasoningRepo {
                 Option<String>,
                 serde_json::Value,
             ),
-        >(&query)
+        >(sqlx::AssertSqlSafe(query))
         .bind(enrichment_type.as_str())
         .bind(type_filter)
         .bind(limit)

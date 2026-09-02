@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ps_core::backup::validate_secret_key_canary;
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::RestoreBackupRequest;
-use rand::Rng as _;
+use rand::RngExt as _;
 use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
 use uuid::Uuid;

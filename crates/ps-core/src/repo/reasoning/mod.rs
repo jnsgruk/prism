@@ -37,5 +37,5 @@ impl ReasoningRepo {
 pub fn content_hash(content: &serde_json::Value) -> String {
     let bytes = serde_json::to_vec(content).unwrap_or_default();
     let digest = Sha256::digest(&bytes);
-    format!("{digest:x}")
+    hex::encode(digest)
 }
