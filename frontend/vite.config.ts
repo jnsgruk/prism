@@ -71,16 +71,6 @@ export default defineConfig({
       "unicorn/consistent-function-scoping": "off",
       "unicorn/prefer-add-event-listener": "off",
       "react/react-in-jsx-scope": "off",
-      // React Compiler diagnostics are advisory; these established state and
-      // ref patterns intentionally opt out of compiler memoization.
-      "react/exhaustive-effect-dependencies": "off",
-      "react/immutability": "off",
-      "react/incompatible-library": "off",
-      "react/memo-dependencies": "off",
-      "react/purity": "off",
-      "react/refs": "off",
-      "react/set-state-in-effect": "off",
-      "react/static-components": "off",
     },
     options: {
       typeAware: true,

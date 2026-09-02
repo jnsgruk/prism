@@ -19,7 +19,7 @@ import {
   FolderOpen,
   Search,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useMemo, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -126,7 +126,7 @@ const FileTreeNode = ({
           <span className="w-4" />
         )}
 
-        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        {createElement(Icon, { className: "size-3.5 shrink-0 text-muted-foreground" })}
         <span className="min-w-0 flex-1 truncate">{node.name}</span>
 
         {!node.isDirectory && node.artifact && (

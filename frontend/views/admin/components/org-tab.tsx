@@ -130,6 +130,7 @@ export const OrgTab = (): React.ReactElement => {
         {/* People panel */}
         <div className="min-w-0 flex-1">
           <OrgPeoplePanel
+            key={selectedTeamId ?? "all"}
             teamId={selectedTeamId}
             onSelectTeam={setSelectedTeamId}
             onSelectPerson={setSelectedPerson}
@@ -142,6 +143,7 @@ export const OrgTab = (): React.ReactElement => {
       {/* Person detail dialog */}
       {selectedPerson && (
         <PersonDetailDialog
+          key={selectedPerson.id}
           person={selectedPerson}
           teams={allTeams}
           open={!!selectedPerson}
@@ -159,6 +161,7 @@ export const OrgTab = (): React.ReactElement => {
 
       {editingTeam && (
         <EditTeamDialog
+          key={editingTeam.id}
           team={editingTeam}
           teams={allTeams}
           open={!!editingTeam}

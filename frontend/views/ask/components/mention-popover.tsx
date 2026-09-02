@@ -2,7 +2,8 @@ import { getFileIcon, formatSize } from "@/views/ask/hooks/use-file-tree";
 import type { WorkspaceFileDisplay } from "@/views/ask/hooks/use-file-tree";
 import type { MentionType } from "@/views/ask/hooks/use-mention-picker";
 import { File, User, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import type { SetStateAction } from "react";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 import { cn } from "@ps/cn";
@@ -56,8 +57,19 @@ export const MentionPopover = ({
   onClose: () => void;
   onNavigate?: React.RefObject<NavigateHandle | null>;
 }): React.ReactElement => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selection, setSelection] = useState({ query, index: 0 });
+  const selectedIndex = selection.query === query ? selection.index : 0;
   const listRef = useRef<HTMLDivElement>(null);
+
+  const setSelectedIndex = useCallback(
+    (update: SetStateAction<number>): void => {
+      setSelection((previous) => ({
+        query,
+        index: typeof update === "function" ? update(previous.query === query ? previous.index : 0) : update,
+      }));
+    },
+    [query],
+  );
 
   // Build categorised, filtered items
   const { items, categories } = useMemo(() => {
@@ -113,16 +125,11 @@ export const MentionPopover = ({
     return { items: allItems, categories: cats };
   }, [people, teams, files, query]);
 
-  // Reset selection when filtered list changes
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items.length, query]);
-
   // Scroll selected item into view
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    const selected = list.querySelector("[data-selected=true]");
+    const selected = list.querySelector(`[data-item-index="${selectedIndex}"]`);
     if (selected) {
       selected.scrollIntoView({ block: "nearest" });
     }
@@ -130,11 +137,11 @@ export const MentionPopover = ({
 
   const moveUp = useCallback(() => {
     setSelectedIndex((prev) => (prev <= 0 ? items.length - 1 : prev - 1));
-  }, [items.length]);
+  }, [items.length, setSelectedIndex]);
 
   const moveDown = useCallback(() => {
     setSelectedIndex((prev) => (prev >= items.length - 1 ? 0 : prev + 1));
-  }, [items.length]);
+  }, [items.length, setSelectedIndex]);
 
   const selectCurrent = useCallback(() => {
     const item = items[selectedIndex];
@@ -143,15 +150,7 @@ export const MentionPopover = ({
     }
   }, [items, selectedIndex, onSelect]);
 
-  // Expose imperative handle to parent
-  useEffect(() => {
-    if (onNavigate) {
-      onNavigate.current = { moveUp, moveDown, selectCurrent };
-    }
-    return (): void => {
-      if (onNavigate) onNavigate.current = null;
-    };
-  }, [onNavigate, moveUp, moveDown, selectCurrent]);
+  useImperativeHandle(onNavigate, () => ({ moveUp, moveDown, selectCurrent }), [moveUp, moveDown, selectCurrent]);
 
   // Close on click outside
   const containerRef = useRef<HTMLDivElement>(null);
@@ -187,6 +186,7 @@ export const MentionPopover = ({
                 </div>
               )}
               <button
+                data-item-index={index}
                 type="button"
                 data-selected={isSelected || undefined}
                 className={cn(

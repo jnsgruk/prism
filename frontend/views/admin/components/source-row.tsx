@@ -139,7 +139,7 @@ export const SourceRow = ({ source }: { source: SourceConfig }): React.ReactElem
         </div>
       </div>
 
-      <EditSourceDialog source={source} open={showEdit} onOpenChange={setShowEdit} />
+      {showEdit && <EditSourceDialog source={source} open onOpenChange={setShowEdit} />}
       <ConfirmDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}

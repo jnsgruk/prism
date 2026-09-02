@@ -29,7 +29,7 @@ const IngestionPage = (): React.ReactElement => {
     burstTimerRef.current = setTimeout(() => setBurstUntil(0), BURST_DURATION);
   }, []);
 
-  const isBursting = burstUntil > Date.now();
+  const isBursting = burstUntil > 0;
 
   const { current: currentPipeline, isRunning: pipelineRunning } = usePipelineState({
     isBursting,

@@ -1,7 +1,7 @@
 import type { AgentStep, ToolCallStep } from "@/views/ask/hooks/use-ask-question";
 import type { LucideIcon } from "lucide-react";
 import { Check, ChevronRight, Database, FileText, FolderSearch, Loader2, Search, Terminal, X } from "lucide-react";
-import { useState } from "react";
+import { createElement, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -89,7 +89,7 @@ const ToolStep = ({ step }: { step: ToolCallStep }): React.ReactElement => {
         onClick={() => hasDetails && setExpanded((v) => !v)}
         disabled={!hasDetails}
       >
-        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        {createElement(Icon, { className: "size-3.5 shrink-0 text-muted-foreground" })}
         <span
           className={`min-w-0 truncate ${["bash", "write", "read", "edit", "patch", "glob", "grep"].includes(step.toolName) ? "font-mono text-xs" : ""}`}
         >

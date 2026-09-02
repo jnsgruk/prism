@@ -21,7 +21,7 @@ import {
   useAssignPersonToTeam,
   useRemovePersonFromTeam,
 } from "@/views/admin/hooks/use-admin";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
@@ -47,13 +47,6 @@ export const PersonDetailDialog = ({
   const [email, setEmail] = useState(person.email ?? "");
   const [level, setLevel] = useState(person.level ?? "");
   const [teamId, setTeamId] = useState(person.teamId ?? "");
-
-  useEffect(() => {
-    setName(person.name);
-    setEmail(person.email ?? "");
-    setLevel(person.level ?? "");
-    setTeamId(person.teamId ?? "");
-  }, [person]);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();

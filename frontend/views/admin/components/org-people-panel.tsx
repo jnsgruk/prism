@@ -21,9 +21,9 @@ import { personNameColumn, personTeamColumn } from "@/views/people/components/pe
 import { GithubTeamPickerDialog } from "@/views/teams/components/github-team-picker-dialog";
 import { TeamMappingSuggestions } from "@/views/teams/components/team-mapping-suggestions";
 import { useListTeamGithubTeams } from "@/views/teams/hooks/use-teams";
-import type { SortingState } from "@tanstack/react-table";
+import type { SortingState, Updater } from "@tanstack/react-table";
 import { ChevronsUpDown, Ellipsis, GitBranch, Pencil, Plus, Trash2, Users, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { PersonFilter } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
@@ -194,16 +194,10 @@ export const OrgPeoplePanel = ({
   // Hide the Team column when viewing a specific team's members.
   const columns = isTeamSelected ? teamColumns : allColumns;
 
-  // Reset to first page when filters change.
-  useEffect(() => {
+  const resetPagination = useCallback((): void => {
     setPageIndex(0);
     setPageTokens([""]);
-  }, [debouncedSearch, filter, pageSize, sorting, teamId]);
-
-  // When sidebar selects "Unassigned", sync the filter buttons.
-  useEffect(() => {
-    if (isUnassigned) setFilter("all");
-  }, [isUnassigned]);
+  }, []);
 
   const sortField = sorting[0]?.id;
   const sortDesc = sorting[0]?.desc ?? false;
@@ -236,12 +230,17 @@ export const OrgPeoplePanel = ({
     setPageIndex((i) => Math.max(0, i - 1));
   }, []);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      resetPagination();
+    },
+    [resetPagination],
+  );
 
   const handleFilterChange = (f: Filter): void => {
     setFilter(f);
+    resetPagination();
     // If user clicks "Unassigned" filter button while a team is selected, clear team selection.
     if (f === "unassigned" && teamId && !isUnassigned) {
       onSelectTeam(UNASSIGNED_TEAM_ID);
@@ -359,7 +358,10 @@ export const OrgPeoplePanel = ({
             <Input
               placeholder="Filter people..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                resetPagination();
+              }}
               className="min-w-0 flex-1"
             />
             {!isTeamSelected && (
@@ -393,7 +395,10 @@ export const OrgPeoplePanel = ({
             columns={columns}
             data={people}
             sorting={sorting}
-            onSortingChange={setSorting}
+            onSortingChange={(updater: Updater<SortingState>) => {
+              setSorting(updater);
+              resetPagination();
+            }}
             onRowClick={onSelectPerson}
           />
 

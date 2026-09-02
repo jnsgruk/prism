@@ -14,7 +14,7 @@ import { SecretForm } from "@/views/admin/components/secret-form";
 import { settingsForms } from "@/views/admin/components/source-settings-forms";
 import { baseSourceType } from "@/views/admin/lib/source-types";
 import type { JsonObject } from "@bufbuild/protobuf";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 import { useUpdateSource } from "@ps/hooks/use-config";
@@ -29,14 +29,7 @@ export const EditSourceDialog = ({
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
   const updateSource = useUpdateSource();
-  const [settings, setSettings] = useState<JsonObject>({});
-
-  // Sync settings from source when dialog opens
-  useEffect(() => {
-    if (open) {
-      setSettings(source.settings ?? {});
-    }
-  }, [open, source.settings]);
+  const [settings, setSettings] = useState<JsonObject>(source.settings ?? {});
 
   const SettingsForm = settingsForms[baseSourceType(source.sourceType)];
 

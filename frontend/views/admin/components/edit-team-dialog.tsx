@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useListPeople } from "@/lib/hooks/use-org";
 import { useUpdateTeam } from "@/views/admin/hooks/use-admin";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
 
@@ -31,12 +31,6 @@ export const EditTeamDialog = ({ team, teams, open, onOpenChange }: EditTeamDial
   const [name, setName] = useState(team.name);
   const [leadId, setLeadId] = useState(team.leadId ?? "");
   const [parentTeamId, setParentTeamId] = useState(team.parentTeamId ?? "");
-
-  useEffect(() => {
-    setName(team.name);
-    setLeadId(team.leadId ?? "");
-    setParentTeamId(team.parentTeamId ?? "");
-  }, [team]);
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();

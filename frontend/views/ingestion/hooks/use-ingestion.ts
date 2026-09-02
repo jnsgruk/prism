@@ -6,6 +6,7 @@ import type {
   CancelHandlerRunResponse,
   GetStatusResponse,
   HandlerRun,
+  ListRunsResponse,
   ListPipelineRunsResponse,
   PipelineRunSummary,
   SourceStatus,
@@ -15,6 +16,10 @@ import { HandlersService } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { transport } from "@ps/api/transport";
 
 type RefetchInterval = number | false | ((query: { state: { data: GetStatusResponse | undefined } }) => number | false);
+type RunsRefetchInterval =
+  | number
+  | false
+  | ((query: { state: { data: ListRunsResponse | undefined } }) => number | false);
 
 const handlersClient = createClient(HandlersService, transport);
 
@@ -37,7 +42,7 @@ export const useIngestionStatus = (options?: { refetchInterval?: RefetchInterval
 
 export const useListRuns = (
   sourceName?: string,
-  options?: { refetchInterval?: number | false; handlerName?: string; ingestionOnly?: boolean },
+  options?: { refetchInterval?: RunsRefetchInterval; handlerName?: string; ingestionOnly?: boolean },
 ): UseQueryResult<HandlerRun[]> =>
   useQuery({
     queryKey: handlersKeys.runs(sourceName, options?.handlerName),

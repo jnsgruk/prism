@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { AgentStep } from "@/views/ask/hooks/use-ask-question";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ThinkingStep } from "./thinking-step";
 
@@ -13,11 +13,8 @@ export const ThinkingSteps = ({
   steps: AgentStep[];
   defaultOpen?: boolean;
 }): React.ReactElement | null => {
-  const [open, setOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    setOpen(defaultOpen);
-  }, [defaultOpen]);
+  const [manuallyOpen, setManuallyOpen] = useState(false);
+  const open = defaultOpen || manuallyOpen;
 
   if (steps.length === 0) return null;
 
@@ -28,7 +25,7 @@ export const ThinkingSteps = ({
   const isActive = defaultOpen;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+    <Collapsible open={open} onOpenChange={setManuallyOpen}>
       <CollapsibleTrigger className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         {isActive && <Loader2 className="size-3.5 animate-spin" />}

@@ -170,13 +170,16 @@ export const useAskQuestion = (): {
   }, []);
 
   /** Process a stream of AskQuestion/ResumeStream responses. */
+  // The compiler tracks these stable hook values automatically, while the
+  // explicit dependencies preserve the callback identity for consumers.
+  // oxlint-disable react/memo-dependencies -- React Compiler already tracks these stable hook values.
   const processStream = useCallback(
     async (
       stream: AsyncIterable<{ event: { case?: string; value?: Record<string, unknown> } }>,
       abort: AbortController,
       question: string,
       initialConversationId?: string,
-    ) => {
+    ): Promise<void> => {
       let partialAnswer = "";
       let streamConversationId: string | undefined = initialConversationId;
 
@@ -284,6 +287,7 @@ export const useAskQuestion = (): {
     },
     [queryClient, appendStepEvent],
   );
+  // oxlint-enable react/memo-dependencies
 
   const ask = useCallback(
     async (

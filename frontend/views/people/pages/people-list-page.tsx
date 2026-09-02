@@ -10,9 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { flattenTree, useGetTeamTree, usePaginatedPeople } from "@/lib/hooks/use-org";
 import { personNameColumn, personTeamColumn, personIdentitiesColumn } from "@/views/people/components/person-columns";
-import type { SortingState } from "@tanstack/react-table";
+import type { SortingState, Updater } from "@tanstack/react-table";
 import { ChevronsUpDown, Search, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const columns = [personNameColumn, personTeamColumn, personIdentitiesColumn];
@@ -33,10 +33,10 @@ const PeopleListPage = (): React.ReactElement => {
 
   const selectedTeamName = useMemo(() => flatTeams.find((ft) => ft.team.id === teamId)?.team.name, [flatTeams, teamId]);
 
-  useEffect(() => {
+  const resetPagination = useCallback((): void => {
     setPageIndex(0);
     setPageTokens([""]);
-  }, [debouncedSearch, teamId, pageSize, sorting]);
+  }, []);
 
   const sortField = sorting[0]?.id;
   const sortDesc = sorting[0]?.desc ?? false;
@@ -68,9 +68,13 @@ const PeopleListPage = (): React.ReactElement => {
     setPageIndex((i) => Math.max(0, i - 1));
   }, []);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      resetPagination();
+    },
+    [resetPagination],
+  );
 
   return (
     <>
@@ -83,7 +87,10 @@ const PeopleListPage = (): React.ReactElement => {
             <Input
               placeholder="Search people..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                resetPagination();
+              }}
               className="h-8 w-64 pl-8 text-sm"
             />
           </div>
@@ -96,6 +103,7 @@ const PeopleListPage = (): React.ReactElement => {
                   onClick={(e) => {
                     e.stopPropagation();
                     setTeamId(undefined);
+                    resetPagination();
                   }}
                 />
               ) : (
@@ -115,6 +123,7 @@ const PeopleListPage = (): React.ReactElement => {
                         data-checked={teamId === ft.team.id}
                         onSelect={() => {
                           setTeamId(teamId === ft.team.id ? undefined : ft.team.id);
+                          resetPagination();
                           setTeamOpen(false);
                         }}
                       >
@@ -148,7 +157,10 @@ const PeopleListPage = (): React.ReactElement => {
                 columns={columns}
                 data={people}
                 sorting={sorting}
-                onSortingChange={setSorting}
+                onSortingChange={(updater: Updater<SortingState>) => {
+                  setSorting(updater);
+                  resetPagination();
+                }}
                 onRowClick={(person) => navigate(`/people/${person.id}`)}
               />
             </div>

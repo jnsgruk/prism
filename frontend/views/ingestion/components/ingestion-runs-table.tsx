@@ -111,10 +111,10 @@ export const RunHistoryPanel = ({
 
   return (
     <RunHistoryCard
+      key={sourceFilter}
       runs={filteredRuns}
       columns={columns}
       entityDropdown={entityDropdown}
-      entityFilter={sourceFilter}
       runTitle={(run) => displaySourceName(run.sourceName)}
       onCancel={handleCancel}
       cancelPending={cancelRun.isPending}

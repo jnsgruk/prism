@@ -68,25 +68,20 @@ const AskPage = (): React.ReactElement => {
 
   // Auto-resume if we navigate to a conversation with an active query.
   const queryStatus = conversationData?.conversation?.queryStatus;
-  const hasResumed = useRef(false);
+  const resumedConversationId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (
       conversationId &&
       (queryStatus === "running" || queryStatus === "pending") &&
       state.status === "idle" &&
-      !hasResumed.current
+      resumedConversationId.current !== conversationId
     ) {
-      hasResumed.current = true;
+      resumedConversationId.current = conversationId;
       const lastQuestion = messages.findLast((m) => m.role === "user")?.content;
       resume(conversationId, lastQuestion);
     }
   }, [conversationId, queryStatus, state.status, resume, messages]);
-
-  // Reset the resume guard when conversation changes.
-  useEffect(() => {
-    hasResumed.current = false;
-  }, [conversationId]);
 
   // Generate a stable conversation ID for uploads when creating a new conversation.
   const pendingConvIdRef = useRef<string | undefined>(undefined);
@@ -210,10 +205,8 @@ const AskPage = (): React.ReactElement => {
   const conv = conversationData?.conversation;
   const podActive = conv?.containerStatus === "active";
   const { data: modelsResponse } = useAiModels(undefined, "tool_use");
-  const lastContextUsage = useRef<ContextUsage | undefined>(undefined);
   const contextUsage = useMemo((): ContextUsage | undefined => {
     if (!podActive && state.status !== "streaming" && state.status !== "completed") {
-      lastContextUsage.current = undefined;
       return undefined;
     }
     let usage: ContextUsage | undefined;
@@ -231,8 +224,7 @@ const AskPage = (): React.ReactElement => {
         contextWindow: model?.contextLength ?? 0,
       };
     }
-    if (usage) lastContextUsage.current = usage;
-    return usage ?? lastContextUsage.current;
+    return usage;
   }, [state, conv, modelsResponse, podActive]);
 
   const showSuggestions = !conversationId && state.status === "idle" && messages.length === 0;

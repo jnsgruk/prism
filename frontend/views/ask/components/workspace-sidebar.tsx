@@ -84,13 +84,14 @@ export const WorkspaceSidebar = ({
   // Resizable preview height
   const [previewHeight, setPreviewHeight] = useState(DEFAULT_PREVIEW_HEIGHT);
   const previewRef = useRef<HTMLDivElement>(null);
+  const getPreviewTarget = useCallback(() => previewRef.current, []);
   const { onPointerDown: onPreviewDragDown } = useResize({
     axis: "vertical",
     min: MIN_PREVIEW_HEIGHT,
     max: MAX_PREVIEW_HEIGHT,
     reverse: true, // Dragging up increases height.
     onResize: setPreviewHeight,
-    targetRef: previewRef,
+    getTarget: getPreviewTarget,
   });
 
   // Preview state

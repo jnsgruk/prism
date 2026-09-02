@@ -13,7 +13,7 @@ type ResizeAxis = "horizontal" | "vertical";
  * The drag handle element must have `data-current-size` set to the
  * current pixel size so the hook knows the starting value.
  *
- * Pass a `targetRef` to resize a specific element instead of the handle's
+ * Pass `getTarget` to resize a specific element instead of the handle's
  * parent.
  */
 export const useResize = ({
@@ -22,14 +22,14 @@ export const useResize = ({
   max,
   reverse = false,
   onResize,
-  targetRef,
+  getTarget,
 }: {
   axis: ResizeAxis;
   min: number;
   max: number;
   reverse?: boolean;
   onResize: (size: number) => void;
-  targetRef?: React.RefObject<HTMLElement | null>;
+  getTarget?: () => HTMLElement | null;
 }): { onPointerDown: React.PointerEventHandler } => {
   const startPos = useRef(0);
   const startSize = useRef(0);
@@ -46,7 +46,7 @@ export const useResize = ({
       const encoded = el.dataset.currentSize;
       if (encoded) startSize.current = Number(encoded);
 
-      const target = targetRef?.current ?? el.parentElement;
+      const target = getTarget?.() ?? el.parentElement;
 
       const clamp = (raw: number): number => Math.round(Math.min(max, Math.max(min, raw)));
 
@@ -83,7 +83,7 @@ export const useResize = ({
       document.addEventListener("pointermove", onPointerMove);
       document.addEventListener("pointerup", onPointerUp);
     },
-    [axis, min, max, reverse, onResize, targetRef],
+    [axis, min, max, reverse, onResize, getTarget],
   );
 
   return { onPointerDown };

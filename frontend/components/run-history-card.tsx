@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { StatusFilter } from "@/lib/run-status";
 import { ChevronDown, ChevronRight, History } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { RunStatus } from "@ps/api/gen/canonical/prism/v1/common_pb";
 import type { HandlerRun } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
@@ -18,8 +18,6 @@ type RunHistoryCardProps = {
   columns: ColumnDef<HandlerRun>[];
   /** Entity filter dropdown rendered in the filter bar. */
   entityDropdown?: React.ReactNode;
-  /** Current entity filter value — used to reset pagination when it changes. */
-  entityFilter?: string;
   /** Title for the run detail dialog. */
   runTitle: (run: HandlerRun) => string;
   /** Description for the run detail dialog. */
@@ -34,7 +32,6 @@ export const RunHistoryCard = ({
   runs,
   columns,
   entityDropdown,
-  entityFilter,
   runTitle,
   runDescription,
   onCancel,
@@ -56,10 +53,6 @@ export const RunHistoryCard = ({
     }
     return counts;
   }, [runs]);
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [entityFilter, statusFilter, pageSize]);
 
   const filteredRuns = useMemo(() => {
     let result = runs;
@@ -85,6 +78,12 @@ export const RunHistoryCard = ({
 
   const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
+    setPageIndex(0);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((filter: StatusFilter) => {
+    setStatusFilter(filter);
+    setPageIndex(0);
   }, []);
 
   return (
@@ -125,7 +124,7 @@ export const RunHistoryCard = ({
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
               {entityDropdown}
-              <StatusFilterButtons value={statusFilter} onChange={setStatusFilter} />
+              <StatusFilterButtons value={statusFilter} onChange={handleStatusFilterChange} />
             </div>
 
             <DataTable columns={columns} data={pageRuns} onRowClick={setSelectedRun} />
