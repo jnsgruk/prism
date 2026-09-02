@@ -295,64 +295,42 @@ impl ReasoningRepo {
     ) -> Result<Vec<UnenrichedContribution>, Error> {
         // Different enrichment types target different contribution types.
         let type_filter = enrichment_type.contribution_type_filter().as_str();
-        let extra_filter = match enrichment_type {
-            EnrichmentType::ReviewDepth | EnrichmentType::Sentiment => {
-                "c.content IS NOT NULL AND c.content != ''"
-            }
-            EnrichmentType::Significance => {
-                "(c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50"
-            }
-            EnrichmentType::Topic => "TRUE",
-        };
-
-        // Use a dynamic query string since the filter varies, but parameters
-        // are still bound safely.
-        let query = format!(
-            r"
+        let rows = sqlx::query!(
+            r#"
             SELECT c.id, c.contribution_type, c.platform, c.title, c.content, c.metrics
             FROM activity.contributions c
             LEFT JOIN reasoning.enrichments e
                 ON e.contribution_id = c.id AND e.enrichment_type = $1
             WHERE e.id IS NULL
               AND c.contribution_type = $2
-              AND {extra_filter}
+              AND CASE $1::text
+                  WHEN 'review_depth' THEN c.content IS NOT NULL AND c.content != ''
+                  WHEN 'sentiment' THEN c.content IS NOT NULL AND c.content != ''
+                  WHEN 'significance' THEN
+                      (c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50
+                  ELSE TRUE
+              END
             ORDER BY c.created_at DESC
             LIMIT $3
-            ",
-        );
-
-        let rows = sqlx::query_as::<
-            _,
-            (
-                Uuid,
-                String,
-                String,
-                Option<String>,
-                Option<String>,
-                serde_json::Value,
-            ),
-        >(sqlx::AssertSqlSafe(query))
-        .bind(enrichment_type.as_str())
-        .bind(type_filter)
-        .bind(limit)
+            "#,
+            enrichment_type.as_str(),
+            type_filter,
+            limit,
+        )
         .fetch_all(&self.pool)
         .await
         .map_err(Error::from)?;
 
         Ok(rows
             .into_iter()
-            .map(
-                |(id, contribution_type, platform, title, content, metrics)| {
-                    UnenrichedContribution {
-                        id,
-                        contribution_type,
-                        platform,
-                        title,
-                        content,
-                        metrics,
-                    }
-                },
-            )
+            .map(|row| UnenrichedContribution {
+                id: row.id,
+                contribution_type: row.contribution_type,
+                platform: row.platform,
+                title: row.title,
+                content: row.content,
+                metrics: row.metrics,
+            })
             .collect())
     }
 

@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::infra::SharedState;
 use crate::infra::run_lifecycle::{
-    complete_run, create_run, fail_run, journaled_value, terminal_err,
+    complete_run, create_run, fail_run, journaled, journaled_value, terminal_err,
 };
 
 /// Max contributions to fetch from the embedding queue per cycle.
@@ -419,16 +419,13 @@ impl EmbeddingHandlerImpl {
             let retry_after_secs = i64::try_from(failure.retry_after_secs).unwrap_or(i64::MAX);
             let step = format!("record_failures_{iteration}_{index}");
 
-            ctx.run(move || async move {
+            journaled!(ctx, &step, [repos, queue_ids, message], {
                 repos
                     .reasoning
                     .record_embedding_failures(&queue_ids, &message, permanent, retry_after_secs)
                     .await
                     .map_err(terminal_err("db error"))?;
-                Ok(Json::from(()))
-            })
-            .name(&step)
-            .await?;
+            });
         }
 
         Ok(())

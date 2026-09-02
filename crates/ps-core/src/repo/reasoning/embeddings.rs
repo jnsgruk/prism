@@ -233,23 +233,23 @@ impl ReasoningRepo {
             return Ok(0);
         }
 
-        let result = sqlx::query(
-            r"
+        let result = sqlx::query!(
+            r#"
             UPDATE reasoning.embedding_queue
             SET attempt_count = attempt_count + 1,
                 last_error = $2,
-                next_attempt_at = now() + make_interval(secs => $4),
+                next_attempt_at = now() + $4::bigint * interval '1 second',
                 failed_at = CASE
                     WHEN $3 OR attempt_count + 1 >= 5 THEN now()
                     ELSE NULL
                 END
             WHERE id = ANY($1)
-            ",
+            "#,
+            queue_ids,
+            error,
+            permanent,
+            retry_after_secs,
         )
-        .bind(queue_ids)
-        .bind(error)
-        .bind(permanent)
-        .bind(retry_after_secs)
         .execute(&self.pool)
         .await
         .map_err(Error::from)?;
@@ -439,13 +439,13 @@ impl ReasoningRepo {
     pub async fn get_embedding_status(&self) -> Result<EmbeddingStatus, Error> {
         let (queued, embedded, eligible) = tokio::try_join!(
             async {
-                let (count,): (i64,) =
-                    sqlx::query_as(
-                        r"SELECT COUNT(*)::bigint FROM reasoning.embedding_queue WHERE failed_at IS NULL",
-                    )
-                        .fetch_one(&self.pool)
-                        .await
-                        .map_err(Error::from)?;
+                let count = sqlx::query_scalar!(
+                    r#"SELECT COUNT(*)::bigint AS "count!"
+                       FROM reasoning.embedding_queue WHERE failed_at IS NULL"#,
+                )
+                .fetch_one(&self.pool)
+                .await
+                .map_err(Error::from)?;
                 Ok::<_, Error>(count)
             },
             async {
