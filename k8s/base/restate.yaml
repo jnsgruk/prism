@@ -13,18 +13,6 @@ spec:
       port: 9070
       targetPort: 9070
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: restate-data
-  annotations:
-    prism.canonical.com/storage-purpose: durable-workflow-state
-spec:
-  accessModes: ["ReadWriteOnce"]
-  resources:
-    requests:
-      storage: 20Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -67,6 +55,7 @@ spec:
           volumeMounts:
             - name: restate-data
               mountPath: /restate-data
+              subPath: restate-data
           resources:
             requests:
               memory: 2Gi
@@ -76,4 +65,6 @@ spec:
       volumes:
         - name: restate-data
           persistentVolumeClaim:
-            claimName: restate-data
+            # The rawfile CSI pool cannot allocate another volume, while this
+            # durable 50 GiB claim has ample headroom on the single-node cluster.
+            claimName: prism-workspaces
