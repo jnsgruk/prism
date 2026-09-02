@@ -53,7 +53,7 @@ spec:
             - name: RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT
               value: "5s"
           volumeMounts:
-            - name: restate-data
+            - name: restate-workspace
               mountPath: /restate-data
               subPath: restate-data
           resources:
@@ -63,7 +63,10 @@ spec:
             limits:
               memory: 4Gi
       volumes:
-        - name: restate-data
+        # Keep this name distinct from the historical `restate-data`
+        # volumeClaimTemplate retained on existing StatefulSets. Kubernetes
+        # otherwise injects the old per-pod PVC in place of this volume.
+        - name: restate-workspace
           persistentVolumeClaim:
             # The rawfile CSI pool cannot allocate another volume, while this
             # durable 50 GiB claim has ample headroom on the single-node cluster.
