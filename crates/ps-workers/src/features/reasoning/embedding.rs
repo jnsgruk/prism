@@ -70,12 +70,16 @@ impl EmbeddingHandler for EmbeddingHandlerImpl {
 }
 
 /// Progress report for the embedding pipeline.
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
 struct EmbeddingProgress {
     phase: String,
     embedded: usize,
     skipped: usize,
     errors: usize,
+    processed: usize,
+    total: usize,
+    remaining: usize,
     status_message: String,
 }
 
@@ -125,26 +129,10 @@ impl EmbeddingHandlerImpl {
             }
         };
 
-        let mut total_embedded = 0usize;
-        let mut total_skipped = 0usize;
-        let mut total_errors = 0usize;
+        let (mut total_embedded, mut total_skipped, mut total_errors, total_items) =
+            self.load_progress_state(is_continuation, run_id).await;
         let mut iteration = 0u32;
         let mut more_work_remaining = false;
-
-        // On continuation, seed cumulative totals from the run row so progress
-        // updates append to the chain total rather than restarting.
-        if is_continuation {
-            match self.state.repos.activity.get_run(run_id).await {
-                Ok(Some(row)) => {
-                    #[allow(clippy::cast_sign_loss)]
-                    {
-                        total_embedded = row.items_collected.unwrap_or(0).max(0) as usize;
-                    }
-                }
-                Ok(None) => warn!(%run_id, "continuation: run row missing, starting at 0"),
-                Err(e) => warn!(error = %e, "continuation: failed to read run row"),
-            }
-        }
 
         loop {
             // Step 3: Fetch queued batch (journaled — DB read)
@@ -191,6 +179,7 @@ impl EmbeddingHandlerImpl {
             total_embedded += result.embedded;
             total_skipped += result.skipped;
             total_errors += result.errors;
+            let processed = total_embedded + total_skipped + total_errors;
 
             // Step 7: Update progress (NOT journaled)
             let progress = EmbeddingProgress {
@@ -198,12 +187,15 @@ impl EmbeddingHandlerImpl {
                 embedded: total_embedded,
                 skipped: total_skipped,
                 errors: total_errors,
+                processed,
+                total: total_items,
+                remaining: total_items.saturating_sub(processed),
                 status_message: format!(
-                    "Embedded {total_embedded}, skipped {total_skipped}, errors {total_errors}"
+                    "Processed {processed}/{total_items}: embedded {total_embedded}, skipped {total_skipped}, errors {total_errors}"
                 ),
             };
             #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-            let items_so_far = total_embedded as i32;
+            let items_so_far = processed as i32;
             self.update_progress(run_id, items_so_far, &progress).await;
 
             self.apply_provider_backoff(ctx, &result.failures).await?;
@@ -238,8 +230,9 @@ impl EmbeddingHandlerImpl {
                 }))
                 .send();
         } else {
+            let processed = total_embedded + total_skipped + total_errors;
             #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-            let total = total_embedded as i32;
+            let total = processed as i32;
             if total_errors > 0 && total_embedded == 0 {
                 fail_run!(
                     ctx,
@@ -265,6 +258,54 @@ impl EmbeddingHandlerImpl {
         }
 
         Ok(())
+    }
+
+    async fn load_progress_state(
+        &self,
+        is_continuation: bool,
+        run_id: Uuid,
+    ) -> (usize, usize, usize, usize) {
+        if !is_continuation {
+            let total = self
+                .state
+                .repos
+                .reasoning
+                .get_embedding_status()
+                .await
+                .ok()
+                .and_then(|status| usize::try_from(status.queued_count).ok())
+                .unwrap_or_default();
+            return (0, 0, 0, total);
+        }
+
+        match self
+            .state
+            .repos
+            .activity
+            .find_latest_run_by_source_and_handler("_embedding", "EmbeddingHandler")
+            .await
+        {
+            Ok(Some(row)) => row
+                .progress
+                .and_then(|value| serde_json::from_value::<EmbeddingProgress>(value).ok())
+                .map(|progress| {
+                    (
+                        progress.embedded,
+                        progress.skipped,
+                        progress.errors,
+                        progress.total,
+                    )
+                })
+                .unwrap_or_default(),
+            Ok(None) => {
+                warn!(%run_id, "continuation: run row missing, starting at 0");
+                (0, 0, 0, 0)
+            }
+            Err(error) => {
+                warn!(%error, "continuation: failed to read run row");
+                (0, 0, 0, 0)
+            }
+        }
     }
 
     // -----------------------------------------------------------------------

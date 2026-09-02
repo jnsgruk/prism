@@ -440,7 +440,9 @@ impl ReasoningRepo {
         let (queued, embedded, eligible) = tokio::try_join!(
             async {
                 let (count,): (i64,) =
-                    sqlx::query_as(r"SELECT COUNT(*)::bigint FROM reasoning.embedding_queue")
+                    sqlx::query_as(
+                        r"SELECT COUNT(*)::bigint FROM reasoning.embedding_queue WHERE failed_at IS NULL",
+                    )
                         .fetch_one(&self.pool)
                         .await
                         .map_err(Error::from)?;
