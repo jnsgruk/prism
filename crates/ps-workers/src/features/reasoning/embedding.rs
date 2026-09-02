@@ -179,6 +179,11 @@ impl EmbeddingHandlerImpl {
             // Step 5: Log cost (journaled)
             self.log_usage(ctx, &model_name, iteration, &result).await;
 
+            // Persist failures before fetching more work so malformed records
+            // are quarantined and transient failures cannot hot-loop.
+            self.record_failures(ctx, iteration, &result.failures)
+                .await?;
+
             // Step 6: Clean up queue (journaled)
             self.cleanup_queue(ctx, iteration).await;
 
@@ -200,6 +205,8 @@ impl EmbeddingHandlerImpl {
             #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
             let items_so_far = total_embedded as i32;
             self.update_progress(run_id, items_so_far, &progress).await;
+
+            self.apply_provider_backoff(ctx, &result.failures).await?;
 
             iteration += 1;
 
@@ -352,6 +359,52 @@ impl EmbeddingHandlerImpl {
                 warn!(error = %e, "failed to clean up embedding queue");
             }
         }
+    }
+
+    async fn record_failures(
+        &self,
+        ctx: &Context<'_>,
+        iteration: u32,
+        failures: &[embeddings::BatchFailure],
+    ) -> Result<(), TerminalError> {
+        for (index, failure) in failures.iter().enumerate() {
+            let repos = self.state.repos.clone();
+            let queue_ids = failure.queue_ids.clone();
+            let message = failure.message.clone();
+            let permanent = failure.permanent;
+            let retry_after_secs = i64::try_from(failure.retry_after_secs).unwrap_or(i64::MAX);
+            let step = format!("record_failures_{iteration}_{index}");
+
+            ctx.run(move || async move {
+                repos
+                    .reasoning
+                    .record_embedding_failures(&queue_ids, &message, permanent, retry_after_secs)
+                    .await
+                    .map_err(terminal_err("db error"))?;
+                Ok(Json::from(()))
+            })
+            .name(&step)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn apply_provider_backoff(
+        &self,
+        ctx: &Context<'_>,
+        failures: &[embeddings::BatchFailure],
+    ) -> Result<(), TerminalError> {
+        let delay = failures
+            .iter()
+            .filter(|failure| !failure.permanent)
+            .map(|failure| failure.retry_after_secs)
+            .max();
+        if let Some(delay) = delay {
+            info!(delay_secs = delay, "embedding provider backoff");
+            ctx.sleep(std::time::Duration::from_secs(delay)).await?;
+        }
+        Ok(())
     }
 
     // -----------------------------------------------------------------------
