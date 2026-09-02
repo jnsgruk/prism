@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT c.id, c.contribution_type, c.platform, c.title, c.content, c.metrics\n            FROM activity.contributions c\n            LEFT JOIN reasoning.enrichments e\n                ON e.contribution_id = c.id AND e.enrichment_type = $1\n            WHERE e.id IS NULL\n              AND c.contribution_type = $2\n              AND CASE $1::text\n                  WHEN 'review_depth' THEN c.content IS NOT NULL AND c.content != ''\n                  WHEN 'sentiment' THEN c.content IS NOT NULL AND c.content != ''\n                  WHEN 'significance' THEN\n                      (c.metrics->>'additions')::int + (c.metrics->>'deletions')::int > 50\n                  ELSE TRUE\n              END\n            ORDER BY c.created_at DESC\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "contribution_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "contribution_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "platform",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "platform"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "content",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "content"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "metrics",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "metrics"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "81a9bd3ca2952d0a4ca307e0200f5528b070ee33c0961f546956b413dd4fe00d"
+}

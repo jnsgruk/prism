@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT COUNT(*)::bigint AS \"count!\"\n                    FROM org.people p\n                    LEFT JOIN org.team_memberships tm ON tm.person_id = p.id\n                        AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n                    LEFT JOIN org.teams t ON t.id = tm.team_id\n                    WHERE ($1::bool = false OR p.active = true)\n                      AND ($2::text IS NULL\n                           OR $2 = 'all'\n                           OR ($2 = 'unassigned' AND p.active = true AND tm.team_id IS NULL)\n                           OR ($2 = 'inactive' AND p.active = false))\n                      AND ($3::text IS NULL OR p.name ILIKE $3\n                           OR COALESCE(p.email, '') ILIKE $3\n                           OR COALESCE(t.name, '') ILIKE $3)\n                      AND ($4::uuid IS NULL OR tm.team_id IN (\n                          WITH RECURSIVE team_tree AS (\n                              SELECT id FROM org.teams WHERE id = $4\n                              UNION ALL\n                              SELECT child.id FROM org.teams child\n                              INNER JOIN team_tree parent ON child.parent_team_id = parent.id\n                          )\n                          SELECT id FROM team_tree\n                      ))\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ed2e3a43a49d09a5247bcaa913d4d5938e155375b580f18b2672c1397db7b237"
+}

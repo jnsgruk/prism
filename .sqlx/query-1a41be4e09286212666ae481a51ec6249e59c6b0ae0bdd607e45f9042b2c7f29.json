@@ -1,0 +1,108 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT p.id, p.name, p.email, p.level, p.active,\n                           tm.team_id AS \"team_id?\", t.name AS \"team_name?\"\n                    FROM org.people p\n                    LEFT JOIN org.team_memberships tm ON tm.person_id = p.id\n                        AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n                    LEFT JOIN org.teams t ON t.id = tm.team_id\n                    WHERE ($1::bool = false OR p.active = true)\n                      AND ($2::text IS NULL\n                           OR $2 = 'all'\n                           OR ($2 = 'unassigned' AND p.active = true AND tm.team_id IS NULL)\n                           OR ($2 = 'inactive' AND p.active = false))\n                      AND ($3::text IS NULL OR p.name ILIKE $3\n                           OR COALESCE(p.email, '') ILIKE $3\n                           OR COALESCE(t.name, '') ILIKE $3)\n                      AND ($4::uuid IS NULL OR tm.team_id IN (\n                          WITH RECURSIVE team_tree AS (\n                              SELECT id FROM org.teams WHERE id = $4\n                              UNION ALL\n                              SELECT child.id FROM org.teams child\n                              INNER JOIN team_tree parent ON child.parent_team_id = parent.id\n                          )\n                          SELECT id FROM team_tree\n                      ))\n                      AND ($5::text IS NULL OR (\n                          $8::bool = false AND\n                          (CASE $6::text\n                              WHEN 'email' THEN COALESCE(p.email, '')\n                              WHEN 'team_name' THEN COALESCE(t.name, '')\n                              WHEN 'active' THEN p.active::text\n                              ELSE p.name\n                           END, p.id::text) > ($5, $7::text)\n                      ) OR (\n                          $8::bool = true AND\n                          (CASE $6::text\n                              WHEN 'email' THEN COALESCE(p.email, '')\n                              WHEN 'team_name' THEN COALESCE(t.name, '')\n                              WHEN 'active' THEN p.active::text\n                              ELSE p.name\n                           END, p.id::text) < ($5, $7::text)\n                      ))\n                    ORDER BY\n                      CASE WHEN $8::bool = false THEN CASE $6::text\n                          WHEN 'email' THEN COALESCE(p.email, '')\n                          WHEN 'team_name' THEN COALESCE(t.name, '')\n                          WHEN 'active' THEN p.active::text\n                          ELSE p.name\n                      END END ASC,\n                      CASE WHEN $8::bool = true THEN CASE $6::text\n                          WHEN 'email' THEN COALESCE(p.email, '')\n                          WHEN 'team_name' THEN COALESCE(t.name, '')\n                          WHEN 'active' THEN p.active::text\n                          ELSE p.name\n                      END END DESC,\n                      CASE WHEN $8::bool = false THEN p.id END ASC,\n                      CASE WHEN $8::bool = true THEN p.id END DESC\n                    LIMIT $9\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "level",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "active"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "team_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.team_memberships",
+            "name": "team_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "team_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.teams",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1a41be4e09286212666ae481a51ec6249e59c6b0ae0bdd607e45f9042b2c7f29"
+}
