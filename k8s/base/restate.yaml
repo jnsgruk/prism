@@ -64,8 +64,12 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: restate-data
+        annotations:
+          # Restate journals and RocksDB compactions need substantially more
+          # headroom than the original development-sized 1 GiB volume.
+          prism.canonical.com/storage-purpose: durable-workflow-state
       spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 1Gi
+            storage: 20Gi
