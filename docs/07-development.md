@@ -102,7 +102,7 @@ Before finishing any task:
 
 ## Code Style
 
-See [CLAUDE.md](../CLAUDE.md) for detailed code style rules. Key principles:
+See [AGENTS.md](../AGENTS.md) for detailed code style rules. Key principles:
 
 **Rust:** prefer `match` over `if/else-if`, extract large closures into named functions, use `tracing` (never `println!`), structured tracing fields, domain enums (never string literals), `From`/`Into` for proto conversions.
 

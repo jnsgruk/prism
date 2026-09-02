@@ -60,7 +60,7 @@ If a future feature genuinely needs cross-component client state that isn't serv
 
 ## UI Conventions
 
-See [CLAUDE.md](../CLAUDE.md) for detailed UI conventions including DataTable usage, date/number formatting, icons, empty states, loading states, badges, dialogs, page layout, charts, and search/filter patterns.
+See [AGENTS.md](../AGENTS.md) and the path-scoped [frontend instructions](../frontend/AGENTS.md) for detailed UI conventions including DataTable usage, date/number formatting, icons, empty states, loading states, badges, dialogs, page layout, charts, and search/filter patterns.
 
 Key principles:
 - **No horizontal overflow** — all content stays within viewport width

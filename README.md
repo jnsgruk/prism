@@ -33,11 +33,11 @@ buf lint                  # Lint proto files
 buf generate              # Generate Rust + TypeScript code from protos
 ```
 
-See [CLAUDE.md](CLAUDE.md) for full development guidelines, architecture, and conventions.
+See [AGENTS.md](AGENTS.md) for full development guidelines, architecture, and conventions.
 
 ## Documentation
 
-See [docs/00-overview.md](docs/00-overview.md) for an overview of the system, tech stack, and codebase map. See [docs/](docs/) for architecture, design decisions, and technical documentation. See [CLAUDE.md](CLAUDE.md) for development guidelines and coding conventions.
+See [docs/00-overview.md](docs/00-overview.md) for an overview of the system, tech stack, and codebase map. See [docs/](docs/) for architecture, design decisions, and technical documentation. See [AGENTS.md](AGENTS.md) for development guidelines and coding conventions.
 
 ## License
 

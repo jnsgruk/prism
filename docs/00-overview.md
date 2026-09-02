@@ -22,7 +22,7 @@ Prism is an engineering insights platform for understanding team and individual 
 | Document | Scope |
 | --- | --- |
 | **This file** | What Prism is and how the docs fit together |
-| [CLAUDE.md](../CLAUDE.md) | Day-to-day coding conventions, style rules, UI patterns, workflow commands. The authoritative reference for *how to write code* in this project. |
+| [AGENTS.md](../AGENTS.md) | Day-to-day coding conventions, style rules, UI patterns, workflow commands. The authoritative reference for *how to write code* in this project. |
 | [README.md](../README.md) | Quickstart: entering the dev environment, basic commands |
 | `docs/01-architecture` | System design, crate roles, code organisation principles |
 | `docs/02-database` | Schema design, repository pattern, migrations |

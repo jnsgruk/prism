@@ -4,6 +4,20 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-09-02 — Codex-Native Repository Guidance
+
+**Context:** Repository guidance used Claude Code-specific discovery paths (`CLAUDE.md`, `.claude/rules`, and `.claude/skills`). Codex does not natively discover those path-scoped rule files, and Claude-specific skill metadata and tool names are not portable.
+
+**Decision:** Adopt Codex-native project configuration. Repository-wide guidance lives in `AGENTS.md`; scoped rules live in nested `AGENTS.md` files; shared project skills live under `.agents/skills`. Local Claude permission settings are not translated because Codex permissions are controlled by the active environment and trusted project configuration rather than a directly equivalent repository allow-list.
+
+**Rationale:**
+- Codex discovers the project conventions without user-level fallback configuration
+- Nested instructions retain the previous path-specific behavior
+- The review skill uses the portable agent-skills format and Codex collaboration tools
+- Removing parallel Claude configuration prevents the two instruction sets from drifting
+
+---
+
 ## 2026-06-18 — Directory Re-import as a Safe Merge
 
 **Context:** HTML directory imports (`directory.html`) carry no `directory_id`, so the upsert path matched people only by `directory_id` and otherwise inserted unconditionally. Re-importing therefore created a fresh `org.people` row for every record on every upload — duplicating the entire org and migrating platform identities onto the duplicates via the `ON CONFLICT (platform, platform_username)` remap. The "safe re-import" guarantees in the code only ever applied to JSON imports that supply a `directory_id`. There was also no handling of leavers: stale people were merely counted, and only for `directory_id` rows (never set by HTML), so HTML imports always reported zero.
