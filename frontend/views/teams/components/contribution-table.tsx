@@ -8,7 +8,8 @@ import { useListTeamContributions, useListPersonContributions } from "@/lib/hook
 import { contributionStateLabel, platformLabel } from "@/lib/proto-display";
 import { create } from "@bufbuild/protobuf";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ExternalLink, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -318,7 +319,7 @@ export const ContributionTable = ({
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const activeSortCol = sorting[0] as SortingState[number] | undefined;
+  const activeSortCol = sorting[0];
   const sortField = activeSortCol?.id;
   const sortDesc = activeSortCol?.desc;
 

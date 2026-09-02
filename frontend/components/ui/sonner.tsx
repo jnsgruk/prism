@@ -2,7 +2,7 @@ import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 /** Helper to allow CSS custom properties without an unsafe `as CSSProperties` cast. */
-const cssVars = (vars: Record<string, string | number | undefined>): React.CSSProperties => vars as React.CSSProperties;
+const cssVars = (vars: Record<string, string | number | undefined>): React.CSSProperties => vars;
 
 const Toaster = (props: ToasterProps): React.ReactElement => (
   <Sonner

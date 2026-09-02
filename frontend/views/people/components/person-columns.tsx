@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 
 import type { Person } from "@ps/api/gen/canonical/prism/v1/org_pb";
 

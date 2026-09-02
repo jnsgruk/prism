@@ -166,7 +166,7 @@ type MutableNode = {
 };
 
 const sortNodes = (nodes: FileNode[]): FileNode[] =>
-  nodes.sort((a, b) => {
+  nodes.toSorted((a, b) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
     return a.name.localeCompare(b.name);
   });

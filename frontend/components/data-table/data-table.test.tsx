@@ -1,4 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
 

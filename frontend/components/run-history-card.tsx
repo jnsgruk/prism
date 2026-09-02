@@ -5,7 +5,7 @@ import { StatusFilterButtons } from "@/components/status-filter-buttons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { StatusFilter } from "@/lib/run-status";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 

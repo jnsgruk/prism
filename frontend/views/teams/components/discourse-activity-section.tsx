@@ -14,7 +14,8 @@ import { useListTeamContributions } from "@/lib/hooks/use-metrics";
 import { platformLabel } from "@/lib/proto-display";
 import { useDiscourseActivity } from "@/views/teams/hooks/use-discourse-activity";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronRight, ExternalLink, MessageCircle, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -141,7 +142,7 @@ const DiscourseTopicsTable = ({
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const activeSortCol = sorting[0] as SortingState[number] | undefined;
+  const activeSortCol = sorting[0];
 
   const filters: ContributionFilters = {
     platform: Platform.DISCOURSE,

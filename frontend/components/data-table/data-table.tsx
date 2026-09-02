@@ -1,17 +1,13 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { flexRender, type OnChangeFn, type RowData, type SortingState } from "@tanstack/react-table";
 import {
-  type ColumnDef,
-  type OnChangeFn,
-  type SortingState,
-  flexRender,
+  type LegacyColumnDef as ColumnDef,
   getCoreRowModel as createCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+  useLegacyTable as useReactTable,
+} from "@tanstack/react-table/legacy";
 import { ArrowUpDown } from "lucide-react";
 
-const coreRowModel = createCoreRowModel();
-
-interface DataTableProps<TData> {
+interface DataTableProps<TData extends RowData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   sorting?: SortingState;
@@ -19,7 +15,7 @@ interface DataTableProps<TData> {
   onRowClick?: (row: TData) => void;
 }
 
-export const DataTable = <TData,>({
+export const DataTable = <TData extends RowData>({
   columns,
   data,
   sorting,
@@ -31,7 +27,7 @@ export const DataTable = <TData,>({
     columns,
     state: { sorting: sorting ?? [] },
     onSortingChange,
-    getCoreRowModel: coreRowModel,
+    getCoreRowModel: createCoreRowModel<TData>(),
     manualSorting: true,
   });
 
