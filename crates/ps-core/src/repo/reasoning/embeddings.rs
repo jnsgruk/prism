@@ -140,6 +140,8 @@ impl ReasoningRepo {
                     c.platform
                 FROM reasoning.embedding_queue eq
                 JOIN activity.contributions c ON c.id = eq.contribution_id
+                WHERE eq.failed_at IS NULL
+                  AND eq.next_attempt_at <= now()
                 ORDER BY eq.created_at
                 LIMIT $1
                 ",
@@ -211,6 +213,43 @@ impl ReasoningRepo {
             )
             ",
         )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Record an embedding failure. Permanent failures remain in the queue for
+    /// inspection but are excluded from subsequent processing.
+    pub async fn record_embedding_failures(
+        &self,
+        queue_ids: &[Uuid],
+        error: &str,
+        permanent: bool,
+        retry_after_secs: i64,
+    ) -> Result<u64, Error> {
+        if queue_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let result = sqlx::query(
+            r"
+            UPDATE reasoning.embedding_queue
+            SET attempt_count = attempt_count + 1,
+                last_error = $2,
+                next_attempt_at = now() + make_interval(secs => $4),
+                failed_at = CASE
+                    WHEN $3 OR attempt_count + 1 >= 5 THEN now()
+                    ELSE NULL
+                END
+            WHERE id = ANY($1)
+            ",
+        )
+        .bind(queue_ids)
+        .bind(error)
+        .bind(permanent)
+        .bind(retry_after_secs)
         .execute(&self.pool)
         .await
         .map_err(Error::from)?;
