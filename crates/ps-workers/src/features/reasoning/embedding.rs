@@ -77,6 +77,7 @@ struct EmbeddingProgress {
     embedded: usize,
     skipped: usize,
     errors: usize,
+    retrying: usize,
     processed: usize,
     total: usize,
     remaining: usize,
@@ -187,11 +188,13 @@ impl EmbeddingHandlerImpl {
                 embedded: total_embedded,
                 skipped: total_skipped,
                 errors: total_errors,
+                retrying: result.retrying,
                 processed,
                 total: total_items,
                 remaining: total_items.saturating_sub(processed),
                 status_message: format!(
-                    "Processed {processed}/{total_items}: embedded {total_embedded}, skipped {total_skipped}, errors {total_errors}"
+                    "Processed {processed}/{total_items}: embedded {total_embedded}, skipped {total_skipped}, errors {total_errors}, retrying {}",
+                    result.retrying
                 ),
             };
             #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]

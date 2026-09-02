@@ -31,6 +31,7 @@ pub struct BatchResult {
     pub embedded: usize,
     pub skipped: usize,
     pub errors: usize,
+    pub retrying: usize,
     pub total_tokens: u64,
     pub failures: Vec<BatchFailure>,
 }
@@ -48,6 +49,7 @@ impl BatchResult {
             embedded: 0,
             skipped: 0,
             errors: 0,
+            retrying: 0,
             total_tokens: 0,
             failures: Vec::new(),
         }
@@ -96,6 +98,7 @@ pub async fn process_embedding_batch(
             embedded: 0,
             skipped,
             errors: 0,
+            retrying: 0,
             total_tokens: 0,
             failures,
         });
@@ -103,6 +106,7 @@ pub async fn process_embedding_batch(
 
     let mut total_embedded = 0usize;
     let mut total_errors = 0usize;
+    let mut total_retrying = 0usize;
     // Rough token estimate: ~4 chars per token
     let mut total_tokens = 0u64;
 
@@ -122,7 +126,11 @@ pub async fn process_embedding_batch(
                 let message = truncate_error(&e.to_string());
                 let (permanent, retry_after_secs) = classify_error(&message);
                 warn!(error = %message, count = chunk.len(), permanent, retry_after_secs, "embedding API call failed");
-                total_errors += chunk.len();
+                if permanent {
+                    total_errors += chunk.len();
+                } else {
+                    total_retrying += chunk.len();
+                }
                 failures.push(BatchFailure {
                     queue_ids,
                     message,
@@ -147,7 +155,7 @@ pub async fn process_embedding_batch(
             Err(e) => {
                 let message = truncate_error(&e.to_string());
                 warn!(error = %message, count = truncated.len(), "failed to store embeddings");
-                total_errors += truncated.len();
+                total_retrying += truncated.len();
                 failures.push(BatchFailure {
                     queue_ids,
                     message,
@@ -162,6 +170,7 @@ pub async fn process_embedding_batch(
         embedded = total_embedded,
         skipped,
         errors = total_errors,
+        retrying = total_retrying,
         "embedding batch complete"
     );
 
@@ -169,6 +178,7 @@ pub async fn process_embedding_batch(
         embedded: total_embedded,
         skipped,
         errors: total_errors,
+        retrying: total_retrying,
         total_tokens,
         failures,
     })
