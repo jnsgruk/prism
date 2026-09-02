@@ -39,7 +39,8 @@ pub fn build_embedding_text(item: &QueuedEmbedding) -> Option<String> {
         return None;
     }
 
-    Some(normalise_text(&sections.join("\n\n")))
+    let text = normalise_text(&sections.join("\n\n"));
+    if text.is_empty() { None } else { Some(text) }
 }
 
 /// Format an enrichment's value into a labelled text section for embedding.
@@ -137,6 +138,24 @@ mod tests {
             enrichments: vec![],
         };
         assert!(build_embedding_text(&item).is_none());
+    }
+
+    #[test]
+    fn build_text_returns_none_when_content_normalises_to_empty() {
+        for body in ["   \n\t", "<p> </p><br>"] {
+            let item = QueuedEmbedding {
+                id: uuid::Uuid::nil(),
+                contribution_id: uuid::Uuid::nil(),
+                content_hash: String::new(),
+                title: None,
+                body: Some(body.into()),
+                contribution_type: "pr_review".into(),
+                platform: "github".into(),
+                enrichments: vec![],
+            };
+
+            assert!(build_embedding_text(&item).is_none(), "body: {body:?}");
+        }
     }
 
     #[test]
