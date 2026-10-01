@@ -1,34 +1,11 @@
+import { WorkspaceFileLink } from "@/views/ask/components/workspace-file-link";
+import { WorkspaceImage } from "@/views/ask/components/workspace-image";
+import { classifyWorkspaceReference } from "@/views/ask/lib/workspace-path";
 import Markdown from "react-markdown";
 import { Link } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 
-import { WorkspaceImage } from "./workspace-image";
-
 const INTERNAL_LINK_RE = /^\/(teams|people|contributions|ingestion|ask|admin)/;
-
-/** Image file extensions the agent typically generates. */
-const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg|bmp)$/i;
-
-/**
- * Check whether an image src looks like a workspace-relative path
- * (not an absolute URL). The agent writes files to /workspace and references
- * them in markdown as e.g. `![chart](chart.png)` or `![img](/workspace/output.png)`.
- */
-const isWorkspacePath = (src: string): boolean => {
-  // Absolute URLs or data URIs are not workspace paths.
-  if (/^https?:\/\//i.test(src) || src.startsWith("data:")) return false;
-  return IMAGE_EXT_RE.test(src);
-};
-
-/** Normalise workspace paths — strip leading /workspace/ prefix if present. */
-const normaliseWorkspacePath = (src: string): string => {
-  let p = src;
-  // Strip leading slash for relative resolution.
-  if (p.startsWith("/workspace/")) p = p.slice("/workspace/".length);
-  if (p.startsWith("workspace/")) p = p.slice("workspace/".length);
-  if (p.startsWith("/")) p = p.slice(1);
-  return p;
-};
 
 export const AnswerContent = ({
   content,
@@ -42,6 +19,13 @@ export const AnswerContent = ({
       remarkPlugins={[remarkGfm]}
       components={{
         a: ({ href, children, ...props }) => {
+          const reference = href ? classifyWorkspaceReference(href, conversationId) : null;
+          if (reference)
+            return (
+              <WorkspaceFileLink conversationId={conversationId} path={reference.path}>
+                {children}
+              </WorkspaceFileLink>
+            );
           if (href && INTERNAL_LINK_RE.test(href)) {
             return <Link to={href}>{children}</Link>;
           }
@@ -52,14 +36,9 @@ export const AnswerContent = ({
           );
         },
         img: ({ src, alt }) => {
-          if (src && conversationId && isWorkspacePath(src)) {
-            return (
-              <WorkspaceImage
-                conversationId={conversationId}
-                path={normaliseWorkspacePath(src)}
-                alt={alt ?? undefined}
-              />
-            );
+          const reference = src ? classifyWorkspaceReference(src, conversationId) : null;
+          if (reference?.path && conversationId) {
+            return <WorkspaceImage conversationId={conversationId} path={reference.path} alt={alt ?? undefined} />;
           }
           // Fall back to a normal <img> for absolute URLs / data URIs.
           return <img src={src} alt={alt ?? ""} className="max-h-[500px] rounded-md" />;

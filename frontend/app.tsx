@@ -10,6 +10,7 @@ const SetupPage = lazy(() => import("@/views/setup/pages/setup-page"));
 const PeopleListPage = lazy(() => import("@/views/people/pages/people-list-page"));
 const PersonProfilePage = lazy(() => import("@/views/people/pages/person-profile-page"));
 const ContributionDetailPage = lazy(() => import("@/views/contributions/pages/contribution-detail-page"));
+const WorkspaceDownloadPage = lazy(() => import("@/views/ask/pages/workspace-download-page"));
 const AskPage = lazy(() => import("@/views/ask/pages/ask-page"));
 const ChatHistoryPage = lazy(() => import("@/views/ask/pages/chat-history-page"));
 const NotFoundPage = lazy(() => import("@/views/not-found/pages/not-found-page"));
@@ -28,6 +29,7 @@ export const App = (): React.ReactElement => (
         <Route path="/ingestion" element={<IngestionPage />} />
         <Route path="/ask" element={<AskPage />} />
         <Route path="/ask/history" element={<ChatHistoryPage />} />
+        <Route path="/ask/:conversationId/files/*" element={<WorkspaceDownloadPage />} />
         <Route path="/ask/:conversationId" element={<AskPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />

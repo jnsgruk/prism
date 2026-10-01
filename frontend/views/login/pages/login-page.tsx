@@ -5,12 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin, useSetupStatus } from "@ps/hooks/use-auth";
 
 const LoginPage = (): React.ReactElement | null => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedDestination: unknown = location.state?.returnTo;
+  const returnTo =
+    typeof requestedDestination === "string" &&
+    requestedDestination.startsWith("/") &&
+    !requestedDestination.startsWith("//") &&
+    !requestedDestination.includes("\\")
+      ? requestedDestination
+      : "/";
   const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
   const login = useLogin();
 
@@ -33,7 +42,7 @@ const LoginPage = (): React.ReactElement | null => {
     login.mutate(
       { username, password },
       {
-        onSuccess: () => navigate("/", { replace: true }),
+        onSuccess: () => navigate(returnTo, { replace: true }),
         onError: (err) => setError(err.message),
       },
     );

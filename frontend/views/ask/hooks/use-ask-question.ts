@@ -243,6 +243,7 @@ export const useAskQuestion = (): {
             queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
             const convId = str(v.conversationId);
             if (convId) {
+              queryClient.invalidateQueries({ queryKey: conversationKeys.workspaceResolution(convId) });
               queryClient.invalidateQueries({
                 queryKey: conversationKeys.detail(convId),
               });
@@ -386,6 +387,7 @@ export const useAskQuestion = (): {
       // Refresh conversation data so any response completed while we were
       // away is shown from the database rather than stale cache.
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.workspaceResolution(conversationId) });
     },
     [processStream, queryClient],
   );

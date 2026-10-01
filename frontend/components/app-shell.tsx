@@ -26,7 +26,7 @@ const LoadingSkeleton = (): React.ReactElement => (
 );
 
 export const AppShell = ({ children }: { children: React.ReactNode }): React.ReactElement | null => {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const navigate = useNavigate();
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
@@ -41,8 +41,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }): React.Rea
   }, [needsSetup, navigate]);
 
   useEffect(() => {
-    if (needsLogin) navigate("/login", { replace: true });
-  }, [needsLogin, navigate]);
+    if (needsLogin) navigate("/login", { replace: true, state: { returnTo: pathname + search + hash } });
+  }, [needsLogin, navigate, pathname, search, hash]);
 
   // Public routes render without the shell
   if (isPublicRoute) {
