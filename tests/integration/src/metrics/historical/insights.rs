@@ -66,6 +66,7 @@ async fn historical_insights_wait_for_enrichment_and_bound_period_membership_and
                 confidence: Some(0.9),
                 input_hash: None,
                 input_preview: Some("fixture input"),
+                source_content_hash: Some(&ps_core::repo::reasoning::content_hash(&queue_content)),
             })
             .await
             .unwrap();

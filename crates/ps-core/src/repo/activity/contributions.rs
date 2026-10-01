@@ -58,9 +58,36 @@ impl ActivityRepo {
             .collect();
         keys.sort();
         keys.dedup();
+        Self::lock_keys(tx, &keys).await
+    }
+
+    /// Shared queue workers acquire the same natural-key locks as ingestion
+    /// before contribution and queue locks, avoiding opposing multi-row orders.
+    pub(crate) async fn lock_existing_contribution_keys(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        ids: &[Uuid],
+    ) -> Result<(), Error> {
+        let mut keys = sqlx::query_scalar!(
+            r#"
+            SELECT platform || ':' || platform_id AS "key!"
+            FROM activity.contributions WHERE id = ANY($1)
+            "#,
+            ids,
+        )
+        .fetch_all(&mut **tx)
+        .await?;
+        keys.sort();
+        keys.dedup();
+        Self::lock_keys(tx, &keys).await
+    }
+
+    async fn lock_keys(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        keys: &[String],
+    ) -> Result<(), Error> {
         sqlx::query!(
             "SELECT pg_advisory_xact_lock(hashtextextended(key, 0)) FROM UNNEST($1::text[]) AS input(key) ORDER BY key",
-            &keys,
+            keys,
         ).execute(&mut **tx).await?;
         Ok(())
     }

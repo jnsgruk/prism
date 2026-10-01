@@ -139,6 +139,7 @@ async fn upsert_enrichment_and_retrieve() {
         confidence: Some(0.9),
         input_hash: Some("abc123"),
         input_preview: Some("This PR refactors..."),
+        source_content_hash: None,
     };
 
     let id = repos.reasoning.upsert_enrichment(&params).await.unwrap();
@@ -172,6 +173,7 @@ async fn upsert_enrichment_replaces_on_conflict() {
         confidence: Some(0.7),
         input_hash: None,
         input_preview: None,
+        source_content_hash: None,
     };
     repos.reasoning.upsert_enrichment(&params1).await.unwrap();
 
@@ -183,6 +185,7 @@ async fn upsert_enrichment_replaces_on_conflict() {
         confidence: Some(0.85),
         input_hash: None,
         input_preview: None,
+        source_content_hash: None,
     };
     repos.reasoning.upsert_enrichment(&params2).await.unwrap();
 
@@ -277,6 +280,7 @@ async fn get_enrichments_for_contributions_batch() {
         confidence: None,
         input_hash: None,
         input_preview: None,
+        source_content_hash: None,
     };
     repos.reasoning.upsert_enrichment(&params).await.unwrap();
 
@@ -372,6 +376,7 @@ async fn delete_enrichments_by_type() {
         confidence: None,
         input_hash: None,
         input_preview: None,
+        source_content_hash: None,
     };
     repos.reasoning.upsert_enrichment(&params).await.unwrap();
 
@@ -383,6 +388,7 @@ async fn delete_enrichments_by_type() {
         confidence: None,
         input_hash: None,
         input_preview: None,
+        source_content_hash: None,
     };
     repos.reasoning.upsert_enrichment(&params2).await.unwrap();
 
