@@ -113,8 +113,8 @@ impl HandlersService for HandlersServiceImpl {
             sources: statuses,
             person_backfill_capabilities: Some(
                 ps_proto::canonical::prism::v1::PersonBackfillCapabilities {
-                    enabled: false,
-                    reason: "Person backfill requires person-scoped processing (#30)".into(),
+                    enabled: true,
+                    reason: String::new(),
                 },
             ),
         }))

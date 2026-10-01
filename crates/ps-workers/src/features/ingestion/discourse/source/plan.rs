@@ -6,6 +6,7 @@ use super::DEFAULT_LOOKBACK_DAYS;
 pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
     if let Some(request) = ctx.person_request()? {
         return Ok(IngestionPlan {
+            discovery_cutoff: None,
             source_name: request.source.source_name.clone(),
             watermark: request.since_date.clone(),
             repos: vec![],
@@ -57,6 +58,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
         .unwrap_or_default();
 
     Ok(IngestionPlan {
+        discovery_cutoff: None,
         source_name: ctx.source_config.name.clone(),
         watermark: effective_watermark,
         repos: vec![],

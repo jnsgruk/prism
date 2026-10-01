@@ -1,12 +1,13 @@
 //! Versioned workflow: durable admission snapshots and exact invocation ownership.
 //! Legacy workflow journals are intentionally left untouched.
 mod lifecycle;
+mod outcomes;
 use lifecycle::{PipelineCompletion, owned_call_result};
 
 use std::pin::Pin;
 
 use futures::future::join_all;
-use ps_core::ingestion::{PipelineRequest, PipelineScope, SourceRunContext};
+use ps_core::ingestion::{PipelineRequest, SourceRunContext};
 use ps_core::models::Platform;
 use restate_sdk::prelude::*;
 use uuid::Uuid;
@@ -61,11 +62,6 @@ impl ScopedIngestionPipelineWorkflow for ScopedIngestionPipelineWorkflowImpl {
         request
             .validate()
             .map_err(terminal_err("invalid pipeline snapshot"))?;
-        if !matches!(request.scope, PipelineScope::All) {
-            return Err(TerminalError::new(
-                "person pipeline adapters and processing are not available",
-            ));
-        }
         let repos = self.state.repos.clone();
         let invocation_id = ctx.invocation_id().to_string();
         journaled!(ctx, "start_reserved_pipeline", [repos, invocation_id], {
@@ -79,11 +75,14 @@ impl ScopedIngestionPipelineWorkflow for ScopedIngestionPipelineWorkflowImpl {
             pipeline_id,
             request,
         };
-        let has_discourse = owner
-            .request
-            .sources
-            .iter()
-            .any(|s| s.platform.is_discourse());
+        // Saved person identities are mandatory at admission; a platform-wide
+        // resolution sweep must never run as part of a person backfill.
+        let has_discourse = owner.request.scope.person_id().is_none()
+            && owner
+                .request
+                .sources
+                .iter()
+                .any(|s| s.platform.is_discourse());
         let sources: Vec<SourceInfo> = owner
             .request
             .sources
@@ -249,7 +248,26 @@ impl ScopedIngestionPipelineWorkflowImpl {
             mark_stage_running(stages, stage);
             self.persist(ctx, owner.pipeline_id, stage, stages).await?;
             let result = self.process_stage(ctx, owner, stage).await;
-            mark_stage_complete(stages, stage, &[owned_call_result(name.into(), &result)]);
+            let mut outcome = owned_call_result(name.into(), &result);
+            if result.is_ok() && stage == "insights" && owner.request.scope.person_id().is_some() {
+                let repos = self.state.repos.clone();
+                let pipeline_id = owner.pipeline_id;
+                let pending = journaled_value!(ctx, "pending_person_history", [repos], {
+                    repos
+                        .activity
+                        .count_pending_snapshot_invalidations(pipeline_id)
+                        .await
+                        .map_err(terminal_err("failed to check historical processing"))?
+                });
+                if pending != (0, 0) {
+                    outcome.status = StageStatus::CompletedWithWarnings;
+                    outcome.error = Some(
+                        "Historical refresh remains pending until queued enrichment succeeds"
+                            .into(),
+                    );
+                }
+            }
+            mark_stage_complete(stages, stage, &[outcome]);
             self.persist(ctx, owner.pipeline_id, stage, stages).await?;
             result?;
         }
@@ -318,11 +336,34 @@ impl ScopedIngestionPipelineWorkflowImpl {
             names.push(source.source_name.clone());
         }
         let outcomes = join_all(calls).await;
-        let results: Vec<_> = names
+        let mut results: Vec<_> = names
             .into_iter()
             .zip(outcomes.iter())
             .map(|(name, result)| owned_call_result(name, result))
             .collect();
+        // Coordinator return values alone cannot prove complete coverage: its
+        // run may have finalized with partial source failures.
+        let repos = self.state.repos.clone();
+        let pipeline_id = owner.pipeline_id;
+        let runs = journaled_value!(ctx, "source_run_outcomes", [repos], {
+            repos
+                .activity
+                .list_runs_for_pipelines(&[pipeline_id])
+                .await
+                .map_err(terminal_err("failed to read source outcomes"))?
+                .into_iter()
+                .filter(|run| {
+                    matches!(
+                        run.handler_name.as_str(),
+                        "GithubIngestionHandler"
+                            | "JiraIngestionHandler"
+                            | "DiscourseIngestionHandler"
+                    )
+                })
+                .map(|run| (run.source_name, run.status, run.items_collected))
+                .collect::<Vec<_>>()
+        });
+        outcomes::apply_source_outcomes(&mut results, &runs);
         mark_stage_complete(stages, "ingestion", &results);
         self.persist(ctx, owner.pipeline_id, "ingestion", stages)
             .await?;

@@ -179,6 +179,7 @@ pub(super) fn initial_person_cursor(ctx: &IngestionContext) -> Option<PersonCurs
 
 pub(super) fn plan(ctx: &IngestionContext) -> IngestionPlan {
     IngestionPlan {
+        discovery_cutoff: None,
         source_name: ctx.source_config.name.clone(),
         watermark: None,
         repos: vec![],

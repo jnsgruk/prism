@@ -34,6 +34,12 @@ impl ActivityRepo {
             ));
         }
         let mut transaction = self.pool.begin().await?;
+        super::discovery_writes::validate_supplementary_targets(
+            &mut transaction,
+            person_ids,
+            items,
+        )
+        .await?;
         Self::lock_contribution_keys(&mut transaction, items).await?;
         let rows =
             Self::bulk_upsert_in_transaction(&mut transaction, ids, person_ids, items, false)
@@ -137,14 +143,27 @@ impl ActivityRepo {
                         'topic_id', activity.contributions.metadata->'topic_id',
                         'username', activity.contributions.metadata->'username'
                     )
+                    WHEN NOT $16::boolean
+                        AND EXCLUDED.metadata->>'event_time_source' = 'discourse_user_action'
+                        AND activity.contributions.contribution_type = 'discourse_like'
+                    THEN EXCLUDED.metadata || jsonb_build_object(
+                        'event_time_source', 'discourse_user_action_pending_correction'
+                    )
                     ELSE EXCLUDED.metadata
                 END,
                 content = EXCLUDED.content,
                 state_history = EXCLUDED.state_history,
                 ingested_at = now()
-            WHERE NOT $16::boolean
+            WHERE (NOT $16::boolean
                 OR activity.contributions.person_id IS NULL
-                OR activity.contributions.person_id = EXCLUDED.person_id
+                OR activity.contributions.person_id = EXCLUDED.person_id)
+                AND NOT COALESCE((
+                    NOT $16::boolean
+                    AND activity.contributions.metadata->>'event_time_source' = 'discourse_user_action'
+                    AND EXCLUDED.metadata->>'event_time_source' = 'discourse_user_action'
+                    AND activity.contributions.contribution_type = 'discourse_like'
+                    AND EXCLUDED.created_at < activity.contributions.created_at
+                ), false)
             RETURNING id, platform_id
             "#,
             ids,

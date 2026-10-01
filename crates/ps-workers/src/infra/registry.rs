@@ -10,9 +10,17 @@ use crate::features::ingestion::jira::JiraSource;
 /// Returns `None` for unrecognised platforms.
 pub fn create_source(platform: &Platform) -> Option<Box<dyn Source>> {
     match platform {
-        Platform::Github => Some(Box::new(GitHubSource)),
+        Platform::Github => Some(Box::new(
+            crate::features::ingestion::lib::discovery::ActiveIdentitySource::new(Box::new(
+                GitHubSource,
+            )),
+        )),
         Platform::Jira => Some(Box::new(JiraSource)),
-        Platform::Discourse(_) => Some(Box::new(DiscourseSource)),
+        Platform::Discourse(_) => Some(Box::new(
+            crate::features::ingestion::lib::discovery::ActiveIdentitySource::new(Box::new(
+                DiscourseSource,
+            )),
+        )),
         _ => None,
     }
 }

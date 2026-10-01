@@ -46,6 +46,26 @@ fn store_error(ic: &IngestionContext, error: ps_core::Error) -> HandlerError {
     }
 }
 
+/// Publish supplementary user coverage only after its terminal batch and
+/// any skipped-diff repair have committed. Fetching alone proves no coverage.
+pub(super) async fn chunk_checkpoint_batch(
+    ctx: &Context<'_>,
+    ing_ctx: &IngestionContext,
+    cursor: &str,
+) -> Result<(), TerminalError> {
+    let ic = ing_ctx.clone();
+    let cursor = cursor.to_string();
+    journaled!(ctx, "checkpoint_identity_discovery", [ic, cursor], {
+        let source = crate::infra::registry::create_source(&ic.source_config.source_type)
+            .ok_or_else(|| TerminalError::new("source unavailable"))?;
+        source
+            .checkpoint_batch(&ic, &cursor)
+            .await
+            .map_err(terminal_err("identity discovery checkpoint failed"))?;
+    });
+    Ok(())
+}
+
 /// Advance the watermark inside a journaled `ctx.run()` (service context variant).
 pub(super) async fn chunk_advance_watermark(
     ctx: &Context<'_>,
@@ -82,9 +102,21 @@ pub(super) async fn chunk_retry_skipped_diffs(
     original_items: &[ContributionInput],
     skipped: &[ps_core::ingestion::SkippedDiff],
 ) -> Result<(), TerminalError> {
+    let strict_repair = !ing_ctx.advances_global_watermark()
+        || original_items.iter().any(|item| {
+            item.metadata
+                .get("supplementary_discovery_identity")
+                .is_some()
+        });
     let token = ing_ctx.token.as_deref().unwrap_or("");
     if token.is_empty() {
-        return Ok(());
+        return if strict_repair {
+            Err(TerminalError::new(
+                "GitHub diff repair requires source credentials",
+            ))
+        } else {
+            Ok(())
+        };
     }
 
     let api_base = ing_ctx
@@ -144,9 +176,20 @@ pub(super) async fn chunk_retry_skipped_diffs(
                     remaining = skipped.len() - updated_items.len() - scoped_items.len(),
                     "diff retry also hit rate limit, skipping remaining"
                 );
+                if strict_repair {
+                    return Err(TerminalError::new(
+                        "GitHub diff repair is incomplete after rate limiting; rerun ingestion",
+                    ));
+                }
                 break;
             }
-            crate::features::ingestion::github::source::fetch::DiffFetchResult::Failed => {}
+            crate::features::ingestion::github::source::fetch::DiffFetchResult::Failed => {
+                if strict_repair {
+                    return Err(TerminalError::new(
+                        "GitHub diff repair failed; check source access and rerun ingestion",
+                    ));
+                }
+            }
         }
     }
 
@@ -155,6 +198,15 @@ pub(super) async fn chunk_retry_skipped_diffs(
         return Ok(());
     }
 
+    enqueue_repaired_diffs(ctx, ing_ctx, updated_items, strict_repair).await
+}
+
+async fn enqueue_repaired_diffs(
+    ctx: &Context<'_>,
+    ing_ctx: &IngestionContext,
+    updated_items: Vec<(String, serde_json::Value)>,
+    strict_repair: bool,
+) -> Result<(), TerminalError> {
     if updated_items.is_empty() {
         return Ok(());
     }
@@ -166,42 +218,7 @@ pub(super) async fn chunk_retry_skipped_diffs(
         .run(|| {
             let repos = repos.clone();
             let items = items_for_closure.clone();
-            async move {
-                let platform_ids: Vec<String> = items.iter().map(|(pid, _)| pid.clone()).collect();
-                let id_pairs = repos
-                    .activity
-                    .get_contribution_ids_by_platform_ids("github", &platform_ids)
-                    .await
-                    .map_err(terminal_err("db error"))?;
-
-                let content_by_pid: std::collections::HashMap<&str, &serde_json::Value> = items
-                    .iter()
-                    .map(|(pid, content)| (pid.as_str(), content))
-                    .collect();
-
-                let entries: Vec<ps_core::repo::reasoning::EnrichmentQueueEntry> = id_pairs
-                    .iter()
-                    .filter_map(|(contribution_id, platform_id)| {
-                        let content = content_by_pid.get(platform_id.as_str())?;
-                        Some(ps_core::repo::reasoning::EnrichmentQueueEntry {
-                            contribution_id: *contribution_id,
-                            content: (*content).clone(),
-                            content_hash: ps_core::repo::reasoning::content_hash(content),
-                        })
-                    })
-                    .collect();
-
-                if !entries.is_empty() {
-                    repos
-                        .reasoning
-                        .bulk_enqueue_enrichments(&entries)
-                        .await
-                        .map_err(terminal_err("enqueue error"))?;
-                }
-
-                #[allow(clippy::cast_possible_wrap)]
-                Ok(Json::from(entries.len() as i32))
-            }
+            async move { enqueue_repaired_diff_inputs(&repos, &items).await }
         })
         .name("retry_diff_enqueue")
         .await;
@@ -217,10 +234,58 @@ pub(super) async fn chunk_retry_skipped_diffs(
         }
         Err(e) => {
             tracing::warn!(error = %e, "failed to re-enqueue retried diffs");
+            if strict_repair {
+                return Err(TerminalError::new(
+                    "GitHub diff repair enqueue failed; rerun ingestion",
+                ));
+            }
         }
     }
 
     Ok(())
+}
+
+async fn enqueue_repaired_diff_inputs(
+    repos: &ps_core::repo::Repos,
+    items: &[(String, serde_json::Value)],
+) -> Result<Json<i32>, HandlerError> {
+    let platform_ids: Vec<String> = items.iter().map(|(pid, _)| pid.clone()).collect();
+    let id_pairs = repos
+        .activity
+        .get_contribution_ids_by_platform_ids(
+            &ps_core::models::Platform::Github.to_string(),
+            &platform_ids,
+        )
+        .await
+        .map_err(terminal_err("db error"))?;
+
+    let content_by_pid: std::collections::HashMap<&str, &serde_json::Value> = items
+        .iter()
+        .map(|(pid, content)| (pid.as_str(), content))
+        .collect();
+
+    let entries: Vec<ps_core::repo::reasoning::EnrichmentQueueEntry> = id_pairs
+        .iter()
+        .filter_map(|(contribution_id, platform_id)| {
+            let content = content_by_pid.get(platform_id.as_str())?;
+            Some(ps_core::repo::reasoning::EnrichmentQueueEntry {
+                contribution_id: *contribution_id,
+                content: (*content).clone(),
+                content_hash: ps_core::repo::reasoning::content_hash(content),
+            })
+        })
+        .collect();
+
+    if !entries.is_empty() {
+        repos
+            .reasoning
+            .bulk_enqueue_enrichments(&entries)
+            .await
+            .map_err(terminal_err("enqueue error"))?;
+    }
+
+    #[allow(clippy::cast_possible_wrap)]
+    Ok(Json::from(entries.len() as i32))
 }
 
 // ---------------------------------------------------------------------------

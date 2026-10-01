@@ -30,6 +30,18 @@ impl MetricsComputeHandler for MetricsComputeHandlerImpl {
         ctx: Context<'_>,
         Json(owner): Json<crate::features::pipeline::ownership::OwnedProcessingRequest>,
     ) -> Result<(), TerminalError> {
+        if matches!(
+            owner.request.scope,
+            ps_core::ingestion::PipelineScope::Person { .. }
+        ) {
+            return crate::features::metrics::historical::compute_owned_history(
+                &ctx,
+                &self.state.repos,
+                &owner,
+                false,
+            )
+            .await;
+        }
         owner.validate_supported()?;
         ensure_owned_active!(ctx, self.state.repos, owner.pipeline_id)?;
         let run_id = create_owned_run!(

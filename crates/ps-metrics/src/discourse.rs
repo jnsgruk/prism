@@ -58,6 +58,7 @@ pub fn compute_discourse_metrics(
             ContributionType::DiscourseTopic => {
                 topics_created += 1;
                 inst.topics_created += 1;
+                likes_received += contribution_likes(c);
 
                 if c.metrics
                     .get("solved")
@@ -82,13 +83,7 @@ pub fn compute_discourse_metrics(
                 }
 
                 // Likes received on this post
-                let post_likes = c
-                    .metrics
-                    .get("likes")
-                    .and_then(serde_json::Value::as_i64)
-                    .and_then(|n| i32::try_from(n).ok())
-                    .unwrap_or(0);
-                likes_received += post_likes;
+                likes_received += contribution_likes(c);
             }
             ContributionType::DiscourseLike => {
                 likes_given += 1;
@@ -113,6 +108,15 @@ pub fn compute_discourse_metrics(
         active_participants: i32::try_from(participants.len()).unwrap_or(i32::MAX),
         by_instance,
     })
+}
+
+fn contribution_likes(contribution: &ContributionMetricRow) -> i32 {
+    contribution
+        .metrics
+        .get("likes")
+        .and_then(serde_json::Value::as_i64)
+        .and_then(|likes| i32::try_from(likes).ok())
+        .unwrap_or(0)
 }
 
 #[cfg(test)]

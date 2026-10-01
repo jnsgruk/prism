@@ -1,5 +1,4 @@
 use sqlx::{Postgres, Transaction};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ActivityRepo;
@@ -96,7 +95,13 @@ impl ActivityRepo {
                 "contribution ownership changed during ingestion".into(),
             ));
         }
-        correct_like_timestamps(&mut tx, request, &eligible).await?;
+        super::discourse_events::correct_like_timestamps(
+            &mut tx,
+            &request.source.platform,
+            Some(person_id),
+            &eligible,
+        )
+        .await?;
         let after = read_contributions(&mut tx, request, &eligible).await?;
         let changed: Vec<_> = eligible
             .iter()
@@ -214,101 +219,6 @@ async fn validate_write_owner(
             "selected source changed or is disabled; start a new backfill".into(),
         ));
     }
-    Ok(())
-}
-
-/// Only authoritative user-action evidence authorizes a `created_at` correction.
-async fn correct_like_timestamps(
-    tx: &mut Transaction<'_, Postgres>,
-    request: &SourceRunContext,
-    items: &[&ContributionInput],
-) -> Result<(), Error> {
-    if !request.source.platform.is_discourse() {
-        return Ok(());
-    }
-    let mut keys = Vec::new();
-    let mut dates: Vec<OffsetDateTime> = Vec::new();
-    for item in items
-        .iter()
-        .filter(|item| item.contribution_type == ContributionType::DiscourseLike)
-    {
-        let event_time = item
-            .metadata
-            .get("event_created_at")
-            .and_then(serde_json::Value::as_str)
-            .and_then(|value| {
-                OffsetDateTime::parse(value, &time::format_description::well_known::Rfc3339).ok()
-            });
-        let expected_key = format!(
-            "like-{}-{}",
-            item.metadata
-                .get("post_id")
-                .and_then(serde_json::Value::as_i64)
-                .unwrap_or_default(),
-            item.platform_username.to_lowercase()
-        );
-        let expected_action_key = format!(
-            "1:{}:{}:{}:{}",
-            item.metadata
-                .get("topic_id")
-                .and_then(serde_json::Value::as_i64)
-                .unwrap_or_default(),
-            item.metadata
-                .get("post_id")
-                .and_then(serde_json::Value::as_i64)
-                .unwrap_or_default(),
-            item.platform_username.to_lowercase(),
-            item.metadata
-                .get("event_created_at")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default(),
-        );
-        if item
-            .metadata
-            .get("event_time_source")
-            .and_then(serde_json::Value::as_str)
-            != Some("discourse_user_action")
-            || item
-                .metadata
-                .get("user_action_type")
-                .and_then(serde_json::Value::as_i64)
-                != Some(1)
-            || item
-                .metadata
-                .get("user_action_key")
-                .and_then(serde_json::Value::as_str)
-                != Some(expected_action_key.as_str())
-            || event_time != Some(item.created_at)
-            || item.platform_id.as_str() != expected_key
-        {
-            return Err(Error::Validation(
-                "like timestamp correction requires matching Discourse user-action evidence".into(),
-            ));
-        }
-        keys.push(item.platform_id.as_str());
-        dates.push(item.created_at);
-    }
-    let platform = request.source.platform.to_string();
-    let contribution_type = ContributionType::DiscourseLike.as_str();
-    let person_id = request
-        .scope
-        .person_id()
-        .map(crate::models::PersonId::into_inner);
-    sqlx::query!(
-        r#"
-        UPDATE activity.contributions c SET created_at = input.created_at
-        FROM UNNEST($1::text[], $2::timestamptz[]) AS input(platform_id, created_at)
-        WHERE c.platform = $3 AND c.platform_id = input.platform_id
-            AND c.contribution_type = $4 AND c.person_id = $5
-        "#,
-        &keys as &[&str],
-        &dates,
-        platform,
-        contribution_type,
-        person_id,
-    )
-    .execute(&mut **tx)
-    .await?;
     Ok(())
 }
 

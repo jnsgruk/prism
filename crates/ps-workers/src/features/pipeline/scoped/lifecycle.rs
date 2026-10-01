@@ -69,7 +69,9 @@ impl ScopedIngestionPipelineWorkflowImpl {
                 if id != ctx.invocation_id() {
                     let handle = ctx.invocation_handle(id);
                     handle.cancel();
-                    let _ = handle.attach::<Json<serde_json::Value>>().await;
+                    // Descendants return either empty unit bytes or JSON. Draining
+                    // observes termination without imposing one response schema.
+                    let _ = handle.attach::<Vec<u8>>().await;
                 }
             }
         }

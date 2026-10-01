@@ -166,6 +166,11 @@ impl ActivityRepo {
             .await
             .map_err(Error::from)?;
 
+        sqlx::query!("DELETE FROM activity.identity_discovery_coverage")
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
         sqlx::query!("DELETE FROM activity.etag_cache")
             .execute(&mut *tx)
             .await

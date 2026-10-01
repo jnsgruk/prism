@@ -81,7 +81,13 @@ pub(super) fn rate_limited(error: &GraphQLClientError) -> Option<RateLimitInfo> 
         GraphQLClientError::GraphQL {
             messages,
             rate_limit,
-        } if messages.to_ascii_lowercase().contains("rate limit") => rate_limit.clone(),
+        } if messages.to_ascii_lowercase().contains("rate limit") => {
+            Some(rate_limit.clone().unwrap_or(RateLimitInfo {
+                remaining: 0,
+                limit: 5000,
+                reset_at: time::OffsetDateTime::now_utc() + time::Duration::hours(1),
+            }))
+        }
         _ => None,
     };
     limit.map(|mut limit| {
@@ -193,4 +199,18 @@ pub(super) async fn fetch(
         cur.pending_reviews.pop_front();
     }
     result(cur, items, Some(page.rate_limit))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn graphql_rate_limit_without_headers_still_defers_discovery() {
+        let error = GraphQLClientError::GraphQL {
+            messages: "API rate limit exhausted".into(),
+            rate_limit: None,
+        };
+        assert!(rate_limited(&error).is_some_and(|limit| limit.remaining == 0));
+    }
 }

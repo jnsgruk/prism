@@ -125,6 +125,10 @@ pub struct ContributionInput {
 /// The plan produced by a source adapter at the start of an ingestion run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IngestionPlan {
+    /// Frozen supplementary discovery boundary, persisted with the plan so
+    /// coordinator replay produces the same initial cursor and child inputs.
+    #[serde(default)]
+    pub discovery_cutoff: Option<OffsetDateTime>,
     pub source_name: String,
     pub watermark: Option<String>,
     pub repos: Vec<RepoTarget>,
@@ -213,6 +217,12 @@ pub trait Source: Send + Sync {
         ctx: &IngestionContext,
         items: &[ContributionInput],
     ) -> Result<usize, Error>;
+
+    /// Persist independently completed discovery coverage after the batch store.
+    /// The orchestrator journals this idempotent write before continuing.
+    async fn checkpoint_batch(&self, _ctx: &IngestionContext, _cursor: &str) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Update the watermark after a successful store, recording the new
     /// high-water mark and item count.

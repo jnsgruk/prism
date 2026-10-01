@@ -19,9 +19,6 @@ use super::graphql::GitHubGraphQLClient;
 /// Default lookback window when no watermark exists (non-backfill runs).
 pub(super) const DEFAULT_LOOKBACK_DAYS: i64 = 7;
 
-/// Rate limit threshold below which the member search phase is skipped.
-pub(super) const RATE_LIMIT_SEARCH_THRESHOLD: i32 = 200;
-
 /// Number of usernames to batch into a single GraphQL search query.
 /// GitHub search supports multiple `author:` terms with OR semantics.
 pub(super) const SEARCH_BATCH_SIZE: usize = 5;

@@ -7,6 +7,38 @@ use uuid::Uuid;
 use super::{IdentityRow, OrgRepo};
 
 impl OrgRepo {
+    /// Saved active accounts eligible for this exact platform/instance, whether
+    /// assigned to a team or manually added without a membership.
+    pub async fn active_discovery_identities(
+        &self,
+        platform: &Platform,
+    ) -> Result<Vec<crate::ingestion::IdentitySnapshot>, Error> {
+        let platform_name = platform.to_string();
+        let rows = sqlx::query!(
+            r#"
+            SELECT pi.id, pi.person_id, pi.platform_username, pi.platform_user_id
+            FROM org.platform_identities pi
+            JOIN org.people p ON p.id = pi.person_id AND p.active
+            WHERE pi.platform = $1
+            ORDER BY pi.platform_username, pi.id
+            "#,
+            platform_name,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::from)?;
+        Ok(rows
+            .into_iter()
+            .map(|row| crate::ingestion::IdentitySnapshot {
+                identity_id: row.id,
+                person_id: row.person_id.into(),
+                platform: platform.clone(),
+                username: row.platform_username.into(),
+                platform_user_id: row.platform_user_id,
+            })
+            .collect())
+    }
+
     /// Get platform identities for a set of person IDs.
     pub async fn get_identities_for_people(
         &self,
