@@ -202,7 +202,8 @@ async fn start_pod(
         _ => "unknown".to_string(),
     };
 
-    let ready_payload = serde_json::json!({"status": "ready", "message": "Agent ready"});
+    let ready_payload =
+        serde_json::json!({"status": "connecting", "message": "Connecting to agent..."});
     journaled!(ctx, "event_container_ready", [repos, ready_payload], {
         repos
             .reasoning

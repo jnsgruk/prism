@@ -22,7 +22,7 @@ pub struct EventLoopResult {
 /// elapses, the client disconnects, or the `cancel_rx` signals cancellation.
 pub async fn run_event_loop(
     repos: &Repos,
-    subscription: &mut ps_agent::opencode_sdk::sse::SseSubscription,
+    subscription: &mut ps_agent::opencode_sdk::sse::RawSseSubscription,
     conversation_id: Uuid,
     timeout: std::time::Duration,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, tonic::Status>>,
@@ -33,6 +33,7 @@ pub async fn run_event_loop(
     let mut tool_calls = 0i32;
     let mut registry = StepRegistry::new();
     let mut event_mapper = ps_agent::event_mapper::EventMapper::new();
+    let mut decoder = ps_agent::stream_mapper::StreamDecoder::default();
     let mut seen_work = false;
     let mut timed_out = false;
 
@@ -61,6 +62,15 @@ pub async fn run_event_loop(
             }
         };
 
+        let event = match decoder.decode(&event.data) {
+            Ok(Some(event)) => event,
+            Ok(None) => continue,
+            Err(error) => {
+                warn!(%error, "failed to decode OpenCode event");
+                continue;
+            }
+        };
+
         if matches!(
             event,
             ps_agent::opencode_sdk::types::event::Event::SessionIdle { .. }
@@ -72,12 +82,11 @@ pub async fn run_event_loop(
             continue;
         }
 
-        seen_work = true;
-
         // Map event to proto and write to DB + send to client.
         if let Some(proto_event) = event_mapper.map_event(&event)
             && let Some(ref evt) = proto_event.event
         {
+            seen_work = true;
             write_and_send_event(
                 repos,
                 conversation_id,
