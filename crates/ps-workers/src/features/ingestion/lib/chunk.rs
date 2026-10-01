@@ -21,6 +21,7 @@ use super::orchestration::build_ingestion_context;
 use super::progress::{IngestionSpec, ProgressTracker};
 
 mod batch;
+mod checkpoint;
 mod fetch_loop;
 
 use fetch_loop::chunk_fetch_store_loop;
@@ -145,11 +146,21 @@ impl IngestionChunkServiceImpl {
         // 3. Build context + source.
         let mut ing_ctx = build_ingestion_context(&self.state, &config, token, email, api_username);
         ing_ctx.request = req.request;
+        ing_ctx.run_id = Some(req.run_id);
         let source =
             crate::infra::registry::create_source(&config.source_type).ok_or_else(|| {
                 TerminalError::new(format!("unsupported source type: {}", config.source_type))
             })?;
         let watermark_field = source.watermark_field();
+
+        if !ing_ctx.advances_global_watermark() {
+            let ic = ing_ctx.clone();
+            crate::infra::run_lifecycle::journaled!(ctx, "validate_person_scope", [ic], {
+                super::scoped_store::store_person_batch(&ic, &[])
+                    .await
+                    .map_err(terminal_err("person target changed"))?;
+            });
+        }
 
         // 4. Run the batch-limited fetch-store loop.
         let mut tracker = create_progress_tracker(&config.source_type);

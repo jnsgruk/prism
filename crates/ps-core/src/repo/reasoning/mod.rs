@@ -2,6 +2,7 @@ mod api_usage;
 mod conversations;
 mod embeddings;
 mod enrichments;
+mod scoped_queues;
 
 pub use api_usage::{ApiUsageRecord, ModelUsage, TaskUsage};
 pub use conversations::{

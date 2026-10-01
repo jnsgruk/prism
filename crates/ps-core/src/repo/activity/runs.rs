@@ -64,7 +64,7 @@ impl ActivityRepo {
                 status = 'completed_with_warnings',
                 items_collected = $2,
                 error_message = $3,
-                metadata = $4
+                metadata = COALESCE(metadata, '{}'::jsonb) || $4
             WHERE id = $1
             "#,
             id,
@@ -303,24 +303,6 @@ impl ActivityRepo {
         Ok(())
     }
 
-    /// Update the progress of a running ingestion (items collected so far).
-    pub async fn update_run_progress(&self, id: Uuid, items_collected: i32) -> Result<(), Error> {
-        sqlx::query!(
-            r#"
-            UPDATE activity.ingestion_runs
-            SET items_collected = $2
-            WHERE id = $1
-            "#,
-            id,
-            items_collected,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(())
-    }
-
     /// List runs associated with a set of pipeline IDs.
     pub async fn list_runs_for_pipelines(
         &self,
@@ -361,35 +343,6 @@ impl ActivityRepo {
                 progress: r.progress,
             })
             .collect())
-    }
-
-    /// Update the progress of a running ingestion with structured detail.
-    ///
-    /// The update is monotonic: progress is only written when `items_collected`
-    /// is >= the current value in the database. This prevents Restate handler
-    /// replays from overwriting forward progress with stale replay data.
-    pub async fn update_run_progress_detail(
-        &self,
-        id: Uuid,
-        items_collected: i32,
-        progress: &serde_json::Value,
-    ) -> Result<(), Error> {
-        sqlx::query!(
-            r#"
-            UPDATE activity.ingestion_runs
-            SET items_collected = $2, progress = $3
-            WHERE id = $1
-              AND (items_collected IS NULL OR items_collected <= $2)
-            "#,
-            id,
-            items_collected,
-            progress,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(())
     }
 
     /// Find the latest run for a given `source_name` and `handler_name`.

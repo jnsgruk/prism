@@ -1,3 +1,4 @@
+import { RunCoverage } from "@/components/run-coverage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,6 +85,7 @@ export const RunDetailDialog = ({
               </div>
             )}
           </div>
+          <RunCoverage progressJson={run.progressJson} />
           {run.errorMessage && (
             <div>
               <p className="text-xs text-muted-foreground">

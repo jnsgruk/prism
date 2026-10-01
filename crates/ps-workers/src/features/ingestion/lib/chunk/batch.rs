@@ -10,18 +10,40 @@ pub(super) async fn chunk_store_batch(
     ctx: &Context<'_>,
     ing_ctx: &IngestionContext,
     items: &[ContributionInput],
+    fingerprint_error: Option<String>,
 ) -> Result<i32, TerminalError> {
     let ic = ing_ctx.clone();
     let items = items.to_vec();
 
     #[allow(clippy::cast_possible_wrap)]
-    Ok(journaled_value!(ctx, "store_batch", [ic, items], {
-        let src = crate::infra::registry::create_source(&ic.source_config.source_type)
-            .ok_or_else(|| TerminalError::new("source unavailable"))?;
-        src.store_batch(&ic, &items)
-            .await
-            .map_err(terminal_err("store failed"))? as i32
-    }))
+    Ok(journaled_value!(
+        ctx,
+        "store_batch",
+        [ic, items, fingerprint_error],
+        {
+            // A completed store replays its recorded result. Validate a refetched
+            // page only when this write has not already committed in the journal.
+            if let Some(error) = fingerprint_error {
+                return Err(TerminalError::new(error).into());
+            }
+            let src = crate::infra::registry::create_source(&ic.source_config.source_type)
+                .ok_or_else(|| TerminalError::new("source unavailable"))?;
+            src.store_batch(&ic, &items)
+                .await
+                .map_err(|error| store_error(&ic, error))? as i32
+        }
+    ))
+}
+
+fn store_error(ic: &IngestionContext, error: ps_core::Error) -> HandlerError {
+    tracing::warn!(error = %error, source = ic.source_config.name, "batch storage failed");
+    match error {
+        ps_core::Error::Database(_) if !ic.advances_global_watermark() => HandlerError::from(
+            std::io::Error::other("scoped storage database operation failed; retrying"),
+        ),
+        ps_core::Error::Database(_) => TerminalError::new("store failed: internal error").into(),
+        error => terminal_err("store failed")(error).into(),
+    }
 }
 
 /// Advance the watermark inside a journaled `ctx.run()` (service context variant).
@@ -32,6 +54,9 @@ pub(super) async fn chunk_advance_watermark(
     total_items: i32,
     watermark_field: ps_core::models::WatermarkField,
 ) -> Result<(), TerminalError> {
+    if !ing_ctx.advances_global_watermark() {
+        return Ok(());
+    }
     let ic = ing_ctx.clone();
     let wm = cursor.to_string();
 
@@ -76,8 +101,21 @@ pub(super) async fn chunk_retry_skipped_diffs(
     );
 
     let mut updated_items: Vec<(String, serde_json::Value)> = Vec::new();
+    let mut scoped_items = Vec::new();
 
     for sd in skipped {
+        let Some(original) = original_items.get(sd.item_index) else {
+            continue;
+        };
+        if let Some(request) = ing_ctx
+            .person_request()
+            .map_err(terminal_err("invalid person snapshot"))?
+            && !request
+                .eligible_contribution(original)
+                .map_err(terminal_err("invalid diff candidate"))?
+        {
+            continue;
+        }
         match crate::features::ingestion::github::source::fetch::fetch_single_pr_diff(
             &client,
             &sd.owner,
@@ -95,6 +133,12 @@ pub(super) async fn chunk_retry_skipped_diffs(
                         obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
                     }
                     updated_items.push((item.platform_id.to_string(), content));
+                    if !ing_ctx.advances_global_watermark() {
+                        let mut updated = item.clone();
+                        updated.enrichment_content =
+                            updated_items.last().map(|(_, content)| content.clone());
+                        scoped_items.push(updated);
+                    }
                 }
             }
             crate::features::ingestion::github::source::fetch::DiffFetchResult::RateLimited(_) => {
@@ -106,6 +150,11 @@ pub(super) async fn chunk_retry_skipped_diffs(
             }
             crate::features::ingestion::github::source::fetch::DiffFetchResult::Failed => {}
         }
+    }
+
+    if !ing_ctx.advances_global_watermark() {
+        chunk_store_batch(ctx, ing_ctx, &scoped_items, None).await?;
+        return Ok(());
     }
 
     if updated_items.is_empty() {
@@ -199,7 +248,7 @@ pub(super) fn compute_batch_action(
         let wait = diff_rate_limit_sleep_duration(rl);
         return BatchAction::SleepForRateLimit {
             wait_secs: wait.as_secs(),
-            etag_cursor,
+            etag_cursor: etag_cursor.or_else(|| batch.next_cursor.clone()),
         };
     }
 

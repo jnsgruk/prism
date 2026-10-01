@@ -164,6 +164,7 @@ async fn execute_ingestion(
 
     let mut ing_ctx = build_ingestion_context(state, config, token, email, api_username);
     ing_ctx.request = request.clone();
+    ing_ctx.run_id = Some(run_id);
 
     // Journal the plan. plan() reads watermarks and (for GitHub) the
     // team-repos list from the DB — both can change between replays,
@@ -341,6 +342,12 @@ async fn execute_ingestion(
     )
     .await?;
 
+    if !ing_ctx.advances_global_watermark() && !failed_items.is_empty() {
+        return Err(TerminalError::new(
+            "person history is incomplete; inspect run coverage and failed targets",
+        ));
+    }
+
     if total_items > 0 {
         tracing::debug!("triggering downstream handlers");
         trigger_downstream(ctx);
@@ -371,6 +378,7 @@ pub fn build_ingestion_context(
         email,
         api_username,
         request: None,
+        run_id: None,
     }
 }
 
@@ -382,10 +390,27 @@ pub async fn fetch_batch(
 ) -> Result<SerFetchResult, TerminalError> {
     let src = crate::infra::registry::create_source(&ing_ctx.source_config.source_type)
         .ok_or_else(|| TerminalError::new("source unavailable"))?;
-    let result = src
-        .fetch_batch(ing_ctx, cursor)
-        .await
-        .map_err(terminal_err("fetch failed"))?;
+    let result = match src.fetch_batch(ing_ctx, cursor).await {
+        Ok(result) => result,
+        Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+            return Ok(SerFetchResult {
+                items: vec![],
+                next_cursor: Some(cursor.into()),
+                etag: Some(cursor.into()),
+                rate_limit: Some(ps_core::models::RateLimitInfo {
+                    remaining: 0,
+                    limit: 0,
+                    reset_at: time::OffsetDateTime::now_utc()
+                        + time::Duration::seconds(
+                            i64::try_from(retry_after_secs.min(86400)).unwrap_or(86400),
+                        ),
+                }),
+                display_rate_limit: None,
+                skipped_diffs: vec![],
+            });
+        }
+        Err(error) => return Err(terminal_err("fetch failed")(error)),
+    };
 
     Ok(SerFetchResult {
         items: result.items,
@@ -408,6 +433,9 @@ pub async fn advance_watermark(
     total_items: i32,
     watermark_field: ps_core::models::WatermarkField,
 ) -> Result<(), TerminalError> {
+    if !ing_ctx.advances_global_watermark() {
+        return Ok(());
+    }
     let ic = ing_ctx.clone();
     let wm = cursor.to_string();
 

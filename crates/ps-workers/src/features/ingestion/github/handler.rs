@@ -255,6 +255,63 @@ fn build_progress_json(
         obj.insert("status_message".into(), serde_json::json!(message));
     }
 
+    if let Some(person) = cursor.get("person").filter(|person| !person.is_null())
+        && let Some(report) = value.as_object_mut()
+    {
+        let phase = person
+            .get("phase")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("Author");
+        let org = person
+            .get("orgs")
+            .and_then(serde_json::Value::as_array)
+            .and_then(|orgs| {
+                orgs.get(
+                    person
+                        .get("org_index")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0) as usize,
+                )
+            })
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let partition = person
+            .get("partitions")
+            .and_then(serde_json::Value::as_array)
+            .and_then(|partitions| partitions.last())
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        report.insert(
+            "phase".into(),
+            serde_json::json!(format!("person_{}", phase.to_ascii_lowercase())),
+        );
+        report.insert("search_org".into(), org.clone());
+        report.insert("search_partition".into(), partition);
+        report.insert(
+            "search_page".into(),
+            person
+                .get("page")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null),
+        );
+        report.insert(
+            "pending_review_prs".into(),
+            serde_json::json!(
+                cursor
+                    .get("pending_reviews")
+                    .and_then(serde_json::Value::as_array)
+                    .map_or(0, Vec::len)
+            ),
+        );
+        report.insert(
+            "status_message".into(),
+            serde_json::json!(format!(
+                "Searching {phase} activity in {}",
+                org.as_str().unwrap_or("configured organisations")
+            )),
+        );
+    }
+
     value
 }
 

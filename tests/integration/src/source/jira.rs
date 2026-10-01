@@ -1,3 +1,6 @@
+#[path = "jira_person.rs"]
+mod person;
+
 use crate::common::fixtures::create_person_with_identity;
 use crate::common::wiremock_helpers::*;
 use ps_core::ingestion::Source;

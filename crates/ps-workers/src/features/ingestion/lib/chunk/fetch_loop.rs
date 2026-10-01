@@ -2,11 +2,9 @@ use ps_core::ingestion::IngestionContext;
 use restate_sdk::prelude::*;
 use uuid::Uuid;
 
-use super::super::orchestration::fetch_batch;
-use super::super::progress::{BatchAction, ProgressTracker, SerFetchResult, SkippedDiffAction};
-use super::batch::{
-    chunk_advance_watermark, chunk_retry_skipped_diffs, chunk_store_batch, compute_batch_action,
-};
+use super::super::progress::{BatchAction, ProgressTracker, SkippedDiffAction};
+use super::batch::{chunk_advance_watermark, chunk_retry_skipped_diffs, chunk_store_batch};
+use super::checkpoint::fetch_for_chunk;
 use crate::infra::run_lifecycle::{ensure_owned_active, journaled_value, terminal_err};
 
 /// Best-effort progress update (not journaled).
@@ -76,14 +74,8 @@ pub(super) async fn chunk_fetch_store_loop(
         if let Some(ref request) = ing_ctx.request {
             ensure_owned_active!(ctx, ing_ctx.repos, request.pipeline_id)?;
         }
-        // Step 1: Fetch batch (journaled).
-        let batch: SerFetchResult = {
-            let ic = ing_ctx.clone();
-            let cur = cursor.clone();
-            journaled_value!(ctx, "fetch_batch", [ic, cur], {
-                fetch_batch(&ic, &cur).await?
-            })
-        };
+        let (batch, action, fingerprint_error) =
+            fetch_for_chunk(ctx, ing_ctx, &cursor, watermark_field).await?;
 
         // Best-effort rate limit warning.
         if let Some(ref rl) = batch.rate_limit
@@ -95,9 +87,6 @@ pub(super) async fn chunk_fetch_store_loop(
                 "rate limit pressure"
             );
         }
-
-        // Step 2: Compute branching decision (pure function).
-        let action = compute_batch_action(&batch, &cursor, watermark_field);
 
         // Step 3: Execute.
         match action {
@@ -129,11 +118,11 @@ pub(super) async fn chunk_fetch_store_loop(
                     cursor = latest.clone();
                 }
 
-                if item_count > 0 {
-                    let stored = chunk_store_batch(ctx, ing_ctx, &batch.items).await?;
+                if item_count > 0 || !ing_ctx.advances_global_watermark() {
+                    let stored =
+                        chunk_store_batch(ctx, ing_ctx, &batch.items, fingerprint_error).await?;
                     total_items += stored;
                     tracker.count_batch(&batch.items, stored);
-                    batches += 1;
 
                     if has_watermark {
                         chunk_advance_watermark(
@@ -185,6 +174,9 @@ pub(super) async fn chunk_fetch_store_loop(
                     return Ok((total_items, cursor, true));
                 };
                 cursor = nc;
+                // Empty pages and partition/review transitions also consume
+                // work. Bound journals even when every candidate is filtered.
+                batches += 1;
 
                 // Check batch limit.
                 if batches >= max_batches as u32 {

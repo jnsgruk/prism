@@ -7,7 +7,10 @@ pub use ownership::{PipelineInvocationParams, PipelineRunParams};
 mod contributions;
 mod invocations;
 mod pipelines;
+mod progress;
 mod runs;
+mod scoped_changes;
+mod scoped_contributions;
 mod status;
 mod watermarks;
 

@@ -1,5 +1,7 @@
 mod fetch;
+mod pagination;
 mod plan;
+mod query;
 mod store;
 
 use async_trait::async_trait;
@@ -38,12 +40,26 @@ pub(crate) struct Cursor {
     /// Items that errored during this run (for failure isolation).
     #[serde(default)]
     pub(crate) failed_items: Vec<ps_core::ingestion::FailedItem>,
+    /// Frozen scope prevents replaying a cursor for another person/run.
+    #[serde(default)]
+    pub(crate) request: Option<ps_core::ingestion::SourceRunContext>,
+    /// The authenticated API user determines JQL wall-clock semantics.
+    #[serde(default)]
+    pub(crate) api_timezone: Option<String>,
+    #[serde(default)]
+    pub(super) token_cycle: pagination::TokenCycle,
+    #[serde(default)]
+    pub(crate) coverage: Vec<String>,
 }
 
 #[async_trait]
 impl Source for JiraSource {
     fn name(&self) -> &'static str {
         "jira"
+    }
+
+    fn supports_person_backfill(&self) -> bool {
+        true
     }
 
     async fn plan(&self, ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
@@ -78,10 +94,7 @@ impl Source for JiraSource {
     fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
         let settings = &ctx.source_config.settings;
 
-        let projects: Vec<String> = settings
-            .get("projects")
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
-            .unwrap_or_default();
+        let projects = plan.items.clone();
 
         let base_url = settings
             .get("base_url")
@@ -110,6 +123,18 @@ impl Source for JiraSource {
             story_points_field,
             api_mode,
             failed_items: vec![],
+            request: ctx.request.clone(),
+            api_timezone: None,
+            token_cycle: pagination::TokenCycle::default(),
+            coverage: if ctx
+                .request
+                .as_ref()
+                .is_some_and(|request| request.scope.person_id().is_some())
+            {
+                vec!["Jira Cloud enhanced search includes only issues visible to the API user; search-index updates may lag. Ownership reflects the current assignee, not reporter or historical assignments. JQL uses the API user timezone and a conservative lower boundary; returned updated times are checked against the exact frozen UTC interval.".into()]
+            } else {
+                vec![]
+            },
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }
@@ -181,6 +206,10 @@ mod tests {
             base_url: "https://jira.example.com".into(),
             story_points_field: Some("customfield_10016".into()),
             api_mode: "cloud".into(),
+            request: None,
+            api_timezone: None,
+            token_cycle: pagination::TokenCycle::default(),
+            coverage: vec![],
             failed_items: vec![ps_core::ingestion::FailedItem {
                 key: "PROJ-C".into(),
                 error: "403".into(),

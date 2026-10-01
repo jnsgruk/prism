@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+mod eligibility;
 mod scope;
 pub use scope::*;
 
@@ -20,6 +21,8 @@ pub use scope::*;
 pub struct IngestionContext {
     /// Frozen per-run source/identity context. Legacy runs have no request.
     pub request: Option<SourceRunContext>,
+    /// Exact ingestion run for scoped write provenance.
+    pub run_id: Option<uuid::Uuid>,
     pub repos: Repos,
     pub source_config: SourceConfig,
     pub http_client: reqwest::Client,
@@ -29,6 +32,28 @@ pub struct IngestionContext {
     pub email: Option<String>,
     /// Pre-decrypted API username for Discourse.
     pub api_username: Option<String>,
+}
+
+impl IngestionContext {
+    pub fn advances_global_watermark(&self) -> bool {
+        self.request
+            .as_ref()
+            .is_none_or(|request| matches!(request.scope, PipelineScope::All))
+    }
+
+    pub fn person_request(&self) -> Result<Option<&SourceRunContext>, Error> {
+        let Some(request) = &self.request else {
+            return Ok(None);
+        };
+        request.validate()?;
+        if request.source.source_id != self.source_config.id
+            || request.source.platform != self.source_config.source_type
+            || request.source.source_name != self.source_config.name
+        {
+            return Err(Error::Validation("selected source identity changed".into()));
+        }
+        Ok(request.scope.person_id().map(|_| request))
+    }
 }
 
 /// Known metric fields for a contribution. Stored as JSONB in the database.

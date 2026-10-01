@@ -6,7 +6,7 @@ use restate_sdk::prelude::*;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::infra::run_lifecycle::terminal_err;
+use crate::infra::run_lifecycle::{journaled, terminal_err};
 
 use super::lifecycle::{
     IngestionRun, RunWarnings, complete_ingestion_run, complete_ingestion_run_with_warnings,
@@ -54,6 +54,27 @@ pub async fn finalise_run(
     final_cursor: &str,
     watermark_field: ps_core::models::WatermarkField,
 ) -> Result<(), TerminalError> {
+    if let Some(request) = ing_ctx
+        .person_request()
+        .map_err(terminal_err("invalid person snapshot"))?
+    {
+        let cursor: serde_json::Value = serde_json::from_str(final_cursor).unwrap_or_default();
+        let coverage = serde_json::json!({
+            "coverage": cursor.get("coverage"),
+            "since_date": request.since_date,
+            "run_started_at": request.run_started_at,
+            "source_id": request.source.source_id,
+            "failed_items": failed_items,
+        });
+        let repos = repos.clone();
+        journaled!(ctx, "record_person_coverage", [repos, coverage], {
+            repos
+                .activity
+                .record_run_coverage(run_id, &coverage)
+                .await
+                .map_err(terminal_err("record coverage failed"))?;
+        });
+    }
     if failed_items.is_empty() {
         if total_items > 0 {
             advance_watermark(ctx, ing_ctx, final_cursor, total_items, watermark_field).await?;

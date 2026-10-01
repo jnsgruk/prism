@@ -4,6 +4,25 @@ use tracing::debug;
 use super::DEFAULT_LOOKBACK_DAYS;
 
 pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
+    if let Some(request) = ctx.person_request()? {
+        return Ok(IngestionPlan {
+            source_name: request.source.source_name.clone(),
+            watermark: request.since_date.clone(),
+            repos: vec![],
+            items: vec![
+                request
+                    .source
+                    .identity
+                    .as_ref()
+                    .ok_or_else(|| {
+                        ps_core::Error::Validation("saved Discourse identity required".into())
+                    })?
+                    .username
+                    .to_string(),
+            ],
+        });
+    }
+
     // Load watermark. If none exists, default to 30 days ago.
     let watermark = ctx
         .repos

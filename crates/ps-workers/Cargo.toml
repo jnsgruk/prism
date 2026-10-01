@@ -24,6 +24,8 @@ serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 time.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono-tz = "0.10"
 async-trait.workspace = true
 futures.workspace = true
 fastrand.workspace = true

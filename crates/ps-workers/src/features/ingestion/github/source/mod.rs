@@ -1,5 +1,9 @@
+mod convert;
+mod diff;
 pub(crate) mod fetch;
+mod person;
 mod plan;
+mod reviews;
 mod store;
 
 use std::collections::HashSet;
@@ -28,6 +32,10 @@ pub(super) const SEARCH_BATCH_SIZE: usize = 5;
 /// anything else to prevent GraphQL query injection via crafted usernames.
 pub(super) fn is_valid_github_username(username: &str) -> bool {
     !username.is_empty()
+        && username.len() <= 39
+        && !username.starts_with('-')
+        && !username.ends_with('-')
+        && !username.contains("--")
         && username
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-')
@@ -46,6 +54,7 @@ pub(super) enum IngestionPhase {
     TeamRepos,
     /// Search for cross-repo contributions by team members.
     MemberSearch,
+    PersonSearch,
 }
 
 /// Serialised cursor for tracking position within a multi-phase ingestion run.
@@ -78,12 +87,22 @@ pub(super) struct Cursor {
     /// Items (repos) that errored during this run (for failure isolation).
     #[serde(default)]
     pub(super) failed_items: Vec<ps_core::ingestion::FailedItem>,
+    #[serde(default)]
+    person: Option<person::PersonCursor>,
+    #[serde(default)]
+    pending_reviews: std::collections::VecDeque<reviews::ReviewTarget>,
+    #[serde(default)]
+    coverage: Vec<String>,
 }
 
 #[async_trait]
 impl Source for GitHubSource {
     fn name(&self) -> &'static str {
         "github"
+    }
+
+    fn supports_person_backfill(&self) -> bool {
+        true
     }
 
     async fn plan(&self, ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
@@ -115,8 +134,8 @@ impl Source for GitHubSource {
         store::advance_watermark_impl(ctx, new_watermark, items_collected).await
     }
 
-    fn initial_cursor(&self, _ctx: &IngestionContext, plan: &IngestionPlan) -> String {
-        let cursor = Cursor {
+    fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
+        let mut cursor = Cursor {
             phase: IngestionPhase::TeamRepos,
             repo_index: 0,
             graphql_cursor: None,
@@ -129,8 +148,19 @@ impl Source for GitHubSource {
             search_users: vec![],
             ingested_repos: HashSet::new(),
             last_rate_limit_remaining: None,
+            person: person::initial_person_cursor(ctx),
+            pending_reviews: std::collections::VecDeque::new(),
+            coverage: vec![],
             failed_items: vec![],
         };
+        if cursor.person.is_some() {
+            cursor.phase = IngestionPhase::PersonSearch;
+            cursor.coverage = vec![
+                "Only pull requests and reviews accessible with this source's credentials are included; inaccessible repositories cannot be inspected.".into(),
+                "Recently submitted activity may appear after GitHub has indexed it.".into(),
+                "Review totals come from GitHub. Reviews with more than 20 inline comments include partial comment context.".into(),
+            ];
+        }
         serde_json::to_string(&cursor).unwrap_or_default()
     }
 }
@@ -203,6 +233,9 @@ mod tests {
             search_users: vec!["alice".into()],
             ingested_repos: HashSet::from(["canonical/lxd".into()]),
             last_rate_limit_remaining: Some(4500),
+            person: None,
+            pending_reviews: std::collections::VecDeque::new(),
+            coverage: vec![],
             failed_items: vec![ps_core::ingestion::FailedItem {
                 key: "org/broken".into(),
                 error: "403 forbidden".into(),
@@ -258,7 +291,10 @@ mod tests {
             search_users: vec!["bob".into(), "carol".into(), "dave".into()],
             ingested_repos: HashSet::new(),
             last_rate_limit_remaining: None,
+            coverage: vec![],
             failed_items: vec![],
+            person: None,
+            pending_reviews: std::collections::VecDeque::new(),
         };
 
         let json = serde_json::to_string(&cursor).unwrap();
@@ -282,5 +318,9 @@ mod tests {
         assert!(!is_valid_github_username("user name"));
         assert!(!is_valid_github_username("user@name"));
         assert!(!is_valid_github_username("user/name"));
+        assert!(!is_valid_github_username("-alice"));
+        assert!(!is_valid_github_username("alice-"));
+        assert!(!is_valid_github_username("alice--bob"));
+        assert!(!is_valid_github_username(&"a".repeat(40)));
     }
 }

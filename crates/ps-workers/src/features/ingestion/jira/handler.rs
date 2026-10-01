@@ -165,6 +165,7 @@ fn build_progress_json(
         "current_project": current_project,
         "failed_items": failed_count,
         "status_message": status_message,
+        "coverage": cursor.get("coverage").cloned().unwrap_or_else(|| serde_json::json!([])),
     });
 
     if let Some(rl) = rate_limit
