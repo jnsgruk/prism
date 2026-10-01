@@ -16,6 +16,21 @@ impl MetricsRepo {
     ) -> Result<Transaction<'static, Postgres>, Error> {
         let kind = format!("snapshot:{insights}:{}", period_type.as_str());
         let date = period_start.to_string();
+        self.lock_snapshot_computation(&kind, &date).await
+    }
+
+    /// Bound insight aggregation across periods, handlers and worker replicas.
+    /// Acquire this before the period lock; waiting callers release connections.
+    pub async fn lock_insight_refresh(&self) -> Result<Transaction<'static, Postgres>, Error> {
+        self.lock_snapshot_computation("insight-refresh", "all-periods")
+            .await
+    }
+
+    async fn lock_snapshot_computation(
+        &self,
+        kind: &str,
+        date: &str,
+    ) -> Result<Transaction<'static, Postgres>, Error> {
         loop {
             let mut guard = self.pool.begin().await?;
             let acquired = sqlx::query_scalar!(
