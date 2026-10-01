@@ -230,7 +230,8 @@ describe("manual person dialogs", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Add person" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Add person" }));
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveTextContent("No team");
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));

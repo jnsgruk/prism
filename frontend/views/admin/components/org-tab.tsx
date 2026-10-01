@@ -142,7 +142,6 @@ export const OrgTab = (): React.ReactElement => {
             onSelectPerson={setSelectedPerson}
             onEditTeam={setEditingTeam}
             onDeleteTeam={setDeletingTeam}
-            onAddPerson={() => setAddPersonOpen(true)}
           />
         </div>
       </div>

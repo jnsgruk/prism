@@ -158,12 +158,10 @@ export const OrgPeoplePanel = ({
   onSelectPerson,
   onEditTeam,
   onDeleteTeam,
-  onAddPerson,
 }: {
   teamId: string | null;
   onSelectTeam: (id: string | null) => void;
   onSelectPerson: (person: Person) => void;
-  onAddPerson?: () => void;
   onEditTeam?: (team: Team) => void;
   onDeleteTeam?: (team: Team) => void;
 }): React.ReactElement => {
@@ -269,14 +267,6 @@ export const OrgPeoplePanel = ({
 
   return (
     <div className="space-y-4">
-      {onAddPerson && (
-        <div className="flex justify-end">
-          <Button size="sm" onClick={onAddPerson}>
-            <Plus className="size-3.5" />
-            Add person
-          </Button>
-        </div>
-      )}
       {/* Mobile-only team picker (hidden on md+) */}
       <div className="md:hidden">
         <Popover open={teamPickerOpen} onOpenChange={setTeamPickerOpen}>
