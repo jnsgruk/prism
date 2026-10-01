@@ -67,27 +67,7 @@ impl ReasoningRepo {
             .collect();
 
         let mut tx = self.pool.begin().await?;
-        crate::repo::ActivityRepo::lock_existing_contribution_keys(&mut tx, &ids).await?;
-        sqlx::query!(
-            r#"
-            SELECT id FROM activity.contributions
-            WHERE id = ANY($1)
-            ORDER BY id FOR SHARE
-            "#,
-            &ids,
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-        sqlx::query!(
-            r#"
-            SELECT contribution_id FROM reasoning.enrichment_queue
-            WHERE contribution_id = ANY($1)
-            ORDER BY contribution_id FOR UPDATE
-            "#,
-            &ids,
-        )
-        .fetch_all(&mut *tx)
-        .await?;
+        Self::lock_queued_contributions(&mut tx, &ids).await?;
 
         let written = sqlx::query!(
             r#"

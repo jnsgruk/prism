@@ -100,19 +100,10 @@ impl ActiveIdentitySource {
         let mut targets = Vec::with_capacity(identities.len());
         for identity in identities {
             let version = identity_version(ctx, &identity);
-            let covered = ctx
+            let Some(window) = ctx
                 .repos
                 .activity
-                .identity_discovery_cutoff(
-                    ctx.source_config.id.into_inner(),
-                    identity.identity_id,
-                    &version,
-                )
-                .await?;
-            let Some(initial_since) = ctx
-                .repos
-                .activity
-                .identity_discovery_initial_since(
+                .identity_discovery_window(
                     ctx.source_config.id.into_inner(),
                     identity.identity_id,
                     &version,
@@ -122,8 +113,8 @@ impl ActiveIdentitySource {
                 // Accounts added after journalled planning join the next run.
                 continue;
             };
-            let since_date = covered.map_or_else(
-                || initial_since.date().to_string(),
+            let since_date = window.covered_through.map_or_else(
+                || window.initial_since.date().to_string(),
                 |covered| lower_date(Some(covered), upper, &ctx.source_config.source_type),
             );
             let person_id = identity.person_id;
@@ -184,16 +175,15 @@ impl ActiveIdentitySource {
             .fetch_batch(&fetch_context, &cursor.child)
             .await?;
         if let Some(target) = &target {
+            let identity = serde_json::to_value(&target.request.source.identity)
+                .map_err(|error| Error::Internal(error.to_string()))?;
+            let source_id = serde_json::Value::from(target.request.source.source_id.to_string());
             for item in &mut fetched.items {
                 if let Some(metadata) = item.metadata.as_object_mut() {
-                    metadata.insert(
-                        "supplementary_discovery_identity".into(),
-                        serde_json::to_value(&target.request.source.identity)
-                            .map_err(|error| Error::Internal(error.to_string()))?,
-                    );
+                    metadata.insert("supplementary_discovery_identity".into(), identity.clone());
                     metadata.insert(
                         "supplementary_discovery_source_id".into(),
-                        target.request.source.source_id.to_string().into(),
+                        source_id.clone(),
                     );
                 }
             }
@@ -231,9 +221,10 @@ impl ActiveIdentitySource {
         if let Some(next) = &fetched.next_cursor {
             cursor.child.clone_from(next);
         } else {
+            let child_complete = child_failures.is_empty();
             cursor.failed_items.extend(child_failures);
             if let Some(current) = target {
-                if extract_failed_items(state).is_empty() {
+                if child_complete {
                     cursor.completed = Some(current);
                 }
                 cursor.target_index += 1;

@@ -17,7 +17,7 @@ pub(super) async fn transition(
     cur: &mut Cursor,
 ) -> Result<FetchResult, ps_core::Error> {
     // Include active saved accounts regardless of team membership.
-    let usernames = ctx.repos.org.get_all_github_team_member_usernames().await?;
+    let usernames = ctx.repos.org.active_github_usernames().await?;
 
     if usernames.is_empty() {
         debug!("no active saved GitHub accounts found — skipping member search");

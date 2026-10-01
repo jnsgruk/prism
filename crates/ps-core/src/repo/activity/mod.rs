@@ -7,6 +7,7 @@ pub use ownership::{PipelineInvocationParams, PipelineRunParams};
 mod contributions;
 mod discourse_events;
 mod discovery;
+pub use discovery::IdentityDiscoveryWindow;
 mod discovery_writes;
 mod invocations;
 mod pipelines;
