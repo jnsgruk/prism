@@ -22,6 +22,71 @@ missing data while natural-key upserts preserve existing contribution IDs.
 
 ---
 
+## 2026-10-01 — Parallel CI jobs with Rust dependency caching
+
+**Context:** The combined lint-and-test job took roughly 9–12 minutes in sampled
+runs. Serial Clippy and Rust test compilation dominated the wait, while setup
+installed development tools that CI did not use.
+
+**Decision:** Run Rust checks, Rust tests, frontend checks/tests and protobuf
+validation as four independent jobs. Install only the tools each job needs and
+cache Cargo downloads and compiled dependencies separately for each Rust job.
+Keep the full Rust test suite together and retain the local prek gate.
+
+**Rationale:** This removes Clippy from the test job's critical path and reuses
+compiled dependencies on warm runs, with modest workflow complexity. Separate
+Rust jobs duplicate some compilation on cold runs and increase runner usage;
+actual elapsed-time savings must be measured after cache population.
+
+---
+
+## 2026-10-01 — Gate agent sessions on application health and reconcile ambiguous creation
+
+**Context:** Agent startup sent session POST as soon as Kubernetes reported
+`Running`. One request consumed the SDK's full 120-second operation timeout;
+its retry succeeded in 499 ms. An isolated pod reproduced refused / timed-out
+HTTP requests after `Running` and before health succeeded. Session lookup errors
+also allowed replacement of potentially live sessions.
+
+**Decision:** Check OpenCode's `/global/health` with short connection/request
+deadlines, share a bounded startup budget across preparation and connection,
+retry only reads, and persist pod-UID-scoped creation intent before one POST.
+Reconcile ambiguous creation by a stable conversation title. Preserve ordinary
+operation / SSE budgets, streaming in ps-server and Restate journal ordering.
+
+**Rationale:** Readiness polling handles application and transient network gaps
+without paying a full operation timeout. Persisted intent prevents follow-up
+requests from creating duplicates after an unknown POST outcome, including
+server restart or cancellation. Without a supported idempotency key, intent
+that produced no session must remain reconciliation-only until the pod is
+replaced. A new pod UID safely permits recovery after expiry. The original
+connection stall's packet-level cause remains unproven; health and stage timing
+logs improve diagnosis without redesigning or modifying the live deployment.
+
+---
+
+## 2026-10-01 — Render workspace PDFs with React-PDF and PDF.js
+
+**Context:** The Ask workspace sidebar did not render PDFs, and an expanded
+sandboxed iframe showed a broken-document view in Chrome for a reported PDF.
+The browser viewer/sandbox was a suspected contributor; its role was not
+verified as the root cause.
+
+**Decision:** Use a lazy feature-local React-PDF renderer in both the sidebar
+and expanded Base UI dialog. Bundle the matching PDF.js worker and supporting
+assets locally. Own document/page state and Blob lifetime in a feature-local
+hook, reuse the authenticated streaming download, and render only the selected
+page on the visible surface.
+
+**Rationale:** Application-owned rendering provides consistent navigation,
+zoom, selectable text, loading/error states and downloadable fallbacks without
+depending on a browser PDF plugin. A single-page viewer bounds rendering work;
+unmounting the hidden surface avoids duplicate canvases. Local worker/assets
+keep production delivery independent of external CDNs. Password entry and
+interactive PDF features remain outside V1.
+
+---
+
 ## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
 
 **Context:** A completed person ingestion/enrichment pipeline repeatedly failed

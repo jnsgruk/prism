@@ -103,10 +103,15 @@ impl AgenticQueryHandler for AgenticQueryHandlerImpl {
             default_image_model: request.image_model.clone(),
         };
 
-        let (pod_ip, pod_name) = start_pod(&ctx, repos, &cm, conv_id, pod_overrides).await?;
+        let (pod_ip, pod_name, pod_uid) =
+            start_pod(&ctx, repos, &cm, conv_id, pod_overrides).await?;
 
         info!(%pod_ip, %pod_name, "agent pod ready");
-        Ok(Json(PrepareQueryResponse { pod_ip, pod_name }))
+        Ok(Json(PrepareQueryResponse {
+            pod_ip,
+            pod_name,
+            pod_uid,
+        }))
     }
 
     async fn cancel(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
@@ -163,9 +168,11 @@ async fn start_pod(
     cm: &ps_agent::ContainerManager,
     conv_id: Uuid,
     pod_overrides: ps_agent::PodOverrides,
-) -> Result<(String, String), TerminalError> {
-    let creating_payload =
-        serde_json::json!({"status": "creating", "message": "Starting agent container..."});
+) -> Result<(String, String, String), TerminalError> {
+    let creating_payload = serde_json::json!({
+        "status": "creating",
+        "message": "Scheduling agent container and waiting for application readiness...",
+    });
     journaled!(
         ctx,
         "event_container_creating",
@@ -193,13 +200,14 @@ async fn start_pod(
         .map_err(terminal_err("pod failed to start"))?;
 
     // Fetch pod name now that it's running.
-    let pod_name = match cm
+    let ps_agent::PodStatus::Running {
+        pod_name, pod_uid, ..
+    } = cm
         .get_pod_status(&conv_id.to_string())
         .await
         .map_err(terminal_err("failed to get pod status"))?
-    {
-        ps_agent::PodStatus::Running { pod_name, .. } => pod_name,
-        _ => "unknown".to_string(),
+    else {
+        return Err(TerminalError::new("agent pod disappeared after readiness"));
     };
 
     let ready_payload =
@@ -212,5 +220,5 @@ async fn start_pod(
             .map_err(terminal_err("failed to append event"))?;
     });
 
-    Ok((pod_ip, pod_name))
+    Ok((pod_ip, pod_name, pod_uid))
 }

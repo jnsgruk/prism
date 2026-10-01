@@ -1,19 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDownloadWorkspaceFile, useListWorkspaceFiles, useUploadWorkspaceFile } from "@/lib/hooks/use-conversations";
-import { WorkspacePreview, type PreviewState } from "@/views/ask/components/workspace-preview";
+import { WorkspacePreview } from "@/views/ask/components/workspace-preview";
 import { WorkspacePreviewDialog } from "@/views/ask/components/workspace-preview-dialog";
 import { WorkspaceTree } from "@/views/ask/components/workspace-tree";
-import {
-  type ArtifactDisplay,
-  type WorkspaceFileDisplay,
-  isTextContent,
-  useWorkspaceFileTree,
-} from "@/views/ask/hooks/use-file-tree";
+import { type ArtifactDisplay, type WorkspaceFileDisplay, useWorkspaceFileTree } from "@/views/ask/hooks/use-file-tree";
 import { useResize } from "@/views/ask/hooks/use-resize";
+import { useWorkspacePreview } from "@/views/ask/hooks/use-workspace-preview";
 import { zipSync } from "fflate";
 import { Download, Loader2, Upload, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const DEFAULT_WIDTH = 320;
@@ -94,59 +90,16 @@ export const WorkspaceSidebar = ({
     getTarget: getPreviewTarget,
   });
 
-  // Preview state
-  const [previewState, setPreviewState] = useState<PreviewState | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
-
-  const cleanupBlobUrl = useCallback(() => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-  }, []);
-
-  // Revoke blob URL on unmount to prevent memory leaks.
-  useEffect(() => cleanupBlobUrl, [cleanupBlobUrl]);
-
-  const handlePreview = useCallback(
-    (artifact: ArtifactDisplay) => {
-      if (!conversationId) return;
-      setSelectedPath(artifact.id);
-      setPreviewLoading(true);
-
-      downloadFile.mutate(
-        { conversationId, path: artifact.id },
-        {
-          onSuccess: async ({ blobUrl, contentType }) => {
-            cleanupBlobUrl();
-            blobUrlRef.current = blobUrl;
-
-            let textContent: string | undefined;
-            if (isTextContent(contentType)) {
-              const res = await fetch(blobUrl);
-              textContent = await res.text();
-            }
-
-            setPreviewState({
-              artifact: { ...artifact, contentType },
-              url: blobUrl,
-              contentType,
-              textContent,
-            });
-            setPreviewLoading(false);
-          },
-          onError: (err) => {
-            toast.error(`Failed to preview ${artifact.displayName}: ${err.message}`);
-            setPreviewLoading(false);
-          },
-        },
-      );
-    },
-    [conversationId, downloadFile, cleanupBlobUrl],
-  );
+  const {
+    state: previewState,
+    isLoading: previewLoading,
+    selectedPath,
+    dialogOpen,
+    setDialogOpen,
+    select: handlePreview,
+    close: closePreview,
+    pdf,
+  } = useWorkspacePreview(conversationId, open);
 
   const handleDownload = useCallback(
     (artifact: ArtifactDisplay) => {
@@ -169,12 +122,6 @@ export const WorkspaceSidebar = ({
     },
     [conversationId, downloadFile],
   );
-
-  const closePreview = useCallback(() => {
-    cleanupBlobUrl();
-    setPreviewState(null);
-    setSelectedPath(null);
-  }, [cleanupBlobUrl]);
 
   const handleDialogDownload = useCallback(() => {
     if (previewState) handleDownload(previewState.artifact);
@@ -313,12 +260,15 @@ export const WorkspaceSidebar = ({
                     onPointerDown={onPreviewDragDown}
                     data-current-size={previewHeight}
                   />
-                  <div className="h-full overflow-auto">
+                  <div className="h-full min-h-0 min-w-0 overflow-hidden">
                     <WorkspacePreview
                       state={previewState}
                       isLoading={previewLoading}
                       onExpand={() => setDialogOpen(true)}
                       onClose={closePreview}
+                      pdf={pdf}
+                      paused={dialogOpen}
+                      onDownload={handleDialogDownload}
                     />
                   </div>
                 </div>
@@ -334,6 +284,7 @@ export const WorkspaceSidebar = ({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onDownload={handleDialogDownload}
+        pdf={pdf}
       />
     </>
   );

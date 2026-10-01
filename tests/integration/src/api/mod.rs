@@ -15,3 +15,5 @@ mod pipeline_ownership;
 mod pipeline_preflight;
 mod pipeline_reconciliation;
 pub mod reasoning;
+
+mod agent_startup;

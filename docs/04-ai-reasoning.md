@@ -49,11 +49,11 @@ Natural-language questions about engineering data are handled by an agentic arch
 ### Architecture
 
 1. **ps-server** receives a question via the `AskQuestion` gRPC streaming RPC
-2. **Restate** runs `prepare_query` in `AgenticQueryHandler` — this handles durable pod lifecycle only (~90s):
+2. **Restate** runs `prepare_query` in `AgenticQueryHandler` — this handles durable pod lifecycle only:
    - Claims the conversation atomically via CAS update
    - Creates an ephemeral K8s pod running OpenCode with ps-mcp as the MCP server
    - The pod mounts the shared `prism-workspaces` PVC at `/workspace` via `subPath: {conversation_id}`
-   - Waits for pod readiness
+   - Waits for a pod IP and OpenCode application health within a shared 60-second wait budget
 3. **ps-server** streams SSE events directly from the OpenCode pod to the gRPC client — this avoids Restate's journal/timeout issues with long-running non-journaled work
 4. **QueryWatchdogHandler** (Restate, singleton key) runs every 60s to reset stuck conversations
 
@@ -63,6 +63,76 @@ text and reasoning snapshots from these deltas and forwards them immediately.
 Part IDs provide stable ordering across messages; completed snapshots replace
 the accumulated content without duplicating it. User message parts are excluded
 from assistant output.
+
+### Startup readiness and session safety
+
+Kubernetes phase `Running` means the container has started, not that OpenCode
+is reachable. Pods expose an HTTP readiness probe on the supported, inexpensive
+[`GET /global/health`](https://opencode.ai/docs/server/#global) endpoint. The
+worker polls the same endpoint after obtaining the pod IP; ps-server checks it
+again from its own network path before resolving a session. Health requires a
+successful HTTP response with `healthy: true`; it does not initialise the
+project directory, MCP tools, or model providers.
+
+Startup has one two-minute deadline in ps-server covering Restate preparation,
+health, session resolution and SSE connection. Direct startup HTTP uses no
+proxy, a one-second connection deadline, three-second read requests and
+250 ms polling. Session POST has a 15-second request deadline. The entire SSE
+handshake has a 15-second deadline. Normal SDK operations keep their 120-second
+timeout and streaming retains the existing ten-minute query budget.
+
+Session resolution uses `GET /session/{id}`, rather than fetching every message.
+Only a definitive 404 permits replacement; transient failures retry reads within
+the original deadline and preserve the stored ID. Before creating a session,
+ps-server checks for its stable title (`Prism conversation {conversation_id}`)
+and persists `pending:{pod_uid}` in the internal `opencode_session_id` column.
+POST is sent once. An ambiguous timeout, invalid response, or failure to persist
+the returned ID is recovered by listing sessions and matching that title.
+Follow-up requests on the same Kubernetes UID only reconcile a pending creation;
+a different UID after expiry permits fresh creation with a recap of prior turns.
+No migration or SQL cache change is needed.
+
+This deliberately favours avoiding duplicate sessions: a crash between saving
+intent and sending POST, or a failed POST that created nothing, leaves that pod
+in reconciliation-only mode until it expires or cancellation replaces it. The
+UI receives a retryable startup error at the deadline. OpenCode has no supported
+client-supplied session ID or idempotency key in the inspected API. Deploy
+ps-workers before ps-server, since the prepare response now supplies `pod_uid`;
+ps-server fails closed if it is absent. The worker's journaled step names,
+sequence and result types remain unchanged, so existing Restate invocations
+need no cancellation or journal reset.
+
+Startup progress is persisted as container events for browser reconnection.
+Cancellation interrupts preparation, health/session resolution, SSE handshake
+and prompt submission. Logs report scheduling, application health attempts,
+session resolution, SSE connection and cumulative startup durations. No session
+or prompt work is moved into the Restate journal; SSE stays in ps-server.
+
+An isolated development pod on 2026-10-01 reached `Running` at 5.55 s, returned
+connection refused then a one-second HTTP timeout, and became healthy at 7.16 s.
+The fixed client subsequently measured health 1 ms, initial session POST 204 ms,
+session reuse 2 ms and SSE handshake 11 ms (244 ms total). A second check ran the actual startup client against a fresh diagnostic pod
+with a deliberate five-second delay before `opencode serve`: health polling
+recovered after 16 attempts in 6.787 s (including a three-second stalled health
+request), creation took 287 ms, reuse 13 ms and SSE 10 ms, for 7.127 s total.
+No model prompt or live conversation was used. These observations demonstrate a real readiness /
+network reachability gap; they do not identify the packet-level cause of the
+original 120-second failure. The historical server logs lack connection-phase
+and TCP details. Validation used direct host-to-pod traffic and pod-local
+requests, not a rollout of ps-server / ps-workers or a real model query. The
+only live NetworkPolicy restricts agent egress and does not isolate ingress;
+neither service deployment declares proxy environment variables. The image tested was OpenCode 1.18.34; the Dockerfile currently
+installs the latest release despite declaring an unused version argument.
+
+For a repeatable check, create an isolated pod using the development agent image
+and run `PRISM_STARTUP_PROBE_URL=http://<diagnostic-pod-ip>:4096 cargo nextest run
+-p ps-server -E 'test(live_readiness_create_reuse_and_sse)' --run-ignored only
+--no-capture`. This creates a diagnostic session; never target a user's agent.
+Remove only the diagnostic pod afterwards. Regression tests also cover delayed
+health, transient refused connections, HTTP lookup failures, ambiguous creation,
+shared-budget exhaustion, persistent pending creation, expiry recovery,
+follow-up reuse, browser reconnect and startup cancellation against Wiremock
+and isolated PostgreSQL.
 
 ### Why OpenCode in Pods?
 
