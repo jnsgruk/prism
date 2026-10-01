@@ -126,6 +126,7 @@ impl OrgRepo {
             INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (platform, platform_username)
+                WHERE platform <> 'jira' OR platform_user_id IS NULL
             DO UPDATE SET person_id = EXCLUDED.person_id
             WHERE org.platform_identities.management = $5
               AND org.platform_identities.person_id = EXCLUDED.person_id

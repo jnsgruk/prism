@@ -407,7 +407,7 @@ impl OrgRepo {
 
         let ordered_teams = topological_sort_teams(&export.teams);
         let team_map = import_teams(&mut tx, &ordered_teams, &mut result).await?;
-        let resolved = import_people(&mut tx, export, &mut result).await?;
+        let resolved = import_people(&mut tx, export, &mut result, replace).await?;
         let maps = build_person_maps(&mut tx, export, &resolved).await?;
         wire_team_leads(
             &mut tx,
