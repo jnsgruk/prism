@@ -81,6 +81,56 @@ k8s/
 
 **Shared workspace PVC** (`prism-workspaces`, defined in `ps-server.yaml`): A single ReadWriteMany PVC mounted by ps-server (read-only at `/workspaces`) and all agent pods (read-write at `/workspace` via `subPath: {conversation_id}`). Restate also stores its durable local state on this claim at `/restate-data`, isolated with `subPath: restate-data`. This reuse avoids exhausting the development cluster's rawfile CSI volume pool while retaining state across pod restarts. Workspace directories are cleaned up when conversations are deleted. The claim requires an RWX-capable storage class; production should give Restate a dedicated durable volume to isolate orchestration state from workspace capacity and failure domains.
 
+### PostgreSQL memory
+
+`k8s/base/postgres.yaml` mounts a memory-backed `emptyDir` at `/dev/shm`, capped
+at 256 MiB. PostgreSQL requests 512 MiB and has a 1 GiB container memory limit.
+The runtime's default 64 MiB shared-memory mount is too small for simultaneous
+parallel hash joins during historical insight refreshes. PostgreSQL keeps
+`dynamic_shared_memory_type=posix`, `work_mem=4MB`, and the default
+`max_parallel_workers_per_gather=2`; no persistent serial-query override is
+required.
+
+The mount cap does not reserve memory or add memory outside the container
+limit. Memory-backed volume pages count toward that limit. With the observed
+128 MiB `shared_buffers` and a fully used 256 MiB mount, about 640 MiB remains
+for private backend/worker allocations, other shared structures, autovacuum,
+kernel accounting and file cache. This is planning headroom, not a strict
+PostgreSQL memory bound: multiple sort/hash nodes, sessions and maintenance
+workers can still exceed it. Increasing the mount without increasing the old
+512 MiB pod limit would replace shared-memory failures with an OOM risk.
+Insight refresh concurrency is bounded in application code as described in
+[Database Design](02-database.md#historical-invalidations-and-account-discovery-coverage).
+Reassess both limits and concurrency when scaling data or worker replicas.
+
+Before rollout, check active Restate invocations and PostgreSQL sessions,
+including agent queries. This StatefulSet change replaces the single database
+pod and briefly interrupts connections; the existing data PVC is retained.
+Apply during an idle window, wait for readiness, then verify `/dev/shm`,
+resource limits, PostgreSQL settings and OOM counters. Use `EXPLAIN (ANALYZE,
+BUFFERS, SETTINGS)` on representative bounded queries and sample `df /dev/shm`
+and cgroup `memory.current`, `memory.stat`, and `memory.events` during concurrent
+refreshes. Low usage after failure/completion misses transient allocations;
+file cache near the limit alone is not proof of an OOM, so inspect reclaimable
+cache and `oom`/`oom_kill` events too. Never delete live PostgreSQL shared-memory
+files to free space.
+
+After a worker rollout, wait for old pods to exit before forcing Restate
+deployment discovery through `http://ps-workers:9081/`; startup discovery via
+the Service can still reach an old replica. Verify `IngestionChunkService`
+retains its separate 15-minute inactivity timeout and existing abort grace.
+
+Emergency serial execution (`ALTER SYSTEM SET max_parallel_workers_per_gather
+= 0; SELECT pg_reload_conf();`) can unblock a retry, at the cost of latency.
+After recovery, run `ALTER SYSTEM RESET max_parallel_workers_per_gather;
+SELECT pg_reload_conf();` and verify `pg_settings` reports the intended setting
+and source. Resume the existing retryable Restate invocation rather than clearing
+its journal or creating duplicate backfill work.
+
+PostgreSQL's [resource settings](https://www.postgresql.org/docs/17/runtime-config-resource.html)
+describe per-operation and parallel-worker memory budgets; Kubernetes documents
+the container memory accounting of [memory-backed emptyDir volumes](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir).
+
 ## Gateway
 
 Envoy Gateway handles TLS termination and routes requests:
