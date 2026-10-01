@@ -283,6 +283,46 @@ impl JiraClient {
         Ok((search_resp, rate_limit))
     }
 
+    /// Authenticated API user's timezone governs JQL date literals.
+    pub async fn api_user_timezone(&self) -> Result<String, ps_core::Error> {
+        let response = self
+            .http
+            .get(format!("{}/rest/api/3/myself", self.base_url))
+            .header(AUTHORIZATION, self.auth_header.as_str())
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .await
+            .map_err(|error| {
+                ps_core::Error::Internal(format!("Jira timezone request failed: {error}"))
+            })?;
+        if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            let retry_after_secs = response
+                .headers()
+                .get("retry-after")
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(60);
+            return Err(ps_core::Error::RateLimit { retry_after_secs });
+        }
+        let status = response.status();
+        if !status.is_success() {
+            return Err(ps_core::Error::HttpStatus {
+                status: status.as_u16(),
+                message: "Jira API user timezone lookup failed".into(),
+            });
+        }
+        let body: serde_json::Value = response.json().await.map_err(|error| {
+            ps_core::Error::Internal(format!("Jira timezone response parse error: {error}"))
+        })?;
+        body.get("timeZone")
+            .and_then(serde_json::Value::as_str)
+            .filter(|zone| !zone.trim().is_empty())
+            .map(String::from)
+            .ok_or_else(|| {
+                ps_core::Error::Validation("Jira API user timezone is unavailable".into())
+            })
+    }
+
     /// Fetch a single issue with changelog expanded.
     pub async fn get_issue_with_changelog(&self, key: &str) -> Result<JiraIssue, ps_core::Error> {
         let key = validate_jira_key(key)?;

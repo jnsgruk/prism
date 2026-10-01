@@ -4,7 +4,11 @@
 //! encrypted secrets.  Authentication is via the `Api-Key` and `Api-Username`
 //! headers.
 
-use serde::Deserialize;
+mod activity;
+pub use activity::{UserAction, UserActionType};
+
+mod models;
+pub use models::*;
 use tracing::debug;
 
 /// Validate a Discourse username before interpolating into URLs.
@@ -16,9 +20,9 @@ fn validate_discourse_username(username: &str) -> Result<&str, ps_core::Error> {
     if valid {
         Ok(username)
     } else {
-        Err(ps_core::Error::Validation(format!(
-            "invalid Discourse username: {username:?}"
-        )))
+        Err(ps_core::Error::Validation(
+            "invalid Discourse username".into(),
+        ))
     }
 }
 
@@ -29,173 +33,6 @@ pub struct DiscourseClient {
     base_url: String,
     api_key: String,
     api_username: String,
-}
-
-// ---------------------------------------------------------------------------
-// /latest.json response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct LatestResponse {
-    pub topic_list: TopicList,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TopicList {
-    pub topics: Vec<TopicSummary>,
-    /// Present when there are more pages.  Absent on the last page.
-    pub more_topics_url: Option<String>,
-}
-
-/// Lightweight topic metadata returned by `/latest.json`.
-#[derive(Debug, Clone, Deserialize)]
-pub struct TopicSummary {
-    pub id: i64,
-    pub title: String,
-    pub slug: String,
-    pub posts_count: i32,
-    pub views: i32,
-    pub category_id: Option<i64>,
-    pub created_at: String,
-    pub bumped_at: Option<String>,
-    pub last_posted_at: Option<String>,
-    #[serde(default)]
-    pub pinned: bool,
-    #[serde(default)]
-    pub has_accepted_answer: bool,
-    #[serde(default)]
-    pub tags: Vec<String>,
-}
-
-// ---------------------------------------------------------------------------
-// /t/{id}.json response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct TopicDetailResponse {
-    pub id: i64,
-    pub title: String,
-    pub slug: String,
-    pub posts_count: i32,
-    pub views: i32,
-    pub category_id: Option<i64>,
-    pub created_at: String,
-    pub bumped_at: Option<String>,
-    #[serde(default)]
-    pub has_accepted_answer: bool,
-    #[serde(default)]
-    pub tags: Vec<String>,
-    pub post_stream: Option<PostStream>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PostStream {
-    pub posts: Vec<Post>,
-}
-
-/// A single post within a topic.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Post {
-    pub id: i64,
-    pub topic_id: i64,
-    pub username: String,
-    pub name: Option<String>,
-    pub post_number: i32,
-    pub reply_count: i32,
-    #[serde(default)]
-    like_count: Option<i32>,
-    /// `actions_summary` contains per-action-type counts; action type 2 = like.
-    #[serde(default)]
-    actions_summary: Vec<ActionSummary>,
-    pub created_at: String,
-    pub updated_at: Option<String>,
-    pub raw: Option<String>,
-    /// If this post is a reply, the post number it replies to.
-    #[serde(default)]
-    pub reply_to_post_number: Option<i32>,
-}
-
-impl Post {
-    /// Effective like count: prefer `like_count` when present, fall back to
-    /// `actions_summary` type-2 count (some Discourse instances return
-    /// `like_count: null`).
-    pub fn likes(&self) -> i32 {
-        self.like_count.filter(|&c| c > 0).unwrap_or_else(|| {
-            self.actions_summary
-                .iter()
-                .find(|a| a.id == 2)
-                .map_or(0, |a| a.count)
-        })
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ActionSummary {
-    id: i32,
-    #[serde(default)]
-    count: i32,
-}
-
-// ---------------------------------------------------------------------------
-// /post_action_users.json response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct PostActionUsersResponse {
-    pub post_action_users: Vec<PostActionUser>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PostActionUser {
-    pub id: i64,
-    pub username: String,
-    pub name: Option<String>,
-}
-
-// ---------------------------------------------------------------------------
-// /categories.json response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct CategoriesResponse {
-    pub category_list: CategoryList,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CategoryList {
-    pub categories: Vec<Category>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct Category {
-    pub id: i64,
-    pub name: String,
-    pub slug: String,
-}
-
-// ---------------------------------------------------------------------------
-// /about.json response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct AboutResponse {
-    pub about: AboutInfo,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AboutInfo {
-    pub title: Option<String>,
-    pub version: Option<String>,
-}
-
-// ---------------------------------------------------------------------------
-// Admin API response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-pub struct AdminUser {
-    pub username: String,
-    pub email: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -249,16 +86,18 @@ impl DiscourseClient {
             .query(&[("page", page.to_string()), ("order", "activity".into())])
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse category latest request failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse category latest request failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
 
         resp.json()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("discourse category latest parse: {e}")))
+            .map_err(|e| Self::request_error("discourse category latest parse", e))
     }
 
     /// Fetch the latest topics page.
@@ -275,16 +114,18 @@ impl DiscourseClient {
             .query(&[("page", page.to_string()), ("order", "activity".into())])
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse latest request failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse latest request failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
 
         resp.json()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("discourse latest parse error: {e}")))
+            .map_err(|e| Self::request_error("discourse latest parse error", e))
     }
 
     /// Fetch full topic detail including posts.
@@ -298,16 +139,18 @@ impl DiscourseClient {
             .get(&url)
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse topic request failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse topic request failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
 
         resp.json()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("discourse topic parse error: {e}")))
+            .map_err(|e| Self::request_error("discourse topic parse error", e))
     }
 
     /// Fetch the users who liked a specific post.
@@ -327,16 +170,19 @@ impl DiscourseClient {
             ])
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse post_likers request failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse post_likers request failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
 
-        let body: PostActionUsersResponse = resp.json().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse post_likers parse error: {e}"))
-        })?;
+        let body: PostActionUsersResponse = resp
+            .json()
+            .await
+            .map_err(|e| Self::request_error("discourse post_likers parse error", e))?;
 
         Ok(body.post_action_users)
     }
@@ -350,9 +196,11 @@ impl DiscourseClient {
             .get(&url)
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse categories request failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse categories request failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
         Self::require_success(&resp)?;
@@ -360,7 +208,7 @@ impl DiscourseClient {
         let cats: CategoriesResponse = resp
             .json()
             .await
-            .map_err(|e| ps_core::Error::Internal(format!("discourse categories parse: {e}")))?;
+            .map_err(|e| Self::request_error("discourse categories parse", e))?;
 
         Ok(cats.category_list.categories)
     }
@@ -371,9 +219,11 @@ impl DiscourseClient {
 
         let req = self.http.get(&url);
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse connection test failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse connection test failed", e))?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -410,9 +260,11 @@ impl DiscourseClient {
             .query(&[("filter", email), ("show_emails", "true")])
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp = self.auth(req).send().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse admin user search failed: {e}"))
-        })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse admin user search failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
 
@@ -429,9 +281,10 @@ impl DiscourseClient {
 
         Self::require_success(&resp)?;
 
-        let users: Vec<AdminUser> = resp.json().await.map_err(|e| {
-            ps_core::Error::Internal(format!("discourse admin user search parse: {e}"))
-        })?;
+        let users: Vec<AdminUser> = resp
+            .json()
+            .await
+            .map_err(|e| Self::request_error("discourse admin user search parse", e))?;
 
         let email_lower = email.to_lowercase();
         let matched = users.into_iter().find(|u| {
@@ -459,10 +312,11 @@ impl DiscourseClient {
             .get(&url)
             .timeout(std::time::Duration::from_secs(30));
 
-        let resp =
-            self.auth(req).send().await.map_err(|e| {
-                ps_core::Error::Internal(format!("discourse user lookup failed: {e}"))
-            })?;
+        let resp = self
+            .auth(req)
+            .send()
+            .await
+            .map_err(|e| Self::request_error("discourse user lookup failed", e))?;
 
         Self::handle_rate_limit(&resp)?;
 
@@ -472,6 +326,21 @@ impl DiscourseClient {
 
         Self::require_success(&resp)?;
         Ok(true)
+    }
+
+    /// Keep provider diagnostics out of persisted cursors and client errors.
+    fn request_error(operation: &str, error: reqwest::Error) -> ps_core::Error {
+        tracing::warn!(operation, error = %error, "Discourse provider request failed");
+        let category = if error.is_timeout() {
+            "timed out"
+        } else if error.is_decode() {
+            "error decoding response"
+        } else if error.is_connect() {
+            "connection closed"
+        } else {
+            "failed"
+        };
+        ps_core::Error::Internal(format!("{operation}: {category}"))
     }
 
     /// Check for 429 and return a rate-limit error.

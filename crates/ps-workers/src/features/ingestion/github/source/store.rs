@@ -9,6 +9,12 @@ pub(super) async fn store_batch_impl(
     ctx: &IngestionContext,
     items: &[ContributionInput],
 ) -> Result<usize, ps_core::Error> {
+    if let Some(count) =
+        crate::features::ingestion::lib::scoped_store::store_person_batch(ctx, items).await?
+    {
+        return Ok(count);
+    }
+
     if items.is_empty() {
         return Ok(0);
     }
@@ -80,6 +86,10 @@ pub(super) async fn advance_watermark_impl(
     new_watermark: &str,
     items_collected: i32,
 ) -> Result<(), ps_core::Error> {
+    if !ctx.advances_global_watermark() {
+        return Ok(());
+    }
+
     let old_watermark = ctx
         .repos
         .activity

@@ -1,8 +1,10 @@
 use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionContext};
-use ps_core::models::{ContributionState, ContributionType, JiraTicketData, Platform};
+use ps_core::models::{
+    ContributionState, ContributionType, JiraTicketData, Platform, RateLimitInfo,
+};
 use tracing::{debug, warn};
 
-use super::super::client::{JiraChangeHistory, JiraIssue};
+use super::super::client::{JiraChangeHistory, JiraIssue, SearchResponse};
 use super::{
     Cursor, MAX_RESULTS_PER_PAGE, decrypt_email, decrypt_token, parse_jira_datetime,
     serialise_cursor,
@@ -15,6 +17,8 @@ pub(super) async fn fetch_batch_impl(
 ) -> Result<FetchResult, ps_core::Error> {
     let mut cur: Cursor = serde_json::from_str(cursor)
         .map_err(|e| ps_core::Error::Internal(format!("invalid cursor: {e}")))?;
+
+    super::query::validate_cursor_scope(ctx, &cur)?;
 
     let token = decrypt_token(ctx)?;
 
@@ -50,25 +54,31 @@ pub(super) async fn fetch_batch_impl(
         Some(proj.clone())
     };
 
-    let project_filter = current_project
-        .as_ref()
-        .map(|p| format!("project = \"{}\"", p.replace('"', "\\\"")))
-        .unwrap_or_default();
-
-    let jql = match (project_filter.is_empty(), &cur.watermark) {
-        (false, Some(wm)) => {
-            let jira_date = format_watermark_for_jql(wm);
-            format!("{project_filter} AND updated >= \"{jira_date}\" ORDER BY updated ASC")
-        }
-        (false, None) => format!("{project_filter} ORDER BY updated ASC"),
-        (true, Some(wm)) => {
-            let jira_date = format_watermark_for_jql(wm);
-            format!("updated >= \"{jira_date}\" ORDER BY updated ASC")
-        }
-        (true, None) => "ORDER BY updated ASC".into(),
-    };
+    if ctx.person_request()?.is_some() && cur.api_timezone.is_none() {
+        cur.api_timezone = Some(
+            retry_transient(
+                "Jira API user timezone",
+                ps_core::Error::is_transient,
+                || client.api_user_timezone(),
+            )
+            .await?,
+        );
+    }
+    let jql = super::query::build_jql(&cur, current_project.as_deref())?;
 
     let fields = "summary,description,status,issuetype,priority,labels,assignee,reporter,created,updated,resolutiondate,parent";
+    let fields = if let Some(field) = &cur.story_points_field {
+        if !field.strip_prefix("customfield_").is_some_and(|number| {
+            !number.is_empty() && number.chars().all(|character| character.is_ascii_digit())
+        }) {
+            return Err(ps_core::Error::Validation(
+                "invalid Jira story points custom field".into(),
+            ));
+        }
+        format!("{fields},{field}")
+    } else {
+        fields.to_string()
+    };
     let next_page_token = cur.next_page_token.clone();
     let (response, rate_limit) = match retry_transient(
         current_project.as_deref().unwrap_or("jira search"),
@@ -77,7 +87,7 @@ pub(super) async fn fetch_batch_impl(
             client.search(
                 &jql,
                 MAX_RESULTS_PER_PAGE,
-                fields,
+                &fields,
                 "changelog",
                 next_page_token.as_deref(),
             )
@@ -87,6 +97,9 @@ pub(super) async fn fetch_batch_impl(
     {
         Ok(result) => result,
         Err(e) => {
+            if e.is_rate_limit() {
+                return Err(e);
+            }
             if let Some(ref proj) = current_project {
                 warn!(
                     source = ctx.source_config.name,
@@ -96,10 +109,20 @@ pub(super) async fn fetch_batch_impl(
                 );
                 cur.failed_items.push(FailedItem {
                     key: proj.clone(),
-                    error: e.to_string(),
+                    error: if ctx.person_request()?.is_some() {
+                        match &e {
+                            ps_core::Error::HttpStatus { status, .. } => {
+                                format!("Jira project fetch failed with HTTP {status}")
+                            }
+                            _ => "Jira project fetch failed".into(),
+                        }
+                    } else {
+                        e.to_string()
+                    },
                 });
                 cur.project_index += 1;
                 cur.next_page_token = None;
+                cur.token_cycle = super::pagination::TokenCycle::default();
                 let final_cursor = serialise_cursor(&cur)?;
                 let next_cursor = if cur.project_index < cur.projects.len() {
                     Some(serialise_cursor(&cur)?)
@@ -112,6 +135,15 @@ pub(super) async fn fetch_batch_impl(
         }
     };
 
+    build_page_result(cur, response, rate_limit, current_project.as_deref())
+}
+
+fn build_page_result(
+    mut cur: Cursor,
+    response: SearchResponse,
+    rate_limit: Option<RateLimitInfo>,
+    current_project: Option<&str>,
+) -> Result<FetchResult, ps_core::Error> {
     let returned = response.issues.len();
 
     debug!(
@@ -121,12 +153,40 @@ pub(super) async fn fetch_batch_impl(
         "fetched Jira issues"
     );
 
-    // Convert issues to ContributionInput
-    let items: Vec<ContributionInput> = response
-        .issues
-        .into_iter()
-        .filter_map(|issue| convert_issue(&cur, &issue))
-        .collect();
+    // Validate pagination before storing any page. Repeating any prior token
+    // would replay pages forever; a nonterminal empty token cannot complete.
+    if response.is_last.is_none() && response.next_page_token.is_none() {
+        return Err(ps_core::Error::Validation(
+            "Jira search omitted pagination completion metadata".into(),
+        ));
+    }
+    let has_more = response
+        .is_last
+        .map_or(response.next_page_token.is_some(), |last| !last);
+    if has_more {
+        let next = response
+            .next_page_token
+            .as_deref()
+            .filter(|token| !token.trim().is_empty())
+            .ok_or_else(|| {
+                ps_core::Error::Validation("Jira nonterminal page is missing nextPageToken".into())
+            })?;
+        if cur.next_page_token.as_deref() == Some(next) {
+            return Err(ps_core::Error::Validation(
+                "Jira search repeated a pagination token".into(),
+            ));
+        }
+        cur.token_cycle.observe(next)?;
+    }
+
+    let mut items = Vec::new();
+    for issue in &response.issues {
+        if super::query::eligible_issue(&cur, issue)?
+            && let Some(item) = convert_issue(&cur, issue)
+        {
+            items.push(item);
+        }
+    }
 
     // Track max updated_at for watermark advancement
     for item in &items {
@@ -144,11 +204,6 @@ pub(super) async fn fetch_batch_impl(
         }
     }
 
-    // Determine if there are more pages using cursor-based pagination
-    let has_more = response
-        .is_last
-        .map_or(response.next_page_token.is_some(), |last| !last);
-
     // Always serialize the current cursor state so the handler can extract
     // max_updated_at for watermark advancement, even on the final page.
     let final_cursor = serialise_cursor(&cur)?;
@@ -160,6 +215,7 @@ pub(super) async fn fetch_batch_impl(
         // Move to next project
         cur.project_index += 1;
         cur.next_page_token = None;
+        cur.token_cycle = super::pagination::TokenCycle::default();
         Some(serialise_cursor(&cur)?)
     } else {
         None
@@ -371,27 +427,5 @@ fn compute_cycle_time(state_history: Option<&serde_json::Value>) -> Option<f64> 
             Some(hours)
         }
         _ => None,
-    }
-}
-
-/// Format an RFC 3339 watermark into Jira JQL datetime format.
-///
-/// Jira JQL expects `"yyyy/MM/dd HH:mm"` or `"yyyy-MM-dd HH:mm"` format.
-fn format_watermark_for_jql(watermark: &str) -> String {
-    // Parse as RFC 3339 and reformat
-    if let Ok(dt) =
-        time::OffsetDateTime::parse(watermark, &time::format_description::well_known::Rfc3339)
-    {
-        format!(
-            "{:04}-{:02}-{:02} {:02}:{:02}",
-            dt.year(),
-            dt.month() as u8,
-            dt.day(),
-            dt.hour(),
-            dt.minute()
-        )
-    } else {
-        // Fallback: try to extract date portion
-        watermark.replace('T', " ").chars().take(16).collect()
     }
 }

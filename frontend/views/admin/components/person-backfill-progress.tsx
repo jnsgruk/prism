@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumnDef } from "@/components/data-table/data-table";
+import { RunCoverage } from "@/components/run-coverage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { formatTimestamp } from "@/lib/format";
@@ -39,6 +40,7 @@ const runColumns: DataTableColumnDef<HandlerRun>[] = [
             <p className="text-muted-foreground">{progress.pauseNote}</p>
           )}
           {run.errorMessage && <p className="break-words text-destructive">{run.errorMessage}</p>}
+          <RunCoverage progressJson={run.progressJson} />
         </div>
       );
     },

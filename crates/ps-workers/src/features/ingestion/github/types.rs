@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // GraphQL response types
@@ -24,7 +24,7 @@ pub struct GraphQLPrConnection {
 }
 
 /// A pull request as returned by the GraphQL API.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLPr {
     pub number: u32,
     pub title: String,
@@ -56,7 +56,7 @@ pub struct GraphQLPr {
 }
 
 /// A review as returned by the GraphQL API.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLReview {
     #[serde(rename = "databaseId")]
     pub database_id: Option<u64>,
@@ -69,32 +69,37 @@ pub struct GraphQLReview {
 }
 
 /// Connection for inline review comments.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLReviewCommentConnection {
+    #[serde(rename = "pageInfo", default)]
+    pub page_info: Option<GraphQLPageInfo>,
     pub nodes: Vec<GraphQLReviewComment>,
 }
 
 /// An inline review comment (file-level feedback).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLReviewComment {
     pub body: Option<String>,
     pub path: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLReviewConnection {
     #[serde(rename = "pageInfo")]
     pub page_info: GraphQLPageInfo,
+    #[serde(rename = "totalCount", default)]
+    pub total_count: Option<u32>,
+    #[serde(deserialize_with = "review_nodes")]
     pub nodes: Vec<GraphQLReview>,
 }
 
 /// An actor (user) in the GraphQL API — used for PR author and review author.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLActor {
     pub login: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLPageInfo {
     #[serde(rename = "hasNextPage")]
     pub has_next_page: bool,
@@ -102,12 +107,12 @@ pub struct GraphQLPageInfo {
     pub end_cursor: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLLabelConnection {
     pub nodes: Vec<GraphQLLabel>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLLabel {
     pub name: String,
 }
@@ -124,13 +129,14 @@ pub struct GraphQLSearchConnection {
     pub page_info: GraphQLPageInfo,
     #[serde(rename = "issueCount")]
     pub issue_count: Option<u32>,
+    #[serde(deserialize_with = "search_nodes")]
     pub nodes: Vec<GraphQLSearchPr>,
 }
 
 /// A PR node from a GraphQL search query. Fields are optional because search
 /// nodes can be non-PR types (filtered out by the `... on PullRequest` fragment,
 /// which produces empty objects for non-matches).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct GraphQLSearchPr {
     pub number: Option<u32>,
     pub title: Option<String>,
@@ -162,13 +168,15 @@ pub struct GraphQLSearchPr {
     pub reviews: Option<GraphQLReviewConnection>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLSearchRepo {
+    #[serde(rename = "isArchived", default)]
+    pub is_archived: Option<bool>,
     pub name: String,
     pub owner: GraphQLSearchRepoOwner,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GraphQLSearchRepoOwner {
     pub login: String,
 }
@@ -178,7 +186,7 @@ pub struct GraphQLSearchRepoOwner {
 // ---------------------------------------------------------------------------
 
 /// A file changed in a pull request, as returned by `GET /repos/{owner}/{repo}/pulls/{number}/files`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubPrFile {
     pub filename: String,
     pub status: String,
@@ -191,7 +199,7 @@ pub struct GitHubPrFile {
 // ---------------------------------------------------------------------------
 
 /// A GitHub pull request as returned by the REST API.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubPr {
     pub number: u32,
     pub title: String,
@@ -212,7 +220,7 @@ pub struct GitHubPr {
 }
 
 /// A GitHub pull request review.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubReview {
     pub id: u64,
     pub user: GitHubUser,
@@ -222,27 +230,27 @@ pub struct GitHubReview {
 }
 
 /// A GitHub user (embedded in PR/review responses).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubUser {
     pub login: String,
     pub id: u64,
 }
 
 /// A GitHub label.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubLabel {
     pub name: String,
 }
 
 /// A Git reference (head/base branch) on a PR.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubRef {
     #[serde(rename = "ref")]
     pub ref_name: String,
 }
 
 /// A GitHub repository as returned by the org repos endpoint.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubRepo {
     pub name: String,
     pub full_name: String,
@@ -253,13 +261,13 @@ pub struct GitHubRepo {
 }
 
 /// Repository owner info.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubRepoOwner {
     pub login: String,
 }
 
 /// A GitHub team as returned by the org teams endpoint.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubTeam {
     pub id: i64,
     pub slug: String,
@@ -268,9 +276,42 @@ pub struct GitHubTeam {
 }
 
 /// A GitHub repository as returned by the team repos endpoint.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GitHubTeamRepo {
     pub name: String,
     pub owner: GitHubRepoOwner,
     pub archived: Option<bool>,
+}
+
+/// Search may include null nodes and non-PR fragments; invalid nodes must not
+/// prevent ingestion of the valid remainder. Scoped fetch records omissions.
+fn search_nodes<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<GraphQLSearchPr>, D::Error> {
+    let values = Vec::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(values
+        .into_iter()
+        .map(|value| serde_json::from_value(value).unwrap_or_default())
+        .collect())
+}
+
+fn review_nodes<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<GraphQLReview>, D::Error> {
+    let values = Vec::<Option<GraphQLReview>>::deserialize(deserializer)?;
+    Ok(values.into_iter().flatten().collect())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GraphQLReviewData {
+    pub repository: Option<GraphQLReviewRepository>,
+}
+#[derive(Debug, Deserialize)]
+pub struct GraphQLReviewRepository {
+    #[serde(rename = "pullRequest")]
+    pub pull_request: Option<GraphQLReviewPr>,
+}
+#[derive(Debug, Deserialize)]
+pub struct GraphQLReviewPr {
+    pub reviews: GraphQLReviewConnection,
 }

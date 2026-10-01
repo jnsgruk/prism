@@ -16,6 +16,96 @@ pub struct SourceTestContext {
 }
 
 impl SourceTestContext {
+    /// Seed a saved active person without membership and freeze their account.
+    pub async fn with_person_scope(
+        &self,
+        ctx: &mut IngestionContext,
+        username: &str,
+        user_id: Option<&str>,
+        since_date: &str,
+        upper: OffsetDateTime,
+    ) -> ps_core::models::PersonId {
+        use ps_core::ingestion::{
+            IdentitySnapshot, PipelineScope, ProcessingScope, SelectedSource, SourceRunContext,
+        };
+        use ps_core::repo::org::{CreatePersonParams, IdentityInput};
+
+        let person = self
+            .repos
+            .org
+            .create_person(CreatePersonParams {
+                name: username.into(),
+                email: None,
+                level: None,
+                team_id: None,
+                identities: vec![IdentityInput {
+                    platform: ctx.source_config.source_type.clone(),
+                    username: username.into(),
+                    platform_user_id: user_id.map(str::to_owned),
+                }],
+            })
+            .await
+            .expect("create unassigned person");
+        let person_id = person.person.id.into();
+        let identity = person
+            .identities
+            .into_iter()
+            .next()
+            .expect("saved identity");
+        let request = SourceRunContext {
+            pipeline_id: Uuid::now_v7(),
+            scope: PipelineScope::Person { person_id },
+            source: SelectedSource {
+                source_id: ctx.source_config.id,
+                source_name: ctx.source_config.name.clone(),
+                platform: ctx.source_config.source_type.clone(),
+                identity: Some(IdentitySnapshot {
+                    identity_id: identity.id,
+                    person_id,
+                    platform: ctx.source_config.source_type.clone(),
+                    username: identity.platform_username.into(),
+                    platform_user_id: identity.platform_user_id,
+                }),
+            },
+            since_date: Some(since_date.into()),
+            run_started_at: upper,
+            processing: ProcessingScope::Person { person_id },
+        };
+        self.repos
+            .activity
+            .reserve_pipeline(
+                request.pipeline_id,
+                &serde_json::to_value(ps_core::ingestion::PipelineRequest {
+                    scope: request.scope.clone(),
+                    sources: vec![request.source.clone()],
+                    since_date: request.since_date.clone(),
+                    run_started_at: request.run_started_at,
+                    processing: request.processing.clone(),
+                })
+                .unwrap(),
+                Uuid::now_v7(),
+                "test-admin",
+            )
+            .await
+            .expect("reserve test pipeline");
+        let run_id = Uuid::now_v7();
+        self.repos
+            .activity
+            .create_pipeline_run(ps_core::repo::activity::PipelineRunParams {
+                run_id,
+                pipeline_id: request.pipeline_id,
+                source_name: &ps_core::models::SourceName::new(&ctx.source_config.name),
+                handler_name: &ps_core::models::HandlerName::new("test-person-adapter"),
+                method: &ps_core::models::HandlerMethod::new("run_scoped"),
+                invocation_id: "test-invocation",
+            })
+            .await
+            .expect("create owned run");
+        ctx.request = Some(request);
+        ctx.run_id = Some(run_id);
+        person_id
+    }
+
     pub async fn new() -> Self {
         let db = TestDb::new().await;
         let repos = Repos::new(db.pool.clone());
@@ -75,6 +165,7 @@ impl SourceTestContext {
 
         IngestionContext {
             request: None,
+            run_id: None,
             repos: self.repos.clone(),
             source_config,
             http_client,

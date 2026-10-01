@@ -6047,6 +6047,7 @@ dependencies = [
  "ps-server",
  "ps-workers",
  "reqwest 0.13.4",
+ "restate-sdk",
  "serde_json",
  "sqlx",
  "tar",
@@ -6188,6 +6189,8 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
+ "chrono",
+ "chrono-tz",
  "fastrand",
  "futures",
  "kube",

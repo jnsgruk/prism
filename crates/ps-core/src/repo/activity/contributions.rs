@@ -1,7 +1,6 @@
 use crate::Error;
 
 use crate::ingestion::ContributionInput;
-use crate::models::ContributionState;
 use uuid::Uuid;
 
 use super::ActivityRepo;
@@ -14,48 +13,8 @@ impl ActivityRepo {
         person_id: Option<Uuid>,
         item: &ContributionInput,
     ) -> Result<(), Error> {
-        sqlx::query!(
-            r#"
-            INSERT INTO activity.contributions (
-                id, person_id, platform, contribution_type, platform_id,
-                title, url, state, created_at, updated_at, closed_at,
-                metrics, metadata, content, state_history, ingested_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
-            ON CONFLICT (platform, platform_id)
-            DO UPDATE SET
-                person_id = COALESCE(EXCLUDED.person_id, activity.contributions.person_id),
-                title = EXCLUDED.title,
-                url = EXCLUDED.url,
-                state = EXCLUDED.state,
-                updated_at = EXCLUDED.updated_at,
-                closed_at = EXCLUDED.closed_at,
-                metrics = EXCLUDED.metrics,
-                metadata = EXCLUDED.metadata,
-                content = EXCLUDED.content,
-                state_history = EXCLUDED.state_history,
-                ingested_at = now()
-            "#,
-            id,
-            person_id,
-            &*item.platform.as_cow(),
-            item.contribution_type.as_str(),
-            item.platform_id.as_str(),
-            item.title,
-            item.url,
-            item.state.map(ContributionState::as_str),
-            item.created_at,
-            item.updated_at,
-            item.closed_at,
-            item.metrics,
-            item.metadata,
-            item.content,
-            item.state_history,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
+        self.bulk_upsert_contributions(&[id], &[person_id], &[item])
+            .await?;
         Ok(())
     }
 
@@ -68,6 +27,44 @@ impl ActivityRepo {
         ids: &[Uuid],
         person_ids: &[Option<Uuid>],
         items: &[&ContributionInput],
+    ) -> Result<Vec<(Uuid, String)>, Error> {
+        if ids.len() != items.len() || person_ids.len() != items.len() {
+            return Err(Error::Validation(
+                "contribution arrays must have matching lengths".into(),
+            ));
+        }
+        let mut transaction = self.pool.begin().await?;
+        Self::lock_contribution_keys(&mut transaction, items).await?;
+        let rows =
+            Self::bulk_upsert_in_transaction(&mut transaction, ids, person_ids, items, false)
+                .await?;
+        transaction.commit().await?;
+        Ok(rows)
+    }
+
+    pub(super) async fn lock_contribution_keys(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        items: &[&ContributionInput],
+    ) -> Result<(), Error> {
+        let mut keys: Vec<String> = items
+            .iter()
+            .map(|item| format!("{}:{}", item.platform, item.platform_id))
+            .collect();
+        keys.sort();
+        keys.dedup();
+        sqlx::query!(
+            "SELECT pg_advisory_xact_lock(hashtextextended(key, 0)) FROM UNNEST($1::text[]) AS input(key) ORDER BY key",
+            &keys,
+        ).execute(&mut **tx).await?;
+        Ok(())
+    }
+
+    pub(super) async fn bulk_upsert_in_transaction(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        ids: &[Uuid],
+        person_ids: &[Option<Uuid>],
+        items: &[&ContributionInput],
+        scoped: bool,
     ) -> Result<Vec<(Uuid, String)>, Error> {
         if ids.is_empty() {
             return Ok(vec![]);
@@ -128,10 +125,26 @@ impl ActivityRepo {
                 updated_at = EXCLUDED.updated_at,
                 closed_at = EXCLUDED.closed_at,
                 metrics = EXCLUDED.metrics,
-                metadata = EXCLUDED.metadata,
+                metadata = CASE
+                    WHEN NOT $16::boolean AND activity.contributions.metadata->>'event_time_source' = 'discourse_user_action'
+                    THEN EXCLUDED.metadata || jsonb_build_object(
+                        'event_time_source', activity.contributions.metadata->'event_time_source',
+                        'event_created_at', activity.contributions.metadata->'event_created_at',
+                        'user_action_id', activity.contributions.metadata->'user_action_id',
+                        'user_action_type', activity.contributions.metadata->'user_action_type',
+                        'user_action_key', activity.contributions.metadata->'user_action_key',
+                        'post_id', activity.contributions.metadata->'post_id',
+                        'topic_id', activity.contributions.metadata->'topic_id',
+                        'username', activity.contributions.metadata->'username'
+                    )
+                    ELSE EXCLUDED.metadata
+                END,
                 content = EXCLUDED.content,
                 state_history = EXCLUDED.state_history,
                 ingested_at = now()
+            WHERE NOT $16::boolean
+                OR activity.contributions.person_id IS NULL
+                OR activity.contributions.person_id = EXCLUDED.person_id
             RETURNING id, platform_id
             "#,
             ids,
@@ -149,8 +162,9 @@ impl ActivityRepo {
             &metadata_vals as &[&serde_json::Value],
             &contents as &[Option<&str>],
             &state_histories as &[Option<&serde_json::Value>],
+            scoped,
         )
-        .fetch_all(&self.pool)
+        .fetch_all(&mut **tx)
         .await
         .map_err(Error::from)?;
 

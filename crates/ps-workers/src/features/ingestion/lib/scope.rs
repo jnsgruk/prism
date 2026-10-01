@@ -5,10 +5,14 @@ use ps_core::models::SourceConfig;
 use restate_sdk::prelude::TerminalError;
 
 pub(super) fn reject_unavailable_scope(request: &SourceRunContext) -> Result<(), TerminalError> {
-    if !matches!(request.scope, PipelineScope::All) {
-        return Err(TerminalError::new(
-            "person adapters and processing are not available",
-        ));
+    if matches!(request.scope, PipelineScope::Person { .. }) {
+        let source = crate::infra::registry::create_source(&request.source.platform)
+            .ok_or_else(|| TerminalError::new("selected source has no ingestion adapter"))?;
+        if !source.supports_person_backfill() {
+            return Err(TerminalError::new(
+                "selected source does not support person backfill",
+            ));
+        }
     }
     Ok(())
 }
@@ -90,7 +94,7 @@ mod tests {
                 serde_json::from_value(serde_json::to_value(chunk).unwrap()).unwrap();
             assert_eq!(replayed.request.as_ref(), Some(&context));
         }
-        assert!(reject_unavailable_scope(&context).is_err());
+        reject_unavailable_scope(&context).unwrap();
     }
 
     #[test]

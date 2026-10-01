@@ -47,7 +47,7 @@ impl ActivityRepo {
             r#"
             UPDATE activity.ingestion_runs
             SET completed_at = now(), status = 'completed_with_warnings',
-                items_collected = $2, error_message = $3, metadata = $4
+                items_collected = $2, error_message = $3, metadata = COALESCE(metadata, '{}'::jsonb) || $4
             WHERE id = $1 AND completed_at IS NULL AND pipeline_id IS NOT NULL
             "#,
             id,

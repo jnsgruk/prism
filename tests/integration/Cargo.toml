@@ -25,7 +25,7 @@ ps-proto = { path = "../../crates/ps-proto" }
 ps-server = { path = "../../crates/ps-server" }
 ps-workers = { path = "../../crates/ps-workers" }
 ps-metrics = { path = "../../crates/ps-metrics" }
-tokio.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 tokio-stream.workspace = true
 tonic.workspace = true
 prost-types.workspace = true
@@ -43,6 +43,7 @@ tempfile.workspace = true
 wiremock.workspace = true
 reqwest.workspace = true
 async-trait.workspace = true
+restate-sdk.workspace = true
 futures.workspace = true
 ps-reasoning = { path = "../../crates/ps-reasoning" }
 tar = "0.4"

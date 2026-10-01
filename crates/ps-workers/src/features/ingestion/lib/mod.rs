@@ -4,6 +4,7 @@ mod lifecycle;
 mod orchestration;
 mod progress;
 mod scope;
+pub mod scoped_store;
 
 pub use finalise::enqueue_enrichments;
 pub use orchestration::{

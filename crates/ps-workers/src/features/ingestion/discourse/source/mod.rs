@@ -1,4 +1,7 @@
 mod fetch;
+mod inputs;
+mod person;
+mod person_items;
 mod plan;
 mod store;
 
@@ -50,6 +53,10 @@ pub(crate) struct Cursor {
 
 #[async_trait]
 impl Source for DiscourseSource {
+    fn supports_person_backfill(&self) -> bool {
+        true
+    }
+
     fn name(&self) -> &'static str {
         "discourse"
     }
@@ -84,6 +91,14 @@ impl Source for DiscourseSource {
     }
 
     fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String {
+        if let Some(request) = ctx
+            .request
+            .as_ref()
+            .filter(|request| request.scope.person_id().is_some())
+        {
+            return person::initial_cursor(ctx, request);
+        }
+
         let settings = &ctx.source_config.settings;
 
         let base_url = settings

@@ -5,6 +5,10 @@ use super::super::repos;
 use super::{DEFAULT_LOOKBACK_DAYS, build_rest_client, decrypt_token};
 
 pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
+    if super::person::validate(ctx)? {
+        return Ok(super::person::plan(ctx));
+    }
+
     let settings = &ctx.source_config.settings;
 
     let orgs: Vec<String> = settings

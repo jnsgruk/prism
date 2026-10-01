@@ -449,3 +449,6 @@ async fn plan_with_categories() {
 
     ctx.teardown().await;
 }
+
+#[path = "discourse_person.rs"]
+mod person_tests;

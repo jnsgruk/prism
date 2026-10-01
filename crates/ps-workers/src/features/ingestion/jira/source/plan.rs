@@ -6,10 +6,20 @@ use super::DEFAULT_LOOKBACK_DAYS;
 pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, ps_core::Error> {
     let settings = &ctx.source_config.settings;
 
-    let projects: Vec<String> = settings
-        .get("projects")
-        .and_then(|v| serde_json::from_value(v.clone()).ok())
-        .unwrap_or_default();
+    let projects = super::query::configured_projects(settings)?;
+    if let Some(request) = ctx.person_request()? {
+        super::query::validate_person_mode(ctx, request)?;
+        let watermark = request
+            .since_date
+            .as_ref()
+            .map(|date| format!("{date}T00:00:00Z"));
+        return Ok(IngestionPlan {
+            source_name: ctx.source_config.name.clone(),
+            watermark,
+            repos: vec![],
+            items: projects,
+        });
+    }
 
     // Load watermark. If none exists, default to 30 days ago.
     let watermark = ctx
