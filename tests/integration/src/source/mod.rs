@@ -4,5 +4,14 @@ mod github_review_recovery;
 mod jira;
 mod scoped_chunks;
 mod scoped_coordinator;
+mod scoped_enrichment_history;
 mod scoped_policy;
+mod scoped_release;
 mod scoped_storage;
+
+mod ongoing_atomic;
+mod ongoing_diff_recovery;
+mod ongoing_discourse;
+mod ongoing_initial_window;
+mod ongoing_restate;
+mod ongoing_tracking;

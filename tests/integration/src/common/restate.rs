@@ -5,23 +5,17 @@ use std::process::Command;
 use std::time::Duration;
 
 use ps_core::repo::Repos;
-use ps_workers::features::ingestion::github::handler::{
-    GithubIngestionHandler, GithubIngestionHandlerImpl,
-};
-use ps_workers::features::ingestion::jira::handler::{
-    JiraIngestionHandler, JiraIngestionHandlerImpl,
-};
-use ps_workers::features::ingestion::lib::chunk::{
-    ChunkRequest, ChunkResult, IngestionChunkService, IngestionChunkServiceImpl,
-};
+use ps_workers::features::ingestion::lib::chunk::{ChunkRequest, ChunkResult};
 use ps_workers::infra::SharedState;
-use restate_sdk::prelude::{Endpoint, HttpServer};
 use serde_json::Value;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 use zeroize::Zeroizing;
+
+mod runtime;
+use runtime::{docker_url, embedding_response, start_worker};
 
 pub const TEST_SECRET_KEY: [u8; 32] = [71; 32];
 const IMAGE: &str = "docker.io/restatedev/restate:1.6";
@@ -30,6 +24,7 @@ pub struct RestateTestContext {
     pub admin: String,
     pub ingress: String,
     pub client: reqwest::Client,
+    pub provider: wiremock::MockServer,
     container: String,
     worker: Option<JoinHandle<()>>,
     stop_worker: Option<oneshot::Sender<()>>,
@@ -39,6 +34,11 @@ pub struct RestateTestContext {
 
 impl RestateTestContext {
     pub async fn new(repos: Repos) -> Self {
+        let provider = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(embedding_response)
+            .mount(&provider)
+            .await;
         let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
         let worker_port = listener.local_addr().unwrap().port();
         let state = SharedState {
@@ -48,7 +48,7 @@ impl RestateTestContext {
             container_manager: None,
             workspaces_path: None,
         };
-        let (worker, stop_worker) = start_worker(listener, state.clone());
+        let (worker, stop_worker) = start_worker(listener, state.clone(), provider.uri());
         let container = format!("prism-scoped-test-{}", Uuid::now_v7().simple());
         let output = Command::new("docker")
             .args([
@@ -84,6 +84,7 @@ impl RestateTestContext {
                 .timeout(Duration::from_secs(30))
                 .build()
                 .unwrap(),
+            provider,
             container,
             worker: Some(worker),
             stop_worker: Some(stop_worker),
@@ -129,6 +130,61 @@ impl RestateTestContext {
 
     pub async fn send_chunk(&self, request: &ChunkRequest) -> String {
         self.send("process_scoped_chunk", request, None).await
+    }
+
+    pub async fn send_pipeline(
+        &self,
+        id: Uuid,
+        request: &ps_core::ingestion::PipelineRequest,
+    ) -> String {
+        let response = self
+            .client
+            .post(format!(
+                "{}/ScopedIngestionPipelineWorkflow/{id}/run/send",
+                self.ingress
+            ))
+            .json(request)
+            .send()
+            .await
+            .unwrap();
+        let status = response.status();
+        let body: Value = response.json().await.unwrap();
+        assert!(status.is_success(), "pipeline send failed: {status} {body}");
+        body["invocationId"].as_str().unwrap().into()
+    }
+
+    pub async fn cancel_pipeline(&self, id: Uuid) {
+        let response = self
+            .client
+            .post(format!(
+                "{}/ScopedIngestionPipelineWorkflow/{id}/cancel",
+                self.ingress
+            ))
+            .send()
+            .await
+            .unwrap();
+        assert!(
+            response.status().is_success(),
+            "workflow cancellation failed"
+        );
+    }
+
+    pub async fn recover_snapshots(&self) {
+        let response = self
+            .client
+            .post(format!(
+                "{}/SnapshotRefreshHandler/singleton/recover",
+                self.ingress
+            ))
+            .send()
+            .await
+            .unwrap();
+        let status = response.status();
+        let body = response.text().await.unwrap();
+        assert!(
+            status.is_success(),
+            "snapshot recovery failed: {status} {body}"
+        );
     }
 
     pub async fn send_jira_coordinator(
@@ -306,12 +362,15 @@ impl RestateTestContext {
             let _ = stop.send(());
         }
         if let Some(worker) = self.worker.take() {
-            worker.await.unwrap();
+            // Model a process interruption even while a downstream DB write
+            // is blocked; graceful HTTP draining would wait for that write.
+            worker.abort();
+            let _ = worker.await;
         }
         let listener = TcpListener::bind(("0.0.0.0", self.worker_port))
             .await
             .unwrap();
-        let (worker, stop_worker) = start_worker(listener, self.state.clone());
+        let (worker, stop_worker) = start_worker(listener, self.state.clone(), self.provider.uri());
         self.worker = Some(worker);
         self.stop_worker = Some(stop_worker);
     }
@@ -370,44 +429,4 @@ impl Drop for RestateTestContext {
             .args(["rm", "-f", &self.container])
             .output();
     }
-}
-
-fn start_worker(
-    listener: TcpListener,
-    state: SharedState,
-) -> (JoinHandle<()>, oneshot::Sender<()>) {
-    let (stop, stopped) = oneshot::channel();
-    let worker = tokio::spawn(async move {
-        let endpoint = Endpoint::builder()
-            .bind(
-                IngestionChunkServiceImpl {
-                    state: state.clone(),
-                }
-                .serve(),
-            )
-            .bind(
-                JiraIngestionHandlerImpl {
-                    state: state.clone(),
-                }
-                .serve(),
-            )
-            .bind(GithubIngestionHandlerImpl { state }.serve())
-            .build();
-        HttpServer::new(endpoint)
-            .serve_with_cancel(listener, stopped)
-            .await;
-    });
-    (worker, stop)
-}
-
-fn docker_url(container: &str, port: &str) -> String {
-    let output = Command::new("docker")
-        .args(["port", container, port])
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "Docker did not expose {port}");
-    format!(
-        "http://{}",
-        String::from_utf8(output.stdout).unwrap().trim()
-    )
 }
