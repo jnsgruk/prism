@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, directory_id\n            FROM org.people\n            WHERE id = $1\n               OR ($2::text IS NOT NULL AND directory_id = $2)\n               OR ($3::text IS NOT NULL AND lower(btrim(email)) = lower($3))\n            FOR UPDATE\n            ",
+  "query": "\n            SELECT id, directory_id,\n                   lower(btrim(email)) = lower($3) AS email_matches\n            FROM org.people\n            WHERE id = $1\n               OR ($2::text IS NOT NULL AND directory_id = $2)\n               OR ($3::text IS NOT NULL AND lower(btrim(email)) = lower($3))\n            FOR UPDATE\n            ",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,12 @@
             "name": "directory_id"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "email_matches",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -35,8 +41,9 @@
     },
     "nullable": [
       false,
-      true
+      true,
+      null
     ]
   },
-  "hash": "92b4c8376f1af68eb4bca8e35707559047d29fcb8154bb9789272b3c19ef9bff"
+  "hash": "1f76094d8c719f9cab425d05b587a2dc0f797a82301f3d1dde335e63dbbd6538"
 }
