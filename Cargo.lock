@@ -5973,10 +5973,12 @@ dependencies = [
  "kube",
  "opencode-sdk",
  "ps-proto",
+ "reqwest 0.13.4",
  "serde_json",
  "time",
  "tokio",
  "tracing",
+ "wiremock",
 ]
 
 [[package]]

@@ -62,8 +62,12 @@ pub struct ActivePod {
 pub enum PodStatus {
     /// Pod is being created or scheduled.
     Pending,
-    /// Pod is running and ready.
-    Running { pod_ip: String, pod_name: String },
+    /// Pod has a network address (application readiness is checked separately).
+    Running {
+        pod_ip: String,
+        pod_name: String,
+        pod_uid: String,
+    },
     /// Pod has completed or been deleted.
     Gone,
 }
@@ -98,7 +102,7 @@ impl ContainerManager {
     ) -> Result<PodStatus, kube::Error> {
         // Check for existing pod first.
         let status = self.get_pod_status(session_id).await?;
-        if let PodStatus::Running { .. } = &status {
+        if !matches!(status, PodStatus::Gone) {
             return Ok(status);
         }
 
@@ -171,19 +175,27 @@ impl ContainerManager {
                     .name
                     .clone()
                     .unwrap_or_else(|| "unknown".to_string());
-                Ok(PodStatus::Running { pod_ip, pod_name })
+                if pod_ip.is_empty() {
+                    return Ok(PodStatus::Pending);
+                }
+                Ok(PodStatus::Running {
+                    pod_ip,
+                    pod_name,
+                    pod_uid: pod.metadata.uid.clone().unwrap_or_default(),
+                })
             }
             "Pending" => Ok(PodStatus::Pending),
             _ => Ok(PodStatus::Gone),
         }
     }
 
-    /// Poll until the pod for `session_id` reaches the Running phase.
+    /// Poll until the pod has an IP and `OpenCode` answers its health endpoint.
     ///
     /// Returns the pod IP on success, or an error string if the pod
     /// disappears or the 60-second deadline elapses.
     pub async fn wait_for_ready(&self, session_id: &str) -> Result<String, String> {
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_mins(1);
+        let started = tokio::time::Instant::now();
+        let deadline = started + std::time::Duration::from_mins(1);
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
 
         loop {
@@ -192,8 +204,26 @@ impl ContainerManager {
                 return Err("timed out waiting for agent container".into());
             }
 
-            match self.get_pod_status(session_id).await {
-                Ok(PodStatus::Running { pod_ip, .. }) => return Ok(pod_ip),
+            match tokio::time::timeout_at(deadline, self.get_pod_status(session_id))
+                .await
+                .map_err(|_| "timed out checking agent pod status")?
+            {
+                Ok(PodStatus::Running { pod_ip, .. }) => {
+                    info!(
+                        session_id,
+                        elapsed_ms = started.elapsed().as_millis(),
+                        "Agent pod scheduled and running"
+                    );
+                    let http =
+                        crate::readiness::startup_http_client().map_err(|e| e.to_string())?;
+                    crate::readiness::wait_for_opencode(
+                        &http,
+                        &format!("http://{pod_ip}:{}", crate::OPENCODE_PORT),
+                        deadline,
+                    )
+                    .await?;
+                    return Ok(pod_ip);
+                }
                 Ok(PodStatus::Pending) => {}
                 Ok(PodStatus::Gone) => {
                     return Err("agent container failed to start".into());

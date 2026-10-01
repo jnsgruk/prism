@@ -23,4 +23,6 @@ pub struct AgenticQueryRequest {
 pub struct PrepareQueryResponse {
     pub pod_ip: String,
     pub pod_name: String,
+    #[serde(default)]
+    pub pod_uid: String,
 }
