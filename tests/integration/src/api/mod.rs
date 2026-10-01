@@ -8,4 +8,8 @@ pub mod metrics;
 pub mod org;
 mod org_manual;
 pub mod pipeline;
+mod pipeline_admission;
+mod pipeline_ownership;
+mod pipeline_preflight;
+mod pipeline_reconciliation;
 pub mod reasoning;
