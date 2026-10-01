@@ -15,7 +15,10 @@ import type {
 import { ReasoningService } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
 import { transport } from "@ps/api/transport";
 
+import { createWorkspaceFileResolver } from "./workspace-file-resolution";
+
 const client = createClient(ReasoningService, transport);
+const resolveWorkspaceFile = createWorkspaceFileResolver((request) => client.resolveWorkspaceFiles(request));
 
 export const conversationKeys = {
   all: ["conversations"] as const,
@@ -103,12 +106,7 @@ export const useListWorkspaceFiles = (conversationId: string): UseQueryResult<Li
 export const useResolveWorkspaceFile = (conversationId: string, path: string): UseQueryResult<ResolvedWorkspaceFile> =>
   useQuery({
     queryKey: [...conversationKeys.workspaceResolution(conversationId), path],
-    queryFn: async () => {
-      const response = await client.resolveWorkspaceFiles({ conversationId, paths: [path] });
-      const file = response.files.find((entry) => entry.path === path);
-      if (!file) throw new Error("Could not verify file");
-      return file;
-    },
+    queryFn: () => resolveWorkspaceFile(conversationId, path),
     enabled: !!conversationId && !!path,
     staleTime: 30_000,
     retry: false,

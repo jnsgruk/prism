@@ -127,6 +127,23 @@ const NavigationControl = (): React.ReactElement => {
 };
 
 describe("authenticated workspace links", () => {
+  it("batches distinct file checks and deduplicates repeated links", async () => {
+    const links = Array.from({ length: 50 }, (_, index) => `[File ${index}](/workspace/file-${index}.pdf)`);
+    renderContent([...links, "[Again](/workspace/file-0.pdf)"].join(" "));
+    await screen.findByRole("link", { name: "File 49" });
+    expect(screen.getAllByRole("link")).toHaveLength(51);
+    expect(serviceState.resolve).toHaveBeenCalledTimes(1);
+    expect(serviceState.resolve.mock.calls[0]?.[0].paths).toHaveLength(50);
+  });
+
+  it("splits file verification at the RPC batch limit", async () => {
+    renderContent(Array.from({ length: 129 }, (_, index) => `[File ${index}](/workspace/file-${index}.pdf)`).join(" "));
+    await screen.findByRole("link", { name: "File 128" });
+    expect(serviceState.resolve).toHaveBeenCalledTimes(2);
+    expect(serviceState.resolve.mock.calls.map(([request]) => request.paths.length)).toEqual([128, 1]);
+    expect(screen.getAllByRole("link")).toHaveLength(129);
+  });
+
   it("verifies the exact persisted filename, deduplicates checks, saves complete bytes and revokes the URL", async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     renderContent("[Report](/workspace/Activity_Report_2026.pdf) [Again](/workspace/Activity_Report_2026.pdf)");
