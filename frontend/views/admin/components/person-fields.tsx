@@ -24,6 +24,7 @@ export const PersonFields = ({
         required
       />
     </div>
+
     <div className="space-y-2">
       <Label htmlFor="person-email">Email (optional)</Label>
       <Input
@@ -33,10 +34,12 @@ export const PersonFields = ({
         onChange={(e) => onChange({ ...draft, email: e.target.value })}
       />
     </div>
+
     <div className="space-y-2">
       <Label htmlFor="person-level">Level / Title (optional)</Label>
       <Input id="person-level" value={draft.level} onChange={(e) => onChange({ ...draft, level: e.target.value })} />
     </div>
+
     <div className="space-y-2">
       <Label htmlFor="person-team">Team</Label>
       <Select value={draft.teamId} onValueChange={(value) => value !== null && onChange({ ...draft, teamId: value })}>

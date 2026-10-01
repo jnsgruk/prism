@@ -17,6 +17,7 @@ const client = createClient(OrgService, transport);
 
 export const useCreatePerson = (): UseMutationResult<CreatePersonResponse, Error, PersonDraft> => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (draft: PersonDraft) =>
       client.createPerson({
@@ -28,6 +29,7 @@ export const useCreatePerson = (): UseMutationResult<CreatePersonResponse, Error
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
+
       toast.success("Person created");
     },
     onError: (error) => toast.error(error.message),
@@ -50,24 +52,30 @@ const updateIdentity = (
     identityId: account.id,
     username: account.username.trim(),
   };
+
   if (account.platformUserId.trim() !== previousUserId) {
     input.platformUserIdChange = account.platformUserId.trim()
       ? { case: "platformUserId", value: account.platformUserId.trim() }
       : { case: "clearPlatformUserId", value: true };
   }
+
   return client.updatePersonIdentity(input);
 };
 
 export const useSavePerson = (): UseMutationResult<Person, Error, SaveInput> => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ baseline, draft, onProgress }: SaveInput) => {
       let saved = baseline;
+
       const progress = (person?: Person, added?: { key: string; id: string }): void => {
         if (!person) throw new Error("The server did not return the saved person. Refresh and retry.");
+
         saved = person;
         onProgress(person, added);
       };
+
       if (
         draft.name.trim() !== saved.name ||
         draft.email.trim() !== (saved.email ?? "") ||
@@ -81,6 +89,7 @@ export const useSavePerson = (): UseMutationResult<Person, Error, SaveInput> => 
         });
         progress(response.person);
       }
+
       // Saved row IDs drive explicit removals; omitted accounts are never silently replaced.
       for (const identity of baseline.identities) {
         if (!draft.accounts.some((account) => account.id === identity.id)) {
@@ -88,8 +97,10 @@ export const useSavePerson = (): UseMutationResult<Person, Error, SaveInput> => 
           progress(response.person);
         }
       }
+
       for (const account of draft.accounts) {
         const existing = saved.identities.find((identity) => identity.id === account.id);
+
         if (existing) {
           if (
             account.username.trim() !== existing.username ||
@@ -100,23 +111,29 @@ export const useSavePerson = (): UseMutationResult<Person, Error, SaveInput> => 
           }
         } else {
           const response = await client.addPersonIdentity({ personId: saved.id, identity: identityInput(account) });
+
           const added = response.person?.identities.find(
             (identity) => !saved.identities.some((previous) => previous.id === identity.id),
           );
+
           if (!added) throw new Error("The server did not return the new account. Refresh and retry.");
+
           progress(response.person, { key: account.key, id: added.id });
         }
       }
+
       if (draft.teamId !== (saved.teamId ?? "")) {
         if (saved.teamId) {
           await client.removePersonFromTeam({ personId: saved.id, teamId: saved.teamId });
           progress({ ...saved, teamId: undefined, teamName: undefined });
         }
+
         if (draft.teamId) {
           await client.assignPersonToTeam({ personId: saved.id, teamId: draft.teamId });
           progress({ ...saved, teamId: draft.teamId });
         }
       }
+
       return saved;
     },
     onSuccess: () => toast.success("Person saved"),

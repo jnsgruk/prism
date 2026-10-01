@@ -207,17 +207,38 @@ impl OrgRepo {
         // A concurrent manual claim can win the unique constraint. Resolve
         // actual owners and remove unused provisional people in that case.
         sqlx::query!(
-            "DELETE FROM org.people p WHERE p.id = ANY($1) AND NOT EXISTS (SELECT 1 FROM org.platform_identities pi WHERE pi.person_id = p.id)",
+            r#"
+            DELETE FROM org.people p
+            WHERE p.id = ANY($1)
+              AND NOT EXISTS (
+                  SELECT 1 FROM org.platform_identities pi WHERE pi.person_id = p.id
+              )
+            "#,
             &person_ids,
-        ).execute(&mut *tx).await.map_err(Error::from)?;
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         let owners = sqlx::query!(
-            "SELECT platform_username, person_id FROM org.platform_identities WHERE platform = $1 AND platform_username = ANY($2)",
-            platform_str, &usernames,
-        ).fetch_all(&mut *tx).await.map_err(Error::from)?;
+            r#"
+            SELECT platform_username, person_id
+            FROM org.platform_identities
+            WHERE platform = $1 AND platform_username = ANY($2)
+            "#,
+            platform_str,
+            &usernames,
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         for owner in owners {
             map.insert(owner.platform_username, owner.person_id);
         }
+
         tx.commit().await.map_err(Error::from)?;
+
         Ok(map)
     }
 }

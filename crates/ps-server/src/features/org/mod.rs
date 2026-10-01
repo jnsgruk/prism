@@ -62,10 +62,12 @@ impl OrgService for OrgServiceImpl {
         request: Request<LookupJiraAccountsRequest>,
     ) -> Result<Response<LookupJiraAccountsResponse>, Status> {
         crate::common::require_admin(&request)?;
+
         let key = self
             .secret_key
             .as_ref()
             .ok_or_else(|| Status::internal("internal error"))?;
+
         jira_lookup::handle_lookup_jira_accounts(&self.repos, key, request.into_inner()).await
     }
 
@@ -74,6 +76,7 @@ impl OrgService for OrgServiceImpl {
         request: Request<CreatePersonRequest>,
     ) -> Result<Response<CreatePersonResponse>, Status> {
         let _ctx = require_admin(&request)?;
+
         manual::create(&self.repos, request.into_inner()).await
     }
 
@@ -82,6 +85,7 @@ impl OrgService for OrgServiceImpl {
         request: Request<AddPersonIdentityRequest>,
     ) -> Result<Response<AddPersonIdentityResponse>, Status> {
         let _ctx = require_admin(&request)?;
+
         manual::add(&self.repos, request.into_inner()).await
     }
 
@@ -90,6 +94,7 @@ impl OrgService for OrgServiceImpl {
         request: Request<UpdatePersonIdentityRequest>,
     ) -> Result<Response<UpdatePersonIdentityResponse>, Status> {
         let _ctx = require_admin(&request)?;
+
         manual::update(&self.repos, request.into_inner()).await
     }
 
@@ -98,6 +103,7 @@ impl OrgService for OrgServiceImpl {
         request: Request<RemovePersonIdentityRequest>,
     ) -> Result<Response<RemovePersonIdentityResponse>, Status> {
         let _ctx = require_admin(&request)?;
+
         manual::remove(&self.repos, request.into_inner()).await
     }
 

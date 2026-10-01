@@ -80,7 +80,9 @@ impl OrgRepo {
             .parse::<Platform>()
             .map_err(|_| Error::Validation("invalid platform".into()))?
             .to_string();
+
         let mut tx = self.pool.begin().await.map_err(Error::from)?;
+
         // Serialize with manual edits, then recheck protection after remote lookup.
         sqlx::query!(
             "SELECT id FROM org.people WHERE id = $1 FOR UPDATE",
@@ -89,22 +91,36 @@ impl OrgRepo {
         .fetch_one(&mut *tx)
         .await
         .map_err(Error::from)?;
+
         let manual = Management::Manual;
         let protected = sqlx::query_scalar!(
-            r#"SELECT EXISTS (
-                SELECT 1 FROM org.platform_identities WHERE person_id = $1 AND platform = $2 AND management = $3
+            r#"
+            SELECT EXISTS (
+                SELECT 1 FROM org.platform_identities
+                WHERE person_id = $1 AND platform = $2 AND management = $3
                 UNION ALL
-                SELECT 1 FROM org.identity_resolutions WHERE person_id = $1 AND platform = $2 AND status = 'manual'
-            ) AS "protected!""#, person_id, platform, manual as Management
-        ).fetch_one(&mut *tx).await.map_err(Error::from)?;
+                SELECT 1 FROM org.identity_resolutions
+                WHERE person_id = $1 AND platform = $2 AND status = 'manual'
+            ) AS "protected!"
+            "#,
+            person_id,
+            platform,
+            manual as Management,
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         if protected {
             return Err(Error::Conflict(
                 "manual account choice prevents automated resolution".into(),
             ));
         }
+
         let identity_id = Uuid::now_v7();
         let username_lower = platform_username.trim().to_lowercase();
         let imported = Management::Imported;
+
         let result = sqlx::query!(
             r#"
             INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
@@ -123,16 +139,28 @@ impl OrgRepo {
         .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
+
         if result.rows_affected() == 0 {
             return Err(Error::Conflict(
                 "account is manually owned by another person".into(),
             ));
         }
+
         sqlx::query!(
-            "UPDATE org.identity_resolutions SET status = 'resolved', resolved_at = now(), attempted_at = now() WHERE person_id = $1 AND platform = $2",
-            person_id, platform
-        ).execute(&mut *tx).await.map_err(Error::from)?;
+            r#"
+            UPDATE org.identity_resolutions
+            SET status = 'resolved', resolved_at = now(), attempted_at = now()
+            WHERE person_id = $1 AND platform = $2
+            "#,
+            person_id,
+            platform,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         tx.commit().await.map_err(Error::from)?;
+
         Ok(())
     }
 
@@ -164,6 +192,7 @@ impl OrgRepo {
         let platform = platform
             .parse::<Platform>()
             .map_err(|_| Error::Validation("invalid platform".into()))?;
+
         // The legacy override now shares the validated ownership-safe writer.
         self.add_person_identity(
             person_id.into(),
@@ -174,6 +203,7 @@ impl OrgRepo {
             },
         )
         .await?;
+
         Ok(())
     }
 
@@ -210,15 +240,18 @@ impl OrgRepo {
         platforms: &[String],
     ) -> Result<u64, Error> {
         let mut set = tokio::task::JoinSet::new();
+
         for platform in platforms {
             let this = self.clone();
             let platform = platform.clone();
             set.spawn(async move { this.ensure_resolution_rows(&platform).await });
         }
+
         let mut total = 0u64;
         while let Some(result) = set.join_next().await {
             total += result.map_err(|e| Error::Internal(e.to_string()))??;
         }
+
         Ok(total)
     }
 

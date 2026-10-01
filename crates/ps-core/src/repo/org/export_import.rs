@@ -48,6 +48,7 @@ pub(super) async fn wipe_org_data(tx: &mut sqlx::PgConnection) -> Result<(), Err
         .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
+
     Ok(())
 }
 
@@ -163,6 +164,7 @@ pub(super) async fn build_person_maps(
             _ => None,
         })
         .collect();
+
     // A row rejected during person reconciliation must not be rediscovered
     // through a different lookup when wiring its team lead references.
     for (person, resolved) in export.people.iter().zip(resolved) {
@@ -173,6 +175,7 @@ pub(super) async fn build_person_maps(
             maps.names.remove(&person.name);
         }
     }
+
     Ok(maps)
 }
 
@@ -207,6 +210,7 @@ pub(super) async fn wire_team_leads(
             }
         }
     }
+
     Ok(())
 }
 
@@ -221,19 +225,27 @@ pub(super) async fn import_memberships(
         let Some(team_name) = &person.team else {
             continue;
         };
-        let Some(resolved) = resolved else { continue };
+        let Some(resolved) = resolved else {
+            continue;
+        };
         let pid = resolved.id;
 
         let team_id = team_map
             .iter()
             .find(|((name, _), _)| name == team_name)
             .map(|(_, &id)| id);
-        let Some(tid) = team_id else { continue };
+        let Some(tid) = team_id else {
+            continue;
+        };
 
         if !replace && !resolved.created {
             let manual = Management::Manual;
             let existing_manual = sqlx::query_scalar!(
-                "SELECT membership_management = $2 AS \"protected!\" FROM org.people WHERE id = $1",
+                r#"
+                SELECT membership_management = $2 AS "protected!"
+                FROM org.people
+                WHERE id = $1
+                "#,
                 pid,
                 manual as Management,
             )
@@ -264,7 +276,8 @@ pub(super) async fn import_memberships(
             r#"
             UPDATE org.team_memberships
             SET end_date = CURRENT_DATE
-            WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
+            WHERE person_id = $1
+              AND (end_date IS NULL OR end_date > CURRENT_DATE)
             "#,
             pid,
         )
@@ -286,6 +299,7 @@ pub(super) async fn import_memberships(
         .await
         .map_err(Error::from)?;
     }
+
     Ok(())
 }
 
@@ -336,6 +350,7 @@ pub(super) async fn import_github_mappings(
             }
         }
     }
+
     Ok(())
 }
 

@@ -29,16 +29,21 @@ export const AddPersonDialog = ({
 }): React.ReactElement => {
   const [draft, setDraft] = useState(() => personDraft());
   const [validationError, setValidationError] = useState<string>();
+
   const sources = useListSources();
   const createPerson = useCreatePerson();
+
   const handleSubmit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (createPerson.isPending) return;
+
     const error = validatePersonDraft(draft);
     setValidationError(error);
     if (error) return;
+
     createPerson.mutate(draft, { onSuccess: () => onOpenChange(false) });
   };
+
   return (
     <Dialog
       open={open}
