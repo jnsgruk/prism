@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO org.identity_resolutions (person_id,platform,status)\n                    VALUES ($1,$2,$3)\n                    ON CONFLICT (person_id,platform) DO UPDATE\n                    SET status=EXCLUDED.status\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f9fde1340f5444d67261f3ca68687f8e75d34b3a8f7f6a7b4a63d1bffdaee3b"
+}

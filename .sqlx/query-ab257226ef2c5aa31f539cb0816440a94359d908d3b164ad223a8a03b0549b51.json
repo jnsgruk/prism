@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT EXISTS (\n                    SELECT 1 FROM pg_stat_activity\n                    WHERE datname = current_database()\n                      AND pid <> pg_backend_pid()\n                      AND wait_event_type = 'Lock'\n                ) AS \"blocked!\"\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "blocked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ab257226ef2c5aa31f539cb0816440a94359d908d3b164ad223a8a03b0549b51"
+}

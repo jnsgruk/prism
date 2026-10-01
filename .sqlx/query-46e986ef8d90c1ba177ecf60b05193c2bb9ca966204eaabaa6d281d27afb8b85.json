@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth.users (id, username, display_name, password_hash, role)\n        VALUES ($1, 'viewer', 'Viewer', 'unused', 'viewer')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46e986ef8d90c1ba177ecf60b05193c2bb9ca966204eaabaa6d281d27afb8b85"
+}

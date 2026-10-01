@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO org.identity_resolutions (person_id, platform, status)\n        VALUES ($1, 'jira', 'manual')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "30a9a06ed98bbbd5352c8d706bad6fe2721e4c4d3c3c5ef5cdc40ad29e1da77c"
+}

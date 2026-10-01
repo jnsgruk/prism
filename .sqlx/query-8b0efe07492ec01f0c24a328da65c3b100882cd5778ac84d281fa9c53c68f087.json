@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS (\n            SELECT 1\n            FROM org.platform_identities\n            WHERE person_id = $1\n              AND platform = $2\n              AND management = $3\n            UNION ALL\n            SELECT 1\n            FROM org.identity_resolutions\n            WHERE person_id = $1\n              AND platform = $2\n              AND status = $4\n        ) AS \"protected!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "protected!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8b0efe07492ec01f0c24a328da65c3b100882cd5778ac84d281fa9c53c68f087"
+}

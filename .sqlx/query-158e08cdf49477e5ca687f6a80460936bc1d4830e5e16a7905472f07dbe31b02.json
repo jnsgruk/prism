@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS (\n                    SELECT 1\n                    FROM org.people p\n                    WHERE p.membership_management = $1\n                      AND lower(btrim(p.name)) = lower($2)\n                    UNION ALL\n                    SELECT 1\n                    FROM org.platform_identities pi\n                    JOIN UNNEST($3::text[], $4::text[]) AS incoming(platform, username)\n                      ON pi.platform = incoming.platform\n         AND lower(pi.platform_username) = incoming.username\n                    WHERE pi.management = $1\n                ) AS \"needs_repair!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "needs_repair!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "158e08cdf49477e5ca687f6a80460936bc1d4830e5e16a7905472f07dbe31b02"
+}

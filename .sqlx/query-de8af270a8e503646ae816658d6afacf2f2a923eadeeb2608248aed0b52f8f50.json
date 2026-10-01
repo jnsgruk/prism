@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO org.identity_resolutions (person_id, platform, status)\n        SELECT $1, platform, $3\n        FROM UNNEST($2::text[]) AS input(platform)\n        GROUP BY platform\n        ON CONFLICT (person_id, platform) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "de8af270a8e503646ae816658d6afacf2f2a923eadeeb2608248aed0b52f8f50"
+}

@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO org.platform_identities (\n            id, person_id, platform, platform_username, platform_user_id, management\n        )\n        SELECT id, $2, platform, username, user_id, $6\n        FROM UNNEST($1::uuid[], $3::text[], $4::text[], $5::text[])\n            AS input(id, platform, username, user_id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "62f735a83c104d10e256fb4fe3529232e4078498549862e829db49fce15628a7"
+}
