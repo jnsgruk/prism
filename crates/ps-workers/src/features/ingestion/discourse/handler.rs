@@ -4,7 +4,8 @@ use restate_sdk::prelude::*;
 use tracing::info;
 
 use crate::features::ingestion::lib::{
-    IngestionSpec, ProgressTracker, execute_ingestion_chunked, load_ingestion_source_config,
+    IngestionSpec, ProgressTracker, execute_ingestion_chunked, execute_scoped_ingestion,
+    load_ingestion_source_config,
 };
 use crate::infra::SharedState;
 
@@ -28,9 +29,21 @@ pub trait DiscourseIngestionHandler {
 
     /// Run a backfill from a specific date.
     async fn backfill(since_date: String) -> Result<(), TerminalError>;
+
+    async fn run_scoped(
+        request: Json<ps_core::ingestion::SourceRunContext>,
+    ) -> Result<(), TerminalError>;
 }
 
 impl DiscourseIngestionHandler for DiscourseIngestionHandlerImpl {
+    async fn run_scoped(
+        &self,
+        ctx: ObjectContext<'_>,
+        Json(request): Json<ps_core::ingestion::SourceRunContext>,
+    ) -> Result<(), TerminalError> {
+        execute_scoped_ingestion(&ctx, &self.state, &DISCOURSE_SPEC, request).await
+    }
+
     async fn run_ingestion(&self, ctx: ObjectContext<'_>) -> Result<(), TerminalError> {
         let source_type_key = ctx.key().to_string();
         let config =

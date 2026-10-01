@@ -4,22 +4,26 @@
 //! The handler (coordinator) dispatches chunks sequentially via `.call()`,
 //! keeping its own journal minimal (~1 entry per chunk).
 
-use ps_core::ingestion::{ContributionInput, IngestionContext};
+use ps_core::ingestion::ContributionInput;
 use ps_core::models::{Platform, SourceConfig};
 use restate_sdk::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::infra::run_lifecycle::{journaled, journaled_value, terminal_err};
+use crate::infra::run_lifecycle::{
+    ensure_owned_active, journaled_value, register_owned_self, terminal_err,
+};
 use crate::infra::{
     SharedState, decrypt_optional_secret, decrypt_required_secret, load_source_config,
 };
 
-use super::finalise::{diff_rate_limit_sleep_duration, extract_watermark};
-use super::orchestration::{build_ingestion_context, fetch_batch};
-use super::progress::{
-    BatchAction, IngestionSpec, ProgressTracker, SerFetchResult, SkippedDiffAction,
-};
+use super::orchestration::build_ingestion_context;
+use super::progress::{IngestionSpec, ProgressTracker};
+
+mod batch;
+mod fetch_loop;
+
+use fetch_loop::chunk_fetch_store_loop;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +42,8 @@ pub struct ChunkRequest {
     /// Items already stored by previous chunks. Added to this chunk's count
     /// so progress display shows the global total.
     pub items_offset: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request: Option<ps_core::ingestion::SourceRunContext>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,6 +64,10 @@ pub struct ChunkResult {
 pub trait IngestionChunkService {
     async fn process_chunk(request: Json<ChunkRequest>)
     -> Result<Json<ChunkResult>, TerminalError>;
+
+    async fn process_scoped_chunk(
+        request: Json<ChunkRequest>,
+    ) -> Result<Json<ChunkResult>, TerminalError>;
 }
 
 pub struct IngestionChunkServiceImpl {
@@ -65,6 +75,34 @@ pub struct IngestionChunkServiceImpl {
 }
 
 impl IngestionChunkService for IngestionChunkServiceImpl {
+    async fn process_scoped_chunk(
+        &self,
+        ctx: Context<'_>,
+        Json(req): Json<ChunkRequest>,
+    ) -> Result<Json<ChunkResult>, TerminalError> {
+        let request = req
+            .request
+            .as_ref()
+            .ok_or_else(|| TerminalError::new("scoped chunk requires a snapshot"))?;
+        request
+            .validate()
+            .map_err(terminal_err("invalid scoped chunk"))?;
+        super::scope::reject_unavailable_scope(request)?;
+        if req.source_type != request.source.platform {
+            return Err(TerminalError::new("chunk source does not match snapshot"));
+        }
+        register_owned_self!(
+            ctx,
+            self.state.repos,
+            request.pipeline_id,
+            "chunk",
+            Some(req.run_id)
+        );
+        ensure_owned_active!(ctx, self.state.repos, request.pipeline_id)?;
+        let config = load_exact_chunk_config(&ctx, &self.state.repos, request).await?;
+        self.process_chunk_with_config(&ctx, req, config).await
+    }
+
     async fn process_chunk(
         &self,
         ctx: Context<'_>,
@@ -76,6 +114,17 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
 
         // 1. Load source config (journaled).
         let config = load_chunk_source_config(&ctx, &self.state.repos, &source_type_key).await?;
+        self.process_chunk_with_config(&ctx, req, config).await
+    }
+}
+
+impl IngestionChunkServiceImpl {
+    async fn process_chunk_with_config(
+        &self,
+        ctx: &Context<'_>,
+        req: ChunkRequest,
+        config: SourceConfig,
+    ) -> Result<Json<ChunkResult>, TerminalError> {
         let spec = spec_for_source_type(&config.source_type);
 
         // 2. Decrypt secrets (outside ctx.run()).
@@ -94,7 +143,8 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
         };
 
         // 3. Build context + source.
-        let ing_ctx = build_ingestion_context(&self.state, &config, token, email, api_username);
+        let mut ing_ctx = build_ingestion_context(&self.state, &config, token, email, api_username);
+        ing_ctx.request = req.request;
         let source =
             crate::infra::registry::create_source(&config.source_type).ok_or_else(|| {
                 TerminalError::new(format!("unsupported source type: {}", config.source_type))
@@ -104,7 +154,7 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
         // 4. Run the batch-limited fetch-store loop.
         let mut tracker = create_progress_tracker(&config.source_type);
         let (items_stored, cursor, is_complete) = chunk_fetch_store_loop(
-            &ctx,
+            ctx,
             &ing_ctx,
             req.run_id,
             &req.cursor,
@@ -129,194 +179,6 @@ impl IngestionChunkService for IngestionChunkServiceImpl {
 // Batch-limited fetch-store loop (Context<'_> version)
 // ---------------------------------------------------------------------------
 
-/// Best-effort progress update (not journaled).
-macro_rules! chunk_update_progress {
-    ($ing_ctx:expr, $run_id:expr, $global_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
-        let rl = $batch.display_rate_limit.as_ref().or($batch.rate_limit.as_ref());
-        let progress = $tracker.build_progress($cursor, rl);
-        if let Err(e) = $ing_ctx
-            .repos
-            .activity
-            .update_run_progress_detail($run_id, $global_items, &progress)
-            .await
-        {
-            tracing::debug!(error = %e, "failed to update run progress");
-        }
-    }};
-}
-
-/// Best-effort progress update with rate-limit pause info (not journaled).
-///
-/// Like `chunk_update_progress!` but injects a `rate_limit_reset_at` ISO 8601
-/// timestamp so the UI can show "Paused — resumes in Xm" while sleeping.
-macro_rules! chunk_update_progress_with_pause {
-    ($ing_ctx:expr, $run_id:expr, $global_items:expr, $tracker:expr, $cursor:expr, $batch:expr) => {{
-        let rl = $batch.display_rate_limit.as_ref().or($batch.rate_limit.as_ref());
-        let mut progress = $tracker.build_progress($cursor, rl);
-        if let Some(ref rl) = $batch.rate_limit {
-            if let Some(obj) = progress.as_object_mut() {
-                let ts = rl
-                    .reset_at
-                    .format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_default();
-                obj.insert("rate_limit_reset_at".into(), serde_json::json!(ts));
-            }
-        }
-        if let Err(e) = $ing_ctx
-            .repos
-            .activity
-            .update_run_progress_detail($run_id, $global_items, &progress)
-            .await
-        {
-            tracing::debug!(error = %e, "failed to update run progress");
-        }
-    }};
-}
-
-/// Fetch-store loop with a batch limit and `Context<'_>` (service context).
-///
-/// Returns `(items_stored, final_cursor, is_complete)`.
-#[allow(clippy::too_many_arguments)]
-async fn chunk_fetch_store_loop(
-    ctx: &Context<'_>,
-    ing_ctx: &IngestionContext,
-    run_id: Uuid,
-    initial_cursor: &str,
-    watermark_field: ps_core::models::WatermarkField,
-    max_batches: usize,
-    items_offset: i32,
-    tracker: &mut (dyn ProgressTracker + Send),
-) -> Result<(i32, String, bool), TerminalError> {
-    let mut cursor = initial_cursor.to_string();
-    let mut total_items = 0i32;
-    let mut batches = 0u32;
-    let mut last_progress_log = std::time::Instant::now();
-
-    loop {
-        // Step 1: Fetch batch (journaled).
-        let batch: SerFetchResult = {
-            let ic = ing_ctx.clone();
-            let cur = cursor.clone();
-            journaled_value!(ctx, "fetch_batch", [ic, cur], {
-                fetch_batch(&ic, &cur).await?
-            })
-        };
-
-        // Best-effort rate limit warning.
-        if let Some(ref rl) = batch.rate_limit
-            && rl.remaining < 100
-        {
-            tracing::warn!(
-                remaining = rl.remaining,
-                limit = rl.limit,
-                "rate limit pressure"
-            );
-        }
-
-        // Step 2: Compute branching decision (pure function).
-        let action = compute_batch_action(&batch, &cursor, watermark_field);
-
-        // Step 3: Execute.
-        match action {
-            BatchAction::SleepForRateLimit {
-                wait_secs,
-                etag_cursor,
-            } => {
-                if let Some(ref latest) = etag_cursor {
-                    cursor = latest.clone();
-                }
-                tracing::info!(
-                    wait_secs,
-                    "rate limit exhausted, sleeping durably before retry"
-                );
-                let global = items_offset + total_items;
-                chunk_update_progress_with_pause!(
-                    ing_ctx, run_id, global, tracker, &cursor, &batch
-                );
-                ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
-            }
-            BatchAction::Process {
-                item_count,
-                has_watermark,
-                next_cursor,
-                etag_cursor,
-                skipped_diffs,
-            } => {
-                if let Some(ref latest) = etag_cursor {
-                    cursor = latest.clone();
-                }
-
-                if item_count > 0 {
-                    let stored = chunk_store_batch(ctx, ing_ctx, &batch.items).await?;
-                    total_items += stored;
-                    tracker.count_batch(&batch.items, stored);
-                    batches += 1;
-
-                    if has_watermark {
-                        chunk_advance_watermark(
-                            ctx,
-                            ing_ctx,
-                            &cursor,
-                            items_offset + total_items,
-                            watermark_field,
-                        )
-                        .await?;
-                    }
-
-                    tracing::debug!(batch_stored = stored, total_items, "stored batch");
-                }
-
-                // Handle skipped diffs (GitHub REST rate limiting).
-                match skipped_diffs {
-                    SkippedDiffAction::None => {}
-                    SkippedDiffAction::SleepThenRetry { wait_secs } => {
-                        tracing::info!(
-                            wait_secs,
-                            skipped = batch.skipped_diffs.len(),
-                            "sleeping for REST rate limit reset before retrying diffs"
-                        );
-                        let global = items_offset + total_items;
-                        chunk_update_progress_with_pause!(
-                            ing_ctx, run_id, global, tracker, &cursor, &batch
-                        );
-                        ctx.sleep(std::time::Duration::from_secs(wait_secs)).await?;
-                        chunk_retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
-                            .await?;
-                    }
-                    SkippedDiffAction::RetryOnly => {
-                        chunk_retry_skipped_diffs(ctx, ing_ctx, &batch.items, &batch.skipped_diffs)
-                            .await?;
-                    }
-                }
-
-                let global = items_offset + total_items;
-                chunk_update_progress!(ing_ctx, run_id, global, tracker, &cursor, &batch);
-
-                if last_progress_log.elapsed() >= std::time::Duration::from_mins(1) {
-                    tracing::info!(total_items, batches, "progress");
-                    last_progress_log = std::time::Instant::now();
-                }
-
-                let Some(nc) = next_cursor else {
-                    // End of data — return complete.
-                    return Ok((total_items, cursor, true));
-                };
-                cursor = nc;
-
-                // Check batch limit.
-                if batches >= max_batches as u32 {
-                    tracing::info!(batches, total_items, "chunk batch limit reached");
-                    return Ok((total_items, cursor, false));
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Context<'_> wrapper functions
-// ---------------------------------------------------------------------------
-
 /// Load source config inside a journaled `ctx.run()` (service context variant).
 async fn load_chunk_source_config(
     ctx: &Context<'_>,
@@ -330,230 +192,6 @@ async fn load_chunk_source_config(
             .await
             .map_err(TerminalError::new)?
     }))
-}
-
-/// Store a batch inside a journaled `ctx.run()` (service context variant).
-async fn chunk_store_batch(
-    ctx: &Context<'_>,
-    ing_ctx: &IngestionContext,
-    items: &[ContributionInput],
-) -> Result<i32, TerminalError> {
-    let ic = ing_ctx.clone();
-    let items = items.to_vec();
-
-    #[allow(clippy::cast_possible_wrap)]
-    Ok(journaled_value!(ctx, "store_batch", [ic, items], {
-        let src = crate::infra::registry::create_source(&ic.source_config.source_type)
-            .ok_or_else(|| TerminalError::new("source unavailable"))?;
-        src.store_batch(&ic, &items)
-            .await
-            .map_err(terminal_err("store failed"))? as i32
-    }))
-}
-
-/// Advance the watermark inside a journaled `ctx.run()` (service context variant).
-async fn chunk_advance_watermark(
-    ctx: &Context<'_>,
-    ing_ctx: &IngestionContext,
-    cursor: &str,
-    total_items: i32,
-    watermark_field: ps_core::models::WatermarkField,
-) -> Result<(), TerminalError> {
-    let ic = ing_ctx.clone();
-    let wm = cursor.to_string();
-
-    journaled!(ctx, "advance_watermark", [ic, wm], {
-        let src = crate::infra::registry::create_source(&ic.source_config.source_type)
-            .ok_or_else(|| TerminalError::new("source unavailable"))?;
-        let watermark = extract_watermark(&wm, watermark_field).unwrap_or_default();
-        src.advance_watermark(&ic, &watermark, total_items)
-            .await
-            .map_err(terminal_err("advance failed"))?;
-    });
-
-    Ok(())
-}
-
-/// Retry skipped PR diffs (service context variant).
-///
-/// Re-fetches diffs that were skipped due to REST rate limiting, then
-/// re-enqueues affected contributions for enrichment with updated content.
-async fn chunk_retry_skipped_diffs(
-    ctx: &Context<'_>,
-    ing_ctx: &IngestionContext,
-    original_items: &[ContributionInput],
-    skipped: &[ps_core::ingestion::SkippedDiff],
-) -> Result<(), TerminalError> {
-    let token = ing_ctx.token.as_deref().unwrap_or("");
-    if token.is_empty() {
-        return Ok(());
-    }
-
-    let api_base = ing_ctx
-        .source_config
-        .settings
-        .get("base_url")
-        .and_then(|v| v.as_str())
-        .unwrap_or("https://api.github.com");
-
-    let client = crate::features::ingestion::github::client::GitHubClient::new(
-        ing_ctx.http_client.clone(),
-        api_base,
-        token,
-    );
-
-    let mut updated_items: Vec<(String, serde_json::Value)> = Vec::new();
-
-    for sd in skipped {
-        match crate::features::ingestion::github::source::fetch::fetch_single_pr_diff(
-            &client,
-            &sd.owner,
-            &sd.repo,
-            sd.pr_number,
-        )
-        .await
-        {
-            crate::features::ingestion::github::source::fetch::DiffFetchResult::Ok(diff_text) => {
-                if let Some(item) = original_items.get(sd.item_index)
-                    && let Some(ref enrichment) = item.enrichment_content
-                {
-                    let mut content = enrichment.clone();
-                    if let Some(obj) = content.as_object_mut() {
-                        obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
-                    }
-                    updated_items.push((item.platform_id.to_string(), content));
-                }
-            }
-            crate::features::ingestion::github::source::fetch::DiffFetchResult::RateLimited(_) => {
-                tracing::warn!(
-                    remaining = skipped.len() - updated_items.len(),
-                    "diff retry also hit rate limit, skipping remaining"
-                );
-                break;
-            }
-            crate::features::ingestion::github::source::fetch::DiffFetchResult::Failed => {}
-        }
-    }
-
-    if updated_items.is_empty() {
-        return Ok(());
-    }
-
-    let repos = ing_ctx.repos.clone();
-    let items_for_closure = updated_items.clone();
-
-    let result = ctx
-        .run(|| {
-            let repos = repos.clone();
-            let items = items_for_closure.clone();
-            async move {
-                let platform_ids: Vec<String> = items.iter().map(|(pid, _)| pid.clone()).collect();
-                let id_pairs = repos
-                    .activity
-                    .get_contribution_ids_by_platform_ids("github", &platform_ids)
-                    .await
-                    .map_err(terminal_err("db error"))?;
-
-                let content_by_pid: std::collections::HashMap<&str, &serde_json::Value> = items
-                    .iter()
-                    .map(|(pid, content)| (pid.as_str(), content))
-                    .collect();
-
-                let entries: Vec<ps_core::repo::reasoning::EnrichmentQueueEntry> = id_pairs
-                    .iter()
-                    .filter_map(|(contribution_id, platform_id)| {
-                        let content = content_by_pid.get(platform_id.as_str())?;
-                        Some(ps_core::repo::reasoning::EnrichmentQueueEntry {
-                            contribution_id: *contribution_id,
-                            content: (*content).clone(),
-                            content_hash: ps_core::repo::reasoning::content_hash(content),
-                        })
-                    })
-                    .collect();
-
-                if !entries.is_empty() {
-                    repos
-                        .reasoning
-                        .bulk_enqueue_enrichments(&entries)
-                        .await
-                        .map_err(terminal_err("enqueue error"))?;
-                }
-
-                #[allow(clippy::cast_possible_wrap)]
-                Ok(Json::from(entries.len() as i32))
-            }
-        })
-        .name("retry_diff_enqueue")
-        .await;
-
-    match result {
-        Ok(count) => {
-            let re_enqueued = count.into_inner();
-            tracing::info!(
-                fetched = updated_items.len(),
-                re_enqueued,
-                "retried skipped diffs"
-            );
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "failed to re-enqueue retried diffs");
-        }
-    }
-
-    Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Compute the branching decision from a fetch result (pure function).
-///
-/// Duplicated from `orchestration::compute_batch_action` because that function
-/// is private. The logic must stay in sync.
-fn compute_batch_action(
-    batch: &SerFetchResult,
-    cursor: &str,
-    watermark_field: ps_core::models::WatermarkField,
-) -> BatchAction {
-    let etag_cursor = batch.etag.clone();
-
-    if batch.items.is_empty()
-        && batch.next_cursor.is_some()
-        && let Some(ref rl) = batch.rate_limit
-        && rl.remaining == 0
-    {
-        let wait = diff_rate_limit_sleep_duration(rl);
-        return BatchAction::SleepForRateLimit {
-            wait_secs: wait.as_secs(),
-            etag_cursor,
-        };
-    }
-
-    let effective_cursor = etag_cursor.as_deref().unwrap_or(cursor);
-    let has_watermark =
-        extract_watermark(effective_cursor, watermark_field).is_some_and(|wm| !wm.is_empty());
-
-    let skipped_diffs = if batch.skipped_diffs.is_empty() {
-        SkippedDiffAction::None
-    } else if let Some(ref rl) = batch.rate_limit
-        && rl.remaining == 0
-    {
-        let wait = diff_rate_limit_sleep_duration(rl);
-        SkippedDiffAction::SleepThenRetry {
-            wait_secs: wait.as_secs(),
-        }
-    } else {
-        SkippedDiffAction::RetryOnly
-    };
-
-    BatchAction::Process {
-        item_count: batch.items.len(),
-        has_watermark,
-        next_cursor: batch.next_cursor.clone(),
-        etag_cursor,
-        skipped_diffs,
-    }
 }
 
 /// Look up the `IngestionSpec` for a source type.
@@ -647,4 +285,30 @@ impl ProgressTracker for GenericProgressTracker {
             "items_fetched": self.items,
         })
     }
+}
+
+async fn load_exact_chunk_config(
+    ctx: &Context<'_>,
+    repos: &ps_core::repo::Repos,
+    request: &ps_core::ingestion::SourceRunContext,
+) -> Result<SourceConfig, TerminalError> {
+    let repos = repos.clone();
+    let selected = request.source.clone();
+    Ok(journaled_value!(
+        ctx,
+        "load_exact_config",
+        [repos, selected],
+        {
+            let config = repos
+                .config
+                .get_source(selected.source_id.into_inner())
+                .await
+                .map_err(terminal_err("failed to load source"))?
+                .ok_or_else(|| TerminalError::new("selected source no longer exists"))?;
+            if config.source_type != selected.platform || config.name != selected.source_name {
+                return Err(TerminalError::new("selected source identity changed").into());
+            }
+            config
+        }
+    ))
 }

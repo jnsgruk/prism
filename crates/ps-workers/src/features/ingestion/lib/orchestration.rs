@@ -3,16 +3,22 @@ use ps_core::models::SourceConfig;
 use restate_sdk::prelude::*;
 
 use crate::infra::run_lifecycle::{
-    complete_run, complete_run_with_warnings, create_run, fail_run, journaled, journaled_value,
+    create_owned_run, ensure_owned_active, journaled, journaled_value, register_owned_invocation,
     terminal_err,
 };
 use crate::infra::{
     SharedState, decrypt_optional_secret, decrypt_required_secret, load_source_config,
 };
 
+use super::lifecycle::{
+    IngestionRun, RunWarnings, complete_ingestion_run_with_warnings, create_ingestion_run,
+    fail_ingestion_run,
+};
+
 use super::chunk::{ChunkRequest, IngestionChunkServiceClient};
 use super::finalise::{extract_failed_items, extract_watermark, finalise_run};
 use super::progress::{IngestionSpec, SerFetchResult};
+use super::scope::{reject_unavailable_scope, validate_selected_config};
 
 /// Load a source config inside a Restate `ctx.run()` closure.
 pub async fn load_ingestion_source_config(
@@ -52,6 +58,47 @@ pub async fn execute_ingestion_chunked(
     chunk_size: usize,
     trigger_downstream: impl FnOnce(&ObjectContext<'_>),
 ) -> Result<(), TerminalError> {
+    execute_ingestion(
+        ctx,
+        state,
+        IngestionArgs {
+            spec,
+            source_name,
+            config,
+            override_watermark,
+            chunk_size,
+            trigger_downstream,
+            request: None,
+        },
+    )
+    .await
+}
+
+struct IngestionArgs<'a, F> {
+    spec: &'a IngestionSpec,
+    source_name: &'a str,
+    config: &'a SourceConfig,
+    override_watermark: Option<String>,
+    chunk_size: usize,
+    trigger_downstream: F,
+    request: Option<ps_core::ingestion::SourceRunContext>,
+}
+
+#[allow(clippy::too_many_lines)]
+async fn execute_ingestion(
+    ctx: &ObjectContext<'_>,
+    state: &SharedState,
+    args: IngestionArgs<'_, impl FnOnce(&ObjectContext<'_>)>,
+) -> Result<(), TerminalError> {
+    let IngestionArgs {
+        spec,
+        source_name,
+        config,
+        override_watermark,
+        chunk_size,
+        trigger_downstream,
+        request,
+    } = args;
     let start = std::time::Instant::now();
 
     let source = crate::infra::registry::create_source(&config.source_type).ok_or_else(|| {
@@ -63,19 +110,32 @@ pub async fn execute_ingestion_chunked(
     } else {
         "run_ingestion"
     };
-    let run_id =
-        create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?;
+    let run_id = if let Some(ref request) = request {
+        ensure_owned_active!(ctx, state.repos, request.pipeline_id)?;
+        create_owned_run!(
+            ctx,
+            state.repos,
+            request.pipeline_id,
+            source_name,
+            spec.handler_name,
+            method
+        )
+    } else {
+        create_ingestion_run(ctx, &state.repos, source_name, spec.handler_name, method).await?
+    };
 
-    let invocation_id = ctx.invocation_id().to_string();
-    let repos = state.repos.clone();
-    let sn = source_name.to_string();
-    journaled!(ctx, "set_invocation_id", [repos, sn, invocation_id], {
-        repos
-            .activity
-            .set_current_invocation_id(&sn, &invocation_id)
-            .await
-            .map_err(terminal_err("failed to set invocation ID"))?;
-    });
+    if request.is_none() {
+        let invocation_id = ctx.invocation_id().to_string();
+        let repos = state.repos.clone();
+        let sn = source_name.to_string();
+        journaled!(ctx, "set_invocation_id", [repos, sn, invocation_id], {
+            repos
+                .activity
+                .set_current_invocation_id(&sn, &invocation_id)
+                .await
+                .map_err(terminal_err("failed to set invocation ID"))?;
+        });
+    }
 
     let span = tracing::info_span!(
         "handler",
@@ -102,7 +162,8 @@ pub async fn execute_ingestion_chunked(
         None => None,
     };
 
-    let ing_ctx = build_ingestion_context(state, config, token, email, api_username);
+    let mut ing_ctx = build_ingestion_context(state, config, token, email, api_username);
+    ing_ctx.request = request.clone();
 
     // Journal the plan. plan() reads watermarks and (for GitHub) the
     // team-repos list from the DB — both can change between replays,
@@ -122,7 +183,17 @@ pub async fn execute_ingestion_chunked(
     let mut plan = match plan_result {
         Ok(p) => p,
         Err(e) => {
-            fail_ingestion_run(ctx, &state.repos, run_id, source_name, &e).await;
+            fail_ingestion_run(
+                ctx,
+                &state.repos,
+                IngestionRun {
+                    id: run_id,
+                    source_name,
+                    owned: request.is_some(),
+                },
+                &e,
+            )
+            .await;
             return Err(TerminalError::new(format!("plan failed: {e}")));
         }
     };
@@ -142,6 +213,9 @@ pub async fn execute_ingestion_chunked(
     let mut chunk_error: Option<String> = None;
 
     loop {
+        if let Some(ref request) = request {
+            ensure_owned_active!(ctx, state.repos, request.pipeline_id)?;
+        }
         chunk_num += 1;
         tracing::info!(chunk = chunk_num, "dispatching chunk");
 
@@ -151,13 +225,35 @@ pub async fn execute_ingestion_chunked(
             run_id,
             max_batches: chunk_size,
             items_offset: total_items,
+            request: request.clone(),
         };
 
-        let chunk_result = ctx
-            .service_client::<IngestionChunkServiceClient>()
-            .process_chunk(Json(request))
-            .call()
-            .await;
+        let chunk_result = if let Some(snapshot) = request.request.as_ref() {
+            let pipeline_id = snapshot.pipeline_id;
+            let call = ctx
+                .service_client::<IngestionChunkServiceClient>()
+                .process_scoped_chunk(Json(request))
+                .header(
+                    "x-prism-parent-invocation".into(),
+                    ctx.invocation_id().to_string(),
+                )
+                .call();
+            let handle = call.invocation_handle().await?;
+            register_owned_invocation!(
+                ctx,
+                state.repos,
+                pipeline_id,
+                handle,
+                "chunk",
+                Some(run_id)
+            );
+            call.await
+        } else {
+            ctx.service_client::<IngestionChunkServiceClient>()
+                .process_chunk(Json(request))
+                .call()
+                .await
+        };
 
         match chunk_result {
             Ok(json) => {
@@ -185,22 +281,47 @@ pub async fn execute_ingestion_chunked(
         }
     }
 
+    if let Some(ref request) = request {
+        ensure_owned_active!(ctx, state.repos, request.pipeline_id)?;
+    }
+
     // Always finalise the run, even if a chunk failed.
     if let Some(ref error_msg) = chunk_error {
         if total_items > 0 {
-            let metadata = serde_json::json!({ "chunk_error": error_msg });
+            let metadata = if request.is_some() {
+                serde_json::json!({"chunk_error":"A chunk failed after partial ingestion"})
+            } else {
+                serde_json::json!({"chunk_error":error_msg})
+            };
             complete_ingestion_run_with_warnings(
                 ctx,
                 &state.repos,
                 run_id,
                 source_name,
-                total_items,
-                error_msg,
-                metadata,
+                RunWarnings {
+                    items_collected: total_items,
+                    error_summary: if request.is_some() {
+                        "A chunk failed after partial ingestion"
+                    } else {
+                        error_msg
+                    },
+                    metadata,
+                    owned: request.is_some(),
+                },
             )
             .await;
         } else {
-            fail_ingestion_run(ctx, &state.repos, run_id, source_name, error_msg).await;
+            fail_ingestion_run(
+                ctx,
+                &state.repos,
+                IngestionRun {
+                    id: run_id,
+                    source_name,
+                    owned: request.is_some(),
+                },
+                error_msg,
+            )
+            .await;
         }
         return Err(TerminalError::new(error_msg.clone()));
     }
@@ -249,61 +370,8 @@ pub fn build_ingestion_context(
         token,
         email,
         api_username,
+        request: None,
     }
-}
-
-/// Create an ingestion run record inside a Restate `ctx.run()` closure.
-pub(super) async fn create_ingestion_run(
-    ctx: &ObjectContext<'_>,
-    repos: &ps_core::repo::Repos,
-    source_name: &str,
-    handler_name: &str,
-    method: &str,
-) -> Result<uuid::Uuid, TerminalError> {
-    create_run!(ctx, repos, source_name, handler_name, method)
-}
-
-/// Mark a run as complete inside a Restate `ctx.run()` closure.
-pub(super) async fn complete_ingestion_run(
-    ctx: &ObjectContext<'_>,
-    repos: &ps_core::repo::Repos,
-    run_id: uuid::Uuid,
-    source_name: &str,
-    items_collected: i32,
-) {
-    complete_run!(ctx, repos, run_id, source_name, items_collected);
-}
-
-/// Mark a run as completed with warnings inside a Restate `ctx.run()` closure.
-pub(super) async fn complete_ingestion_run_with_warnings(
-    ctx: &ObjectContext<'_>,
-    repos: &ps_core::repo::Repos,
-    run_id: uuid::Uuid,
-    source_name: &str,
-    items_collected: i32,
-    error_summary: &str,
-    metadata: serde_json::Value,
-) {
-    complete_run_with_warnings!(
-        ctx,
-        repos,
-        run_id,
-        source_name,
-        items_collected,
-        error_summary,
-        metadata
-    );
-}
-
-/// Mark a run as failed inside a Restate `ctx.run()` closure.
-pub(super) async fn fail_ingestion_run(
-    ctx: &ObjectContext<'_>,
-    repos: &ps_core::repo::Repos,
-    run_id: uuid::Uuid,
-    source_name: &str,
-    error_msg: &str,
-) {
-    fail_run!(ctx, repos, run_id, source_name, error_msg);
 }
 
 /// Fetch a batch — NOT called inside `ctx.run()` directly, but used
@@ -353,4 +421,46 @@ pub async fn advance_watermark(
     });
 
     Ok(())
+}
+
+/// Versioned coordinator path consumes the admitted source and identity snapshot.
+pub async fn execute_scoped_ingestion(
+    ctx: &ObjectContext<'_>,
+    state: &SharedState,
+    spec: &IngestionSpec,
+    request: ps_core::ingestion::SourceRunContext,
+) -> Result<(), TerminalError> {
+    reject_unavailable_scope(&request)?;
+    request
+        .validate()
+        .map_err(terminal_err("invalid scoped ingestion request"))?;
+    ensure_owned_active!(ctx, state.repos, request.pipeline_id)?;
+    let repos = state.repos.clone();
+    let selected = request.source.clone();
+    let config = journaled_value!(ctx, "load_exact_source", [repos, selected], {
+        let config = repos
+            .config
+            .get_source(selected.source_id.into_inner())
+            .await
+            .map_err(terminal_err("failed to load exact source"))?
+            .ok_or_else(|| TerminalError::new("selected source no longer exists"))?;
+        validate_selected_config(&config, &selected)?;
+        config
+    });
+    let source_name = config.name.clone();
+    let watermark = request.since_date.clone();
+    execute_ingestion(
+        ctx,
+        state,
+        IngestionArgs {
+            spec,
+            source_name: &source_name,
+            config: &config,
+            override_watermark: watermark,
+            chunk_size: 50,
+            trigger_downstream: |_ctx: &ObjectContext<'_>| {},
+            request: Some(request),
+        },
+    )
+    .await
 }
