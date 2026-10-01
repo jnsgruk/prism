@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id, p.name, p.email, p.level, p.active,\n               tm.team_id AS \"team_id?\", t.name AS \"team_name?\"\n        FROM org.people p\n        LEFT JOIN org.team_memberships tm ON tm.person_id = p.id\n            AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n        LEFT JOIN org.teams t ON t.id = tm.team_id\n        WHERE p.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "level",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "active"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "team_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.team_memberships",
+            "name": "team_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "team_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.teams",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "1e1e05d18aba0c356239ad30312f623a0eec57a531518dd0d6bd2e832e4d33c0"
+}

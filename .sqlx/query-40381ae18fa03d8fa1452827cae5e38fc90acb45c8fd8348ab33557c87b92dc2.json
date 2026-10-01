@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM org.people p\n            WHERE p.id = ANY($1)\n              AND NOT EXISTS (\n                  SELECT 1 FROM org.platform_identities pi WHERE pi.person_id = p.id\n              )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "40381ae18fa03d8fa1452827cae5e38fc90acb45c8fd8348ab33557c87b92dc2"
+}

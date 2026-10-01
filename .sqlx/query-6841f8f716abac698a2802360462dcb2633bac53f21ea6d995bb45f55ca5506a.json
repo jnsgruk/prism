@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE org.identity_resolutions\n            SET status = 'resolved', resolved_at = now(), attempted_at = now()\n            WHERE person_id = $1 AND platform = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6841f8f716abac698a2802360462dcb2633bac53f21ea6d995bb45f55ca5506a"
+}

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE org.people\n        SET name = $1,\n            email = $2,\n            level = $3,\n            directory_id = COALESCE(directory_id, $4),\n            last_import_at = now(),\n            updated_at = now()\n        WHERE id = $5\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3fe0b25f16aa630491cb375a00f18bc4942657b05c9a383aa49c537cca033ab8"
+}

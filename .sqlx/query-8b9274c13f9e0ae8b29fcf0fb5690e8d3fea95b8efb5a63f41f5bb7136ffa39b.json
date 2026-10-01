@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT platform, platform_username, platform_user_id\n            FROM org.platform_identities\n            WHERE id = $1 AND person_id = $2\n            FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "platform",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.platform_identities",
+            "name": "platform"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "platform_username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.platform_identities",
+            "name": "platform_username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "platform_user_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.platform_identities",
+            "name": "platform_user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8b9274c13f9e0ae8b29fcf0fb5690e8d3fea95b8efb5a63f41f5bb7136ffa39b"
+}
