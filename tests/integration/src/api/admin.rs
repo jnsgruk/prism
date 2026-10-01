@@ -260,13 +260,59 @@ async fn reset_data_requires_confirm() {
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn reset_data_clears_contributions() {
+async fn reset_data_clears_contributions_and_owned_pipeline_runs() {
     let ctx = ApiTestContext::new().await;
     let server = &ctx.server;
 
-    let (_, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
+    let (caller, token) = crate::common::fixtures::create_admin_user(&server.pool).await;
     let repos = ps_core::repo::Repos::new(server.pool.clone());
     let mut client = AdminServiceClient::new(server.channel.clone());
+
+    let pipeline_id = uuid::Uuid::now_v7();
+    let run_id = uuid::Uuid::now_v7();
+    let source = ps_core::models::SourceName::from("GitHub");
+    let handler = ps_core::models::HandlerName::from("GithubIngestionHandler");
+    let method = ps_core::models::HandlerMethod::from("run_scoped");
+    repos
+        .activity
+        .reserve_pipeline(
+            pipeline_id,
+            &serde_json::json!({"scope": {"kind": "all"}}),
+            caller,
+            "admin",
+        )
+        .await
+        .unwrap();
+    assert!(
+        repos
+            .activity
+            .create_pipeline_run(ps_core::repo::activity::PipelineRunParams {
+                run_id,
+                source_name: &source,
+                handler_name: &handler,
+                method: &method,
+                pipeline_id,
+                invocation_id: "inv_reset_owned",
+            })
+            .await
+            .unwrap()
+    );
+    repos
+        .activity
+        .complete_pipeline_run(run_id, 3)
+        .await
+        .unwrap();
+    repos
+        .activity
+        .finish_owned_pipeline(ps_core::repo::activity::PipelineFinishParams {
+            pipeline_id,
+            status: "completed",
+            stages: &serde_json::json!({}),
+            error: None,
+            parent_run_id: None,
+        })
+        .await
+        .unwrap();
 
     // Seed some data
     let person_id = uuid::Uuid::now_v7();
@@ -313,6 +359,15 @@ async fn reset_data_clears_contributions() {
 
     assert!(resp.contributions_deleted >= 1);
     assert!(resp.people_deleted >= 1);
+    assert!(repos.activity.get_run(run_id).await.unwrap().is_none());
+    assert_eq!(
+        repos
+            .activity
+            .list_pipeline_invocation_ids(pipeline_id)
+            .await
+            .unwrap(),
+        vec!["inv_reset_owned"]
+    );
 
     ctx.teardown().await;
 }
