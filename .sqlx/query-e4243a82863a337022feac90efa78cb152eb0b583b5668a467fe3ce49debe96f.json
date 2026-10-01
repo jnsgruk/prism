@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE reasoning.enrichment_queue SET content=$2,content_hash=$3 WHERE contribution_id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e4243a82863a337022feac90efa78cb152eb0b583b5668a467fe3ce49debe96f"
+}

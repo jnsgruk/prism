@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT eq.contribution_id FROM reasoning.enrichment_queue eq\n            WHERE EXISTS (\n                SELECT 1 FROM activity.contributions c\n                WHERE c.id = eq.contribution_id\n                AND CASE c.contribution_type\n                    WHEN 'pr_review' THEN\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'review_depth' AND e.source_content_hash = eq.content_hash)\n                        AND EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'sentiment' AND e.source_content_hash = eq.content_hash)\n                    WHEN 'pull_request' THEN\n                        -- Either already enriched, or ineligible (<=50 lines changed)\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'significance' AND e.source_content_hash = eq.content_hash)\n                        OR COALESCE((c.metrics->>'additions')::int + (c.metrics->>'deletions')::int, 0) <= 50\n                    WHEN 'discourse_topic' THEN\n                        EXISTS (SELECT 1 FROM reasoning.enrichments e WHERE e.contribution_id = c.id AND e.enrichment_type = 'topic' AND e.source_content_hash = eq.content_hash)\n                    ELSE TRUE\n                END\n            )\n            ORDER BY eq.contribution_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "reasoning.enrichment_queue",
+            "name": "contribution_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1f452f0c8d7be010e697d9a297307dc2eb91a887d12e812901a09dd764a94ef3"
+}

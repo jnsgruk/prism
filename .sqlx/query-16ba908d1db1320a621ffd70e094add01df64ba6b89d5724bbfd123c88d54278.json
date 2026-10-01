@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT source_content_hash FROM reasoning.enrichments WHERE contribution_id=$1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "source_content_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.enrichments",
+            "name": "source_content_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "16ba908d1db1320a621ffd70e094add01df64ba6b89d5724bbfd123c88d54278"
+}
