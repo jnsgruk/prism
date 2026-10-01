@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE org.platform_identities SET platform_username = 'renamed' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a03d5278b975bb87bed66452889d4ea429f66dcb4bf54dff35af3fff5e8b385c"
+}

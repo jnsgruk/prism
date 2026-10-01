@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT watermark_value, items_collected_last_run, last_successful_run FROM activity.ingestion_watermarks",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "watermark_value",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_watermarks",
+            "name": "watermark_value"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "items_collected_last_run",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_watermarks",
+            "name": "items_collected_last_run"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "last_successful_run",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_watermarks",
+            "name": "last_successful_run"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "cad577c73dc0aaad013a81a74de0871b0ce736568d4e5c867db47ccef95e72b5"
+}

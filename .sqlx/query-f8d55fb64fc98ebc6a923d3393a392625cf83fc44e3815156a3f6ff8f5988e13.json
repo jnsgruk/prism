@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT previous_created_at, current_created_at, affected_periods, contribution_id, source_id, run_id FROM activity.contribution_changes",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "previous_created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "previous_created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "current_created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "current_created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "affected_periods",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "affected_periods"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "contribution_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "contribution_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "source_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "source_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "run_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "run_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "f8d55fb64fc98ebc6a923d3393a392625cf83fc44e3815156a3f6ff8f5988e13"
+}
