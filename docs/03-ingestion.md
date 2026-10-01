@@ -13,6 +13,7 @@ pub trait Source: Send + Sync {
     async fn plan(&self, ctx: &IngestionContext) -> Result<IngestionPlan, Error>;
     async fn fetch_batch(&self, ctx: &IngestionContext, cursor: &str) -> Result<FetchResult, Error>;
     async fn store_batch(&self, ctx: &IngestionContext, items: &[ContributionInput]) -> Result<usize, Error>;
+    async fn checkpoint_batch(&self, ctx: &IngestionContext, cursor: &str) -> Result<(), Error>;
     async fn advance_watermark(&self, ctx: &IngestionContext, new_watermark: &str, items: i32) -> Result<(), Error>;
     fn initial_cursor(&self, ctx: &IngestionContext, plan: &IngestionPlan) -> String;
     fn watermark_field(&self) -> WatermarkField;
@@ -61,10 +62,13 @@ action times. A parent creation date cannot exclude an otherwise eligible event.
 
 GitHub, Jira Cloud, and instance-qualified Discourse adapters support person
 backfills through scoped coordinator/chunk entrypoints. The complete Person
-pipeline admission remains disabled until historical processing and ongoing
-tracking are delivered (#28–#30); adapter support alone cannot claim that product
-release is complete. `ProcessingScope` must match ingestion scope and
-person; a person request cannot silently trigger whole-organisation processing.
+pipeline is enabled through the admin Backfill activity dialog. `ProcessingScope`
+must match ingestion scope and person. Historical snapshots use the committed
+person-change manifest; identity resolution does not run a platform-wide sweep
+for a person launch. Enrichment and embedding use the existing shared queues:
+scoped ingestion adds only eligible changed rows, but these stages may also drain
+previously queued work. Their run ownership belongs to the launching pipeline;
+there is no separate person-only queue executor.
 Pipeline status supports explicit pipeline/person filtering, and history carries
 saved scope/source labels independent of later configuration changes.
 
@@ -107,8 +111,11 @@ its 50 collected items and reported `cancelled`. The temporary source,
 contributions, run records and mock service
 were removed after verification. This verifies admission, plumbing and ownership.
 The targeted adapter and atomic storage fixtures below run without live provider
-credentials; complete Person launch, historical processing and ongoing-ingestion
-acceptance remain the separate #28–#30 release gate.
+credentials. `scripts/person-backfill-smoke.sh` runs the complete Person release
+fixtures against isolated PostgreSQL and actual Restate containers: frozen
+multi-source admission, interruption after committed ingestion, workflow replay,
+historical refresh, stable reruns, cancellation and ongoing discovery. The
+fixtures leave the Tilt cluster and unrelated provider data alone.
 
 ### Targeted adapters and storage
 
@@ -176,9 +183,13 @@ Discourse likes retain `like-<post_id>-<lowercase_username>`. Only matching type
 user-action evidence authorizes an event-time correction. Changes record previous
 and current attribution, timestamps and metric inputs, source/pipeline/run IDs,
 and all affected UTC weeks/months/quarters. Ordinary ingestion preserves corrected
-time and its evidence, and older re-like pages cannot undo newer actions. #28
-consumes these manifests for actual historical recomputation; authored-topic
-received-like metrics also need its topic/post aggregation acceptance tests.
+time and its evidence, and older re-like pages cannot undo newer actions.
+Historical recomputation consumes these manifests after ingestion and again
+after enrichment, including changed metric/state inputs with unchanged dates.
+Normal user discovery inserts new likes at their action time, but preserves an
+existing natural key's timestamp. Legacy post-time estimates require an explicit
+person backfill for an audited correction and old/new period invalidation;
+pending action evidence never claims that this correction already happened.
 
 Person API reads occur outside `ctx.run()`. `checkpoint_person_fetch` journals
 bounded cursor/rate-limit decisions and a page fingerprint, followed by atomic
@@ -227,12 +238,73 @@ active pipelines; inspect and resolve those records before rollout.
 
 Person launch preflight checks active saved people, actual non-future dates,
 unique enabled selected sources, exact saved account bindings, and Jira Cloud
-mode. The capability reported by `GetStatus` stays disabled until #30 passes.
-Saved person details expose a separate Backfill activity dialog showing source
-eligibility, the release gate, exact pipeline progress, and scoped history.
-Person/account resolution uses a consistent database snapshot. Production
-enablement requires the adapter/storage/watermark/metrics integration tests in
-stage #12.
+mode. `GetStatus` reports the Person capability as enabled. Saved person details
+expose a separate Backfill activity dialog showing source eligibility, exact
+pipeline progress, incomplete source coverage and scoped history. Person/account
+resolution uses a consistent database snapshot.
+
+## Historical refresh and ongoing people tracking
+
+Scoped contribution writes commit `activity.snapshot_invalidations` in the same
+transaction as contribution changes and queues. Each old/new affected UTC week,
+month and quarter has independent raw-metric and insight acknowledgements.
+Metrics recompute after ingestion, and insights after enrichment. Each call
+handles up to eight periods from at most 1,024 dirty generations. This bounded
+work recomputes all teams for each affected period, including ancestor teams,
+and replaces calculation source links together with the values. Existing
+period-end membership rules apply: backfill never backdates membership, creates
+a team assignment or adds an unassigned person to team metrics. Individual
+history and insights read contribution/enrichment rows dynamically.
+
+A dirty generation is acknowledged only after the computation succeeds. Pending
+insight periods whose changed contributions remain in the enrichment queue stay
+dirty; a completed processing call cannot turn them into complete coverage.
+Pipeline progress reports unresolved history as a warning. Failed or cancelled
+pipelines retain dirty work. `SnapshotRefreshHandler/singleton/recover` revisits
+terminal owners in bounded batches, using a one-second continuation for a full
+batch and a 60-second poll otherwise. Bootstrap checks for an existing durable
+loop before starting another. Source outcomes come from their exact owned run,
+so partial source failure cannot look like successful full coverage.
+
+Normal GitHub and Discourse ingestion also discovers active saved accounts,
+including manually added people without a team. It reuses the person adapters
+after ordinary repository/topic collection, retains source organisation,
+repository, category and access restrictions, and deduplicates overlapping
+natural keys. GitHub discovery covers authored PRs and review-only activity,
+including paginated reviews on other people's PRs. Discourse user actions find
+replies and likes on old topics even when their `bumped_at` is unchanged. Jira
+continues its existing project/date/current-assignee traversal using saved
+account IDs. Inactive people are excluded from new supplementary targets;
+previous history remains stored.
+
+`activity.identity_discovery_coverage` stores an independent cutoff per source
+configuration and saved identity. First discovery uses a seven-day GitHub or
+30-day Discourse lookback; subsequent runs overlap the saved cutoff by one UTC
+day. Identity/account or source-boundary edits invalidate the checkpoint version
+and restart the initial lookback. Journalled planning persists this first lower
+bound as `initial_since`, separately from nullable completed coverage. If the
+first traversal fails, later invocations retain its original lower bound until
+completion, even when the retry occurs beyond the initial lookback. Accounts
+added after planning join the next run. Older history requires an explicit
+backfill.
+The upper cutoff is frozen in the journaled plan's typed `discovery_cutoff`;
+replay uses the same cursor and child parameters. A checkpoint advances only
+after every page and its terminal store succeed; rate-limit sleeps, incomplete
+traversal and failed targets cannot advance it. Failed deferred GitHub diff repair also leaves
+the source incomplete and its target cutoff unchanged; rerunning repairs the
+already stored natural key before publishing coverage. Successful explicit
+person backfills may seed this cutoff. Other targets and source-wide watermarks
+retain their own policy.
+
+### Deploying this release
+
+Apply migrations 0044, 0045 and 0046 before updating the server/workers. Drain or
+cancel affected ingestion chunks/coordinators and scoped workflows before
+replacing the worker endpoint: the added identity checkpoint and source-outcome
+steps change journal positions. Keep legacy entrypoints registered for their
+remaining invocations; retain journals for unrelated handlers. Re-register the
+updated deployment, then confirm the singleton historical recovery loop exists.
+No blanket Restate journal wipe is needed.
 
 ## Handler Architecture
 
