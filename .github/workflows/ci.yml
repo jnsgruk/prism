@@ -12,36 +12,67 @@ env:
   RUSTFLAGS: "-D warnings"
 
 jobs:
-  lint-and-test:
-    name: Lint & Test
+  rust-checks:
+    name: Rust Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: jdx/mise-action@v2
         with:
-          install: false
+          install_args: rust protoc
+          cache_key_prefix: mise-rust-checks
 
-      - name: Install dependencies
-        run: |
-          mise run --skip-tools install-deps
-          mise install
+      - name: Install native dependencies
+        run: mise run --skip-tools install-deps
 
-      - name: Ensure Rust components are installed
-        run: rustup component add rustfmt clippy
+      # Default cache keys include the job ID, toolchain, manifests and Rust flags.
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check Rust formatting and lint
+        run: mise run --skip-tools check:rs
+
+  rust-tests:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: rust protoc github:nextest-rs/nextest
+          cache_key_prefix: mise-rust-tests
+
+      - name: Install native dependencies
+        run: mise run --skip-tools install-deps
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run Rust tests
+        run: mise run --skip-tools test:rs
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: bun node vp
+          cache_key_prefix: mise-frontend
 
       - name: Install frontend dependencies
         run: cd frontend && bun install --frozen-lockfile
 
-      - name: Fetch Cargo dependencies
-        run: cargo fetch
+      - name: Check frontend formatting, lint and types
+        run: mise run --skip-tools check:ts
 
-      - name: Run prek (format, lint, test)
-        run: prek run -av
+      - name: Run frontend tests
+        run: mise run --skip-tools test:ts
 
-  buf-breaking:
-    name: Proto Breaking Changes
-    if: github.event_name == 'pull_request'
+  protobuf:
+    name: Protobuf
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +80,13 @@ jobs:
           fetch-depth: 0
 
       - uses: jdx/mise-action@v2
+        with:
+          install_args: buf
+          cache_key_prefix: mise-protobuf
+
+      - name: Lint protobuf definitions
+        run: mise run --skip-tools check:proto
 
       - name: Check for breaking changes
+        if: github.event_name == 'pull_request'
         run: cd proto && buf breaking --against '../.git#branch=origin/${{ github.base_ref }},subdir=proto'
