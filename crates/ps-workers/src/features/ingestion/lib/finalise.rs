@@ -8,10 +8,11 @@ use uuid::Uuid;
 
 use crate::infra::run_lifecycle::terminal_err;
 
-use super::orchestration::{
-    advance_watermark, complete_ingestion_run, complete_ingestion_run_with_warnings,
+use super::lifecycle::{
+    IngestionRun, RunWarnings, complete_ingestion_run, complete_ingestion_run_with_warnings,
     fail_ingestion_run,
 };
+use super::orchestration::advance_watermark;
 
 /// Extract a named field from a serialised cursor JSON string.
 pub fn extract_watermark(
@@ -57,7 +58,17 @@ pub async fn finalise_run(
         if total_items > 0 {
             advance_watermark(ctx, ing_ctx, final_cursor, total_items, watermark_field).await?;
         }
-        complete_ingestion_run(ctx, repos, run_id, source_name, total_items).await;
+        complete_ingestion_run(
+            ctx,
+            repos,
+            IngestionRun {
+                id: run_id,
+                source_name,
+                owned: ing_ctx.request.is_some(),
+            },
+            total_items,
+        )
+        .await;
     } else if total_items == 0 {
         let summary = format!(
             "all {} {item_noun}(s) failed: {}",
@@ -68,7 +79,17 @@ pub async fn finalise_run(
                 .collect::<Vec<_>>()
                 .join(", ")
         );
-        fail_ingestion_run(ctx, repos, run_id, source_name, &summary).await;
+        fail_ingestion_run(
+            ctx,
+            repos,
+            IngestionRun {
+                id: run_id,
+                source_name,
+                owned: ing_ctx.request.is_some(),
+            },
+            &summary,
+        )
+        .await;
     } else {
         // Partial failure — do NOT advance watermark.
         let summary = format!(
@@ -86,9 +107,12 @@ pub async fn finalise_run(
             repos,
             run_id,
             source_name,
-            total_items,
-            &summary,
-            metadata,
+            RunWarnings {
+                items_collected: total_items,
+                error_summary: &summary,
+                metadata,
+                owned: ing_ctx.request.is_some(),
+            },
         )
         .await;
     }
