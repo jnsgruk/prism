@@ -98,7 +98,7 @@ impl ActivityRepo {
     }
 
     /// List recent runs, optionally filtered by source name and/or handler name.
-    /// When `ingestion_only` is true, restricts to data-ingestion runs only
+    /// When `ingestion_only` is true, restricts to data-ingestion runs, including owned source runs, only
     /// (`handler_method` = `run_ingestion`, `backfill`, or `run_cycle`),
     /// excluding team sync, metrics, and other system handler runs.
     pub async fn list_runs(
@@ -111,11 +111,12 @@ impl ActivityRepo {
             r#"
             SELECT id, source_name, started_at, completed_at, status,
                    items_collected, error_message, handler_name, handler_method,
-                   pipeline_id
+                   pipeline_id, progress
             FROM activity.ingestion_runs
             WHERE ($1::text IS NULL OR source_name = $1)
               AND ($2::text IS NULL OR handler_name = $2)
-              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill', 'run_cycle'))
+              AND (NOT $3::bool OR handler_method IN ('run_ingestion', 'backfill', 'run_cycle')
+                OR (handler_method = 'run_scoped' AND handler_name IN ('GithubIngestionHandler', 'JiraIngestionHandler', 'DiscourseIngestionHandler')))
             ORDER BY started_at DESC
             LIMIT 100
             "#,
@@ -143,6 +144,7 @@ impl ActivityRepo {
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
                 pipeline_id: r.pipeline_id,
+                progress: r.progress,
             })
             .collect())
     }
@@ -153,7 +155,7 @@ impl ActivityRepo {
             r#"
             SELECT id, source_name, started_at, completed_at, status,
                    items_collected, error_message, handler_name, handler_method,
-                   pipeline_id
+                   pipeline_id, progress
             FROM activity.ingestion_runs
             WHERE id = $1
             "#,
@@ -177,6 +179,7 @@ impl ActivityRepo {
             handler_name: r.handler_name,
             handler_method: r.handler_method,
             pipeline_id: r.pipeline_id,
+            progress: r.progress,
         }))
     }
 
@@ -204,7 +207,7 @@ impl ActivityRepo {
             r#"
             SELECT id, source_name, started_at, completed_at, status,
                    items_collected, error_message, handler_name, handler_method,
-                   pipeline_id
+                   pipeline_id, progress
             FROM activity.ingestion_runs
             WHERE status = 'running'
             ORDER BY started_at DESC
@@ -230,6 +233,7 @@ impl ActivityRepo {
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
                 pipeline_id: r.pipeline_id,
+                progress: r.progress,
             })
             .collect())
     }
@@ -245,7 +249,7 @@ impl ActivityRepo {
             r#"
             SELECT id, source_name, started_at, completed_at, status,
                    items_collected, error_message, handler_name, handler_method,
-                   pipeline_id
+                   pipeline_id, progress
             FROM activity.ingestion_runs
             WHERE pipeline_id IS NULL
               AND source_name != '_pipeline'
@@ -274,6 +278,7 @@ impl ActivityRepo {
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
                 pipeline_id: r.pipeline_id,
+                progress: r.progress,
             })
             .collect())
     }
@@ -325,7 +330,7 @@ impl ActivityRepo {
             r#"
             SELECT id, source_name, started_at, completed_at, status,
                    items_collected, error_message, handler_name, handler_method,
-                   pipeline_id
+                   pipeline_id, progress
             FROM activity.ingestion_runs
             WHERE pipeline_id = ANY($1)
               AND source_name != '_pipeline'
@@ -353,6 +358,7 @@ impl ActivityRepo {
                 handler_name: r.handler_name,
                 handler_method: r.handler_method,
                 pipeline_id: r.pipeline_id,
+                progress: r.progress,
             })
             .collect())
     }
@@ -443,7 +449,8 @@ impl ActivityRepo {
                 error_message,
                 handler_name AS "handler_name!",
                 handler_method AS "handler_method!",
-                pipeline_id
+                pipeline_id,
+                progress
             FROM activity.ingestion_runs
             WHERE handler_name = $1 AND status = 'running'
             ORDER BY started_at DESC
@@ -469,6 +476,7 @@ impl ActivityRepo {
             handler_name: r.handler_name,
             handler_method: r.handler_method,
             pipeline_id: r.pipeline_id,
+            progress: r.progress,
         }))
     }
 

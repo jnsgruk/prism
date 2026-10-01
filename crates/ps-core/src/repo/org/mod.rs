@@ -1,3 +1,4 @@
+mod backfill_snapshot;
 pub mod export;
 mod export_import;
 mod export_people;

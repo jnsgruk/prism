@@ -17,6 +17,7 @@ impl ActivityRepo {
                 iw.last_error,
                 lr.items_collected as "items_collected_last_run?",
                 ar.id IS NOT NULL as "has_active_run!",
+                ar.pipeline_id as "active_pipeline_id?",
                 ar.items_collected as "active_run_items?",
                 ar.started_at as "active_run_started_at?",
                 iw.current_invocation_id as "current_invocation_id?",
@@ -25,11 +26,11 @@ impl ActivityRepo {
             LEFT JOIN activity.ingestion_watermarks iw
                 ON sc.name = iw.source_name
             LEFT JOIN LATERAL (
-                SELECT id, items_collected, started_at, progress
+                SELECT id, items_collected, started_at, progress, pipeline_id
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.completed_at IS NULL
-                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')
+                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle', 'run_scoped')
                 ORDER BY ir.started_at DESC
                 LIMIT 1
             ) ar ON true
@@ -38,7 +39,7 @@ impl ActivityRepo {
                 FROM activity.ingestion_runs ir
                 WHERE ir.source_name = sc.name
                   AND ir.status IN ('completed', 'completed_with_warnings')
-                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')
+                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle', 'run_scoped')
                 ORDER BY ir.completed_at DESC
                 LIMIT 1
             ) lr ON true
@@ -64,6 +65,7 @@ impl ActivityRepo {
                 last_error: r.last_error,
                 items_collected_last_run: r.items_collected_last_run,
                 has_active_run: r.has_active_run,
+                active_pipeline_id: r.active_pipeline_id,
                 active_run_items: r.active_run_items,
                 active_run_started_at: r.active_run_started_at,
                 current_invocation_id: r.current_invocation_id,
@@ -90,6 +92,7 @@ impl ActivityRepo {
             SET completed_at = now(), status = 'cancelled', error_message = $2
             WHERE source_name = $1
               AND completed_at IS NULL
+              AND pipeline_id IS NULL
             "#,
             source_name,
             reason,
@@ -115,6 +118,7 @@ impl ActivityRepo {
             UPDATE activity.ingestion_runs
             SET completed_at = now(), status = 'cancelled', error_message = $1
             WHERE completed_at IS NULL
+              AND pipeline_id IS NULL
               AND source_name LIKE '\_%' ESCAPE '\'
             "#,
             reason,
