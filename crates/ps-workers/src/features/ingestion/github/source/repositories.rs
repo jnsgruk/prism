@@ -1,6 +1,19 @@
 //! Repository bounds shared by person discovery and ordinary member search.
-use super::super::types::GraphQLSearchRepo;
+use super::super::types::{GraphQLSearchPr, GraphQLSearchRepo};
 use super::is_valid_github_username;
+
+pub(super) fn validate_search_pr(
+    pr: &GraphQLSearchPr,
+) -> Result<&GraphQLSearchRepo, ps_core::Error> {
+    if pr.number.is_none() || pr.created_at.is_none() || pr.updated_at.is_none() {
+        return Err(ps_core::Error::Validation(
+            "incomplete GitHub coverage: malformed PR search fields".into(),
+        ));
+    }
+    pr.repository.as_ref().ok_or_else(|| {
+        ps_core::Error::Validation("incomplete GitHub coverage: malformed PR search node".into())
+    })
+}
 
 pub(super) fn valid_name(value: &str) -> bool {
     !value.is_empty()

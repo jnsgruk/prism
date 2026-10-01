@@ -284,7 +284,7 @@ pub struct GitHubTeamRepo {
 }
 
 /// Search may include null nodes and non-PR fragments; invalid nodes must not
-/// prevent ingestion of the valid remainder. Scoped fetch records omissions.
+/// prevent ingestion of the valid remainder. Every fetch path records omissions.
 fn search_nodes<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Vec<GraphQLSearchPr>, D::Error> {

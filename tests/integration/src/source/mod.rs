@@ -3,6 +3,7 @@ mod discourse_coverage_recovery;
 mod discourse_quota_recovery;
 mod discourse_recovery;
 mod github;
+mod github_malformed_search;
 mod github_repository_filters;
 mod github_review_recovery;
 mod jira;
