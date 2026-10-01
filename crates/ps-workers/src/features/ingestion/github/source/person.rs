@@ -82,12 +82,6 @@ fn settings_strings(ctx: &IngestionContext, name: &str) -> Result<Vec<String>, p
                 .map_err(|_| ps_core::Error::Validation(format!("invalid GitHub {name}")))
         })
 }
-fn valid_repo(value: &str) -> bool {
-    !value.is_empty()
-        && value
-            .chars()
-            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.'))
-}
 
 fn configured_base_url(ctx: &IngestionContext) -> &str {
     ctx.source_config
@@ -133,8 +127,10 @@ pub(super) fn validate(ctx: &IngestionContext) -> Result<bool, ps_core::Error> {
     if settings_strings(ctx, "exclude_repos")?.iter().any(|repo| {
         let parts: Vec<_> = repo.split('/').collect();
         match parts.as_slice() {
-            [name] => !valid_repo(name),
-            [owner, name] => !is_valid_github_username(owner) || !valid_repo(name),
+            [name] => !super::repositories::valid_name(name),
+            [owner, name] => {
+                !is_valid_github_username(owner) || !super::repositories::valid_name(name)
+            }
             _ => true,
         }
     }) {
@@ -376,23 +372,21 @@ pub(super) async fn fetch(
         }
         let owner = &repo.owner.login;
         let name = &repo.name;
-        if !owner.eq_ignore_ascii_case(&org)
-            || !is_valid_github_username(owner)
-            || !valid_repo(name)
-            || bounds.exclude_repos.iter().any(|excluded| {
-                excluded.eq_ignore_ascii_case(name)
-                    || excluded.eq_ignore_ascii_case(&format!("{owner}/{name}"))
-            })
-            || (bounds.exclude_archived && repo.is_archived == Some(true))
-        {
-            continue;
-        }
-        if bounds.exclude_archived && repo.is_archived.is_none() {
-            cur.failed_items.push(ps_core::ingestion::FailedItem {
-                key: format!("{owner}/{name}"),
-                error: "repository archive status missing".into(),
-            });
-            continue;
+        match super::repositories::eligible(
+            repo,
+            std::slice::from_ref(&org),
+            &bounds.exclude_repos,
+            bounds.exclude_archived,
+        ) {
+            Ok(true) => {}
+            Ok(false) => continue,
+            Err(error) => {
+                cur.failed_items.push(ps_core::ingestion::FailedItem {
+                    key: format!("{owner}/{name}"),
+                    error: error.to_string(),
+                });
+                continue;
+            }
         }
         for item in super::convert::search_pr_to_contributions(owner, name, pr)? {
             if eligible(ctx, &item)? {

@@ -1,8 +1,10 @@
 mod convert;
 mod diff;
 pub(crate) mod fetch;
+mod members;
 mod person;
 mod plan;
+mod repositories;
 mod reviews;
 mod store;
 
