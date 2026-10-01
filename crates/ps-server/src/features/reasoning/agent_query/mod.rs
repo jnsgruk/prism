@@ -1,13 +1,16 @@
 mod event_loop;
 mod event_mapping;
+mod pipeline;
+mod prompts;
 mod resume;
 mod session;
+mod startup;
 mod step_registry;
 mod trace;
 
 use ps_proto::canonical::prism::v1::{
     AgentConversationCreated, AgentError, AgentFinalAnswer, AskQuestionRequest,
-    AskQuestionResponse, Mention, MentionType, ask_question_response,
+    AskQuestionResponse, ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
@@ -15,15 +18,16 @@ use uuid::Uuid;
 
 use super::ReasoningServiceImpl;
 use crate::common::{db_err, require_auth};
+use prompts::{build_system_hint, mentions_to_json};
 
 /// Maximum time the gRPC stream stays open (client-facing).
 /// 10 minutes — agents often compile code, install packages, or run
 /// multi-step pipelines that need more than a few minutes.
 const STREAM_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(10);
 
-/// Maximum time to wait for Restate `prepare_query` to return the pod IP.
+/// Overall startup budget: Restate preparation, application health, session, SSE.
 /// Must be < `STREAM_TIMEOUT` to leave budget for SSE streaming.
-const PREPARE_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
+const STARTUP_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
 
 pub type AskQuestionStream =
     tokio_stream::wrappers::ReceiverStream<Result<AskQuestionResponse, Status>>;
@@ -94,13 +98,13 @@ pub async fn ask_question(
         let mut map = active_queries
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        map.insert(conversation_id, cancel_tx);
+        map.insert(conversation_id, cancel_tx.clone());
     }
 
     // Spawn the streaming task.
     let aq = active_queries.clone();
     tokio::spawn(async move {
-        if let Err(e) = run_query_stream(
+        if let Err(e) = pipeline::run_query_stream(
             &repos,
             &http_client,
             &restate_url,
@@ -118,7 +122,12 @@ pub async fn ask_question(
         }
         // Deregister from active queries.
         let mut map = aq.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        map.remove(&conversation_id);
+        if map
+            .get(&conversation_id)
+            .is_some_and(|current| current.same_channel(&cancel_tx))
+        {
+            map.remove(&conversation_id);
+        }
     });
 
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
@@ -266,127 +275,6 @@ async fn handle_stream_failure(
         .await;
 }
 
-/// The core streaming pipeline: prepare pod → connect SSE → stream → finalize.
-#[allow(clippy::too_many_arguments)]
-async fn run_query_stream(
-    repos: &ps_core::repo::Repos,
-    http_client: &reqwest::Client,
-    restate_url: &str,
-    cid_str: &str,
-    trigger_request: &serde_json::Value,
-    question: &str,
-    system_hint: Option<&str>,
-    model_name: &str,
-    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
-    cancel_rx: tokio::sync::watch::Receiver<bool>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let conversation_id: Uuid = cid_str.parse()?;
-    let stream_start = tokio::time::Instant::now();
-
-    // Phase 1: Call Restate prepare_query synchronously.
-    let (pod_ip, pod_name) = prepare_and_poll(
-        repos,
-        http_client,
-        restate_url,
-        cid_str,
-        trigger_request,
-        conversation_id,
-        tx,
-    )
-    .await?;
-
-    // Store pod details so the frontend can display them.
-    repos
-        .reasoning
-        .update_container_status(
-            conversation_id,
-            Some(&pod_name),
-            "active",
-            None,
-            Some(&pod_ip),
-        )
-        .await?;
-
-    // Phase 2: Connect to OpenCode and stream events.
-    let conv = repos
-        .reasoning
-        .get_conversation(conversation_id)
-        .await?
-        .ok_or("conversation not found")?;
-
-    let client = ps_agent::opencode_sdk::ClientBuilder::new()
-        .base_url(format!("http://{pod_ip}:{}", ps_agent::OPENCODE_PORT))
-        .directory("/home/agent")
-        .timeout_secs(120)
-        .build()?;
-
-    // The pod may be in K8s "Running" phase before OpenCode's HTTP server is
-    // ready to accept connections. Retry session creation a few times with
-    // backoff to bridge this gap.
-    let session_result =
-        retry_session_create(repos, &client, conversation_id, &conv, question).await?;
-    let opencode_session_id = session_result.session_id;
-
-    // When a new session was created for an existing conversation, the prior
-    // turns are lost. Build a recap from the DB and prepend it to the system
-    // hint so the agent can resolve references like "they" or "their".
-    let merged_hint = if session_result.is_new {
-        let messages = repos.reasoning.list_messages(conversation_id).await?;
-        match (build_conversation_recap(&messages), system_hint) {
-            (Some(recap), Some(hint)) => Some(format!("{recap}\n\n{hint}")),
-            (Some(recap), None) => Some(recap),
-            (None, Some(hint)) => Some(hint.to_owned()),
-            (None, None) => None,
-        }
-    } else {
-        system_hint.map(str::to_owned)
-    };
-
-    info!("subscribing to OpenCode events");
-    let mut subscription = session::subscribe_to_events(&client).await?;
-    info!("SSE subscription established");
-
-    session::send_prompt_or_compact(
-        http_client,
-        &client,
-        &opencode_session_id,
-        &conv,
-        &pod_ip,
-        question,
-        merged_hint.as_deref(),
-    )
-    .await?;
-
-    // Use actual elapsed time for prepare phase, not the worst-case PREPARE_TIMEOUT.
-    // This gives the SSE phase the full remaining budget from STREAM_TIMEOUT.
-    let elapsed = stream_start.elapsed();
-    let sse_timeout = STREAM_TIMEOUT
-        .checked_sub(elapsed)
-        .unwrap_or(std::time::Duration::from_mins(1));
-
-    let loop_result = event_loop::run_event_loop(
-        repos,
-        &mut subscription,
-        conversation_id,
-        sse_timeout,
-        tx,
-        cancel_rx,
-    )
-    .await;
-
-    // Phase 3: Finalize.
-    finalize_query(
-        repos,
-        conversation_id,
-        cid_str,
-        model_name,
-        question,
-        &loop_result,
-        tx,
-    )
-    .await
-}
-
 /// Check whether the agent produced a usable answer.
 ///
 /// Returns the answer as-is when valid, or a user-facing explanation when
@@ -526,430 +414,4 @@ async fn finalize_query(
 
     info!(conversation_id = %cid_str, "query complete");
     Ok(())
-}
-
-/// Call Restate `prepare_query` synchronously while polling for container
-/// status events to forward to the client. Returns `(pod_ip, pod_name)`.
-async fn prepare_and_poll(
-    repos: &ps_core::repo::Repos,
-    http_client: &reqwest::Client,
-    restate_url: &str,
-    cid_str: &str,
-    trigger_request: &serde_json::Value,
-    conversation_id: Uuid,
-    tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
-) -> Result<(String, String), Box<dyn std::error::Error + Send + Sync>> {
-    let url = format!("{restate_url}/AgenticQueryHandler/{cid_str}/prepare_query");
-    let body = serde_json::to_string(trigger_request)?;
-
-    let prepare_fut = async {
-        let resp = http_client
-            .post(&url)
-            .timeout(PREPARE_TIMEOUT)
-            .header("content-type", "application/json")
-            .body(body)
-            .send()
-            .await?;
-
-        let status = resp.status();
-        let resp_body = resp.text().await?;
-
-        if !status.is_success() {
-            return Err(format!("prepare_query failed (HTTP {status}): {resp_body}").into());
-        }
-
-        let response: serde_json::Value = serde_json::from_str(&resp_body)?;
-        let pod_ip = response
-            .get("pod_ip")
-            .and_then(|v| v.as_str())
-            .ok_or("prepare_query response missing pod_ip")?
-            .to_string();
-        let pod_name = response
-            .get("pod_name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        Ok::<(String, String), Box<dyn std::error::Error + Send + Sync>>((pod_ip, pod_name))
-    };
-
-    let poll_fut = async {
-        let mut cursor: i64 = 0;
-        loop {
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-
-            if tx.is_closed() {
-                break;
-            }
-
-            if let Ok(events) = repos.reasoning.poll_events(conversation_id, cursor).await {
-                for event in events {
-                    cursor = event.id;
-                    if let Some(response) = event_mapping::map_db_event_to_proto(&event)
-                        && matches!(
-                            response.event,
-                            Some(ask_question_response::Event::ContainerStatus(_))
-                        )
-                    {
-                        let _ = tx.send(Ok(response)).await;
-                    }
-                }
-            }
-        }
-    };
-
-    tokio::select! {
-        result = prepare_fut => result,
-        () = poll_fut => Err("event poll loop ended unexpectedly".into()),
-    }
-}
-
-/// Retry `resolve_or_create_session` up to 5 times with linear backoff.
-///
-/// The K8s pod reaches "Running" phase before the `OpenCode` HTTP server
-/// inside it is ready to accept connections. This bridges that gap.
-const MAX_SESSION_RETRIES: u32 = 5;
-
-async fn retry_session_create(
-    repos: &ps_core::repo::Repos,
-    client: &ps_agent::opencode_sdk::Client,
-    conversation_id: Uuid,
-    conv: &ps_core::repo::reasoning::Conversation,
-    question: &str,
-) -> Result<session::SessionResult, Box<dyn std::error::Error + Send + Sync>> {
-    let mut last_err: Box<dyn std::error::Error + Send + Sync> =
-        "no attempts made".to_string().into();
-    for attempt in 0..MAX_SESSION_RETRIES {
-        if attempt > 0 {
-            tokio::time::sleep(std::time::Duration::from_secs(u64::from(attempt))).await;
-        }
-        match session::resolve_or_create_session(repos, client, conversation_id, conv, question)
-            .await
-        {
-            Ok(result) => return Ok(result),
-            Err(e) => {
-                tracing::warn!(
-                    attempt = attempt + 1,
-                    error = %e,
-                    "OpenCode session creation failed, retrying"
-                );
-                last_err = e;
-            }
-        }
-    }
-    Err(last_err)
-}
-
-/// Build a recap of prior conversation messages so a freshly-created session
-/// has enough context to resolve references from earlier turns.
-///
-/// Returns `None` when there are no prior assistant messages worth recapping.
-fn build_conversation_recap(
-    messages: &[ps_core::repo::reasoning::ConversationMessage],
-) -> Option<String> {
-    const MAX_ASSISTANT_CHARS: usize = 500;
-    const MAX_RECAP_CHARS: usize = 4000;
-
-    // Only include user and assistant messages (skip error messages).
-    let relevant: Vec<_> = messages
-        .iter()
-        .filter(|m| m.role == "user" || m.role == "assistant")
-        .collect();
-
-    // Nothing to recap if there are fewer than 2 messages (i.e. no prior
-    // assistant response — just the current user question).
-    if relevant.len() < 2 {
-        return None;
-    }
-
-    // Exclude the last message — it is the current user question that will be
-    // sent as the prompt itself.
-    let prior = relevant.get(..relevant.len() - 1).unwrap_or_default();
-    if prior.is_empty() {
-        return None;
-    }
-
-    let mut recap = String::from(
-        "## Prior conversation context\n\
-         This conversation was started earlier but the session was reset. \
-         Here is a summary of the prior exchanges so you can resolve \
-         references (\"they\", \"their\", \"this team\", etc.):\n\n",
-    );
-
-    for (i, msg) in prior.iter().enumerate() {
-        let entry = if msg.role == "user" {
-            format!("{}. **User:** {}\n", i + 1, msg.content)
-        } else {
-            let truncated = if msg.content.len() > MAX_ASSISTANT_CHARS {
-                // Find a char boundary at or before MAX_ASSISTANT_CHARS.
-                let end = msg
-                    .content
-                    .char_indices()
-                    .map(|(i, _)| i)
-                    .take_while(|&i| i <= MAX_ASSISTANT_CHARS)
-                    .last()
-                    .unwrap_or(0);
-                format!("{}…", &msg.content[..end])
-            } else {
-                msg.content.clone()
-            };
-            format!("{}. **Assistant:** {}\n", i + 1, truncated)
-        };
-
-        if recap.len() + entry.len() > MAX_RECAP_CHARS {
-            recap.push_str("\n(earlier messages truncated for brevity)\n");
-            break;
-        }
-        recap.push_str(&entry);
-    }
-
-    Some(recap)
-}
-
-/// Serialise proto `Mention` messages to a JSONB-compatible value for storage.
-fn mentions_to_json(mentions: &[Mention]) -> serde_json::Value {
-    serde_json::Value::Array(
-        mentions
-            .iter()
-            .map(|m| {
-                let type_str = match MentionType::try_from(m.r#type) {
-                    Ok(MentionType::Person) => "person",
-                    Ok(MentionType::Team) => "team",
-                    _ => "file",
-                };
-                serde_json::json!({
-                    "id": m.id,
-                    "name": m.name,
-                    "type": type_str,
-                })
-            })
-            .collect(),
-    )
-}
-
-/// Build a combined system hint from attached files and structured mentions.
-///
-/// The hint is injected as a system-level message so the agent knows about
-/// referenced entities without polluting the user's visible message text.
-fn build_system_hint(attached_files: &[String], mentions: &[Mention]) -> Option<String> {
-    let mut parts: Vec<String> = Vec::new();
-
-    // Collect file paths from both attached_files and file-type mentions,
-    // deduplicating so the same path is not listed twice.
-    let mut file_paths: Vec<String> = attached_files
-        .iter()
-        .map(|f| format!("/workspace/{f}"))
-        .collect();
-    for m in mentions {
-        if MentionType::try_from(m.r#type) == Ok(MentionType::File) {
-            let wp = format!("/workspace/{}", m.id);
-            if !file_paths.contains(&wp) {
-                file_paths.push(wp);
-            }
-        }
-    }
-    if !file_paths.is_empty() {
-        parts.push(format!(
-            "The user referenced files in the workspace. Read them from: {}",
-            file_paths.join(", ")
-        ));
-    }
-
-    // Person mentions.
-    let people: Vec<&Mention> = mentions
-        .iter()
-        .filter(|m| MentionType::try_from(m.r#type) == Ok(MentionType::Person))
-        .collect();
-    if !people.is_empty() {
-        let list = people
-            .iter()
-            .map(|m| format!("{} (ID: {})", m.name, m.id))
-            .collect::<Vec<_>>()
-            .join(", ");
-        parts.push(format!(
-            "The user mentioned these people: {list}. \
-             You already have their names — pass them directly to tools like \
-             get_person_profile(person_name=...) or get_person_contributions(person_name=...). \
-             No need to call list_people to look them up."
-        ));
-    }
-
-    // Team mentions.
-    let teams: Vec<&Mention> = mentions
-        .iter()
-        .filter(|m| MentionType::try_from(m.r#type) == Ok(MentionType::Team))
-        .collect();
-    if !teams.is_empty() {
-        let list = teams
-            .iter()
-            .map(|m| format!("{} (ID: {})", m.name, m.id))
-            .collect::<Vec<_>>()
-            .join(", ");
-        parts.push(format!(
-            "The user mentioned these teams: {list}. \
-             You already have their names — pass them directly to tools like \
-             query_contributions(team_name=...) or query_team_metrics(team_name=...). \
-             No need to call list_teams to discover them."
-        ));
-    }
-
-    if parts.is_empty() {
-        None
-    } else {
-        Some(parts.join("\n\n"))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn make_mention(id: &str, name: &str, mention_type: MentionType) -> Mention {
-        Mention {
-            id: id.to_string(),
-            name: name.to_string(),
-            r#type: mention_type as i32,
-        }
-    }
-
-    #[test]
-    fn hint_none_when_empty() {
-        assert!(build_system_hint(&[], &[]).is_none());
-    }
-
-    #[test]
-    fn hint_file_only_from_attached_files() {
-        let hint = build_system_hint(&["src/main.rs".to_string()], &[]).unwrap();
-        assert!(hint.contains("/workspace/src/main.rs"));
-    }
-
-    #[test]
-    fn hint_person_only() {
-        let mentions = vec![make_mention("abc-123", "Alice", MentionType::Person)];
-        let hint = build_system_hint(&[], &mentions).unwrap();
-        assert!(hint.contains("Alice (ID: abc-123)"));
-        assert!(hint.contains("list_people"));
-    }
-
-    #[test]
-    fn hint_team_only() {
-        let mentions = vec![make_mention("team-456", "Platform", MentionType::Team)];
-        let hint = build_system_hint(&[], &mentions).unwrap();
-        assert!(hint.contains("Platform (ID: team-456)"));
-        assert!(hint.contains("list_teams"));
-    }
-
-    #[test]
-    fn hint_mixed_mentions() {
-        let mentions = vec![
-            make_mention("abc-123", "Alice", MentionType::Person),
-            make_mention("team-456", "Platform", MentionType::Team),
-        ];
-        let hint = build_system_hint(&["README.md".to_string()], &mentions).unwrap();
-        assert!(hint.contains("/workspace/README.md"));
-        assert!(hint.contains("Alice"));
-        assert!(hint.contains("Platform"));
-    }
-
-    #[test]
-    fn hint_file_mention_deduplicates() {
-        let mentions = vec![make_mention("src/main.rs", "main.rs", MentionType::File)];
-        let hint = build_system_hint(&["src/main.rs".to_string()], &mentions).unwrap();
-        // Should only appear once.
-        let count = hint.matches("/workspace/src/main.rs").count();
-        assert_eq!(count, 1);
-    }
-
-    #[test]
-    fn hint_file_mention_without_attached_files() {
-        let mentions = vec![make_mention("src/lib.rs", "lib.rs", MentionType::File)];
-        let hint = build_system_hint(&[], &mentions).unwrap();
-        assert!(hint.contains("/workspace/src/lib.rs"));
-    }
-
-    #[test]
-    fn mentions_to_json_round_trip() {
-        let mentions = vec![
-            make_mention("abc", "Alice", MentionType::Person),
-            make_mention("team-1", "Core", MentionType::Team),
-            make_mention("src/main.rs", "main.rs", MentionType::File),
-        ];
-        let json = mentions_to_json(&mentions);
-        let arr = json.as_array().unwrap();
-        assert_eq!(arr.len(), 3);
-        assert_eq!(arr[0]["type"], "person");
-        assert_eq!(arr[1]["type"], "team");
-        assert_eq!(arr[2]["type"], "file");
-    }
-
-    // -- build_conversation_recap tests --
-
-    fn make_message(role: &str, content: &str) -> ps_core::repo::reasoning::ConversationMessage {
-        ps_core::repo::reasoning::ConversationMessage {
-            id: Uuid::new_v4(),
-            conversation_id: Uuid::new_v4(),
-            role: role.to_string(),
-            content: content.to_string(),
-            reasoning_trace: None,
-            supporting_data: None,
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            created_at: time::OffsetDateTime::now_utc(),
-            attached_files: vec![],
-            mentions: serde_json::json!([]),
-        }
-    }
-
-    #[test]
-    fn recap_none_for_single_user_message() {
-        let messages = vec![make_message("user", "Tell me about Harry")];
-        assert!(build_conversation_recap(&messages).is_none());
-    }
-
-    #[test]
-    fn recap_none_for_empty() {
-        assert!(build_conversation_recap(&[]).is_none());
-    }
-
-    #[test]
-    fn recap_includes_prior_turns() {
-        let messages = vec![
-            make_message("user", "Tell me about Harry Pidcock"),
-            make_message("assistant", "Harry has 108 contributions and 68 reviews."),
-            make_message("user", "Draw a graph of their activity"),
-        ];
-        let recap = build_conversation_recap(&messages).unwrap();
-        assert!(recap.contains("Harry Pidcock"));
-        assert!(recap.contains("108 contributions"));
-        // Current question should NOT be in the recap.
-        assert!(!recap.contains("Draw a graph"));
-    }
-
-    #[test]
-    fn recap_truncates_long_assistant_content() {
-        let long_content = "x".repeat(1000);
-        let messages = vec![
-            make_message("user", "question"),
-            make_message("assistant", &long_content),
-            make_message("user", "follow-up"),
-        ];
-        let recap = build_conversation_recap(&messages).unwrap();
-        // Should be truncated with ellipsis.
-        assert!(recap.contains('…'));
-        assert!(recap.len() < 1000);
-    }
-
-    #[test]
-    fn recap_skips_error_messages() {
-        let messages = vec![
-            make_message("user", "Tell me about Harry"),
-            make_message("error", "something went wrong"),
-            make_message("user", "Try again"),
-        ];
-        // Only one user+assistant pair before current question — the error is
-        // skipped, leaving just the first user message as prior context.
-        let recap = build_conversation_recap(&messages).unwrap();
-        assert!(recap.contains("Harry"));
-        assert!(!recap.contains("something went wrong"));
-    }
 }

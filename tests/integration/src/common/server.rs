@@ -52,6 +52,12 @@ impl ApiTestContext {
         Self { server, db }
     }
 
+    pub async fn with_restate_url(restate_url: &str) -> Self {
+        let db = super::db::TestDb::new().await;
+        let server = TestServer::start_with_restate_url(db.pool.clone(), restate_url).await;
+        Self { server, db }
+    }
+
     pub async fn teardown(self) {
         self.db.teardown().await;
     }
@@ -230,6 +236,10 @@ fn build_stub_archive(
 impl TestServer {
     /// Start a gRPC server on a random port with a real PG pool.
     pub async fn start(pool: PgPool) -> Self {
+        Self::start_with_restate_url(pool, "http://127.0.0.1:1").await
+    }
+
+    async fn start_with_restate_url(pool: PgPool, restate_url: &str) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("bind to random port");
@@ -271,7 +281,7 @@ impl TestServer {
             test_secret_key(),
             router,
             None, // no workspaces path in tests
-            "http://127.0.0.1:1".into(),
+            restate_url.into(),
         );
 
         let server = Server::builder()

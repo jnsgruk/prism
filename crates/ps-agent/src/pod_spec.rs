@@ -1,8 +1,8 @@
 //! Pod specification builder for agent containers.
 
 use k8s_openapi::api::core::v1::{
-    Container, EnvVar, PersistentVolumeClaimVolumeSource, Pod, PodSpec, ResourceRequirements,
-    Volume, VolumeMount,
+    Container, EnvVar, HTTPGetAction, PersistentVolumeClaimVolumeSource, Pod, PodSpec, Probe,
+    ResourceRequirements, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use std::collections::BTreeMap;
@@ -89,6 +89,18 @@ pub fn build_agent_pod(session_id: &str, config: &AgentPodConfig) -> Pod {
     }]);
 
     let container = Container {
+        readiness_probe: Some(Probe {
+            http_get: Some(HTTPGetAction {
+                path: Some(crate::readiness::HEALTH_PATH.to_string()),
+                port: k8s_openapi::apimachinery::pkg::util::intstr::IntOrString::Int(i32::from(
+                    crate::OPENCODE_PORT,
+                )),
+                ..Default::default()
+            }),
+            period_seconds: Some(1),
+            timeout_seconds: Some(1),
+            ..Default::default()
+        }),
         name: "agent".to_string(),
         image: Some(config.image.clone()),
         image_pull_policy: Some("IfNotPresent".to_string()),
@@ -155,6 +167,22 @@ mod tests {
             service_token: "test-token-123".to_string(),
             provider_keys: vec![("ANTHROPIC_API_KEY".to_string(), "sk-ant-test".to_string())],
         }
+    }
+
+    #[test]
+    fn readiness_checks_application_health_with_short_deadline() {
+        let pod = build_agent_pod("readiness", &test_config());
+        let probe = pod
+            .spec
+            .unwrap()
+            .containers
+            .remove(0)
+            .readiness_probe
+            .unwrap();
+        let http = probe.http_get.unwrap();
+        assert_eq!(http.path.as_deref(), Some(crate::readiness::HEALTH_PATH));
+        assert_eq!(probe.timeout_seconds, Some(1));
+        assert_eq!(probe.period_seconds, Some(1));
     }
 
     #[test]
