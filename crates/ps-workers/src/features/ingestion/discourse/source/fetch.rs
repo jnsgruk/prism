@@ -5,7 +5,7 @@ use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionCo
 use tracing::{debug, warn};
 
 use super::super::client::{Category, DiscourseClient, Post, TopicSummary};
-use super::inputs::{build_like_input, build_post_input, build_topic_input};
+use super::inputs::{ContributionContext, build_like_input, build_post_input, build_topic_input};
 use super::{Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, serialise_cursor};
 use crate::infra::retry::retry_transient;
 
@@ -193,6 +193,10 @@ async fn process_topics(
 ) -> (Vec<ContributionInput>, bool) {
     let (filtered_topics, reached_watermark) = filter_topics(topics, cur);
     let category_map = &cur.category_map;
+    let context = ContributionContext {
+        base_url: &cur.base_url,
+        instance: &cur.instance,
+    };
 
     // Fetch topic details concurrently with capped parallelism.
     let topic_ids: Vec<i64> = filtered_topics.iter().map(|t| t.id).collect();
@@ -232,7 +236,7 @@ async fn process_topics(
             .and_then(|id| category_map.get(&id))
             .cloned();
 
-        let mut topic_input = build_topic_input(topic, cur, category_name.as_deref());
+        let mut topic_input = build_topic_input(topic, &context, category_name.as_deref());
 
         if let Some(ref post_stream) = detail.post_stream {
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
@@ -250,12 +254,12 @@ async fn process_topics(
             }
 
             for post in post_stream.posts.iter().filter(|p| p.post_number != 1) {
-                items.push(build_post_input(post, topic, cur));
+                items.push(build_post_input(post, topic, &context));
             }
 
             if fetch_likes {
                 let like_items =
-                    fetch_likes_for_posts(client, &post_stream.posts, topic, cur).await;
+                    fetch_likes_for_posts(client, &post_stream.posts, topic, &context).await;
                 items.extend(like_items);
             }
         }
@@ -272,45 +276,45 @@ async fn fetch_likes_for_posts(
     client: &DiscourseClient,
     posts: &[Post],
     topic: &TopicSummary,
-    cur: &Cursor,
+    context: &ContributionContext<'_>,
 ) -> Vec<ContributionInput> {
-    let likeable_posts: Vec<Post> = posts.iter().filter(|p| p.likes() > 0).cloned().collect();
-
-    if likeable_posts.is_empty() {
-        return vec![];
-    }
-
-    let topic = topic.clone();
-    let cur = cur.clone();
+    let likeable_posts: Vec<_> = posts
+        .iter()
+        .filter(|post| post.likes() > 0)
+        .cloned()
+        .collect();
 
     stream::iter(likeable_posts)
-        .map(|post| {
-            let topic = &topic;
-            let cur = &cur;
-            async move {
-                let post_id = post.id;
-                match retry_transient(
-                    &format!("post_likers:{post_id}"),
-                    ps_core::Error::is_transient,
-                    || client.post_likers(post_id),
-                )
-                .await
-                {
-                    Ok(likers) => likers
-                        .iter()
-                        .map(|liker| build_like_input(liker, &post, topic, cur))
-                        .collect::<Vec<_>>(),
-                    Err(e) => {
-                        warn!(post_id, "failed to fetch post likers: {e}");
-                        vec![]
-                    }
-                }
-            }
-        })
+        .map(|post| async move { fetch_post_likes(client, &post, topic, context).await })
         .buffer_unordered(5)
         .flat_map(stream::iter)
         .collect()
         .await
+}
+
+async fn fetch_post_likes(
+    client: &DiscourseClient,
+    post: &Post,
+    topic: &TopicSummary,
+    context: &ContributionContext<'_>,
+) -> Vec<ContributionInput> {
+    let post_id = post.id;
+    match retry_transient(
+        &format!("post_likers:{post_id}"),
+        ps_core::Error::is_transient,
+        || client.post_likers(post_id),
+    )
+    .await
+    {
+        Ok(likers) => likers
+            .iter()
+            .map(|liker| build_like_input(liker, post, topic, context))
+            .collect(),
+        Err(e) => {
+            warn!(post_id, "failed to fetch post likers: {e}");
+            vec![]
+        }
+    }
 }
 
 /// Build a category ID → name map.

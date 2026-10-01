@@ -5,9 +5,9 @@ use super::super::client::{
     DiscourseClient, Post, PostActionUser, TopicDetailResponse, TopicSummary, UserAction,
     UserActionType,
 };
-use super::Cursor;
 use super::inputs::{
-    build_like_input, build_post_input, build_topic_input, parse_discourse_datetime,
+    ContributionContext, build_like_input, build_post_input, build_topic_input,
+    parse_discourse_datetime,
 };
 use super::person::PersonCursor;
 use crate::infra::retry::retry_transient;
@@ -77,7 +77,15 @@ pub(super) async fn fetch_item(
         has_accepted_answer: detail.has_accepted_answer,
         tags: detail.tags,
     };
-    let context = contribution_context(cursor)?;
+    let Platform::Discourse(instance) = &cursor.request.source.platform else {
+        return Err(ps_core::Error::Validation(
+            "person target is not Discourse".into(),
+        ));
+    };
+    let context = ContributionContext {
+        base_url: &cursor.base_url,
+        instance,
+    };
     let created_at = parse_discourse_datetime(&action.created_at)?;
     let mut item = match action.action_type {
         UserActionType::LikeGiven => {
@@ -201,29 +209,4 @@ fn extend_metadata(item: &mut ContributionInput, fields: serde_json::Value) {
     {
         metadata.extend(fields);
     }
-}
-
-fn contribution_context(cursor: &PersonCursor) -> Result<Cursor, ps_core::Error> {
-    let Platform::Discourse(instance) = &cursor.request.source.platform else {
-        return Err(ps_core::Error::Validation(
-            "person target is not Discourse".into(),
-        ));
-    };
-    Ok(Cursor {
-        watermark: None,
-        page: 0,
-        category_ids: cursor.category_ids.clone(),
-        category_index: 0,
-        min_posts: cursor.min_posts,
-        base_url: cursor.base_url.clone(),
-        instance: instance.clone(),
-        max_bumped_at: None,
-        has_more: true,
-        category_map: cursor
-            .category_map
-            .iter()
-            .map(|(id, name)| (*id, name.clone()))
-            .collect(),
-        failed_items: vec![],
-    })
 }

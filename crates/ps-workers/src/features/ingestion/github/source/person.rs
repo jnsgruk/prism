@@ -193,15 +193,7 @@ pub(super) fn eligible(
     let Some(request) = ctx.person_request()? else {
         return Ok(true);
     };
-    let identity = request
-        .source
-        .identity
-        .as_ref()
-        .ok_or_else(|| ps_core::Error::Validation("missing GitHub identity".into()))?;
-    Ok(item
-        .platform_username
-        .eq_ignore_ascii_case(&identity.username)
-        && request.contains_event(item.created_at)?)
+    request.eligible_contribution(item)
 }
 
 fn timestamp(seconds: i64) -> Result<String, ps_core::Error> {

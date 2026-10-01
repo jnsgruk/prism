@@ -35,7 +35,7 @@ pub(super) async fn fetch_for_chunk(
         return Ok((batch, action, None));
     }
 
-    let (live, live_error) = match fetch_batch(ing_ctx, cursor).await {
+    let (mut live, live_error) = match fetch_batch(ing_ctx, cursor).await {
         Ok(live) => (live, None),
         Err(error) => {
             tracing::warn!(%error, "person activity fetch failed");
@@ -62,11 +62,10 @@ pub(super) async fn fetch_for_chunk(
         "skipped_diffs": live.skipped_diffs,
     });
     let items_hash = ps_core::repo::reasoning::content_hash(&items_json);
-    let mut metadata = live.clone();
-    metadata.items.clear();
+    let items = std::mem::take(&mut live.items);
     let proposed = FetchCheckpoint {
         action,
-        result: metadata,
+        result: live,
         items_hash: items_hash.clone(),
         fetch_error: live_error.clone(),
     };
@@ -86,7 +85,7 @@ pub(super) async fn fetch_for_chunk(
     };
     let mut batch = checkpoint.result;
     if !sleeping {
-        batch.items = live.items;
+        batch.items = items;
     }
     Ok((batch, checkpoint.action, fingerprint_error))
 }

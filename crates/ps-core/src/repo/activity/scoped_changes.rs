@@ -65,6 +65,10 @@ pub(super) async fn record_changes(
     after: &HashMap<String, ContributionBefore>,
     changed: &[(&ContributionInput, Uuid)],
 ) -> Result<(), Error> {
+    if changed.is_empty() {
+        return Ok(());
+    }
+
     let mut ids = Vec::new();
     let mut contribution_ids = Vec::new();
     let mut previous_people = Vec::new();
@@ -84,8 +88,8 @@ pub(super) async fn record_changes(
         previous_people.push(previous.and_then(|row| row.person_id));
         previous_dates.push(previous.map(|row| row.created_at));
         current_dates.push(current.created_at);
-        previous_inputs.push(previous.map(|row| row.input.clone()));
-        current_inputs.push(current.input.clone());
+        previous_inputs.push(previous.map(|row| &row.input));
+        current_inputs.push(&current.input);
         hashes.push(crate::repo::reasoning::content_hash(&current.input));
         let dates = previous
             .into_iter()
@@ -126,8 +130,8 @@ pub(super) async fn record_changes(
         &previous_people as &[Option<Uuid>],
         &previous_dates as &[Option<OffsetDateTime>],
         &current_dates,
-        &previous_inputs as &[Option<serde_json::Value>],
-        &current_inputs,
+        &previous_inputs as &[Option<&serde_json::Value>],
+        &current_inputs as &[&serde_json::Value],
         &affected_periods,
         &hashes,
     )
