@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::{PersonId, TeamId};
+use crate::models::{Management, PersonId, TeamId};
 use uuid::Uuid;
 
 use super::{OrgRepo, PersonRow};
@@ -53,6 +53,19 @@ impl OrgRepo {
         let pid = person_id.into_inner();
         let tid = team_id.into_inner();
 
+        let manual = Management::Manual;
+        let affected = sqlx::query!(
+            "UPDATE org.people SET membership_management = $2 WHERE id = $1",
+            pid,
+            manual as Management,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+        if affected.rows_affected() == 0 {
+            return Err(Error::NotFound("person".into()));
+        }
+
         // End all current active memberships for this person.
         sqlx::query!(
             r#"
@@ -98,20 +111,32 @@ impl OrgRepo {
         person_id: PersonId,
         team_id: TeamId,
     ) -> Result<(), Error> {
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+        let manual = Management::Manual;
+        let affected = sqlx::query!(
+            "UPDATE org.people SET membership_management = $2 WHERE id = $1",
+            person_id.into_inner(),
+            manual as Management,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+        if affected.rows_affected() == 0 {
+            return Err(Error::NotFound("person".into()));
+        }
         sqlx::query!(
             r#"
-            UPDATE org.team_memberships
-            SET end_date = CURRENT_DATE
+            UPDATE org.team_memberships SET end_date = CURRENT_DATE
             WHERE person_id = $1 AND team_id = $2
               AND (end_date IS NULL OR end_date > CURRENT_DATE)
             "#,
             person_id.into_inner(),
             team_id.into_inner(),
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
-
+        tx.commit().await.map_err(Error::from)?;
         Ok(())
     }
 

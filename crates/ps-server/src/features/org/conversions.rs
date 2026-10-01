@@ -31,6 +31,16 @@ pub(super) fn build_people(people: Vec<PersonRow>, identities: &[IdentityRow]) -
                                 platform,
                                 username: i.platform_username.clone(),
                                 platform_instance,
+                                id: i.id.to_string(),
+                                platform_user_id: i.platform_user_id.clone(),
+                                management: match i.management {
+                                    ps_core::models::Management::Imported => {
+                                        ps_proto::canonical::prism::v1::Management::Imported as i32
+                                    }
+                                    ps_core::models::Management::Manual => {
+                                        ps_proto::canonical::prism::v1::Management::Manual as i32
+                                    }
+                                },
                             }
                         })
                         .collect()

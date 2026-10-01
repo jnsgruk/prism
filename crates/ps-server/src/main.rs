@@ -123,7 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         backup_generator,
         Some(post_restore_hook),
     );
-    let org_service = OrgServiceImpl::new(repos.clone());
+    let org_service = OrgServiceImpl::new_with_secret_key(repos.clone(), secret_key.clone());
     let config_service = ConfigServiceImpl::new(repos.clone(), secret_key.clone());
     let restate_admin_url =
         std::env::var("RESTATE_ADMIN_URL").unwrap_or_else(|_| "http://restate:9070".into());

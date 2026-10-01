@@ -1,11 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::Error;
-use crate::models::TeamType;
+use crate::models::{Management, TeamType};
 use sqlx::postgres::PgConnection;
 use uuid::Uuid;
 
-use super::{ImportIdentity, ImportRecord, ImportResult, OrgRepo, StalePersonRow};
+use super::import_people::{map_identities, upsert_person};
+use super::import_stale::{
+    count_active_import_managed, count_unassigned_people, deactivate_person_in_tx,
+    find_stale_people,
+};
+use super::{ImportRecord, ImportResult, OrgRepo};
 
 /// Maximum fraction of import-managed people that may be deactivated as stale
 /// in a single import. Above this, deactivation is skipped on the assumption
@@ -13,12 +18,12 @@ use super::{ImportIdentity, ImportRecord, ImportResult, OrgRepo, StalePersonRow}
 const STALE_DEACTIVATION_MAX_FRACTION: f64 = 0.2;
 
 /// Mutable counters and lookup maps shared across import passes.
-struct ImportState {
-    people_imported: i32,
-    people_updated: i32,
+pub(super) struct ImportState {
+    pub(super) people_imported: i32,
+    pub(super) people_updated: i32,
     teams_created: i32,
-    identities_mapped: i32,
-    warnings: Vec<String>,
+    pub(super) identities_mapped: i32,
+    pub(super) warnings: Vec<String>,
     person_name_to_id: HashMap<String, Uuid>,
     team_name_to_id: HashMap<String, Uuid>,
     has_active_membership: HashSet<Uuid>,
@@ -176,7 +181,9 @@ async fn upsert_people_and_teams(
             continue;
         }
 
-        let resolved_id = upsert_person(tx, record, state).await?;
+        let Some(resolved_id) = upsert_person(tx, record, state).await? else {
+            continue;
+        };
         state
             .person_name_to_id
             .insert(record.name.clone(), resolved_id);
@@ -188,113 +195,6 @@ async fn upsert_people_and_teams(
     Ok(())
 }
 
-/// Upsert a single person, matching an existing row by `directory_id` (JSON
-/// imports) or by email (HTML imports, which carry no `directory_id`).
-///
-/// Matching in place is what makes re-import safe: without it, every HTML
-/// record would insert a fresh row, duplicating the entire org on each upload.
-async fn upsert_person(
-    tx: &mut PgConnection,
-    record: &ImportRecord,
-    state: &mut ImportState,
-) -> Result<Uuid, Error> {
-    // 1. Match by directory_id when present (stable id from JSON imports).
-    if let Some(dir_id) = &record.directory_id {
-        let existing =
-            sqlx::query_scalar!("SELECT id FROM org.people WHERE directory_id = $1", dir_id)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(Error::from)?;
-
-        if let Some(existing_id) = existing {
-            return update_existing_person(tx, record, existing_id, state).await;
-        }
-
-        let person_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO org.people (id, name, email, level, directory_id, last_import_at)
-            VALUES ($1, $2, $3, $4, $5, now())
-            "#,
-            person_id,
-            record.name,
-            record.email,
-            record.level,
-            dir_id,
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        state.people_imported += 1;
-        return Ok(person_id);
-    }
-
-    // 2. No directory_id (HTML import): match by email so re-imports update in
-    //    place. Matching is case-insensitive; on the (constraint-free) chance
-    //    of duplicate emails, the oldest row wins for determinism.
-    if let Some(email) = record.email.as_deref().filter(|e| !e.is_empty()) {
-        let existing = sqlx::query_scalar!(
-            "SELECT id FROM org.people WHERE lower(email) = lower($1) ORDER BY created_at LIMIT 1",
-            email,
-        )
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        if let Some(existing_id) = existing {
-            return update_existing_person(tx, record, existing_id, state).await;
-        }
-    }
-
-    // 3. No match — a genuine new joiner.
-    let person_id = Uuid::now_v7();
-    sqlx::query!(
-        r#"
-        INSERT INTO org.people (id, name, email, level, last_import_at)
-        VALUES ($1, $2, $3, $4, now())
-        "#,
-        person_id,
-        record.name,
-        record.email,
-        record.level,
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    state.people_imported += 1;
-    Ok(person_id)
-}
-
-/// Update an existing person's directory-sourced fields and stamp
-/// `last_import_at` so this run claims them as seen.
-async fn update_existing_person(
-    tx: &mut PgConnection,
-    record: &ImportRecord,
-    existing_id: Uuid,
-    state: &mut ImportState,
-) -> Result<Uuid, Error> {
-    sqlx::query!(
-        r#"
-        UPDATE org.people
-        SET name = $1, email = $2, level = $3,
-            last_import_at = now(), updated_at = now()
-        WHERE id = $4
-        "#,
-        record.name,
-        record.email,
-        record.level,
-        existing_id,
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    state.people_updated += 1;
-    Ok(existing_id)
-}
-
 /// Check if a person has an active membership; if not, assign to their import-derived team.
 async fn assign_team_if_needed(
     tx: &mut PgConnection,
@@ -302,6 +202,14 @@ async fn assign_team_if_needed(
     resolved_id: Uuid,
     state: &mut ImportState,
 ) -> Result<(), Error> {
+    let management = sqlx::query_scalar!(
+        "SELECT membership_management AS \"membership_management: Management\" FROM org.people WHERE id = $1 FOR UPDATE",
+        resolved_id,
+    ).fetch_one(&mut *tx).await.map_err(Error::from)?;
+    if management == Management::Manual {
+        return Ok(());
+    }
+
     let any_membership = sqlx::query_scalar!(
         r#"
         SELECT EXISTS(
@@ -399,61 +307,6 @@ async fn track_team_name(
         {
             state.team_name_to_id.insert(team_name.clone(), tid);
         }
-    }
-    Ok(())
-}
-
-/// Map platform identities for a single record using batch UPSERT.
-async fn map_identities(
-    tx: &mut PgConnection,
-    record: &ImportRecord,
-    resolved_id: Uuid,
-    state: &mut ImportState,
-) -> Result<(), Error> {
-    let valid: Vec<&ImportIdentity> = record
-        .identities
-        .iter()
-        .filter(|i| {
-            if i.platform.is_empty() || i.username.is_empty() {
-                state
-                    .warnings
-                    .push(format!("skipping empty identity for {}", record.name));
-                false
-            } else {
-                true
-            }
-        })
-        .collect();
-
-    if valid.is_empty() {
-        return Ok(());
-    }
-
-    let ids: Vec<Uuid> = valid.iter().map(|_| Uuid::now_v7()).collect();
-    let person_ids: Vec<Uuid> = vec![resolved_id; valid.len()];
-    let platforms: Vec<&str> = valid.iter().map(|i| i.platform.as_str()).collect();
-    let usernames: Vec<String> = valid.iter().map(|i| i.username.to_lowercase()).collect();
-
-    let result = sqlx::query_scalar!(
-        r#"
-        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-        SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[])
-        ON CONFLICT (platform, platform_username)
-        DO UPDATE SET person_id = EXCLUDED.person_id
-        RETURNING id
-        "#,
-        &ids,
-        &person_ids,
-        &platforms as &[&str],
-        &usernames,
-    )
-    .fetch_all(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    #[allow(clippy::cast_possible_wrap)]
-    {
-        state.identities_mapped += result.len() as i32;
     }
     Ok(())
 }
@@ -580,97 +433,4 @@ async fn resolve_parent(
             })
             .copied()
     }))
-}
-
-/// Find active, import-managed people absent from this import batch (leavers).
-///
-/// "Import-managed" means `last_import_at IS NOT NULL` — set whenever a person
-/// is seen by a directory import. Manually-added people (never imported) have
-/// it `NULL` and are therefore never treated as leavers. `now()` is the
-/// transaction start time, so people seen in this run (stamped with the same
-/// `now()`) are excluded and only strictly-earlier rows are returned.
-async fn find_stale_people(tx: &mut PgConnection) -> Result<Vec<StalePersonRow>, Error> {
-    let rows = sqlx::query!(
-        r#"
-        SELECT id, name, email
-        FROM org.people
-        WHERE active = true
-          AND last_import_at IS NOT NULL
-          AND last_import_at < now()
-        ORDER BY name
-        "#,
-    )
-    .fetch_all(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    Ok(rows
-        .into_iter()
-        .map(|r| StalePersonRow {
-            id: r.id,
-            name: r.name,
-            email: r.email,
-        })
-        .collect())
-}
-
-/// Count active, import-managed people — the denominator for the partial-file
-/// safety guard.
-async fn count_active_import_managed(tx: &mut PgConnection) -> Result<i32, Error> {
-    sqlx::query_scalar!(
-        r#"
-        SELECT COUNT(*)::int AS "count!"
-        FROM org.people
-        WHERE active = true AND last_import_at IS NOT NULL
-        "#,
-    )
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(Error::from)
-}
-
-/// Deactivate a stale person within the import transaction: clear `active` and
-/// end any open team memberships. Mirrors `OrgRepo::deactivate_person` but runs
-/// on the shared transaction connection.
-async fn deactivate_person_in_tx(tx: &mut PgConnection, id: Uuid) -> Result<(), Error> {
-    sqlx::query!(
-        "UPDATE org.people SET active = false, updated_at = now() WHERE id = $1",
-        id,
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    sqlx::query!(
-        r#"
-        UPDATE org.team_memberships
-        SET end_date = CURRENT_DATE
-        WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
-        "#,
-        id,
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    Ok(())
-}
-
-/// Count active people with no active team membership.
-async fn count_unassigned_people(tx: &mut PgConnection) -> Result<i32, Error> {
-    sqlx::query_scalar!(
-        r#"
-        SELECT COUNT(*)::int AS "count!"
-        FROM org.people p
-        WHERE p.active = true
-          AND NOT EXISTS (
-              SELECT 1 FROM org.team_memberships tm
-              WHERE tm.person_id = p.id
-                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-          )
-        "#,
-    )
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(Error::from)
 }

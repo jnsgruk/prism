@@ -1,8 +1,15 @@
 pub mod export;
+mod export_import;
+mod export_people;
 pub mod github_teams;
 mod identities;
 mod import;
+mod import_people;
+mod import_stale;
+mod jira_import;
+mod manual;
 mod memberships;
+pub use manual::{CreatePersonParams, IdentityInput, ManualPersonResult, UpdateIdentityParams};
 mod people;
 mod resolutions;
 mod teams;
@@ -46,7 +53,11 @@ pub struct PersonRow {
 }
 
 /// A platform identity row.
+#[derive(Debug)]
 pub struct IdentityRow {
+    pub id: Uuid,
+    pub platform_user_id: Option<String>,
+    pub management: crate::models::Management,
     pub person_id: Uuid,
     pub platform: String,
     pub platform_username: String,

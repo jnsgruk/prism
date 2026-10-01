@@ -278,11 +278,15 @@ impl OrgRepo {
         email: Option<&str>,
         level: Option<&str>,
     ) -> Result<PersonRow, Error> {
+        super::manual::validate_person_fields(
+            name.unwrap_or("unchanged"),
+            email.filter(|value| !value.is_empty()),
+        )?;
         sqlx::query!(
             r#"
             UPDATE org.people
             SET name = COALESCE($2, name),
-                email = COALESCE($3, email),
+                email = CASE WHEN $3::text IS NULL THEN email ELSE NULLIF($3, '') END,
                 level = COALESCE($4, level),
                 updated_at = now()
             WHERE id = $1

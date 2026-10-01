@@ -140,4 +140,4 @@ run = "buf generate"
 
 [tasks."generate:sqlx"]
 description = "Regenerate SQLx offline cache (requires running database)"
-run = "SQLX_OFFLINE=false DATABASE_URL='postgres://prism:prism-dev-password@localhost:5432/prism' cargo sqlx prepare --workspace"
+run = "SQLX_OFFLINE=false DATABASE_URL='postgres://prism:prism-dev-password@localhost:5432/prism' cargo sqlx prepare --workspace -- --all-targets"

@@ -23,7 +23,7 @@ const CHUNK_SIZE: usize = 256 * 1024;
 /// Returns `(person_id, team_id, contribution_id)` for later verification.
 async fn seed_data(pool: &PgPool, user_id: Uuid) -> (Uuid, Uuid, Uuid) {
     let person_id = Uuid::now_v7();
-    sqlx::query("INSERT INTO org.people (id, name, email) VALUES ($1, $2, $3)")
+    sqlx::query("INSERT INTO org.people (id, name, email, membership_management) VALUES ($1, $2, $3, 'manual')")
         .bind(person_id)
         .bind("Alice Test")
         .bind("alice@example.com")
@@ -43,12 +43,12 @@ async fn seed_data(pool: &PgPool, user_id: Uuid) -> (Uuid, Uuid, Uuid) {
 
     let identity_id = Uuid::now_v7();
     sqlx::query(
-        "INSERT INTO org.platform_identities (id, person_id, platform, platform_username) \
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO org.platform_identities (id, person_id, platform, platform_username, platform_user_id, management) \
+         VALUES ($1, $2, $3, $4, 'Opaque:MixedCase', 'manual')",
     )
     .bind(identity_id)
     .bind(person_id)
-    .bind("github")
+    .bind("jira")
     .bind("alicetest")
     .execute(pool)
     .await
@@ -338,6 +338,13 @@ async fn backup_and_restore_roundtrip() {
             .await
             .expect("find alice");
     assert_eq!(person_name.0, "Alice Test");
+    let manual_metadata: (String, String, String) = sqlx::query_as(
+        "SELECT p.membership_management, i.management, i.platform_user_id FROM org.people p JOIN org.platform_identities i ON i.person_id = p.id WHERE p.email = 'alice@example.com' AND i.platform = 'jira'",
+    ).fetch_one(&server.pool).await.expect("manual metadata restored");
+    assert_eq!(
+        manual_metadata,
+        ("manual".into(), "manual".into(), "Opaque:MixedCase".into())
+    );
 
     let team_name: (String,) = sqlx::query_as("SELECT name FROM org.teams LIMIT 1")
         .fetch_one(&server.pool)

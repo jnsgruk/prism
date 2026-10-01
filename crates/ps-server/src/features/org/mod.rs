@@ -1,10 +1,17 @@
 mod conversions;
+mod jira_lookup;
+mod manual;
 mod org_export;
 mod people;
 mod teams;
 
 use ps_core::repo::Repos;
 use ps_proto::canonical::prism::v1::org_service_server::OrgService;
+use ps_proto::canonical::prism::v1::{
+    AddPersonIdentityRequest, AddPersonIdentityResponse, CreatePersonRequest, CreatePersonResponse,
+    RemovePersonIdentityRequest, RemovePersonIdentityResponse, UpdatePersonIdentityRequest,
+    UpdatePersonIdentityResponse,
+};
 use ps_proto::canonical::prism::v1::{
     AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest,
     AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest,
@@ -21,22 +28,79 @@ use ps_proto::canonical::prism::v1::{
     UnassignGithubTeamResponse, UpdatePersonRequest, UpdatePersonResponse, UpdateTeamRequest,
     UpdateTeamResponse,
 };
+use ps_proto::canonical::prism::v1::{LookupJiraAccountsRequest, LookupJiraAccountsResponse};
 use tonic::{Request, Response, Status};
+use zeroize::Zeroizing;
 
-use crate::common::require_auth;
+use crate::common::{require_admin, require_auth};
 
 pub struct OrgServiceImpl {
     repos: Repos,
+    secret_key: Option<Zeroizing<[u8; 32]>>,
 }
 
 impl OrgServiceImpl {
     pub fn new(repos: Repos) -> Self {
-        Self { repos }
+        Self {
+            repos,
+            secret_key: None,
+        }
+    }
+
+    pub fn new_with_secret_key(repos: Repos, secret_key: Zeroizing<[u8; 32]>) -> Self {
+        Self {
+            repos,
+            secret_key: Some(secret_key),
+        }
     }
 }
 
 #[tonic::async_trait]
 impl OrgService for OrgServiceImpl {
+    async fn lookup_jira_accounts(
+        &self,
+        request: Request<LookupJiraAccountsRequest>,
+    ) -> Result<Response<LookupJiraAccountsResponse>, Status> {
+        crate::common::require_admin(&request)?;
+        let key = self
+            .secret_key
+            .as_ref()
+            .ok_or_else(|| Status::internal("internal error"))?;
+        jira_lookup::handle_lookup_jira_accounts(&self.repos, key, request.into_inner()).await
+    }
+
+    async fn create_person(
+        &self,
+        request: Request<CreatePersonRequest>,
+    ) -> Result<Response<CreatePersonResponse>, Status> {
+        let _ctx = require_admin(&request)?;
+        manual::create(&self.repos, request.into_inner()).await
+    }
+
+    async fn add_person_identity(
+        &self,
+        request: Request<AddPersonIdentityRequest>,
+    ) -> Result<Response<AddPersonIdentityResponse>, Status> {
+        let _ctx = require_admin(&request)?;
+        manual::add(&self.repos, request.into_inner()).await
+    }
+
+    async fn update_person_identity(
+        &self,
+        request: Request<UpdatePersonIdentityRequest>,
+    ) -> Result<Response<UpdatePersonIdentityResponse>, Status> {
+        let _ctx = require_admin(&request)?;
+        manual::update(&self.repos, request.into_inner()).await
+    }
+
+    async fn remove_person_identity(
+        &self,
+        request: Request<RemovePersonIdentityRequest>,
+    ) -> Result<Response<RemovePersonIdentityResponse>, Status> {
+        let _ctx = require_admin(&request)?;
+        manual::remove(&self.repos, request.into_inner()).await
+    }
+
     async fn list_teams(
         &self,
         request: Request<ListTeamsRequest>,

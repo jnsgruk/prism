@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
-use super::{PersonId, Platform, PlatformUsername, TeamId};
+use super::{Management, PersonId, Platform, PlatformUsername, TeamId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Person {
@@ -11,6 +11,8 @@ pub struct Person {
     pub email: Option<String>,
     pub level: Option<String>,
     pub directory_id: Option<String>,
+    #[serde(default)]
+    pub membership_management: Management,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
 }
@@ -22,6 +24,8 @@ pub struct PlatformIdentity {
     pub platform: Platform,
     pub platform_username: PlatformUsername,
     pub platform_user_id: Option<String>,
+    #[serde(default)]
+    pub management: Management,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

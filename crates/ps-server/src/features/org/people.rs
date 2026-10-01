@@ -164,7 +164,7 @@ pub(super) async fn handle_update_person(
         .org
         .update_person(id, name.as_deref(), email.as_deref(), level.as_deref())
         .await
-        .map_err(db_err)?;
+        .map_err(super::manual::write_err)?;
 
     let identities = repos
         .org
