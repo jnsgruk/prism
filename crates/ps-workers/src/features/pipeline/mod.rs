@@ -1,5 +1,9 @@
+pub mod ownership;
+pub mod scoped;
 pub mod stages;
 pub mod workflow;
+
+use scoped::ScopedIngestionPipelineWorkflow;
 
 pub use workflow::{IngestionPipelineWorkflow, IngestionPipelineWorkflowImpl};
 
@@ -12,5 +16,8 @@ pub fn bind(endpoint: Builder, state: &SharedState) -> Builder {
     let pipeline = IngestionPipelineWorkflowImpl {
         state: state.clone(),
     };
-    endpoint.bind(pipeline.serve())
+    let scoped = scoped::ScopedIngestionPipelineWorkflowImpl {
+        state: state.clone(),
+    };
+    endpoint.bind(pipeline.serve()).bind(scoped.serve())
 }
