@@ -6,6 +6,7 @@ import { POLL_INTERVAL_ACTIVE, POLL_INTERVAL_BURST, POLL_INTERVAL_IDLE } from "@
 import type { SourceStatus } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { SourceState } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
+import { isActivePipeline } from "@ps/pipeline-status";
 
 /**
  * Derive handler status from live source state for in-progress stages.
@@ -71,12 +72,12 @@ export const usePipelineState = (options?: {
     refetchInterval: (query) => {
       if (options?.isBursting) return POLL_INTERVAL_BURST;
       const pipeline = query.state.data?.current;
-      if (pipeline?.status === "running") return POLL_INTERVAL_ACTIVE;
+      if (isActivePipeline(pipeline?.status)) return POLL_INTERVAL_ACTIVE;
       return POLL_INTERVAL_IDLE;
     },
   });
 
-  return { current, isLoading, isRunning: current?.status === "running" };
+  return { current, isLoading, isRunning: isActivePipeline(current?.status) };
 };
 
 export const PipelineDAG = ({
@@ -88,7 +89,8 @@ export const PipelineDAG = ({
 }): React.ReactElement => {
   const { current, isLoading } = usePipelineState({ isBursting });
 
-  const sourceStatusMap = sources ? buildSourceStatusMap(sources, current?.startedAt?.seconds) : undefined;
+  const sourceStatusMap =
+    sources && current?.scopeKind !== "person" ? buildSourceStatusMap(sources, current?.startedAt?.seconds) : undefined;
 
   if (isLoading) {
     return <Skeleton className="h-[200px] w-full" />;

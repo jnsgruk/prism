@@ -1,6 +1,7 @@
 import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 
 import type {
   CancelPipelineResponse,
@@ -50,11 +51,18 @@ export const useTriggerPipeline = (): UseMutationResult<
   { sinceDate?: string } | void
 > => {
   const queryClient = useQueryClient();
+  const submission = useRef<{ sinceDate?: string; id: string } | undefined>(undefined);
 
   return useMutation({
-    mutationFn: (args) => client.triggerPipeline({ sinceDate: args?.sinceDate }),
+    mutationFn: (args) => {
+      if (!submission.current || submission.current.sinceDate !== args?.sinceDate) {
+        submission.current = { sinceDate: args?.sinceDate, id: crypto.randomUUID() };
+      }
+      return client.triggerPipeline({ sinceDate: args?.sinceDate, submissionId: submission.current.id });
+    },
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: pipelineKeys.status() });
+      submission.current = undefined;
+      await queryClient.invalidateQueries({ queryKey: pipelineKeys.all });
     },
   });
 };
@@ -65,7 +73,7 @@ export const useCancelPipeline = (): UseMutationResult<CancelPipelineResponse, E
   return useMutation({
     mutationFn: (pipelineId: string) => client.cancelPipeline({ pipelineId }),
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: pipelineKeys.status() });
+      await queryClient.invalidateQueries({ queryKey: pipelineKeys.all });
     },
   });
 };
