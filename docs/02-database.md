@@ -63,6 +63,34 @@ also cover ordinary contribution writers. Only provenance-backed Discourse-like
 operations can correct `created_at`; ordinary upserts retain authoritative time
 and action evidence.
 
+## Historical invalidations and account discovery coverage
+
+`activity.snapshot_invalidations` expands each durable contribution change into
+unique UTC week/month/quarter periods, with independent raw-metric and insight
+refresh timestamps. Its foreign key cascades with the change record. Migration
+0044 also creates dirty work for already persisted change manifests. Workers
+acknowledge only the selected UUID generations after successful recomputation;
+new concurrent changes remain dirty. Insight work waits for queued enrichment,
+and recovery selects terminal pipeline owners so cancellation or partial failure
+cannot discard committed work. Team and insight snapshot calculations preserve
+membership effective dates and replace obsolete calculation source links.
+
+`activity.identity_discovery_coverage` keys supplementary GitHub/Discourse
+coverage by `(source_id, identity_id)`. Resetting activity also clears these
+checkpoints so previously deleted history is not treated as harvested. A content
+version binds the saved account and source settings. Edits invalidate that version without deleting contribution
+history or unrelated checkpoints. Frozen upper cutoffs advance only after a
+complete account traversal and successful terminal storage; source-wide update
+watermarks cannot establish this coverage. Saved inactive accounts cannot
+publish a new target checkpoint. First runs use an explicit bounded lookback,
+while administrator backfills provide older history. Journalled planning stores
+`initial_since` before supplementary fetching; `covered_through` stays NULL until
+a complete stored traversal. Failed first attempts retain that initial lower
+bound across later invocations, even after the lookback window would have moved
+past deferred events. Bulk baseline creation validates active saved accounts and
+exact source/platform bounds. Account/policy changes reset the baseline and
+completed cutoff together.
+
 ## Encrypted Secrets
 
 Source credentials (API tokens) are stored encrypted in `config.secrets` using AES-256-GCM. Only `PS_SECRET_KEY` (256-bit, base64-encoded) comes from environment. All other configuration is managed through the admin UI via gRPC.

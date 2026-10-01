@@ -4,6 +4,36 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Enable person pipelines with durable historical refresh and account coverage
+
+**Context:** Person adapters and atomic persistence were complete, but launches
+remained gated. Current-period-only recomputation left historical results stale,
+and team-only GitHub discovery/topic-only Discourse discovery missed new activity
+for active manually added people.
+
+**Decision:** Enable the admitted Person workflow, skip its platform-wide identity
+resolution, and consume transactional dirty generations for old/new UTC
+week/month/quarter snapshots. Preserve period-end membership attribution and
+refresh calculation links. Recover terminal owners' dirty work through a durable
+bounded singleton loop; leave unresolved enrichment work pending and visible.
+Keep the existing shared AI queue executor and its exact pipeline cancellation
+ownership. Reuse person adapters for supplementary normal discovery with
+independent source/account checkpoints, frozen cutoffs, one-day overlap and
+seven-day GitHub/30-day Discourse initial lookbacks. Identity/source-boundary
+changes reset only affected coverage; full historical collection remains an
+explicit backfill. Persist the first discovery lower bound separately from
+completed coverage, so failed first attempts cannot lose deferred events as a
+new invocation's lookback moves forward. Only complete stored traversals publish
+target coverage.
+
+**Rationale:** Contribution provenance and independent acknowledgements survive
+crashes/cancellation without widening a person's historical import or inventing
+membership. Independent account coverage finds reviews and old-topic likes that
+source-wide update timestamps cannot prove complete. Existing adapters and queues
+avoid another scheduler or duplicate platform implementation. Drain affected
+journals before rollout, retain unrelated state, and validate with actual Restate
+replay/cancellation plus real PostgreSQL/provider fixtures.
+
 ## 2026-10-01 — Publish GitHub coverage after all review pages finish
 
 **Context:** A successful review continuation could advance the global update watermark while later pages were unfinished. A later failure discarded the cursor; fresh `updated:>` discovery then skipped the unchanged parent PR and permanently lost remaining reviews. Earlier repository pages can also have newer timestamps than subsequently discovered parents.

@@ -74,3 +74,18 @@ Every metric, insight, or AI-generated output must be auditable back to source d
 - AI enrichments store model name, input, prompt, and confidence
 - The UI provides a "show how this was calculated" affordance
 - Cost tracking records token usage and model for every API call
+
+## Backfilled historical insights
+
+Person backfills retain separate raw-metric and post-enrichment invalidations for
+old/new contribution periods. Historical insights recompute only after the
+changed contribution leaves the enrichment queue; unavailable AI work stays
+pending and visible instead of being acknowledged. Terminal-pipeline recovery
+retries that work after failed or cancelled ingestion. Snapshot source links are
+replaced with the recalculated result, including clearing links after timestamp
+or attribution corrections. Individual insights continue to query raw history.
+
+The enrichment and embedding queues remain shared. Person ingestion enqueues
+only eligible changed contributions, while the owned processing stages can
+drain existing queue entries too. Pipeline ownership identifies cancellation
+and progress; it does not imply a separate person-only AI queue.

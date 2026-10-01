@@ -68,6 +68,14 @@ preserve the previous completed coverage fields. A fresh ordinary run must redis
 the unchanged PR, retain stable contribution IDs, fetch missing reviews and
 publish coverage only after successful source completion.
 
+`scripts/person-backfill-smoke.sh` is the reproducible Person release gate. It
+combines frozen multi-instance API admission, historical metric/insight fixtures,
+active unassigned account discovery and actual Restate workflow tests. The
+workflow fixtures stall downstream computation after committed history, restart
+the worker, resume the same invocation, and verify cancellation retains durable
+invalidations while preserving unrelated work. They use the test database and
+fake provider credentials; no real backfill or journal reset is required.
+
 ### Frontend Tests
 
 Vitest + React Testing Library + happy-dom. API mocking via `createRouterTransport` (Connect, in-memory, type-safe). Fresh `QueryClient` per test with `retry: false`.
