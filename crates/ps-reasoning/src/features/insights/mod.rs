@@ -1,4 +1,3 @@
-use futures::stream::{self, TryStreamExt};
 use ps_core::models::PeriodType;
 use ps_core::repo::Repos;
 use ps_core::repo::insights::UpsertSnapshotParams;
@@ -8,13 +7,15 @@ use uuid::Uuid;
 
 /// Compute insight snapshots for all teams across the given period.
 ///
-/// Returns the number of snapshots computed. Runs up to 4 teams concurrently.
+/// Returns the number of snapshots computed. Refreshes are serialized across
+/// periods and workers, with one team (up to five aggregations) at a time.
 pub async fn compute_all_snapshots(
     repos: &Repos,
     period_start: Date,
     period_end: Date,
     period_type: PeriodType,
 ) -> Result<i32, ps_core::Error> {
+    let _refresh_lock = repos.metrics.lock_insight_refresh().await?;
     let _period_lock = repos
         .metrics
         .lock_snapshot_period(period_start, period_type, true)
@@ -23,11 +24,11 @@ pub async fn compute_all_snapshots(
 
     let computed = i32::try_from(team_ids.len())
         .map_err(|error| ps_core::Error::Internal(error.to_string()))?;
-    stream::iter(team_ids.into_iter().map(Ok))
-        .try_for_each_concurrent(4, |team_id| {
-            compute_team_snapshot(repos, team_id, period_start, period_end, period_type)
-        })
-        .await?;
+    // Each team already fans out into five queries, some with parallel hashes.
+    // Adding team concurrency multiplies database memory rather than just work.
+    for team_id in team_ids {
+        compute_team_snapshot(repos, team_id, period_start, period_end, period_type).await?;
+    }
 
     info!(computed, %period_type, %period_start, "computed all insight snapshots");
 

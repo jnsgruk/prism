@@ -44,6 +44,8 @@ spec:
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data
+            - name: dshm
+              mountPath: /dev/shm
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "prism"]
@@ -51,10 +53,17 @@ spec:
             periodSeconds: 5
           resources:
             requests:
-              memory: 256Mi
+              memory: 512Mi
               cpu: 100m
             limits:
-              memory: 512Mi
+              # Includes shared_buffers, /dev/shm, backend memory and file cache.
+              memory: 1Gi
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            # A cap, not reserved memory; usage counts toward the container limit.
+            sizeLimit: 256Mi
   volumeClaimTemplates:
     - metadata:
         name: pgdata
