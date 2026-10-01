@@ -1,3 +1,4 @@
+import { platformLabel } from "@/lib/proto-display";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { z } from "zod";
 
@@ -74,6 +75,17 @@ const schema = z.object({
             code: "custom",
             message: `Account ${index + 1}: select a Discourse instance.`,
             path: [index, "platformInstance"],
+          });
+
+        if (
+          account.platform === Platform.DISCOURSE &&
+          account.username &&
+          !/^[a-zA-Z0-9_.-]{1,60}$/.test(account.username)
+        )
+          ctx.addIssue({
+            code: "custom",
+            message: `${platformLabel(account.platform, account.platformInstance || undefined)} account ${index + 1}: usernames must contain 1–60 letters, numbers, dots, hyphens, or underscores.`,
+            path: [index, "username"],
           });
 
         if (account.platform === Platform.JIRA && !account.id && !account.platformUserId)
