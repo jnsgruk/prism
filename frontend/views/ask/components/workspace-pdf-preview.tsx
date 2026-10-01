@@ -30,7 +30,7 @@ class PdfErrorBoundary extends Component<{ children: ReactNode; onDownload?: () 
 export const WorkspacePdfPreview = (props: WorkspacePdfPreviewProps): React.ReactElement => (
   <PdfErrorBoundary key={props.url} onDownload={props.onDownload}>
     <Suspense fallback={<WorkspacePdfLoading />}>
-      <PdfRenderer key={props.url} {...props} />
+      <PdfRenderer {...props} />
     </Suspense>
   </PdfErrorBoundary>
 );

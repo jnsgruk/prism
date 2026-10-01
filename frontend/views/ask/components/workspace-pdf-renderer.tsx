@@ -94,7 +94,7 @@ const WorkspacePdfRenderer = ({
               />
             ) : (
               <Page
-                key={`${selectedPage}-${width}-${numericScale}`}
+                key={selectedPage}
                 pageNumber={selectedPage}
                 width={width}
                 scale={numericScale}
