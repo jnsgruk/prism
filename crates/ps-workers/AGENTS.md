@@ -39,13 +39,19 @@ For ad-hoc `ctx.run()` calls, use journaling macros from `infra/run_lifecycle.rs
 ```rust
 // Unit-returning:
 journaled!(ctx, "step_name", [repos, some_string], {
-    repos.reasoning.update_something(id, &some_string).await
+    repos
+        .reasoning
+        .update_something(id, &some_string)
+        .await
         .map_err(terminal_err("failed to update"))?;
 });
 
 // Value-returning:
 let items = journaled_value!(ctx, "fetch_queue", [repos], {
-    repos.reasoning.find_queued(100).await
+    repos
+        .reasoning
+        .find_queued(100)
+        .await
         .map_err(terminal_err("db error"))?
 });
 ```
