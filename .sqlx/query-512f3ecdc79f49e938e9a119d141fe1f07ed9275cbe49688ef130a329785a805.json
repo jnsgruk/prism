@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.pipeline_invocations (pipeline_id, invocation_id, kind, run_id)\n            VALUES ($1, $2, 'ingestion', $3)\n            ON CONFLICT (pipeline_id, invocation_id) DO UPDATE SET run_id = EXCLUDED.run_id\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "512f3ecdc79f49e938e9a119d141fe1f07ed9275cbe49688ef130a329785a805"
+}

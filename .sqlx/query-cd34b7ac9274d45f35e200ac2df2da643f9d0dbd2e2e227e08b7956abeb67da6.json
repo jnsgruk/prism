@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO activity.pipeline_invocations\n                    (pipeline_id, invocation_id, parent_invocation_id, kind, run_id)\n                VALUES ($1, $2, $3, $4, $5)\n                ON CONFLICT (pipeline_id, invocation_id) DO UPDATE SET\n                    parent_invocation_id = COALESCE(activity.pipeline_invocations.parent_invocation_id, EXCLUDED.parent_invocation_id),\n                    run_id = COALESCE(activity.pipeline_invocations.run_id, EXCLUDED.run_id),\n                    kind = EXCLUDED.kind\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd34b7ac9274d45f35e200ac2df2da643f9d0dbd2e2e227e08b7956abeb67da6"
+}

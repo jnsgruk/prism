@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET completed_at = now(), status = 'completed', items_collected = $2\n            WHERE id = $1 AND completed_at IS NULL AND pipeline_id IS NOT NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "152fbe6a7eac79655291a77fef085a6b39288b065ae6dd629950646e57380670"
+}

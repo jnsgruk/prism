@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT EXISTS(SELECT 1 FROM activity.pipelines WHERE status = 'running') AS \"exists!\"\n            ",
+  "query": "\n            SELECT EXISTS(SELECT 1 FROM activity.pipelines WHERE status IN ('pending', 'running', 'cancelling')) AS \"exists!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -17,5 +17,5 @@
       null
     ]
   },
-  "hash": "a4bf5a0c8375fa2fbfb60795da84807d7fda9f68154f737a0736b3c2fd32f36f"
+  "hash": "e7d1b6c81b83eeaf9a5fca238b5a02c35acc52e3647b1ffcef2b22b61a535113"
 }

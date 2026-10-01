@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                sc.name,\n                sc.source_type,\n                iw.watermark_value as \"watermark_value?\",\n                lr.completed_at as \"last_successful_run?\",\n                iw.last_attempt,\n                iw.last_error,\n                lr.items_collected as \"items_collected_last_run?\",\n                ar.id IS NOT NULL as \"has_active_run!\",\n                ar.items_collected as \"active_run_items?\",\n                ar.started_at as \"active_run_started_at?\",\n                iw.current_invocation_id as \"current_invocation_id?\",\n                ar.progress as \"active_run_progress?\"\n            FROM config.source_configs sc\n            LEFT JOIN activity.ingestion_watermarks iw\n                ON sc.name = iw.source_name\n            LEFT JOIN LATERAL (\n                SELECT id, items_collected, started_at, progress\n                FROM activity.ingestion_runs ir\n                WHERE ir.source_name = sc.name\n                  AND ir.completed_at IS NULL\n                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')\n                ORDER BY ir.started_at DESC\n                LIMIT 1\n            ) ar ON true\n            LEFT JOIN LATERAL (\n                SELECT completed_at, items_collected\n                FROM activity.ingestion_runs ir\n                WHERE ir.source_name = sc.name\n                  AND ir.status IN ('completed', 'completed_with_warnings')\n                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle')\n                ORDER BY ir.completed_at DESC\n                LIMIT 1\n            ) lr ON true\n            WHERE sc.enabled = true\n            ORDER BY sc.name\n            ",
+  "query": "\n            SELECT\n                sc.name,\n                sc.source_type,\n                iw.watermark_value as \"watermark_value?\",\n                lr.completed_at as \"last_successful_run?\",\n                iw.last_attempt,\n                iw.last_error,\n                lr.items_collected as \"items_collected_last_run?\",\n                ar.id IS NOT NULL as \"has_active_run!\",\n                ar.pipeline_id as \"active_pipeline_id?\",\n                ar.items_collected as \"active_run_items?\",\n                ar.started_at as \"active_run_started_at?\",\n                iw.current_invocation_id as \"current_invocation_id?\",\n                ar.progress as \"active_run_progress?\"\n            FROM config.source_configs sc\n            LEFT JOIN activity.ingestion_watermarks iw\n                ON sc.name = iw.source_name\n            LEFT JOIN LATERAL (\n                SELECT id, items_collected, started_at, progress, pipeline_id\n                FROM activity.ingestion_runs ir\n                WHERE ir.source_name = sc.name\n                  AND ir.completed_at IS NULL\n                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle', 'run_scoped')\n                ORDER BY ir.started_at DESC\n                LIMIT 1\n            ) ar ON true\n            LEFT JOIN LATERAL (\n                SELECT completed_at, items_collected\n                FROM activity.ingestion_runs ir\n                WHERE ir.source_name = sc.name\n                  AND ir.status IN ('completed', 'completed_with_warnings')\n                  AND ir.handler_method IN ('run_ingestion', 'backfill', 'run_cycle', 'run_scoped')\n                ORDER BY ir.completed_at DESC\n                LIMIT 1\n            ) lr ON true\n            WHERE sc.enabled = true\n            ORDER BY sc.name\n            ",
   "describe": {
     "columns": [
       {
@@ -88,6 +88,17 @@
       },
       {
         "ordinal": 8,
+        "name": "active_pipeline_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "pipeline_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
         "name": "active_run_items?",
         "type_info": "Int4",
         "origin": {
@@ -98,7 +109,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "active_run_started_at?",
         "type_info": "Timestamptz",
         "origin": {
@@ -109,7 +120,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "current_invocation_id?",
         "type_info": "Text",
         "origin": {
@@ -120,7 +131,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "active_run_progress?",
         "type_info": "Jsonb",
         "origin": {
@@ -146,8 +157,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "9420956aba00ffcfcd6a1cd69371982dc736ca415fbdef21fde431b62be30125"
+  "hash": "c70fda2865128adf7bdd1eebbb1bc1dd64f51955388361d9faa2f0ec879508bd"
 }

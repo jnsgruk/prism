@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, status, current_stage, started_at, completed_at, stages, current_invocation_id, error\n            FROM activity.pipelines\n            ORDER BY started_at DESC\n            LIMIT 1\n            ",
+  "query": "SELECT * FROM activity.pipelines WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -90,10 +90,89 @@
             "name": "error"
           }
         }
+      },
+      {
+        "ordinal": 8,
+        "name": "request_snapshot",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "request_snapshot"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "requested_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "requested_by"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "requested_by_username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "requested_by_username"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "cancellation_requested",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "cancellation_requested"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "dispatch_acknowledged",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_acknowledged"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "dispatch_after",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_after"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "dispatch_attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_attempts"
+          }
+        }
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -103,8 +182,15 @@
       true,
       false,
       true,
-      true
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
     ]
   },
-  "hash": "e6df98720431a51fc036b69fd164424076096b1bcdd7980f57fa1ebbe914573c"
+  "hash": "942b85c040fae3c35596e0e23dcab1a791ff825da6abccaa07040aa49d74efb6"
 }

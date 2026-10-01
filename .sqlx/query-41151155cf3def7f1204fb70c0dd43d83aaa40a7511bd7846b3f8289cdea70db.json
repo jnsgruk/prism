@@ -1,0 +1,197 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.pipelines (id, status, current_invocation_id)\n            VALUES ($1, 'running', $2)\n            ON CONFLICT (id) DO UPDATE SET\n                status = CASE WHEN activity.pipelines.status = 'pending' THEN 'running' ELSE activity.pipelines.status END,\n                current_invocation_id = COALESCE($2, activity.pipelines.current_invocation_id)\n            RETURNING id, status, current_stage, started_at, completed_at, stages, current_invocation_id, error, request_snapshot, requested_by, requested_by_username, cancellation_requested, dispatch_acknowledged, dispatch_attempts, dispatch_after\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "current_stage",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "current_stage"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "completed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "completed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "stages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "stages"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "current_invocation_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "current_invocation_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "request_snapshot",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "request_snapshot"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "requested_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "requested_by"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "requested_by_username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "requested_by_username"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "cancellation_requested",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "cancellation_requested"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "dispatch_acknowledged",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_acknowledged"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "dispatch_attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_attempts"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "dispatch_after",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "dispatch_after"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "41151155cf3def7f1204fb70c0dd43d83aaa40a7511bd7846b3f8289cdea70db"
+}

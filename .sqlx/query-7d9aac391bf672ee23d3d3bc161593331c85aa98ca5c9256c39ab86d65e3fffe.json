@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.pipelines\n            SET status = 'cancelling', error = 'Workflow stopped before finalizing'\n            WHERE id = $1 AND status IN ('pending', 'running', 'cancelling')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7d9aac391bf672ee23d3d3bc161593331c85aa98ca5c9256c39ab86d65e3fffe"
+}

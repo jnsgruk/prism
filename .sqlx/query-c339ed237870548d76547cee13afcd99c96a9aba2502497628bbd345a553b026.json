@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.pipelines\n            SET completed_at = now(), status = $2, stages = $3,\n                current_invocation_id = NULL,\n                error = CASE WHEN cancellation_requested THEN NULL ELSE $4 END\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c339ed237870548d76547cee13afcd99c96a9aba2502497628bbd345a553b026"
+}

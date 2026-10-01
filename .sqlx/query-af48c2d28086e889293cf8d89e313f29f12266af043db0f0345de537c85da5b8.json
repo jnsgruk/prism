@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.pipelines\n            SET cancellation_requested = true, status = 'cancelling', dispatch_after = now()\n            WHERE id = $1 AND status IN ('pending', 'running', 'cancelling')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "af48c2d28086e889293cf8d89e313f29f12266af043db0f0345de537c85da5b8"
+}

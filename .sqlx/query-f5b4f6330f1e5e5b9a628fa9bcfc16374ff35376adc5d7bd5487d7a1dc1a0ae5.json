@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT status, cancellation_requested, request_snapshot FROM activity.pipelines WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "cancellation_requested",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "cancellation_requested"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "request_snapshot",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "request_snapshot"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f5b4f6330f1e5e5b9a628fa9bcfc16374ff35376adc5d7bd5487d7a1dc1a0ae5"
+}
