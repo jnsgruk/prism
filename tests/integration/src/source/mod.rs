@@ -17,6 +17,7 @@ mod scoped_storage;
 mod ongoing_atomic;
 mod ongoing_diff_recovery;
 mod ongoing_discourse;
+mod ongoing_hidden_activity;
 mod ongoing_initial_window;
 mod ongoing_restate;
 mod ongoing_tracking;

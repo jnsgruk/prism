@@ -125,6 +125,15 @@ pub(super) async fn fetch_batch(
         Err(ps_core::Error::RateLimit { retry_after_secs }) => {
             return result(cursor, vec![], false, Some(retry_after_secs));
         }
+        Err(error @ ps_core::Error::HttpStatus { status: 404, .. }) => {
+            cursor.failed_items.push(FailedItem {
+                key: format!("activity:{username}:offset:{}", cursor.offset),
+                error: format!(
+                    "account activity unavailable to configured credentials; coverage is incomplete: {error}"
+                ),
+            });
+            return result(cursor, vec![], true, None);
+        }
         Err(error) if cursor.offset > 0 => {
             cursor.failed_items.push(FailedItem {
                 key: format!("activity_offset:{}", cursor.offset),
