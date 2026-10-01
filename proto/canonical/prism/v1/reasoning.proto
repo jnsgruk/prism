@@ -75,6 +75,7 @@ service ReasoningService {
   rpc ListWorkspaceFiles(ListWorkspaceFilesRequest) returns (ListWorkspaceFilesResponse);
   // GetWorkspaceFile returns the content of a single file from the workspace.
   // Returned as a data URL (base64-encoded).
+  rpc ResolveWorkspaceFiles(ResolveWorkspaceFilesRequest) returns (ResolveWorkspaceFilesResponse);
   rpc GetWorkspaceFile(GetWorkspaceFileRequest) returns (GetWorkspaceFileResponse);
   // DownloadWorkspaceFile streams a workspace file in chunks.
   // First message includes content_type and total_size_bytes; subsequent
@@ -697,3 +698,29 @@ message UploadWorkspaceFileResponse {
   WorkspaceFileInfo file = 1;
 }
 
+
+// Availability is checked afresh; download revalidates the file.
+enum WorkspaceFileAvailability {
+  WORKSPACE_FILE_AVAILABILITY_UNSPECIFIED = 0;
+  WORKSPACE_FILE_AVAILABILITY_AVAILABLE = 1;
+  WORKSPACE_FILE_AVAILABILITY_MISSING = 2;
+  WORKSPACE_FILE_AVAILABILITY_INVALID = 3;
+  WORKSPACE_FILE_AVAILABILITY_UNAVAILABLE = 4;
+}
+
+message ResolveWorkspaceFilesRequest {
+  string conversation_id = 1;
+  // Decoded workspace-relative paths; at most 128 entries. No URL decoding.
+  repeated string paths = 2;
+}
+
+message ResolvedWorkspaceFile {
+  string path = 1;
+  WorkspaceFileAvailability availability = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+}
+
+message ResolveWorkspaceFilesResponse {
+  repeated ResolvedWorkspaceFile files = 1;
+}

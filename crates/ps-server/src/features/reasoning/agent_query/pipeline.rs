@@ -5,9 +5,10 @@ use tonic::Status;
 use tracing::info;
 use uuid::Uuid;
 
+use super::super::completion::finalize_query;
 use super::prompts::build_conversation_recap;
 use super::{
-    STARTUP_TIMEOUT, STREAM_TIMEOUT, event_loop, event_mapping, finalize_query, session, startup,
+    STARTUP_TIMEOUT, STREAM_TIMEOUT, event_loop, event_mapping, session, startup,
 };
 
 /// The core streaming pipeline: prepare pod → connect SSE → stream → finalize.
@@ -23,6 +24,7 @@ pub(super) async fn run_query_stream(
     model_name: &str,
     tx: &tokio::sync::mpsc::Sender<Result<AskQuestionResponse, Status>>,
     mut cancel_rx: tokio::sync::watch::Receiver<bool>,
+    workspaces_path: Option<&std::path::Path>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let conversation_id: Uuid = cid_str.parse()?;
     let stream_start = tokio::time::Instant::now();
@@ -181,6 +183,7 @@ pub(super) async fn run_query_stream(
         question,
         &loop_result,
         tx,
+        workspaces_path,
     )
     .await
 }

@@ -2,7 +2,9 @@ use base64::Engine;
 use ps_proto::canonical::prism::v1::{
     DownloadWorkspaceFileRequest, DownloadWorkspaceFileResponse, GetWorkspaceFileRequest,
     GetWorkspaceFileResponse, ListWorkspaceFilesRequest, ListWorkspaceFilesResponse,
-    UploadWorkspaceFileRequest, UploadWorkspaceFileResponse, WorkspaceFileInfo,
+    ResolveWorkspaceFilesRequest, ResolveWorkspaceFilesResponse, ResolvedWorkspaceFile,
+    UploadWorkspaceFileRequest, UploadWorkspaceFileResponse, WorkspaceFileAvailability,
+    WorkspaceFileInfo,
 };
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncReadExt;
@@ -11,6 +13,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use super::ReasoningServiceImpl;
+use super::workspace_files::{FileError, guess_content_type, resolve_file};
 use crate::common::{db_err, require_auth};
 
 /// Maximum number of files returned by a workspace listing.
@@ -35,56 +38,6 @@ fn is_hidden(path: &Path) -> bool {
         let s = c.as_os_str().to_string_lossy();
         HIDDEN_DIRS.iter().any(|p| s == *p)
     })
-}
-
-fn guess_content_type(filename: &str) -> &'static str {
-    // Check well-known extensionless filenames first.
-    let basename = filename.rsplit('/').next().unwrap_or(filename);
-    match basename.to_ascii_uppercase().as_str() {
-        "DOCKERFILE" | "MAKEFILE" | "RAKEFILE" | "GEMFILE" | "PROCFILE" | "LICENSE" | "LICENCE"
-        | "COPYING" | "AUTHORS" | "CONTRIBUTORS" | "CHANGELOG" | "README" | "CODEOWNERS"
-        | "JUSTFILE" => return "text/plain",
-        _ => {}
-    }
-    // Check if the filename starts with a dot but has no further extension
-    // (e.g. .gitignore, .dockerignore, .editorconfig).
-    if basename.starts_with('.') && !basename[1..].contains('.') {
-        return "text/plain";
-    }
-    // Files with a TAG suffix (e.g. CACHEDIR.TAG) or no recognised extension.
-    match filename.rsplit('.').next() {
-        Some("csv") => "text/csv",
-        Some("json" | "jsonl") => "application/json",
-        Some("md" | "mdx") => "text/markdown",
-        Some(
-            "txt" | "log" | "lock" | "cfg" | "ini" | "env" | "nix" | "proto" | "graphql" | "gql"
-            | "dockerfile" | "tag" | "conf" | "properties" | "gitignore" | "dockerignore"
-            | "editorconfig",
-        ) => "text/plain",
-        Some("html" | "htm") => "text/html",
-        Some("css" | "scss") => "text/css",
-        Some("js" | "mjs" | "cjs") => "text/javascript",
-        Some("ts" | "tsx") => "application/typescript",
-        Some("py") => "text/x-python",
-        Some("rs") => "text/x-rust",
-        Some("go") => "text/x-go",
-        Some("rb") => "text/x-ruby",
-        Some("java") => "text/x-java-source",
-        Some("sh" | "bash" | "zsh") => "text/x-shellscript",
-        Some("sql") => "text/x-sql",
-        Some("yaml" | "yml") => "text/yaml",
-        Some("toml") => "text/x-toml",
-        Some("xml" | "svg") => "application/xml",
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("gif") => "image/gif",
-        Some("webp") => "image/webp",
-        Some("pdf") => "application/pdf",
-        Some("zip") => "application/zip",
-        Some("gz" | "tgz") => "application/gzip",
-        Some("tar") => "application/x-tar",
-        _ => "application/octet-stream",
-    }
 }
 
 /// Check whether raw bytes look like text (valid UTF-8, no null bytes).
@@ -165,23 +118,13 @@ fn read_file_as_data_url(
     workspaces_path: &Path,
     conv_id: &str,
     path: &str,
-) -> Result<(String, String, i64), String> {
-    let workspace_root = workspace_dir(workspaces_path, conv_id);
-    let file_path = workspace_root.join(path);
-
-    // Canonicalize both to prevent path traversal via symlinks.
-    let canonical = file_path
-        .canonicalize()
-        .map_err(|_| "file not found".to_string())?;
-    let canonical_root = workspace_root
-        .canonicalize()
-        .map_err(|_| "workspace not found".to_string())?;
-
-    if !canonical.starts_with(&canonical_root) {
-        return Err("invalid path".to_string());
-    }
-
-    let data = std::fs::read(&canonical).map_err(|e| format!("read failed: {e}"))?;
+) -> Result<(String, String, i64), FileError> {
+    let mut resolved = resolve_file(workspaces_path, conv_id, path)?;
+    let mut data = Vec::new();
+    std::io::Read::read_to_end(&mut resolved.file, &mut data).map_err(|e| {
+        tracing::warn!(error = %e, "workspace read failed");
+        FileError::Unavailable
+    })?;
     let mut content_type = guess_content_type(path).to_string();
     // If the extension-based guess gave up, sniff the actual content.
     if content_type == "application/octet-stream" && looks_like_text(&data) {
@@ -254,6 +197,65 @@ pub async fn list_workspace_files(
     }))
 }
 
+pub async fn resolve_workspace_files(
+    svc: &ReasoningServiceImpl,
+    request: Request<ResolveWorkspaceFilesRequest>,
+) -> Result<Response<ResolveWorkspaceFilesResponse>, Status> {
+    let _ctx = require_auth(&request)?;
+    let req = request.into_inner();
+    let conv_id: Uuid = req
+        .conversation_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
+    if req.paths.len() > 128 || req.paths.iter().any(|path| path.len() > 4096) {
+        return Err(Status::invalid_argument("too many workspace paths"));
+    }
+    svc.repos
+        .reasoning
+        .get_conversation(conv_id)
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| Status::not_found("conversation not found"))?;
+    let root = svc.workspaces_path.clone();
+    let files = tokio::task::spawn_blocking(move || {
+        let mut seen = std::collections::HashSet::new();
+        req.paths
+            .into_iter()
+            .filter(|path| seen.insert(path.clone()))
+            .map(|path| {
+                let result = root.as_ref().map_or(Err(FileError::Unavailable), |root| {
+                    resolve_file(root, &conv_id.to_string(), &path)
+                });
+                let (availability, content_type, size_bytes) = match result {
+                    Ok(file) => (
+                        WorkspaceFileAvailability::Available,
+                        file.content_type,
+                        file.size_bytes,
+                    ),
+                    Err(error) => (
+                        match error {
+                            FileError::Missing => WorkspaceFileAvailability::Missing,
+                            FileError::Invalid => WorkspaceFileAvailability::Invalid,
+                            FileError::Unavailable => WorkspaceFileAvailability::Unavailable,
+                        },
+                        String::new(),
+                        0,
+                    ),
+                };
+                ResolvedWorkspaceFile {
+                    path,
+                    availability: availability.into(),
+                    content_type,
+                    size_bytes,
+                }
+            })
+            .collect()
+    })
+    .await
+    .map_err(|_| Status::internal("task failed"))?;
+    Ok(Response::new(ResolveWorkspaceFilesResponse { files }))
+}
+
 pub async fn get_workspace_file(
     svc: &ReasoningServiceImpl,
     request: Request<GetWorkspaceFileRequest>,
@@ -266,7 +268,7 @@ pub async fn get_workspace_file(
         .parse()
         .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
 
-    if req.path.is_empty() || req.path.contains("..") {
+    if !super::workspace_files::valid_relative_path(&req.path) {
         return Err(Status::invalid_argument("invalid path"));
     }
 
@@ -290,7 +292,7 @@ pub async fn get_workspace_file(
         tokio::task::spawn_blocking(move || read_file_as_data_url(&workspaces_path, &cid, &path))
             .await
             .map_err(|_| Status::internal("task failed"))?
-            .map_err(Status::not_found)?;
+            .map_err(FileError::status)?;
 
     Ok(Response::new(GetWorkspaceFileResponse {
         download_url,
@@ -320,7 +322,7 @@ pub async fn download_workspace_file(
         .parse()
         .map_err(|_| Status::invalid_argument("invalid conversation_id"))?;
 
-    if req.path.is_empty() || req.path.contains("..") {
+    if !super::workspace_files::valid_relative_path(&req.path) {
         return Err(Status::invalid_argument("invalid path"));
     }
 
@@ -341,60 +343,36 @@ pub async fn download_workspace_file(
     let file_path_str = req.path.clone();
     let cid = conv_id.to_string();
 
-    // Resolve and validate path (blocking for canonicalize).
-    let (canonical, content_type, total_size) =
-        tokio::task::spawn_blocking(move || -> Result<(PathBuf, String, i64), String> {
-            let ws_root = workspace_dir(&workspaces_path, &cid);
-            let file_path = ws_root.join(&file_path_str);
-
-            let canonical = file_path
-                .canonicalize()
-                .map_err(|_| "file not found".to_string())?;
-            let canonical_root = ws_root
-                .canonicalize()
-                .map_err(|_| "workspace not found".to_string())?;
-
-            if !canonical.starts_with(&canonical_root) {
-                return Err("invalid path".to_string());
-            }
-
-            let metadata =
-                std::fs::metadata(&canonical).map_err(|e| format!("metadata failed: {e}"))?;
-            #[allow(clippy::cast_possible_wrap)]
-            let total_size = metadata.len() as i64;
-
-            let mut ct = guess_content_type(&file_path_str).to_string();
-            if ct == "application/octet-stream"
-                && std::fs::read(&canonical).is_ok_and(|s| looks_like_text(&s))
-            {
-                ct = "text/plain".to_string();
-            }
-
-            Ok((canonical, ct, total_size))
-        })
-        .await
-        .map_err(|_| Status::internal("task failed"))?
-        .map_err(Status::not_found)?;
+    let resolved =
+        tokio::task::spawn_blocking(move || resolve_file(&workspaces_path, &cid, &file_path_str))
+            .await
+            .map_err(|_| Status::internal("task failed"))?
+            .map_err(FileError::status)?;
+    let content_type = resolved.content_type;
+    let total_size = resolved.size_bytes;
 
     let (tx, rx) = tokio::sync::mpsc::channel(8);
 
     tokio::spawn(async move {
-        let file = match tokio::fs::File::open(&canonical).await {
-            Ok(f) => f,
-            Err(e) => {
-                let _ = tx
-                    .send(Err(Status::not_found(format!("open failed: {e}"))))
-                    .await;
-                return;
-            }
-        };
+        let file = tokio::fs::File::from_std(resolved.file);
         let mut reader = tokio::io::BufReader::new(file);
         let mut buf = vec![0u8; CHUNK_SIZE];
         let mut first = true;
 
         loop {
             match reader.read(&mut buf).await {
-                Ok(0) => break,
+                Ok(0) => {
+                    if first {
+                        let _ = tx
+                            .send(Ok(DownloadWorkspaceFileResponse {
+                                content_type: content_type.clone(),
+                                total_size_bytes: total_size,
+                                data: vec![],
+                            }))
+                            .await;
+                    }
+                    break;
+                }
                 Ok(n) => {
                     let msg = DownloadWorkspaceFileResponse {
                         content_type: if first {
@@ -411,9 +389,8 @@ pub async fn download_workspace_file(
                     }
                 }
                 Err(e) => {
-                    let _ = tx
-                        .send(Err(Status::internal(format!("read failed: {e}"))))
-                        .await;
+                    tracing::warn!(error = %e, "workspace transfer failed");
+                    let _ = tx.send(Err(Status::internal("file transfer failed"))).await;
                     break;
                 }
             }
