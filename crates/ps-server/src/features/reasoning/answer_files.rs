@@ -1,6 +1,6 @@
 //! Validate generated file links while preserving unrelated Markdown verbatim.
 use super::workspace_files::{resolve_file, valid_relative_path};
-use pulldown_cmark::{Event, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 use std::{collections::HashMap, path::PathBuf};
 use uuid::Uuid;
 
@@ -133,9 +133,19 @@ fn validate_sync(answer: &str, root: Option<&std::path::Path>, conversation: Uui
     let mut replacements = Vec::new();
     let mut resolved = HashMap::new();
     let mut unavailable = false;
+    let mut image_depth = 0;
     for (event, range) in Parser::new(answer).into_offset_iter() {
-        let Event::Start(Tag::Link { dest_url, .. }) = event else {
-            continue;
+        let dest_url = match event {
+            Event::Start(Tag::Image { .. }) => {
+                image_depth += 1;
+                continue;
+            }
+            Event::End(TagEnd::Image) => {
+                image_depth -= 1;
+                continue;
+            }
+            Event::Start(Tag::Link { dest_url, .. }) if image_depth == 0 => dest_url,
+            _ => continue,
         };
         let Some(path) = reference_path(&dest_url, conversation) else {
             continue;
@@ -226,5 +236,10 @@ mod tests {
         assert!(validated.contains("`[code](/workspace/no.pdf)`"));
         assert!(validated.contains("![image](/workspace/no.png)"));
         assert!(validated.contains("[web](https://example.org/a.pdf)"));
+
+        let image = "![alt [file](/workspace/missing.pdf)](/workspace/image.png)";
+        assert_eq!(validate_sync(image, Some(temp.path()), id), image);
+        let image = "![alt [file](/workspace/a%20%25.pdf)](/workspace/image.png)";
+        assert_eq!(validate_sync(image, Some(temp.path()), id), image);
     }
 }
