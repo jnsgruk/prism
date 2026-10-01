@@ -1,5 +1,5 @@
 //! Person discovery partitions on immutable PR creation time. Reviews may belong
-//! to PRs older than the event window, so discovery starts at GitHub's inception.
+//! to PRs older than the event window, so only review discovery starts at the epoch.
 use ps_core::ingestion::{
     ContributionInput, FetchResult, IngestionContext, IngestionPlan, SourceRunContext,
 };
@@ -17,6 +17,22 @@ pub(super) enum SearchPhase {
     Reviewer,
 }
 impl SearchPhase {
+    fn partition_start(&self, request: &SourceRunContext) -> Result<i64, ps_core::Error> {
+        match self {
+            Self::Author => request
+                .since_date
+                .as_deref()
+                .map(ps_core::ingestion::parse_since_date)
+                .transpose()
+                .map(|date| {
+                    date.map_or(EARLIEST, |date| {
+                        date.midnight().assume_utc().unix_timestamp()
+                    })
+                }),
+            Self::Reviewer => Ok(EARLIEST),
+        }
+    }
+
     fn qualifier(&self) -> &'static str {
         match self {
             Self::Author => "author",
@@ -165,7 +181,7 @@ pub(super) fn initial_person_cursor(ctx: &IngestionContext) -> Option<PersonCurs
         phase: SearchPhase::Author,
         org_index: 0,
         partitions: vec![Partition {
-            start: EARLIEST,
+            start: SearchPhase::Author.partition_start(request).ok()?,
             end: request.run_started_at.unix_timestamp(),
         }],
         page: None,
@@ -263,10 +279,6 @@ pub(super) async fn fetch(
     if person.partitions.is_empty() {
         person.org_index += 1;
         person.page = None;
-        person.partitions.push(Partition {
-            start: EARLIEST,
-            end: person.end,
-        });
     }
     if person.org_index >= person.orgs.len() {
         match person.phase {
@@ -285,6 +297,16 @@ pub(super) async fn fetch(
                 });
             }
         }
+    }
+    if person.partitions.is_empty() {
+        let request = person
+            .request
+            .as_ref()
+            .ok_or_else(|| ps_core::Error::Validation("missing GitHub person request".into()))?;
+        person.partitions.push(Partition {
+            start: person.phase.partition_start(request)?,
+            end: person.end,
+        });
     }
     let org = person
         .orgs

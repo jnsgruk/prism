@@ -487,3 +487,6 @@ mod errors;
 
 #[path = "github_cursor_binding.rs"]
 mod cursor_binding;
+
+#[path = "github_author_window.rs"]
+mod author_window;
