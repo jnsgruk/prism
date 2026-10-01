@@ -65,7 +65,10 @@ pub(super) async fn scoped_jira(ctx: &SourceTestContext) -> IngestionContext {
     ingestion
 }
 
-async fn chunk_request(ingestion: &IngestionContext, max_batches: usize) -> ChunkRequest {
+pub(super) async fn chunk_request(
+    ingestion: &IngestionContext,
+    max_batches: usize,
+) -> ChunkRequest {
     let plan = JiraSource.plan(ingestion).await.unwrap();
     ChunkRequest {
         source_type: Platform::Jira,
@@ -207,6 +210,7 @@ async fn rate_limit_sleeps_durably_and_worker_restart_preserves_frozen_cursor_an
         .mount(&ctx.mock_server)
         .await;
     let mut runtime = RestateTestContext::new(ctx.repos.clone()).await;
+    runtime.shorten_chunk_inactivity_timeout().await;
     let request = chunk_request(&ingestion, 2).await;
     let invocation = runtime.send_chunk(&request).await;
     runtime.wait_status(&invocation, "suspended").await;
@@ -299,6 +303,7 @@ async fn cancelling_sleeping_owned_chunk_does_not_cancel_unrelated_scheduled_wor
         .mount(&ctx.mock_server)
         .await;
     let runtime = RestateTestContext::new(ctx.repos.clone()).await;
+    runtime.shorten_chunk_inactivity_timeout().await;
     let request = chunk_request(&ingestion, 2).await;
     let mut ordinary = request.clone();
     ordinary.request = None;

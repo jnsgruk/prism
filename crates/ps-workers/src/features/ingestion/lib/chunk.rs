@@ -7,6 +7,7 @@
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{Platform, SourceConfig};
 use restate_sdk::prelude::*;
+use restate_sdk::service::{IntoServiceDefinition, ServiceDefinition};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -73,6 +74,17 @@ pub trait IngestionChunkService {
 
 pub struct IngestionChunkServiceImpl {
     pub state: SharedState,
+}
+
+impl IntoServiceDefinition for IngestionChunkServiceImpl {
+    fn into_service_definition(self) -> ServiceDefinition {
+        // Scoped API reads and transient retries run outside journaled steps.
+        // A short idle timeout repeatedly suspends and re-fetches prior pages.
+        // Restate 1.6 supports this override at service level, not per handler.
+        self.serve()
+            .into_service_definition()
+            .options(ServiceOptions::new().inactivity_timeout(std::time::Duration::from_mins(15)))
+    }
 }
 
 impl IngestionChunkService for IngestionChunkServiceImpl {

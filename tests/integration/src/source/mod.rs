@@ -3,6 +3,7 @@ mod github;
 mod github_repository_filters;
 mod github_review_recovery;
 mod jira;
+mod scoped_chunk_timeouts;
 mod scoped_chunks;
 mod scoped_coordinator;
 mod scoped_enrichment_history;
