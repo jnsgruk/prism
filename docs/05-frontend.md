@@ -76,3 +76,18 @@ The admin organisation **+ Add → Add person** menu opens the creation form, in
 Account rows use saved identity UUIDs for explicit add/edit/remove operations. Unchanged and unseen accounts remain intact. Discourse accounts select a separate configured instance, retaining saved instances even if their source is disabled or removed. Jira stores the opaque account ID separately from its display username. Search uses an enabled configured Jira Cloud source and requires explicit selection, displaying account ID, name, available email, and active state to distinguish ambiguous candidates. Direct account-ID entry stays available without search permission or a configured lookup source; the form labels it as manually supplied.
 
 Jira lookup is a short, read-only, admin-only RPC. Credentials remain encrypted in configuration and are decrypted only on the server. Cloud `/rest/api/3/user/search` lookup is bounded to 50 results per page within Jira's first 1000 users, a 10-second timeout, and a 256 KiB response. Server/Data Center mode is rejected before dispatch; Jira account identities currently share one namespace across configured sources. Lookup errors explain retry/configuration/direct-entry options without exposing provider response bodies or secrets.
+
+Saved person details expose a separate admin **Backfill activity** action. The
+dialog uses saved identities and configured source UUIDs, requires a real start
+date, and displays disabled, unsupported, missing-account, ambiguous-account,
+Jira-mode, and Discourse-instance eligibility reasons. It respects the server's
+Person capability gate until the stage #12 integration is complete. Account
+edits must be saved before launching.
+
+Backfill queries are keyed by person and exact pipeline ID. Progress and history
+use owned handler runs, including rate-limit pauses and failures, rather than
+global source state. Reopening recovers recent runs from server history; another
+person's pipeline cannot populate the dialog. A retained submission UUID makes
+failed-launch retries repeat the same intent. Pending and cancelling pipelines
+also keep the global controls active; cancellation success means requested,
+with terminal cancellation displayed after the server reconciles owned work.
