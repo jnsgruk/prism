@@ -159,7 +159,10 @@ also binds review continuations to the exact admitted source, identity and date
 snapshot; Discourse continues using its frozen instance endpoint.
 
 - **GitHub:** search each configured organisation separately for `author:` and
-  `reviewed-by:`. Partition immutable PR creation timestamps at GitHub's 1,000
+  `reviewed-by:`. Author partitions start at UTC midnight on `since_date`, since
+  authored PR eligibility uses creation time. Reviewer partitions retain the Unix
+  epoch lower bound to find recent reviews on old PRs. These bounds reset for
+  each organisation and phase. Partition immutable PR creation timestamps at GitHub's 1,000
   search-result cap; subdivision preserves both endpoints and natural keys
   deduplicate overlapping search phases. Review discovery includes old PRs, with
   no mutable updated-time upper bound. An irreducibly saturated second is recorded
@@ -177,6 +180,11 @@ snapshot; Discourse continues using its frozen instance endpoint.
   Null/malformed search nodes and missing required PR fields record incomplete
   coverage in repository, member, and Person searches. Valid neighboring rows
   still ingest, but omitted nodes cannot permit a global completion watermark.
+  Before rolling out the bounded Author search, let affected GitHub Person
+  coordinators/chunks finish or cancel them through the owned pipeline controls.
+  Existing saved chunk cursors decode, but coordinator replay reconstructs the
+  initial cursor; its changed lower bound alters the first dispatched chunk input.
+  Preserve unrelated journals and start a fresh run after deployment.
 - **Jira Cloud:** every request combines configured projects with the saved
   opaque current-assignee account ID. Empty projects retain the all-accessible
   project meaning, restricted to that account. Quotes and backslashes are escaped.
