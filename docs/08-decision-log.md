@@ -4,6 +4,16 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Explicit manual person and account ownership
+
+**Context:** Colleagues absent from directory exports need to be tracked without inventing membership, and existing import/resolution upserts could transfer accounts. Jira activity is attributed by opaque Cloud account IDs rather than display names.
+
+**Decision:** Create people, accounts, and optional membership atomically. Store typed imported/manual management on membership choices and accounts, enforce immutable account ownership in PostgreSQL, and preserve manual account removal through per-platform manual resolution status. Reconcile directory IDs or unique compatible email matches to the same UUID. Manual people remain outside stale detection until they have actually been imported; reconciliation does not grant a permanent stale exemption. Account corrections leave historical attribution intact. Portable exports preserve identity IDs used for ingestion and management metadata with old-format defaults.
+
+**Rationale:** Explicit choices prevent silent assignment or cross-person attribution while preserving existing membership history and imported-person lifecycle. Jira lookup supports Cloud only and requires explicit account selection; direct opaque ID entry remains available. Multi-tenant Jira identities, Server/Data Center adapters, person merging, historical reassignment, and person backfills remain separate work.
+
+---
+
 ## 2026-09-02 — Reuse the Workspace Claim for Development Restate State
 
 **Context:** Restate needs durable state across pod restarts, but the development cluster's rawfile CSI pool could not allocate another persistent volume. The existing 50 GiB `prism-workspaces` ReadWriteMany claim had sufficient headroom.
