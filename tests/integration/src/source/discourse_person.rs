@@ -275,6 +275,62 @@ async fn feed_and_detail_rate_limits_preserve_cursor_for_durable_sleep() {
 }
 
 #[tokio::test]
+async fn unavailable_account_activity_records_incomplete_coverage_without_checkpointing() {
+    let ctx = SourceTestContext::new().await;
+    let context = person_context(&ctx, false).await;
+    Mock::given(path("/user_actions.json"))
+        .respond_with(ResponseTemplate::new(404))
+        .expect(1)
+        .mount(&ctx.mock_server)
+        .await;
+
+    let fetched = fetch_first(&context).await;
+    assert!(fetched.items.is_empty());
+    assert!(fetched.next_cursor.is_none());
+    assert!(fetched.rate_limit.is_none());
+    let checkpoint = fetched.etag.unwrap();
+    let cursor: serde_json::Value = serde_json::from_str(&checkpoint).unwrap();
+    assert_eq!(cursor["discovery_complete"], true);
+    assert_eq!(cursor["failed_items"][0]["key"], "activity:alice:offset:0");
+    assert!(
+        cursor["failed_items"][0]["error"]
+            .as_str()
+            .unwrap()
+            .contains("coverage is incomplete")
+    );
+
+    let source =
+        ps_workers::infra::registry::create_source(&context.source_config.source_type).unwrap();
+    source
+        .checkpoint_batch(&context, &checkpoint)
+        .await
+        .unwrap();
+    let identity = context
+        .request
+        .as_ref()
+        .unwrap()
+        .source
+        .identity
+        .as_ref()
+        .unwrap();
+    let version =
+        ps_workers::features::ingestion::lib::discovery::identity_version(&context, identity);
+    assert!(
+        ctx.repos
+            .activity
+            .identity_discovery_cutoff(
+                context.source_config.id.into_inner(),
+                identity.identity_id,
+                &version
+            )
+            .await
+            .unwrap()
+            .is_none()
+    );
+    ctx.teardown().await;
+}
+
+#[tokio::test]
 async fn private_profile_fails_and_inaccessible_details_report_limited_coverage() {
     let ctx = SourceTestContext::new().await;
     let context = person_context(&ctx, true).await;
