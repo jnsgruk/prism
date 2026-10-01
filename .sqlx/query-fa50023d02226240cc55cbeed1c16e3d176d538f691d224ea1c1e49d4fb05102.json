@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT platform_username, person_id\n            FROM org.platform_identities\n            WHERE platform = $1\n              AND platform_username = ANY($2)\n            ",
+  "query": "\n            SELECT platform_username, min(person_id::text)::uuid AS \"person_id!\"\n            FROM org.platform_identities\n            WHERE platform = $1\n              AND platform_username = ANY($2)\n            GROUP BY platform_username\n            HAVING count(DISTINCT person_id) = 1\n            ",
   "describe": {
     "columns": [
       {
@@ -16,14 +16,9 @@
       },
       {
         "ordinal": 1,
-        "name": "person_id",
+        "name": "person_id!",
         "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "org.platform_identities",
-            "name": "person_id"
-          }
-        }
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -34,8 +29,8 @@
     },
     "nullable": [
       false,
-      false
+      null
     ]
   },
-  "hash": "2df858ddcec3ec145a078aa0eff20e1371735652c573497b30fead53f10fe716"
+  "hash": "fa50023d02226240cc55cbeed1c16e3d176d538f691d224ea1c1e49d4fb05102"
 }
