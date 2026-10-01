@@ -8,6 +8,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+mod scope;
+pub use scope::*;
+
 /// Shared context provided to every source adapter during ingestion.
 ///
 /// All secrets are pre-decrypted once at the start of the ingestion run
@@ -15,6 +18,8 @@ use time::OffsetDateTime;
 /// never journaled by the Restate runtime.
 #[derive(Clone)]
 pub struct IngestionContext {
+    /// Frozen per-run source/identity context. Legacy runs have no request.
+    pub request: Option<SourceRunContext>,
     pub repos: Repos,
     pub source_config: SourceConfig,
     pub http_client: reqwest::Client,
@@ -156,6 +161,11 @@ pub struct FetchResult {
 /// timeouts, and checkpointing.
 #[async_trait]
 pub trait Source: Send + Sync {
+    /// Person backfills require an adapter to explicitly implement scoped fetching.
+    fn supports_person_backfill(&self) -> bool {
+        false
+    }
+
     /// Human-readable name for logging and UI display.
     fn name(&self) -> &'static str;
 
