@@ -4,6 +4,16 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Jira ownership by account ID, with repeatable display labels
+
+**Context:** Jira lookup returns nonunique display names. Saving them under the global username constraint rejected distinct accounts with identical names.
+
+**Decision:** Keep Jira display names in the existing username field, but exempt accounts with opaque IDs from username uniqueness. Retain account-ID uniqueness and immutable ownership, preserve username uniqueness for legacy Jira rows without IDs, and promote those legacy rows during CSV import without changing their row UUID. Ambiguous username lookups do not select an owner.
+
+**Rationale:** Cloud attribution already uses opaque IDs. Labels should not prevent valid account selection or become an ownership key; existing username-based platforms and legacy imports retain their safeguards.
+
+---
+
 ## 2026-10-01 — Explicit manual person and account ownership
 
 **Context:** Colleagues absent from directory exports need to be tracked without inventing membership, and existing import/resolution upserts could transfer accounts. Jira activity is attributed by opaque Cloud account IDs rather than display names.
