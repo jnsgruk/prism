@@ -75,6 +75,61 @@ and recovery selects terminal pipeline owners so cancellation or partial failure
 cannot discard committed work. Team and insight snapshot calculations preserve
 membership effective dates and replace obsolete calculation source links.
 
+Insight snapshot refreshes acquire a database-wide transaction advisory lock
+before their existing period lock, so current-period, owned historical and
+recovery handlers share one aggregation budget across worker replicas. They
+process one team at a time, retaining the five independent aggregation calls
+within that team. Review quality fetches depth and sentiment sequentially;
+coverage also has sequential subqueries. Source collection and snapshot writes
+follow aggregation. Waiting refreshes use nonblocking lock attempts and return
+their connections between attempts; rollback, cancellation and connection loss
+release the lock. Raw metric refreshes retain their independent period locks.
+This trades inter-team/inter-period throughput for predictable memory demand;
+it does not throttle interactive insight RPCs or unrelated database work.
+
+The 2026-10-01 backfill failure was PostgreSQL POSIX dynamic shared memory
+exhaustion, not persistent disk capacity. The database log identifies sentiment
+aggregation as failing; review-depth aggregation also uses the same parallel
+hash shape. For April–June 2026 and the Ubuntu Engineering team, measured plans
+used two workers and a parallel hash over approximately 36,525 period-wide
+contributions (257-byte estimated row width), consuming 10–11 MiB before team
+membership filtering. The depth-by-significance plan used another approximately
+4.4 MiB parallel hash. Coverage used private hashes, including approximately
+6 MiB over enrichment IDs. Existing person/date and enrichment indexes remain
+available; these broad period joins are valid planner choices, not evidence
+that an index is missing.
+
+Previously four teams fanned out into up to 20 aggregation calls per refresh.
+The default worker pool admitted ten connections, with one occupied by the
+period lock; different periods could overlap. `work_mem=4MB` is a per-operation
+budget, not a query/session limit. `hash_mem_multiplier=2` and parallel
+participants multiply hash budgets, and several hashes/queries may coexist.
+The new refresh uses two lock connections and at most five aggregation queries;
+the Kubernetes memory allocation provides headroom for PostgreSQL workers and
+other callers. See [Infrastructure](06-infrastructure.md#postgresql-memory).
+
+Validation used an isolated `pgvector/pgvector:pg17` container with copied team,
+membership, contribution and enrichment tables (353,353 contributions and
+88,565 enrichments). Nine concurrent review-depth/sentiment queries reproduced
+2/4 MiB shared-segment resize failures with `/dev/shm=64MiB`. With a 256 MiB
+mount and 1 GiB container limit, the same probe succeeded, sampling about
+109.5 MiB peak shared-memory use and no OOM events. A representative five-query
+group succeeded even on 64 MiB (about 33.6 MiB sampled peak). These samples are
+workload-specific lower bounds on peaks, not guarantees for arbitrary growth.
+The updated computation also completed overlapping week and quarter requests
+for all 45 teams in the isolated copy (90 snapshots in about 15–18 seconds).
+The sampled repeat peaked at about 21 MiB shared memory and 675 MiB total
+cgroup memory, with zero OOM events. Total usage included file cache, so it
+should not be interpreted as an irreducible private-memory requirement.
+Forced generic prepared plans for depth/sentiment chose serial nested-loop
+joins in this copy (about 0.7–1.1 seconds); custom plans used parallel hashes.
+The full refresh used the normal SQLx prepared-statement cache. Plan selection
+and slow-query timings therefore depend on parameters, cache history and load.
+Disabling parallel hash reduced shared-memory use, with a small latency cost
+in that probe, but is not imposed globally. The query SQL and metric semantics
+are unchanged; revisit membership-first/materialized input plans with measured
+results if broader periods or larger datasets outgrow this budget.
+
 `activity.identity_discovery_coverage` keys supplementary GitHub/Discourse
 coverage by `(source_id, identity_id)`. Resetting activity also clears these
 checkpoints so previously deleted history is not treated as harvested. A content

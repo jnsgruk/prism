@@ -4,6 +4,36 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
+
+**Context:** A completed person ingestion/enrichment pipeline repeatedly failed
+in `HistoricalSnapshotService/refresh_batch` at
+`refresh_insights_quarter_2026-04-01`. PostgreSQL parallel hashes exhausted the
+container's 64 MiB `/dev/shm` while the pod had only a 512 MiB total memory limit.
+Four-team aggregation fan-out and overlapping periods amplified demand. A
+temporary parallel-worker override completed the backfill and was then reset.
+An isolated copy of the relevant tables reproduced the resize failure.
+
+**Decision:** Mount a 256 MiB memory-backed `emptyDir` at `/dev/shm`, increase
+the PostgreSQL memory request/limit to 512 MiB/1 GiB, and serialize insight
+snapshot refreshes across periods and worker replicas using a transaction
+advisory lock. Process one team at a time with its five independent aggregation
+calls concurrent. Preserve parallel queries, existing period locks, query SQL,
+provenance and the separate committed ingestion timeout policy.
+
+**Rationale:** A larger mount fixes the runtime bottleneck; a larger container
+limit accounts for its memory cost. Database-wide concurrency control prevents
+additional refreshes or worker replicas from multiplying that cost. It trades
+refresh throughput for headroom without disabling parallelism for all callers.
+The enlarged-mount nine-query probe completed with no OOM events; a five-query
+probe also succeeded at the old mount size. These observations do not guarantee
+unbounded growth or interactive concurrency will fit. Query-specific serial
+execution, disabling parallel hash, or membership-first rewrites remain tuning
+options if measurements justify them. Increasing shared memory alone would
+leave the original OOM risk and unbounded refresh overlap unresolved.
+
+---
+
 ## 2026-10-01 — Allow ingestion API work to finish before requesting suspension
 
 **Context:** A live person backfill repeatedly suspended under the cluster's
