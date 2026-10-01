@@ -40,13 +40,6 @@ fn is_hidden(path: &Path) -> bool {
     })
 }
 
-/// Check whether raw bytes look like text (valid UTF-8, no null bytes).
-fn looks_like_text(data: &[u8]) -> bool {
-    // Check a prefix — no need to scan multi-MB binaries.
-    let sample = data.get(..8192).unwrap_or(data);
-    !sample.contains(&0) && std::str::from_utf8(sample).is_ok()
-}
-
 // ---------------------------------------------------------------------------
 // Filesystem helpers (synchronous — called inside spawn_blocking)
 // ---------------------------------------------------------------------------
@@ -125,11 +118,7 @@ fn read_file_as_data_url(
         tracing::warn!(error = %e, "workspace read failed");
         FileError::Unavailable
     })?;
-    let mut content_type = guess_content_type(path).to_string();
-    // If the extension-based guess gave up, sniff the actual content.
-    if content_type == "application/octet-stream" && looks_like_text(&data) {
-        content_type = "text/plain".to_string();
-    }
+    let content_type = resolved.content_type;
     #[allow(clippy::cast_possible_wrap)]
     let size_bytes = data.len() as i64;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&data);

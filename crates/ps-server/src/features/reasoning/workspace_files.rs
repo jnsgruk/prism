@@ -69,12 +69,6 @@ pub(crate) fn resolve_file(
     if !target.starts_with(&workspace) {
         return Err(FileError::Invalid);
     }
-    if !std::fs::metadata(&target)
-        .map_err(filesystem_error)?
-        .is_file()
-    {
-        return Err(FileError::Invalid);
-    }
     // Retain the opened handle for transfer, avoiding a second open after validation.
     let mut file = open_confined(&storage, conversation, &workspace, &target)?;
     let metadata = file.metadata().map_err(filesystem_error)?;
