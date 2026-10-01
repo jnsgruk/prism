@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use futures::stream::{self, StreamExt};
 use ps_core::ingestion::{ContributionInput, FailedItem, FetchResult, IngestionContext};
+use ps_core::models::RateLimitInfo;
 use tracing::{debug, warn};
 
 use super::super::client::{Category, DiscourseClient, Post, TopicSummary};
@@ -17,6 +18,20 @@ pub(super) async fn fetch_batch_impl(
         return super::person::fetch_batch(ctx, cursor).await;
     }
 
+    match fetch_global_batch(ctx, cursor).await {
+        Err(ps_core::Error::RateLimit { retry_after_secs }) => {
+            // Retry the original page without publishing partial contributions
+            // or moving its pagination and coverage checkpoints.
+            rate_limit_result(cursor, retry_after_secs)
+        }
+        result => result,
+    }
+}
+
+async fn fetch_global_batch(
+    ctx: &IngestionContext,
+    cursor: &str,
+) -> Result<FetchResult, ps_core::Error> {
     let mut cur: Cursor = serde_json::from_str(cursor)
         .map_err(|e| ps_core::Error::Internal(format!("invalid cursor: {e}")))?;
 
@@ -38,12 +53,19 @@ pub(super) async fn fetch_batch_impl(
 
     // Fetch categories once for name resolution (first page), then reuse from cursor.
     if cur.page == 0 && cur.category_index == 0 && cur.category_map.is_empty() {
-        cur.category_map = build_category_map(&client).await.unwrap_or_default();
+        cur.category_map = match build_category_map(&client).await {
+            Ok(categories) => categories,
+            Err(error @ ps_core::Error::RateLimit { .. }) => return Err(error),
+            Err(error) => {
+                warn!(%error, "category names unavailable; continuing without names");
+                HashMap::new()
+            }
+        };
     }
 
     let response = fetch_topic_listing(ctx, &client, &mut cur).await?;
     let Some(response) = response else {
-        return Ok(empty_result());
+        return exhausted_category_result(&mut cur);
     };
 
     let topics = &response.topic_list.topics;
@@ -57,10 +79,10 @@ pub(super) async fn fetch_batch_impl(
     );
 
     if topics.is_empty() {
-        return Ok(empty_result());
+        return exhausted_category_result(&mut cur);
     }
 
-    let (items, reached_watermark) = process_topics(&client, topics, &mut cur, fetch_likes).await;
+    let (items, reached_watermark) = process_topics(&client, topics, &mut cur, fetch_likes).await?;
     let stop = reached_watermark || !has_more_pages || cur.page >= MAX_PAGES_PER_RUN;
 
     // Always serialize the current cursor state so the handler can extract
@@ -95,20 +117,43 @@ pub(super) async fn fetch_batch_impl(
     })
 }
 
-fn empty_result() -> FetchResult {
-    FetchResult {
+fn rate_limit_result(cursor: &str, seconds: u64) -> Result<FetchResult, ps_core::Error> {
+    Ok(FetchResult {
         items: vec![],
-        next_cursor: None,
+        next_cursor: Some(cursor.into()),
+        rate_limit: Some(RateLimitInfo {
+            remaining: 0,
+            limit: 0,
+            reset_at: time::OffsetDateTime::now_utc()
+                + time::Duration::seconds(i64::try_from(seconds).unwrap_or(86400).min(86400)),
+        }),
+        display_rate_limit: None,
+        etag: Some(cursor.into()),
+        skipped_diffs: vec![],
+    })
+}
+
+fn exhausted_category_result(cur: &mut Cursor) -> Result<FetchResult, ps_core::Error> {
+    let next_cursor = if cur.category_index + 1 < cur.category_ids.len() {
+        cur.category_index += 1;
+        cur.page = 0;
+        Some(serialise_cursor(cur)?)
+    } else {
+        None
+    };
+    Ok(FetchResult {
+        items: vec![],
+        next_cursor,
         rate_limit: None,
         display_rate_limit: None,
-        etag: None,
+        etag: Some(serialise_cursor(cur)?),
         skipped_diffs: vec![],
-    }
+    })
 }
 
 /// Fetch the topic listing from either global latest or per-category endpoint.
 /// Returns `None` when all categories are exhausted or a category-level error
-/// was handled (cursor advanced to next category).
+/// was recorded. The caller advances past an exhausted or failed category.
 async fn fetch_topic_listing(
     ctx: &IngestionContext,
     client: &DiscourseClient,
@@ -122,20 +167,6 @@ async fn fetch_topic_listing(
         .await
         {
             Ok(r) => Ok(Some(r)),
-            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-                warn!(
-                    source = ctx.source_config.name,
-                    page = cur.page,
-                    retry_after_secs,
-                    "rate limited on Discourse latest page — stopping pagination"
-                );
-                Ok(Some(super::super::client::LatestResponse {
-                    topic_list: super::super::client::TopicList {
-                        topics: vec![],
-                        more_topics_url: None,
-                    },
-                }))
-            }
             Err(e) => Err(e),
         }
     } else {
@@ -151,20 +182,7 @@ async fn fetch_topic_listing(
         .await
         {
             Ok(r) => Ok(Some(r)),
-            Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-                warn!(
-                    source = ctx.source_config.name,
-                    category_id = cat_id,
-                    retry_after_secs,
-                    "rate limited on Discourse category page — stopping pagination"
-                );
-                Ok(Some(super::super::client::LatestResponse {
-                    topic_list: super::super::client::TopicList {
-                        topics: vec![],
-                        more_topics_url: None,
-                    },
-                }))
-            }
+            Err(error @ ps_core::Error::RateLimit { .. }) => Err(error),
             Err(e) => {
                 warn!(
                     source = ctx.source_config.name,
@@ -176,8 +194,6 @@ async fn fetch_topic_listing(
                     key: format!("category:{cat_id}"),
                     error: e.to_string(),
                 });
-                cur.category_index += 1;
-                cur.page = 0;
                 Ok(None)
             }
         }
@@ -190,7 +206,7 @@ async fn process_topics(
     topics: &[TopicSummary],
     cur: &mut Cursor,
     fetch_likes: bool,
-) -> (Vec<ContributionInput>, bool) {
+) -> Result<(Vec<ContributionInput>, bool), ps_core::Error> {
     let (filtered_topics, reached_watermark) = filter_topics(topics, cur);
     let category_map = &cur.category_map;
     let context = ContributionContext {
@@ -204,26 +220,20 @@ async fn process_topics(
         .map(|topic_id| {
             let client = &client;
             async move {
-                match retry_transient(
+                let detail = retry_transient(
                     &format!("topic:{topic_id}"),
                     ps_core::Error::is_transient,
                     || client.topic(topic_id),
                 )
-                .await
-                {
-                    Ok(detail) => Some((topic_id, detail)),
-                    Err(e) => {
-                        warn!(topic_id, "failed to fetch topic detail: {e}");
-                        None
-                    }
-                }
+                .await?;
+                Ok::<_, ps_core::Error>((topic_id, detail))
             }
         })
         .buffer_unordered(4)
         .collect()
         .await;
 
-    let detail_map: HashMap<i64, _> = details.into_iter().flatten().collect();
+    let detail_map: HashMap<i64, _> = details.into_iter().collect::<Result<_, _>>()?;
     let mut items = Vec::new();
 
     for topic in &filtered_topics {
@@ -262,7 +272,7 @@ async fn process_topics(
 
             if fetch_likes {
                 let like_items =
-                    fetch_likes_for_posts(client, &post_stream.posts, topic, &context).await;
+                    fetch_likes_for_posts(client, &post_stream.posts, topic, &context).await?;
                 items.extend(like_items);
             }
         }
@@ -270,7 +280,7 @@ async fn process_topics(
         items.push(topic_input);
     }
 
-    (items, reached_watermark)
+    Ok((items, reached_watermark))
 }
 
 /// Fetch likers for all liked posts in a topic, with capped
@@ -280,19 +290,24 @@ async fn fetch_likes_for_posts(
     posts: &[Post],
     topic: &TopicSummary,
     context: &ContributionContext<'_>,
-) -> Vec<ContributionInput> {
+) -> Result<Vec<ContributionInput>, ps_core::Error> {
     let likeable_posts: Vec<_> = posts
         .iter()
         .filter(|post| post.likes() > 0)
         .cloned()
         .collect();
 
-    stream::iter(likeable_posts)
+    let results: Vec<_> = stream::iter(likeable_posts)
         .map(|post| async move { fetch_post_likes(client, &post, topic, context).await })
         .buffer_unordered(5)
-        .flat_map(stream::iter)
         .collect()
-        .await
+        .await;
+    Ok(results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect())
 }
 
 async fn fetch_post_likes(
@@ -300,24 +315,18 @@ async fn fetch_post_likes(
     post: &Post,
     topic: &TopicSummary,
     context: &ContributionContext<'_>,
-) -> Vec<ContributionInput> {
+) -> Result<Vec<ContributionInput>, ps_core::Error> {
     let post_id = post.id;
-    match retry_transient(
+    let likers = retry_transient(
         &format!("post_likers:{post_id}"),
         ps_core::Error::is_transient,
         || client.post_likers(post_id),
     )
-    .await
-    {
-        Ok(likers) => likers
-            .iter()
-            .map(|liker| build_like_input(liker, post, topic, context))
-            .collect(),
-        Err(e) => {
-            warn!(post_id, "failed to fetch post likers: {e}");
-            vec![]
-        }
-    }
+    .await?;
+    Ok(likers
+        .iter()
+        .map(|liker| build_like_input(liker, post, topic, context))
+        .collect())
 }
 
 /// Build a category ID → name map.

@@ -247,10 +247,9 @@ async fn category_iteration() {
     // Empty category returns no items, but should advance to next category
     assert!(result.items.is_empty());
     // After empty category, should move to category_index=1
-    if let Some(ref next) = result.next_cursor {
-        let next_cur: serde_json::Value = serde_json::from_str(next).unwrap();
-        assert_eq!(next_cur["category_index"], 1);
-    }
+    let next = result.next_cursor.expect("empty category must continue");
+    let next_cur: serde_json::Value = serde_json::from_str(&next).unwrap();
+    assert_eq!(next_cur["category_index"], 1);
 
     ctx.teardown().await;
 }

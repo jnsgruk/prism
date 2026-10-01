@@ -1,4 +1,5 @@
 mod discourse;
+mod discourse_recovery;
 mod github;
 mod github_repository_filters;
 mod github_review_recovery;

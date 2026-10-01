@@ -214,9 +214,6 @@ impl ActiveIdentitySource {
             cursor
                 .display
                 .insert("phase".into(), "ActiveIdentityDiscovery".into());
-            cursor
-                .display
-                .insert("target_index".into(), cursor.target_index.into());
         }
         if let Some(next) = &fetched.next_cursor {
             cursor.child.clone_from(next);
