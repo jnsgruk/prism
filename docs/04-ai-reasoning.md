@@ -147,6 +147,47 @@ Each conversation gets an isolated directory on the shared `prism-workspaces` PV
 
 When a user deletes a conversation, the `cleanup_storage` Restate handler deletes both the agent pod and the workspace directory from the PVC. Pod expiry (idle/max lifetime) does **not** delete workspace files — users can browse completed conversations. ps-workers mounts the PVC read-write for this cleanup.
 
+### Generated-file references
+
+Agents refer to files in their own workspace as `/workspace/<path>`. This is an
+agent filesystem reference, not a public browser endpoint. The application
+translates verified non-image references to
+`/ask/<conversation-id>/files/<path encoded by segment>`. Do not persist blob or
+data URLs, invent download hostnames, or expose `/workspace` as a static server.
+
+`ResolveWorkspaceFiles` checks bounded batches of workspace-relative paths and
+returns availability, MIME type and size without transferring the contents.
+Resolution and download require an authenticated session and an existing
+conversation. Prism's current shared-conversation read policy permits any
+signed-in user to read an existing conversation; conversation listings remain
+filtered to their owner. These URLs do not grant anonymous access.
+
+The resolver checks a readable regular file confined to the canonical
+conversation workspace. Missing files, directories, unsafe paths and storage
+failures cannot become verified downloads. Download rechecks availability;
+verification is a point-in-time observation, so deletion between verification
+and download must produce an error. Streaming transfers include metadata for
+empty files and propagate failures rather than certifying partial output.
+
+Completed answers are validated before persistence and final-answer emission.
+Only verified file links receive the browser URL; unavailable targets receive
+an explanation. Images keep workspace image rendering. Live text remains
+streamed while the frontend verifies references, and finalisation refreshes
+availability. Existing Markdown is repaired at render time without rewriting
+history or regenerating files. Resume/reload uses the same persisted answer.
+
+API paths contain decoded workspace-relative filenames. URL paths encode each
+segment separately and decode once at the reference/route boundary, never again
+inside the filesystem API. Spaces, Unicode, literal `%`, `#` and `?` therefore
+survive the round trip; a literal `%2F` filename uses `%252F` in a browser URL.
+Traversal, empty segments, backslashes and encoded separators are rejected.
+See `fixtures/workspace-paths.json`, consumed by Rust and TypeScript tests, for
+exact encoding examples.
+
+Files outlive idle/max-lifetime agent pod expiry because they live on the shared
+PVC. Conversation deletion revokes access immediately and schedules storage
+cleanup; a retained file on disk does not make a deleted conversation readable.
+
 ### ps-mcp — Data Tools
 
 The MCP server running inside agent containers provides:

@@ -146,3 +146,34 @@ probes matched built asset bytes rather than SPA HTML.
 Playwright WebKit is engine evidence, not an actual Safari run. Actual Safari
 and branded Chrome verification remain pre-merge acceptance checks; the
 reported private PDF was not inspected or copied into fixtures.
+
+## Ask generated-file downloads
+
+Ask answers recognise supported workspace references in historical, live and
+resumed messages. The renderer verifies metadata through `ResolveWorkspaceFiles`
+in the explicit conversation, shows a checking state without an active link,
+and offers a stable `/ask/<conversation-id>/files/<encoded-path>` href only
+when available. Missing files show an unavailable state; verification/transfer
+errors offer retry. A capped sidebar listing is not evidence that a file is
+missing. Resolution queries are deduplicated by conversation and path, remain
+fresh for 30 seconds, and refresh after final-answer emission; retry is explicit
+after a verification failure. Every download revalidates on the server. Ordinary
+internal links, external links and generated images keep their normal behavior.
+
+The browser route uses the existing authenticated Connect stream to download,
+including when opened in another tab, copied, loaded directly or refreshed.
+Login preserves the requested destination. Caddy's SPA fallback serves the
+route's page; receiving `200 text/html` alone never proves a file download
+worked. The page must complete the API transfer before saving the bytes.
+
+Only a fully successful stream is saved with its workspace filename. Interrupted
+streams save no partial output; temporary blob URLs are revoked after use and
+are never stored as message links. The route offers a retry/download control and
+a link back to the conversation. Rerenders must not start duplicate transfers.
+
+Path segments encode reserved characters individually, then decode exactly once
+before the API call. API paths are decoded relative filenames, including literal
+percent signs. The same path rules apply on the server; file lookup always uses
+the route's conversation ID. Session expiry does not turn the route into a
+public static file link. See [04-ai-reasoning.md](04-ai-reasoning.md#generated-file-references)
+for access policy, validation timing and workspace lifetime.
