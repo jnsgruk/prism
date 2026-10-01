@@ -129,9 +129,7 @@ const NavigationControl = (): React.ReactElement => {
 describe("authenticated workspace links", () => {
   it("verifies the exact persisted filename, deduplicates checks, saves complete bytes and revokes the URL", async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    renderContent(
-      "[Report](/workspace/Activity_Report_2026.pdf) [Again](/workspace/Activity_Report_2026.pdf)",
-    );
+    renderContent("[Report](/workspace/Activity_Report_2026.pdf) [Again](/workspace/Activity_Report_2026.pdf)");
     expect(screen.queryByRole("link")).toBeNull();
     const link = await screen.findByRole("link", { name: "Report" });
     expect(link.getAttribute("href")).toBe("/ask/reported-conversation/files/Activity_Report_2026.pdf");
@@ -159,6 +157,24 @@ describe("authenticated workspace links", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it("does not allocate a download URL after leaving during a transfer", async () => {
+    let finish = (): void => {};
+    serviceState.gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const view = renderContent();
+    fireEvent.click(await screen.findByRole("link", { name: "Report" }));
+    await waitFor(() => expect(serviceState.download).toHaveBeenCalledTimes(1));
+    view.unmount();
+    await act(async () => {
+      finish();
+    });
+    await waitFor(() => expect(view.client.isMutating()).toBe(0));
     expect(URL.createObjectURL).not.toHaveBeenCalled();
     expect(click).not.toHaveBeenCalled();
   });

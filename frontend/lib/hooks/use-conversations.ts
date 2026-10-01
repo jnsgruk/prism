@@ -1,6 +1,7 @@
 import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import type {
   ConversationSummary,
@@ -137,8 +138,16 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
   DownloadedFile,
   Error,
   { conversationId: string; path: string }
-> =>
-  useMutation({
+> => {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return (): void => {
+      mounted.current = false;
+    };
+  }, []);
+
+  return useMutation({
     mutationFn: async (req: { conversationId: string; path: string }): Promise<DownloadedFile> => {
       const chunks: BlobPart[] = [];
       let contentType = "application/octet-stream";
@@ -163,12 +172,15 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
       if (!receivedMetadata || receivedBytes !== totalSizeBytes) {
         throw new Error("File download was incomplete. Please retry.");
       }
+      // Per-call mutation callbacks stop running after the consumer unmounts.
+      if (!mounted.current) throw new Error("File download was cancelled.");
 
       const blob = new Blob(chunks, { type: contentType });
       const blobUrl = URL.createObjectURL(blob);
       return { blobUrl, contentType, totalSizeBytes };
     },
   });
+};
 
 export const useUploadWorkspaceFile = (): UseMutationResult<
   UploadWorkspaceFileResponse,
