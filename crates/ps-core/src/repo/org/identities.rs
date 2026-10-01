@@ -7,6 +7,16 @@ use uuid::Uuid;
 use super::{IdentityRow, OrgRepo};
 
 impl OrgRepo {
+    /// Active saved GitHub identities include people without team membership.
+    pub async fn active_github_usernames(&self) -> Result<Vec<String>, Error> {
+        Ok(self
+            .active_discovery_identities(&Platform::Github)
+            .await?
+            .into_iter()
+            .map(|identity| identity.username.to_string())
+            .collect())
+    }
+
     /// Saved active accounts eligible for this exact platform/instance, whether
     /// assigned to a team or manually added without a membership.
     pub async fn active_discovery_identities(

@@ -353,16 +353,6 @@ impl OrgRepo {
         Ok(())
     }
 
-    /// Active saved GitHub identities include people without team membership.
-    pub async fn get_all_github_team_member_usernames(&self) -> Result<Vec<String>, Error> {
-        Ok(self
-            .active_discovery_identities(&crate::models::Platform::Github)
-            .await?
-            .into_iter()
-            .map(|identity| identity.username.to_string())
-            .collect())
-    }
-
     /// Remove stale GitHub teams that weren't seen in the latest sync.
     pub async fn remove_stale_github_teams(
         &self,

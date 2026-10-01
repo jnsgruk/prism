@@ -5,17 +5,23 @@ use crate::{Error, ingestion::IdentitySnapshot};
 
 use super::ActivityRepo;
 
+/// Frozen first-attempt baseline and independently completed account coverage.
+pub struct IdentityDiscoveryWindow {
+    pub initial_since: OffsetDateTime,
+    pub covered_through: Option<OffsetDateTime>,
+}
+
 impl ActivityRepo {
-    /// A source-wide watermark cannot establish complete user discovery.
-    pub async fn identity_discovery_cutoff(
+    /// Read both bounds from the same saved account/version snapshot.
+    pub async fn identity_discovery_window(
         &self,
         source_id: Uuid,
         identity_id: Uuid,
         version: &str,
-    ) -> Result<Option<OffsetDateTime>, Error> {
-        sqlx::query_scalar!(
+    ) -> Result<Option<IdentityDiscoveryWindow>, Error> {
+        let row = sqlx::query!(
             r#"
-            SELECT covered_through
+            SELECT initial_since, covered_through
             FROM activity.identity_discovery_coverage
             WHERE source_id = $1 AND identity_id = $2 AND identity_version = $3
             "#,
@@ -24,9 +30,25 @@ impl ActivityRepo {
             version,
         )
         .fetch_optional(&self.pool)
-        .await
-        .map(Option::flatten)
-        .map_err(Error::from)
+        .await?;
+
+        Ok(row.map(|row| IdentityDiscoveryWindow {
+            initial_since: row.initial_since,
+            covered_through: row.covered_through,
+        }))
+    }
+
+    /// A source-wide watermark cannot establish complete user discovery.
+    pub async fn identity_discovery_cutoff(
+        &self,
+        source_id: Uuid,
+        identity_id: Uuid,
+        version: &str,
+    ) -> Result<Option<OffsetDateTime>, Error> {
+        Ok(self
+            .identity_discovery_window(source_id, identity_id, version)
+            .await?
+            .and_then(|window| window.covered_through))
     }
 
     /// First-attempt lower bound, retained independently of completed coverage.
@@ -36,21 +58,10 @@ impl ActivityRepo {
         identity_id: Uuid,
         version: &str,
     ) -> Result<Option<OffsetDateTime>, Error> {
-        sqlx::query_scalar!(
-            r#"
-            SELECT initial_since
-            FROM activity.identity_discovery_coverage
-            WHERE source_id = $1
-                AND identity_id = $2
-                AND identity_version = $3
-            "#,
-            source_id,
-            identity_id,
-            version,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(Error::from)
+        Ok(self
+            .identity_discovery_window(source_id, identity_id, version)
+            .await?
+            .map(|window| window.initial_since))
     }
 
     /// Journalled planning freezes the first window before any user API call.

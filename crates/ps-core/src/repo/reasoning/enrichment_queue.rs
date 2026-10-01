@@ -140,17 +140,7 @@ impl ReasoningRepo {
             tx.commit().await?;
             return Ok(0);
         }
-        crate::repo::ActivityRepo::lock_existing_contribution_keys(&mut tx, &ids).await?;
-        sqlx::query!(
-            "SELECT id FROM activity.contributions WHERE id = ANY($1) ORDER BY id FOR SHARE",
-            &ids,
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-        sqlx::query!(
-            "SELECT contribution_id FROM reasoning.enrichment_queue WHERE contribution_id = ANY($1) ORDER BY contribution_id FOR UPDATE",
-            &ids,
-        ).fetch_all(&mut *tx).await?;
+        Self::lock_queued_contributions(&mut tx, &ids).await?;
 
         // After waiting for ingestion, re-evaluate eligibility and hashes with
         // a fresh statement snapshot. The old <=50-line shortcut is not proof

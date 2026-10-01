@@ -142,14 +142,7 @@ pub(super) fn input_preview(text: &str, max_chars: usize) -> String {
     if text.len() <= max_chars {
         text.to_string()
     } else {
-        // Find the last char boundary at or before max_chars to avoid
-        // slicing through multi-byte characters.
-        let end = text
-            .char_indices()
-            .map(|(i, _)| i)
-            .take_while(|&i| i <= max_chars)
-            .last()
-            .unwrap_or(0);
+        let end = text.floor_char_boundary(max_chars);
         format!("{}…", &text[..end])
     }
 }
