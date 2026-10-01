@@ -106,8 +106,14 @@ account indefinitely. A completed account publishes its own coverage only after
 its stored batch commits, then advances to the next saved account.
 
 Global Discourse collection pauses durably on rate limits from category names,
-topic listings, topic details, or post likers. It retries the original page and
-publishes no partial page contributions, pagination changes, or watermark.
+topic listings, topic details, or post likers. Each batch checkpoints one
+successful HTTP operation, retaining only topic summaries and liked-post metadata
+for pending requests. Rate limits retry the pending operation after a durable
+sleep, including after a worker restart; successful requests are not repeated.
+Stored contributions remain available while the source-wide coverage watermark
+stays unchanged until all categories, topics, and likers complete without errors.
+The cursor publishes `completed_max_bumped_at` only at that boundary. Reaching
+the page safety limit records incomplete coverage rather than publishing it.
 Empty categories continue to the next configured category. Detail and liker
 errors other than rate limits fail the fetch rather than silently omit data.
 
@@ -446,12 +452,12 @@ Each source defines its own cursor struct (serialised to JSON). Cursors are opaq
 
 - **GitHub**: Multi-phase (TeamRepos -> MemberSearch), tracks repo_index, graphql_cursor, max_updated_at, failed_items
 - **Jira**: Iterates projects, tracks project_index, next_page_token, max_updated_at, failed_items
-- **Discourse**: Iterates categories, tracks category_index, page, max_bumped_at
+- **Discourse**: Iterates categories and pending topic/liker requests; tracks category_index, page, max_bumped_at, completed_max_bumped_at
 
-**Watermark advancement:** Jira and Discourse advance coverage after successful
-batches. GitHub waits for successful source completion because repository searches
-can discover older PRs after newer ones, and review pagination can fail after a
-parent has been stored. Failed GitHub runs may refetch already committed rows;
+**Watermark advancement:** Jira advances coverage after successful batches.
+GitHub and Discourse wait for successful source traversal because later pages or
+child requests can fail after newer parent contributions have been stored.
+Failed runs may refetch already committed rows;
 natural-key upserts keep those retries idempotent. Person runs never advance
 source-wide coverage.
 
