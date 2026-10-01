@@ -14,6 +14,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
             .as_ref()
             .map(|date| format!("{date}T00:00:00Z"));
         return Ok(IngestionPlan {
+            discovery_cutoff: None,
             source_name: ctx.source_config.name.clone(),
             watermark,
             repos: vec![],
@@ -49,6 +50,7 @@ pub(super) async fn plan_impl(ctx: &IngestionContext) -> Result<IngestionPlan, p
     );
 
     Ok(IngestionPlan {
+        discovery_cutoff: None,
         source_name: ctx.source_config.name.clone(),
         watermark: effective_watermark,
         repos: vec![],

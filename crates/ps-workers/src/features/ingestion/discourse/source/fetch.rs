@@ -242,6 +242,9 @@ async fn process_topics(
             if let Some(first_post) = post_stream.posts.iter().find(|p| p.post_number == 1) {
                 topic_input.platform_username = first_post.username.to_lowercase().into();
                 topic_input.content = first_post.raw.clone();
+                if let Some(metrics) = topic_input.metrics.as_object_mut() {
+                    metrics.insert("likes".into(), first_post.likes().into());
+                }
 
                 if let Some(ref raw) = first_post.raw {
                     topic_input.enrichment_content = Some(serde_json::json!({

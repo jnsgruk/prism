@@ -8,8 +8,8 @@ use ps_core::models::{ContributionType, RateLimitInfo};
 use tracing::{debug, warn};
 
 use super::{
-    Cursor, IngestionPhase, RATE_LIMIT_SEARCH_THRESHOLD, SEARCH_BATCH_SIZE, build_graphql_client,
-    decrypt_token, is_valid_github_username, serialise_cursor,
+    Cursor, IngestionPhase, SEARCH_BATCH_SIZE, build_graphql_client, decrypt_token,
+    is_valid_github_username, serialise_cursor,
 };
 use crate::infra::retry::retry_transient;
 use ps_core::ingestion::FailedItem;
@@ -54,6 +54,15 @@ pub(super) async fn fetch_batch_impl(
         // contribution stores have committed successfully.
         cur.completed_max_updated_at = cur.max_updated_at.clone();
         result.etag = Some(serialise_cursor(&cur)?);
+    }
+
+    if ctx.person_request()?.is_some() && result.next_cursor.is_none() {
+        let mut final_cursor = serde_json::to_value(&cur)
+            .map_err(|error| ps_core::Error::Internal(error.to_string()))?;
+        if let Some(object) = final_cursor.as_object_mut() {
+            object.insert("discovery_complete".into(), true.into());
+        }
+        result.etag = Some(final_cursor.to_string());
     }
 
     Ok(result)
@@ -247,24 +256,6 @@ async fn transition_to_member_search(
     ctx: &IngestionContext,
     cur: &mut Cursor,
 ) -> Result<FetchResult, ps_core::Error> {
-    // Check if rate limit budget is sufficient for search.
-    if let Some(remaining) = cur.last_rate_limit_remaining
-        && remaining < RATE_LIMIT_SEARCH_THRESHOLD
-    {
-        warn!(
-            source = ctx.source_config.name,
-            remaining, "skipping member search — rate limit budget low"
-        );
-        return Ok(FetchResult {
-            items: vec![],
-            next_cursor: None,
-            rate_limit: None,
-            display_rate_limit: None,
-            etag: None,
-            skipped_diffs: vec![],
-        });
-    }
-
     // Load all GitHub usernames for active team members — includes users from
     // teams without a GitHub team mapping.
     let usernames = ctx.repos.org.get_all_github_team_member_usernames().await?;

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use sqlx::{Postgres, Transaction};
-use time::{Date, Month, OffsetDateTime};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
     Error,
     ingestion::{ContributionInput, SourceRunContext},
-    models::PeriodType,
+    models::{PeriodType, period_boundaries},
 };
 
 pub(super) struct ContributionBefore {
@@ -99,8 +99,15 @@ pub(super) async fn record_changes(
                     .into_iter()
                     .flatten()
             });
-        affected_periods.push(periods_for_dates(dates)?);
+        affected_periods.push(periods_for_dates(dates));
     }
+    let stale_enrichments = stale_enrichment_ids(before, after, changed);
+    crate::repo::ReasoningRepo::invalidate_scoped_enrichments_in_transaction(
+        tx,
+        &stale_enrichments,
+    )
+    .await?;
+
     let person_id = request
         .scope
         .person_id()
@@ -119,7 +126,12 @@ pub(super) async fn record_changes(
             $10::jsonb[], $11::jsonb[], $12::jsonb[], $13::text[])
             AS input(id, contribution_id, previous_person_id, previous_created_at, current_created_at,
                 previous_input, current_input, periods, hash)
-        ON CONFLICT (pipeline_id, contribution_id, input_hash) DO NOTHING
+        ON CONFLICT (pipeline_id, contribution_id, input_hash) DO UPDATE SET
+            previous_person_id = EXCLUDED.previous_person_id,
+            previous_created_at = EXCLUDED.previous_created_at,
+            previous_input = EXCLUDED.previous_input,
+            affected_periods = EXCLUDED.affected_periods,
+            recorded_at = now()
         "#,
         &ids,
         request.pipeline_id,
@@ -137,27 +149,50 @@ pub(super) async fn record_changes(
     )
     .execute(&mut **tx)
     .await?;
+    sqlx::query!(
+        r#"
+        INSERT INTO activity.snapshot_invalidations (change_id, period_type, period_start)
+        SELECT changes.id, period->>'period_type', (period->>'period_start')::date
+        FROM activity.contribution_changes changes
+        CROSS JOIN LATERAL jsonb_array_elements(changes.affected_periods) period
+        JOIN UNNEST($2::uuid[], $3::text[]) input(contribution_id, input_hash)
+            ON changes.contribution_id = input.contribution_id AND changes.input_hash = input.input_hash
+        WHERE changes.pipeline_id = $1
+        ON CONFLICT (change_id, period_type, period_start) DO UPDATE SET
+            id = gen_random_uuid(), metrics_refreshed_at = NULL, insights_refreshed_at = NULL
+        "#,
+        request.pipeline_id,
+        &contribution_ids,
+        &hashes,
+    )
+    .execute(&mut **tx)
+    .await?;
     Ok(())
 }
 
-fn periods_for_dates(
-    dates: impl Iterator<Item = OffsetDateTime>,
-) -> Result<serde_json::Value, Error> {
+fn stale_enrichment_ids(
+    before: &HashMap<String, ContributionBefore>,
+    after: &HashMap<String, ContributionBefore>,
+    changed: &[(&ContributionInput, Uuid)],
+) -> Vec<Uuid> {
+    changed
+        .iter()
+        .filter_map(|(item, id)| {
+            let previous = before.get(item.platform_id.as_str());
+            let current = after.get(item.platform_id.as_str())?;
+            let old_hash =
+                previous.and_then(|row| row.input.get("metadata")?.get("enrichment_input_hash"));
+            let new_hash = current.input.get("metadata")?.get("enrichment_input_hash");
+            (item.enrichment_content.is_some() && old_hash != new_hash).then_some(*id)
+        })
+        .collect()
+}
+
+fn periods_for_dates(dates: impl Iterator<Item = OffsetDateTime>) -> serde_json::Value {
     let mut periods = Vec::new();
     for date in dates.map(|date| date.to_offset(time::UtcOffset::UTC).date()) {
-        let month_start = Date::from_calendar_date(date.year(), date.month(), 1)
-            .map_err(|error| Error::Internal(error.to_string()))?;
-        let quarter_month = Month::try_from((u8::from(date.month()) - 1) / 3 * 3 + 1)
-            .map_err(|error| Error::Internal(error.to_string()))?;
-        let quarter_start = Date::from_calendar_date(date.year(), quarter_month, 1)
-            .map_err(|error| Error::Internal(error.to_string()))?;
-        let week_start =
-            date - time::Duration::days(i64::from(date.weekday().number_days_from_monday()));
-        for (kind, start) in [
-            (PeriodType::Week, week_start),
-            (PeriodType::Month, month_start),
-            (PeriodType::Quarter, quarter_start),
-        ] {
+        for kind in [PeriodType::Week, PeriodType::Month, PeriodType::Quarter] {
+            let (start, _) = period_boundaries(date, kind);
             let period =
                 serde_json::json!({"period_type":kind.as_str(), "period_start":start.to_string()});
             if !periods.contains(&period) {
@@ -165,7 +200,7 @@ fn periods_for_dates(
             }
         }
     }
-    Ok(serde_json::Value::Array(periods))
+    serde_json::Value::Array(periods)
 }
 
 #[cfg(test)]
@@ -180,7 +215,7 @@ mod tests {
         )
         .unwrap();
         let new = old + time::Duration::days(8);
-        let periods = periods_for_dates([old, new].into_iter()).unwrap();
+        let periods = periods_for_dates([old, new].into_iter());
         let periods = periods.as_array().unwrap();
         assert_eq!(periods.len(), 6);
         assert!(

@@ -5,6 +5,24 @@ use super::{ReasoningRepo, content_hash};
 use crate::{Error, ingestion::ContributionInput, models::Platform};
 
 impl ReasoningRepo {
+    /// Changed AI inputs must retire stale results before queue processing,
+    /// whose existing contract enriches missing applicable types.
+    pub(crate) async fn invalidate_scoped_enrichments_in_transaction(
+        tx: &mut Transaction<'_, Postgres>,
+        ids: &[Uuid],
+    ) -> Result<(), Error> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        sqlx::query!(
+            "DELETE FROM reasoning.enrichments WHERE contribution_id = ANY($1)",
+            ids
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
     /// Enqueue alongside scoped contribution writes; a queue error rolls back
     /// the entire batch instead of being logged as a successful import.
     pub(crate) async fn enqueue_scoped_in_transaction(

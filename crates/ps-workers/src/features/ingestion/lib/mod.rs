@@ -1,4 +1,5 @@
 pub mod chunk;
+pub mod discovery;
 pub mod finalise;
 mod lifecycle;
 mod orchestration;

@@ -137,11 +137,6 @@ impl HandlersServiceImpl {
         resolved
             .validate()
             .map_err(|error| Status::invalid_argument(error.to_string()))?;
-        if resolved.scope.person_id().is_some() {
-            return Err(Status::failed_precondition(
-                "person backfill is unavailable until person-scoped processing is implemented (#30)",
-            ));
-        }
         Ok(resolved)
     }
 }

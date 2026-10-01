@@ -51,12 +51,15 @@ impl TaskRouter {
     /// Set the Google Gemini provider client.
     pub fn set_google(&mut self, api_key: &str) {
         match gemini::Client::new(api_key) {
-            Ok(client) => {
-                self.google = Some(client);
-                self.google_key = Some(api_key.to_string());
-            }
+            Ok(client) => self.set_google_client(client, api_key),
             Err(e) => tracing::warn!(error = %e, "failed to create Gemini client"),
         }
+    }
+
+    /// Register a configured client, including its HTTP transport and endpoint.
+    pub fn set_google_client(&mut self, client: gemini::Client, api_key: &str) {
+        self.google = Some(client);
+        self.google_key = Some(api_key.to_string());
     }
 
     /// Update the routing configuration.

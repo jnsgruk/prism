@@ -353,34 +353,14 @@ impl OrgRepo {
         Ok(())
     }
 
-    /// Get distinct GitHub usernames for all active Prism team members.
-    ///
-    /// Combines two sources:
-    /// 1. GitHub team members from mapped teams (via `github_team_members`)
-    /// 2. All people with GitHub platform identities who are in any Prism team
-    ///    (catches teams that don't have a GitHub team mapping)
-    ///
-    /// Used by the member search phase to find cross-repo contributions.
+    /// Active saved GitHub identities include people without team membership.
     pub async fn get_all_github_team_member_usernames(&self) -> Result<Vec<String>, Error> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT DISTINCT username FROM (
-                -- People with GitHub platform identities who are active team members
-                SELECT pi.platform_username AS username
-                FROM org.platform_identities pi
-                JOIN org.team_memberships tm ON tm.person_id = pi.person_id
-                    AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)
-                JOIN org.people p ON p.id = pi.person_id AND p.active = true
-                WHERE pi.platform = 'github'
-            ) all_users
-            ORDER BY username
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        Ok(rows.into_iter().map(|r| r.username).collect())
+        Ok(self
+            .active_discovery_identities(&crate::models::Platform::Github)
+            .await?
+            .into_iter()
+            .map(|identity| identity.username.to_string())
+            .collect())
     }
 
     /// Remove stale GitHub teams that weren't seen in the latest sync.

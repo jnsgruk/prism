@@ -3,7 +3,9 @@ use restate_sdk::prelude::*;
 use uuid::Uuid;
 
 use super::super::progress::{BatchAction, ProgressTracker, SkippedDiffAction};
-use super::batch::{chunk_advance_watermark, chunk_retry_skipped_diffs, chunk_store_batch};
+use super::batch::{
+    chunk_advance_watermark, chunk_checkpoint_batch, chunk_retry_skipped_diffs, chunk_store_batch,
+};
 use super::checkpoint::fetch_for_chunk;
 use crate::infra::run_lifecycle::{ensure_owned_active, journaled_value, terminal_err};
 
@@ -138,6 +140,11 @@ pub(super) async fn chunk_fetch_store_loop(
                     tracing::debug!(batch_stored = stored, total_items, "stored batch");
                 }
 
+                // Retain committed item counts even if later diff repair fails
+                // before the chunk can return its accumulated result.
+                let global = items_offset + total_items;
+                chunk_update_progress!(ing_ctx, run_id, global, tracker, &cursor, &batch);
+
                 // Handle skipped diffs (GitHub REST rate limiting).
                 match skipped_diffs {
                     SkippedDiffAction::None => {}
@@ -161,8 +168,9 @@ pub(super) async fn chunk_fetch_store_loop(
                     }
                 }
 
-                let global = items_offset + total_items;
-                chunk_update_progress!(ing_ctx, run_id, global, tracker, &cursor, &batch);
+                if let Some(checkpoint) = batch.etag.as_deref().or(batch.next_cursor.as_deref()) {
+                    chunk_checkpoint_batch(ctx, ing_ctx, checkpoint).await?;
+                }
 
                 if last_progress_log.elapsed() >= std::time::Duration::from_mins(1) {
                     tracing::info!(total_items, batches, "progress");

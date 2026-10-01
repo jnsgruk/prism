@@ -9,6 +9,7 @@ pub enum StageStatus {
     Pending,
     Running,
     Completed,
+    CompletedWithWarnings,
     Failed,
     Skipped,
     Cancelled,
@@ -20,6 +21,7 @@ impl StageStatus {
             Self::Pending => "pending",
             Self::Running => "running",
             Self::Completed => "completed",
+            Self::CompletedWithWarnings => "completed_with_warnings",
             Self::Failed => "failed",
             Self::Skipped => "skipped",
             Self::Cancelled => "cancelled",
@@ -162,6 +164,11 @@ pub fn derive_stage_status(results: &[HandlerResult]) -> StageStatus {
     } else if any_failed {
         // Partial failure: some succeeded, some failed
         StageStatus::Completed // completed_with_warnings at pipeline level
+    } else if results
+        .iter()
+        .any(|result| result.status == StageStatus::CompletedWithWarnings)
+    {
+        StageStatus::CompletedWithWarnings
     } else {
         StageStatus::Completed
     }
@@ -180,6 +187,7 @@ pub fn derive_pipeline_status(stages: &serde_json::Value) -> &'static str {
 
     let any_failed = statuses.contains(&"failed");
     let any_cancelled = statuses.contains(&"cancelled");
+    let any_warnings = statuses.contains(&"completed_with_warnings");
 
     // Check for partial failures in handler results
     let any_handler_failed = stages.as_object().is_some_and(|obj| {
@@ -199,7 +207,7 @@ pub fn derive_pipeline_status(stages: &serde_json::Value) -> &'static str {
         "cancelled"
     } else if any_failed {
         "failed"
-    } else if any_handler_failed {
+    } else if any_handler_failed || any_warnings {
         "completed_with_warnings"
     } else {
         "completed"
@@ -324,6 +332,20 @@ mod tests {
         ];
         // Partial failure → still Completed at stage level (warnings at pipeline level)
         assert_eq!(derive_stage_status(&results), StageStatus::Completed);
+    }
+
+    #[test]
+    fn incomplete_source_coverage_preserves_pipeline_warning() {
+        let result = HandlerResult {
+            name: "selected source".into(),
+            status: StageStatus::CompletedWithWarnings,
+            items: Some(2),
+            error: Some("Source coverage is incomplete".into()),
+        };
+        let mut stages = build_initial_stages(false, &[]);
+        mark_stage_complete(&mut stages, "ingestion", &[result]);
+        assert_eq!(stages["ingestion"]["status"], "completed_with_warnings");
+        assert_eq!(derive_pipeline_status(&stages), "completed_with_warnings");
     }
 
     #[test]

@@ -283,8 +283,12 @@ fn result(
     done: bool,
     sleep: Option<u64>,
 ) -> Result<FetchResult, ps_core::Error> {
-    let raw =
-        serde_json::to_string(&cursor).map_err(|e| ps_core::Error::Internal(e.to_string()))?;
+    let mut value =
+        serde_json::to_value(&cursor).map_err(|e| ps_core::Error::Internal(e.to_string()))?;
+    if let Some(object) = value.as_object_mut() {
+        object.insert("discovery_complete".into(), done.into());
+    }
+    let raw = value.to_string();
     let rate_limit = sleep.map(|seconds| RateLimitInfo {
         remaining: 0,
         limit: 0,

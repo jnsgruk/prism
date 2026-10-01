@@ -1,6 +1,6 @@
 //! Ownership and processing boundary for versioned downstream handlers.
 
-use ps_core::ingestion::{PipelineRequest, PipelineScope};
+use ps_core::ingestion::PipelineRequest;
 use restate_sdk::prelude::{ContextSideEffects, RunFuture, TerminalError};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -18,9 +18,6 @@ impl OwnedProcessingRequest {
         self.request
             .validate()
             .map_err(terminal_err("invalid processing snapshot"))?;
-        if !matches!(self.request.scope, PipelineScope::All) {
-            return Err(TerminalError::new("person processing is not available"));
-        }
         Ok(())
     }
 }

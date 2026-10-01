@@ -68,9 +68,7 @@ macro_rules! register_owned_invocation {
         );
         if !admitted {
             $handle.cancel();
-            let _ = $handle
-                .attach::<::restate_sdk::prelude::Json<::serde_json::Value>>()
-                .await;
+            let _ = $handle.attach::<::std::vec::Vec<u8>>().await;
             return Err(::restate_sdk::prelude::TerminalError::new(
                 "pipeline cancelled",
             ));

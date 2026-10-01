@@ -1,5 +1,6 @@
 mod contributions;
 mod discourse;
+mod period_lock;
 mod person;
 mod snapshots;
 mod sources;
