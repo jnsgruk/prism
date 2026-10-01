@@ -77,9 +77,13 @@ chunks and detached processing continuations; parent registration also records
 their exact ownership.
 
 Recovery requires a definitively terminal root before repairing an unfinished
-pipeline. It stops further registration, drains exact registered descendants,
-and follows Restate's `invoked_by_id` ancestry to find children missing from the
-registry, including legacy workflow children. It holds admission while any
+pipeline. For a saved cancellation of a legacy workflow, it first kills the
+exact root invocation, including roots waiting on rate-limit sleeps. Legacy
+worker finalization cannot release that cancelled admission; recovery confirms
+the root is terminal before proceeding. It stops further registration and drains
+exact registered descendants, following Restate's `invoked_by_id` ancestry to
+find children missing from the registry, including legacy workflow children.
+It holds admission while any
 descendant is still active or its status is uncertain. Recovery never selects
 work by source name, handler name, or start time. The pipeline and its running
 records finish atomically under the admission lock: a saved user cancellation

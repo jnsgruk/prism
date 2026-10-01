@@ -45,6 +45,11 @@ The `vector` extension powers embedding storage and similarity search. Embedding
 - sqlx offline mode: after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. `mise run generate:sqlx` includes all targets so typed SQL in integration fixtures also builds offline. CI builds with `SQLX_OFFLINE=true`.
 - Always use type-safe query macros (`sqlx::query!`, `sqlx::query_as!`, `sqlx::query_scalar!`) — never the runtime `sqlx::query()` string-based function
 
+Pipeline invocation ownership survives deletion of run history. The optional
+`activity.pipeline_invocations.run_id` foreign key uses `ON DELETE SET NULL`,
+so ResetData can delete ingestion runs while retaining exact invocation IDs and
+parent relationships needed for cancellation and recovery.
+
 ## Encrypted Secrets
 
 Source credentials (API tokens) are stored encrypted in `config.secrets` using AES-256-GCM. Only `PS_SECRET_KEY` (256-bit, base64-encoded) comes from environment. All other configuration is managed through the admin UI via gRPC.
