@@ -4,7 +4,10 @@ use time::OffsetDateTime;
 use tracing::{debug, error, info};
 
 use crate::infra::SharedState;
-use crate::infra::run_lifecycle::{complete_run, create_run, fail_run};
+use crate::infra::run_lifecycle::{
+    complete_owned_run, complete_run, create_owned_run, create_run, ensure_owned_active,
+    fail_owned_run, fail_run, journaled_value, terminal_err,
+};
 
 pub struct InsightsHandlerImpl {
     pub state: SharedState,
@@ -15,9 +18,47 @@ pub trait InsightsHandler {
     /// Recompute insight snapshots from enrichment data for all teams
     /// across current periods (week, month, quarter).
     async fn compute_current_periods() -> Result<(), TerminalError>;
+
+    async fn compute_scoped(
+        request: Json<crate::features::pipeline::ownership::OwnedProcessingRequest>,
+    ) -> Result<(), TerminalError>;
 }
 
 impl InsightsHandler for InsightsHandlerImpl {
+    async fn compute_scoped(
+        &self,
+        ctx: Context<'_>,
+        Json(owner): Json<crate::features::pipeline::ownership::OwnedProcessingRequest>,
+    ) -> Result<(), TerminalError> {
+        owner.validate_supported()?;
+        ensure_owned_active!(ctx, self.state.repos, owner.pipeline_id)?;
+        let run_id = create_owned_run!(
+            ctx,
+            self.state.repos,
+            owner.pipeline_id,
+            "_system",
+            "InsightsHandler",
+            "compute_current_periods"
+        );
+        let mut total = 0;
+        for period_type in [PeriodType::Week, PeriodType::Month, PeriodType::Quarter] {
+            owner.validate_supported()?;
+            ensure_owned_active!(ctx, self.state.repos, owner.pipeline_id)?;
+            match self
+                .compute_period(period_type, owner.request.run_started_at.date())
+                .await
+            {
+                Ok(count) => total += count,
+                Err(error) => {
+                    fail_owned_run!(ctx, self.state.repos, run_id, "_system", &error.to_string());
+                    return Err(TerminalError::new("period computation failed"));
+                }
+            }
+        }
+        complete_owned_run!(ctx, self.state.repos, run_id, "_system", total);
+        Ok(())
+    }
+
     async fn compute_current_periods(&self, ctx: Context<'_>) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 

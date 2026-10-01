@@ -249,3 +249,11 @@ pub(crate) use create_run;
 pub(crate) use fail_run;
 pub(crate) use journaled;
 pub(crate) use journaled_value;
+
+mod owned;
+
+pub(crate) use owned::{
+    complete_handler_run, complete_owned_run, complete_owned_run_with_warnings, create_owned_run,
+    ensure_owned_active, fail_handler_run, fail_owned_run, register_owned_invocation,
+    register_owned_self,
+};
