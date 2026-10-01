@@ -22,6 +22,31 @@ actual elapsed-time savings must be measured after cache population.
 
 ---
 
+## 2026-10-01 — Gate agent sessions on application health and reconcile ambiguous creation
+
+**Context:** Agent startup sent session POST as soon as Kubernetes reported
+`Running`. One request consumed the SDK's full 120-second operation timeout;
+its retry succeeded in 499 ms. An isolated pod reproduced refused / timed-out
+HTTP requests after `Running` and before health succeeded. Session lookup errors
+also allowed replacement of potentially live sessions.
+
+**Decision:** Check OpenCode's `/global/health` with short connection/request
+deadlines, share a bounded startup budget across preparation and connection,
+retry only reads, and persist pod-UID-scoped creation intent before one POST.
+Reconcile ambiguous creation by a stable conversation title. Preserve ordinary
+operation / SSE budgets, streaming in ps-server and Restate journal ordering.
+
+**Rationale:** Readiness polling handles application and transient network gaps
+without paying a full operation timeout. Persisted intent prevents follow-up
+requests from creating duplicates after an unknown POST outcome, including
+server restart or cancellation. Without a supported idempotency key, intent
+that produced no session must remain reconciliation-only until the pod is
+replaced. A new pod UID safely permits recovery after expiry. The original
+connection stall's packet-level cause remains unproven; health and stage timing
+logs improve diagnosis without redesigning or modifying the live deployment.
+
+---
+
 ## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
 
 **Context:** A completed person ingestion/enrichment pipeline repeatedly failed
