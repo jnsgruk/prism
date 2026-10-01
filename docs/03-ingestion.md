@@ -174,6 +174,9 @@ snapshot; Discourse continues using its frozen instance endpoint.
   `max_updated_at` remains progress data; `completed_max_updated_at` is the
   coverage checkpoint. Partial/failed runs retain the previous global watermark
   so a fresh run rediscovers unchanged PRs and fills missing review pages.
+  Null/malformed search nodes and missing required PR fields record incomplete
+  coverage in repository, member, and Person searches. Valid neighboring rows
+  still ingest, but omitted nodes cannot permit a global completion watermark.
 - **Jira Cloud:** every request combines configured projects with the saved
   opaque current-assignee account ID. Empty projects retain the all-accessible
   project meaning, restricted to that account. Quotes and backslashes are escaped.
