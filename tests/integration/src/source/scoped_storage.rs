@@ -176,6 +176,9 @@ async fn identity_removal_and_cancellation_fail_before_writes() {
         let ctx = SourceTestContext::new().await;
         let source_ctx = context(&ctx, Platform::Github).await;
         let request = source_ctx.request.as_ref().unwrap();
+        let source = create_source(&Platform::Github).unwrap();
+        assert_eq!(source.store_batch(&source_ctx, &[]).await.unwrap(), 0);
+
         if cancel {
             ctx.repos
                 .activity
@@ -192,6 +195,15 @@ async fn identity_removal_and_cancellation_fail_before_writes() {
                 .await
                 .unwrap();
         }
+        assert!(source.store_batch(&source_ctx, &[]).await.is_err());
+        let filtered = item(
+            Platform::Github,
+            ContributionType::PrReview,
+            "other-review",
+            "outsider",
+            "2026-06-01T00:00:00Z",
+        );
+        assert!(source.store_batch(&source_ctx, &[filtered]).await.is_err());
         assert!(
             create_source(&Platform::Github)
                 .unwrap()

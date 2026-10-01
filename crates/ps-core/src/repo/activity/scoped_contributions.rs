@@ -20,10 +20,20 @@ impl ActivityRepo {
         items: &[ContributionInput],
     ) -> Result<usize, Error> {
         request.validate()?;
-        let prepared: Vec<_> = items.iter().map(with_enrichment_fingerprint).collect();
-        let mut eligible = request.eligible_batch(&prepared)?;
+        let prepared: Vec<_> = request
+            .eligible_batch(items)?
+            .into_iter()
+            .map(with_enrichment_fingerprint)
+            .collect();
+        let mut eligible: Vec<_> = prepared.iter().collect();
+
         let mut tx = self.pool.begin().await?;
         validate_write_owner(&mut tx, request, run_id).await?;
+        if eligible.is_empty() {
+            tx.commit().await?;
+            return Ok(0);
+        }
+
         Self::lock_contribution_keys(&mut tx, &eligible).await?;
 
         let before = read_contributions(&mut tx, request, &eligible).await?;

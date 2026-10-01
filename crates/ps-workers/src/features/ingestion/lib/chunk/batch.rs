@@ -125,25 +125,23 @@ pub(super) async fn chunk_retry_skipped_diffs(
         .await
         {
             crate::features::ingestion::github::source::fetch::DiffFetchResult::Ok(diff_text) => {
-                if let Some(item) = original_items.get(sd.item_index)
-                    && let Some(ref enrichment) = item.enrichment_content
-                {
+                if let Some(enrichment) = &original.enrichment_content {
                     let mut content = enrichment.clone();
                     if let Some(obj) = content.as_object_mut() {
                         obj.insert("diff".to_string(), serde_json::Value::String(diff_text));
                     }
-                    updated_items.push((item.platform_id.to_string(), content));
-                    if !ing_ctx.advances_global_watermark() {
-                        let mut updated = item.clone();
-                        updated.enrichment_content =
-                            updated_items.last().map(|(_, content)| content.clone());
+                    if ing_ctx.advances_global_watermark() {
+                        updated_items.push((original.platform_id.to_string(), content));
+                    } else {
+                        let mut updated = original.clone();
+                        updated.enrichment_content = Some(content);
                         scoped_items.push(updated);
                     }
                 }
             }
             crate::features::ingestion::github::source::fetch::DiffFetchResult::RateLimited(_) => {
                 tracing::warn!(
-                    remaining = skipped.len() - updated_items.len(),
+                    remaining = skipped.len() - updated_items.len() - scoped_items.len(),
                     "diff retry also hit rate limit, skipping remaining"
                 );
                 break;

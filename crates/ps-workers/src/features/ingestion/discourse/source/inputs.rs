@@ -1,18 +1,22 @@
 use super::super::client::{Post, PostActionUser, TopicSummary};
-use super::Cursor;
 use ps_core::ingestion::ContributionInput;
 use ps_core::models::{
     ContributionType, DiscourseLikeData, DiscoursePostData, DiscourseTopicData, Platform,
 };
 
+pub(super) struct ContributionContext<'a> {
+    pub base_url: &'a str,
+    pub instance: &'a str,
+}
+
 /// Build a `ContributionInput` for a Discourse topic.
 pub(super) fn build_topic_input(
     topic: &TopicSummary,
-    cur: &Cursor,
+    context: &ContributionContext<'_>,
     category_name: Option<&str>,
 ) -> ContributionInput {
-    let platform = Platform::Discourse(cur.instance.clone());
-    let url = format!("{}/t/{}/{}", cur.base_url, topic.slug, topic.id);
+    let platform = Platform::Discourse(context.instance.into());
+    let url = format!("{}/t/{}/{}", context.base_url, topic.slug, topic.id);
 
     let metrics_data = DiscourseTopicData {
         post_count: topic.posts_count,
@@ -54,12 +58,12 @@ pub(super) fn build_topic_input(
 pub(super) fn build_post_input(
     post: &Post,
     topic: &TopicSummary,
-    cur: &Cursor,
+    context: &ContributionContext<'_>,
 ) -> ContributionInput {
-    let platform = Platform::Discourse(cur.instance.clone());
+    let platform = Platform::Discourse(context.instance.into());
     let url = format!(
         "{}/t/{}/{}/{}",
-        cur.base_url, topic.slug, topic.id, post.post_number
+        context.base_url, topic.slug, topic.id, post.post_number
     );
 
     let is_reply = post.reply_to_post_number.is_some();
@@ -109,12 +113,12 @@ pub(super) fn build_like_input(
     liker: &PostActionUser,
     post: &Post,
     topic: &TopicSummary,
-    cur: &Cursor,
+    context: &ContributionContext<'_>,
 ) -> ContributionInput {
-    let platform = Platform::Discourse(cur.instance.clone());
+    let platform = Platform::Discourse(context.instance.into());
     let url = format!(
         "{}/t/{}/{}/{}",
-        cur.base_url, topic.slug, topic.id, post.post_number
+        context.base_url, topic.slug, topic.id, post.post_number
     );
 
     let metrics_data = DiscourseLikeData {
