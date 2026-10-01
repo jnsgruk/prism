@@ -74,6 +74,7 @@ impl SourceTestContext {
             .expect("build http client");
 
         IngestionContext {
+            request: None,
             repos: self.repos.clone(),
             source_config,
             http_client,
