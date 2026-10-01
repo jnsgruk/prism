@@ -69,6 +69,30 @@ interactive PDF features remain outside V1.
 
 ---
 
+## 2026-10-01 — Verify Ask file references and use conversation download routes
+
+**Context:** An existing Ask answer linked a successfully generated PDF using
+`/workspace/<filename>`. The browser received the SPA shell and displayed page
+not found. The agent's filesystem path had been mistaken for a browser URL.
+
+**Decision:** Keep `/workspace/<path>` as the agent contract, resolve file
+metadata through an authenticated additive RPC, and rewrite verified file links
+to `/ask/<conversation-id>/files/<path encoded by segment>`. The browser page
+uses the existing authenticated streaming download RPC. Decode URL segments once
+at the boundary and pass decoded relative paths to filesystem APIs. Validate
+completed answers before storing/emitting them and repair historical responses
+at render time, without changing stored history.
+
+**Rationale:** Stable conversation routes support reload/new tabs and retain
+session authentication without a public filesystem server or persisted blob
+URLs. Metadata checks avoid downloading files during rendering. Revalidation
+at transfer time handles later deletion; persistent PVC storage survives pod
+expiry. Existing shared-conversation reads remain available to signed-in users,
+and deletion revokes access even before storage cleanup finishes. No schema
+migration or global filename lookup is needed.
+
+---
+
 ## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
 
 **Context:** A completed person ingestion/enrichment pipeline repeatedly failed

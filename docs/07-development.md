@@ -82,6 +82,47 @@ Vitest + React Testing Library + happy-dom. API mocking via `createRouterTranspo
 
 Test custom hooks, data transformations, interactive components. Don't test shadcn/ui primitives, chart SVG output, React Router config, or CSS.
 
+### Generated-file download acceptance
+
+Run `scripts/workspace-download-smoke.sh` for the isolated Ask download gate.
+It combines server filesystem/reference tests, real-PostgreSQL API lifecycle
+fixtures and typed Connect frontend interactions. The script clears the caller's
+development database variables so nextest owns its test database. Temporary
+workspaces contain synthetic PDF/CSV data; no production report is copied.
+Byte equality checks verify zero-byte and multi-chunk transfers, and the original
+legacy Markdown shape is reloaded without a history rewrite. Deletion tests
+exercise fresh resolution and deny orphaned files after conversation deletion.
+A simulated expired pod DB state checks that downloads do not need a live agent;
+this is not a real Kubernetes pod-reaping test.
+
+Run `prek run -av` after the smoke gate, require clean formatting/Clippy, and run
+`mise exec -- buf breaking --against ../.git#branch=main,subdir=proto` from
+`proto/` after additive protobuf regeneration. The subdirectory selects the
+module root so imports resolve in the baseline checkout.
+
+Roll out the server with the additive resolution RPC before or together with the
+frontend using it. An old frontend still uses existing RPCs; a new frontend
+requires the new server to verify links. Publish the updated agent image/prompt
+for new pods; already-running pods retain their old instructions, and server
+validation must handle their answers too. No history migration is required.
+
+After an authorised rollout, use an isolated conversation to verify actual
+browser navigation: legacy response and sidebar downloads, copy/new tab/direct
+load/refresh, login return, interrupted stream retry, and images/internal/external
+links. Compare downloaded filenames and byte hashes with synthetic source files,
+not the SPA shell's HTTP status. Reap only the isolated agent pod, verify its
+persistent file remains downloadable, then delete only that conversation and
+confirm the old route is unavailable. These browser/Kubernetes checks supplement
+component/API fixtures; the smoke command does not claim to deploy or run them.
+
+The original reported file was confirmed readable during the investigation, while
+its legacy workspace URL returned the SPA shell. The corrected download from the
+deployed response remains a post-rollout verification requirement. Obtain the
+original conversation and report details through an authorised private channel;
+use the existing file without regeneration and never use that conversation for
+destructive tests. Public fixtures and reports must use synthetic filenames and
+conversation identifiers.
+
 ### Backup/Restore Tests
 
 See [Backup & Restore > Testing](09-backup-restore.md#testing) for full details. Key points: roundtrip integration test seeds 10+ tables and verifies data survives backup/restore. Restate dispatch is mocked with wiremock (`BackupDispatchResponder`). Conditional auth tests cover fresh and live instance scenarios.
