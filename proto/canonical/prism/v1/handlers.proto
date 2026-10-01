@@ -92,12 +92,27 @@ message HandlerRun {
   string handler_method = 10;
   // Pipeline that triggered this run, if any.
   optional string pipeline_id = 11;
+  // Immutable scope metadata inherited from the owning pipeline.
+  string scope_kind = 12;
+  optional string person_id = 13;
+  repeated string selected_source_ids = 14;
+  optional string since_date = 15;
+  optional string requested_by = 16;
+  // This run's saved progress; never inferred from another active source run.
+  string progress_json = 17;
 }
 
 message GetStatusRequest {}
 
 message GetStatusResponse {
   repeated SourceStatus sources = 1;
+  optional PersonBackfillCapabilities person_backfill_capabilities = 2;
+}
+
+// Fail-closed capability gate until scoped adapters and processing are supported.
+message PersonBackfillCapabilities {
+  bool enabled = 1;
+  string reason = 2;
 }
 
 message ListRunsRequest {
@@ -195,7 +210,11 @@ message CancelHandlerRunResponse {}
 // Pipeline orchestration
 // ---------------------------------------------------------------------------
 
-message GetPipelineStatusRequest {}
+message GetPipelineStatusRequest {
+  // Return this pipeline rather than the globally most recent pipeline.
+  optional string pipeline_id = 1;
+  optional string person_id = 2;
+}
 
 message GetPipelineStatusResponse {
   // The most recent pipeline (running or just completed). Absent if none exist.
@@ -214,12 +233,37 @@ message PipelineInfo {
   // Structured stage progress as JSON (matches activity.pipelines.stages JSONB).
   string stages_json = 6;
   optional string error = 7;
+  // Empty on legacy records; interpreted as "all".
+  string scope_kind = 8;
+  optional string person_id = 9;
+  repeated string selected_source_ids = 10;
+  optional string since_date = 11;
+  optional string requested_by = 12;
+  repeated PipelineSourceSnapshot selected_sources = 13;
+}
+
+// Saved labels/platforms at admission time, independent of later config edits.
+message PipelineSourceSnapshot {
+  string source_id = 1;
+  string source_name = 2;
+  Platform platform = 3;
+  optional string instance = 4;
+}
+
+// Only saved identifiers are accepted; callers cannot override usernames.
+message PersonBackfillScope {
+  string person_id = 1;
+  repeated string source_ids = 2;
 }
 
 message TriggerPipelineRequest {
   // Optional backfill date (YYYY-MM-DD). When set, the pipeline runs
   // backfill instead of incremental ingestion for all enabled sources.
   optional string since_date = 1;
+  // Absent means legacy All scope; Person requires source IDs and since_date.
+  optional PersonBackfillScope scope = 2;
+  // Caller-generated UUID retained when retrying an ambiguous submission.
+  optional string submission_id = 3;
 }
 
 message TriggerPipelineResponse {
@@ -238,7 +282,9 @@ message CancelPipelineResponse {}
 // Pipeline run history (grouped)
 // ---------------------------------------------------------------------------
 
-message ListPipelineRunsRequest {}
+message ListPipelineRunsRequest {
+  optional string person_id = 1;
+}
 
 message ListPipelineRunsResponse {
   repeated PipelineRunSummary pipelines = 1;
