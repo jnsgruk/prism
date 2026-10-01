@@ -7,9 +7,7 @@ use uuid::Uuid;
 
 use super::super::completion::finalize_query;
 use super::prompts::build_conversation_recap;
-use super::{
-    STARTUP_TIMEOUT, STREAM_TIMEOUT, event_loop, event_mapping, session, startup,
-};
+use super::{STARTUP_TIMEOUT, STREAM_TIMEOUT, event_loop, event_mapping, session, startup};
 
 /// The core streaming pipeline: prepare pod → connect SSE → stream → finalize.
 #[allow(clippy::too_many_arguments)]
