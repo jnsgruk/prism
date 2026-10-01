@@ -55,6 +55,8 @@ impl ActivityRepo {
     }
 
     /// Mark a pipeline as completed (or `failed/completed_with_warnings`).
+    /// Cancelled legacy workflows retain admission until exact descendant
+    /// reconciliation finishes them through `finish_owned_pipeline`.
     pub async fn complete_pipeline(
         &self,
         id: Uuid,
@@ -69,6 +71,7 @@ impl ActivityRepo {
                 status = CASE WHEN cancellation_requested THEN 'cancelled' ELSE $2 END,
                 stages = $3, current_invocation_id = NULL, error = $4
             WHERE id = $1 AND status IN ('pending', 'running', 'cancelling')
+              AND NOT (request_snapshot = '{}'::jsonb AND cancellation_requested)
             "#,
             id,
             status,

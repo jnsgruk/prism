@@ -8,6 +8,8 @@ use super::{HandlersServiceImpl, validate_restate_identifier};
 
 impl HandlersServiceImpl {
     /// Missing records and transport failures remain uncertain and hold admission.
+    /// Legacy cancellation first stops the root; ancestry is safe to inspect only
+    /// after that root is confirmed terminal and cannot dispatch more children.
     pub(crate) async fn reconcile_terminal_pipeline(
         &self,
         pipeline: &Pipeline,
@@ -15,7 +17,17 @@ impl HandlersServiceImpl {
         let Some(root_id) = pipeline.current_invocation_id.as_deref() else {
             return Ok(false);
         };
-        if self.exact_invocation_completed(root_id).await != Some(true) {
+        let root_completed = self.exact_invocation_completed(root_id).await;
+        if root_completed != Some(true) {
+            if pipeline.request_snapshot == serde_json::json!({}) && pipeline.cancellation_requested
+            {
+                if root_completed == Some(false) {
+                    self.cancel_restate_invocation("_pipeline", root_id).await;
+                }
+                // Do not send the legacy cooperative cancellation promise. Its
+                // workflow can finalize before detached descendants have stopped.
+                return Ok(true);
+            }
             return Ok(false);
         }
 

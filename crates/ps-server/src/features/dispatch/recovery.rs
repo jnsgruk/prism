@@ -86,18 +86,20 @@ impl HandlersServiceImpl {
                 }
             }
         }
-        if self
+        if let Some(cancelled) = self
             .repos
             .activity
             .get_pipeline(pipeline.id)
             .await?
-            .is_some_and(|pipeline| pipeline.cancellation_requested)
+            .filter(|pipeline| pipeline.cancellation_requested)
         {
-            let handler = if legacy {
-                "IngestionPipelineWorkflow"
-            } else {
-                "ScopedIngestionPipelineWorkflow"
-            };
+            if legacy {
+                // Cancellation may have arrived after the initial inspection.
+                // Keep the same exact-root drain path for this race, too.
+                self.reconcile_terminal_pipeline(&cancelled).await?;
+                return Ok(());
+            }
+            let handler = "ScopedIngestionPipelineWorkflow";
             let cancel_url = format!("{}/{handler}/{}/cancel/send", self.restate_url, pipeline.id);
             if let Err(error) = self.send_to_restate(&cancel_url, None).await {
                 warn!(pipeline_id = %pipeline.id, %error, "pipeline cancellation will retry");
