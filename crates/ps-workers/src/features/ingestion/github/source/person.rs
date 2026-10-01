@@ -356,20 +356,16 @@ pub(super) async fn fetch(
     let bounds = person.clone();
     let mut items = Vec::new();
     for pr in &page.items {
-        let Some(repo) = &pr.repository else {
-            cur.failed_items.push(ps_core::ingestion::FailedItem {
-                key: search.clone(),
-                error: "incomplete GitHub coverage: malformed PR search node".into(),
-            });
-            continue;
+        let repo = match super::repositories::validate_search_pr(pr) {
+            Ok(repo) => repo,
+            Err(error) => {
+                cur.failed_items.push(ps_core::ingestion::FailedItem {
+                    key: search.clone(),
+                    error: error.to_string(),
+                });
+                continue;
+            }
         };
-        if pr.number.is_none() || pr.created_at.is_none() || pr.updated_at.is_none() {
-            cur.failed_items.push(ps_core::ingestion::FailedItem {
-                key: search.clone(),
-                error: "incomplete GitHub coverage: malformed PR search fields".into(),
-            });
-            continue;
-        }
         let owner = &repo.owner.login;
         let name = &repo.name;
         match super::repositories::eligible(

@@ -219,12 +219,16 @@ fn collect_contributions(
     let mut cross_repo_count = 0;
 
     for pr in prs {
-        let Some(repo) = &pr.repository else {
-            continue;
+        let repo = match super::repositories::validate_search_pr(pr) {
+            Ok(repo) => repo,
+            Err(error) => {
+                cur.failed_items.push(FailedItem {
+                    key: "member_search".into(),
+                    error: error.to_string(),
+                });
+                continue;
+            }
         };
-        if pr.number.is_none() {
-            continue;
-        }
         let owner = &repo.owner.login;
         let name = &repo.name;
         if cur.ingested_repos.contains(&format!("{owner}/{name}")) {

@@ -182,25 +182,7 @@ async fn fetch_team_repos(
     // Track ingested repos for filtering in the search phase.
     cur.ingested_repos.insert(format!("{owner}/{repo}"));
 
-    let mut items = Vec::new();
-
-    for search_pr in &page.items {
-        let Some(ref updated_at) = search_pr.updated_at else {
-            continue;
-        };
-
-        // Track max_updated_at for watermark advancement.
-        if cur
-            .max_updated_at
-            .as_ref()
-            .is_none_or(|max| updated_at > max)
-        {
-            cur.max_updated_at = Some(updated_at.clone());
-        }
-
-        items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
-        super::reviews::queue(cur, owner, repo, search_pr)?;
-    }
+    let mut items = collect_repo_contributions(cur, owner, repo, &page.items)?;
 
     // Fetch PR diffs concurrently and attach to enrichment content.
     let diff_outcome = fetch_pr_diffs(ctx, &mut items).await;
@@ -246,4 +228,40 @@ async fn fetch_team_repos(
         etag: None,
         skipped_diffs: diff_outcome.skipped,
     })
+}
+
+fn collect_repo_contributions(
+    cur: &mut Cursor,
+    owner: &str,
+    repo: &str,
+    prs: &[super::super::types::GraphQLSearchPr],
+) -> Result<Vec<ps_core::ingestion::ContributionInput>, ps_core::Error> {
+    let mut items = Vec::new();
+
+    for search_pr in prs {
+        if let Err(error) = super::repositories::validate_search_pr(search_pr) {
+            cur.failed_items.push(FailedItem {
+                key: format!("{owner}/{repo}"),
+                error: error.to_string(),
+            });
+            continue;
+        }
+        let Some(ref updated_at) = search_pr.updated_at else {
+            continue;
+        };
+
+        // Track max_updated_at for watermark advancement.
+        if cur
+            .max_updated_at
+            .as_ref()
+            .is_none_or(|max| updated_at > max)
+        {
+            cur.max_updated_at = Some(updated_at.clone());
+        }
+
+        items.extend(search_pr_to_contributions(owner, repo, search_pr)?);
+        super::reviews::queue(cur, owner, repo, search_pr)?;
+    }
+
+    Ok(items)
 }
