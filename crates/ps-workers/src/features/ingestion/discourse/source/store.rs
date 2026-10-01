@@ -114,7 +114,7 @@ pub(super) async fn advance_watermark_impl(
     new_watermark: &str,
     items_collected: i32,
 ) -> Result<(), ps_core::Error> {
-    if !ctx.advances_global_watermark() {
+    if !ctx.advances_global_watermark() || new_watermark.is_empty() {
         return Ok(());
     }
 

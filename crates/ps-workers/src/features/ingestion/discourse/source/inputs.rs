@@ -111,7 +111,7 @@ pub(super) fn build_post_input(
 /// Build a `ContributionInput` for a Discourse like.
 pub(super) fn build_like_input(
     liker: &PostActionUser,
-    post: &Post,
+    post: &super::pending::LikePost,
     topic: &TopicSummary,
     context: &ContributionContext<'_>,
 ) -> ContributionInput {

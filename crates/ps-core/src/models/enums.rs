@@ -370,8 +370,10 @@ pub enum WatermarkField {
     MaxUpdatedAt,
     /// GitHub publishes coverage only after all search and review pages finish.
     CompletedMaxUpdatedAt,
-    /// Used by Discourse sources.
+    /// Raw Discourse pagination progress, before completed coverage.
     MaxBumpedAt,
+    /// Discourse publishes coverage after all topic and liker requests finish.
+    CompletedMaxBumpedAt,
 }
 
 impl WatermarkField {
@@ -380,6 +382,7 @@ impl WatermarkField {
             Self::MaxUpdatedAt => "max_updated_at",
             Self::CompletedMaxUpdatedAt => "completed_max_updated_at",
             Self::MaxBumpedAt => "max_bumped_at",
+            Self::CompletedMaxBumpedAt => "completed_max_bumped_at",
         }
     }
 }

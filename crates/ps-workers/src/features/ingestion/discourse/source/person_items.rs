@@ -94,7 +94,12 @@ pub(super) async fn fetch_item(
                 username: identity.username.to_string(),
                 name: action.acting_name.clone(),
             };
-            let mut item = build_like_input(&liker, &post, &topic, &context);
+            let mut item = build_like_input(
+                &liker,
+                &super::pending::LikePost::from(&post),
+                &topic,
+                &context,
+            );
             extend_metadata(
                 &mut item,
                 serde_json::json!({

@@ -184,41 +184,41 @@ async fn global_discourse_rate_limits_retry_the_whole_page_without_advancing_cov
         let source = ps_workers::features::ingestion::discourse::source::DiscourseSource;
         let plan = source.plan(&ingestion).await.unwrap();
         let cursor = source.initial_cursor(&ingestion, &plan);
-        let paused = source.fetch_batch(&ingestion, &cursor).await.unwrap();
-        assert!(
-            paused.items.is_empty(),
-            "{endpoint}: no partial page may commit"
-        );
-        assert_eq!(paused.next_cursor.as_deref(), Some(cursor.as_str()));
-        assert_eq!(paused.etag.as_deref(), Some(cursor.as_str()));
-        assert_eq!(paused.rate_limit.unwrap().remaining, 0);
+        let mut cursor = cursor;
+        let mut items = Vec::new();
+        let mut saw_pause = false;
+        let mut final_state = serde_json::Value::Null;
+        for _ in 0..20 {
+            let result = source.fetch_batch(&ingestion, &cursor).await.unwrap();
+            if result.rate_limit.is_some() {
+                saw_pause = true;
+                assert!(result.items.is_empty());
+                assert_eq!(result.next_cursor.as_deref(), Some(cursor.as_str()));
+                assert_eq!(result.etag.as_deref(), Some(cursor.as_str()));
+                assert_eq!(
+                    ctx.repos
+                        .activity
+                        .get_watermark("forum")
+                        .await
+                        .unwrap()
+                        .as_deref(),
+                    Some(watermark)
+                );
+            }
+            source.store_batch(&ingestion, &result.items).await.unwrap();
+            items.extend(result.items);
+            final_state = serde_json::from_str(result.etag.as_deref().unwrap()).unwrap();
+            match result.next_cursor {
+                Some(next) => cursor = next,
+                None => break,
+            }
+        }
+        assert!(saw_pause, "{endpoint}: exercised rate limit");
+        assert_eq!(items.len(), 2, "{endpoint}: topic and like recovered");
         assert_eq!(
-            ctx.repos
-                .activity
-                .get_watermark("forum")
-                .await
-                .unwrap()
-                .as_deref(),
-            Some(watermark)
+            final_state["completed_max_bumped_at"],
+            "2025-03-15T00:00:00Z"
         );
-        let recovered = source
-            .fetch_batch(&ingestion, paused.next_cursor.as_deref().unwrap())
-            .await
-            .unwrap();
-        assert_eq!(
-            recovered.items.len(),
-            2,
-            "{endpoint}: topic and like both recovered"
-        );
-        assert!(recovered.next_cursor.is_none());
-        assert!(recovered.rate_limit.is_none());
-        source
-            .store_batch(&ingestion, &recovered.items)
-            .await
-            .unwrap();
-        let state: serde_json::Value =
-            serde_json::from_str(recovered.etag.as_deref().unwrap()).unwrap();
-        assert_eq!(state["max_bumped_at"], "2025-03-15T00:00:00Z");
         ctx.teardown().await;
     }
 }
@@ -270,8 +270,15 @@ async fn global_discourse_detail_errors_do_not_silently_complete_the_page() {
         "category_map": {}, "failed_items": [],
     })
     .to_string();
+    let names = source.fetch_batch(&ingestion, &cursor).await.unwrap();
+    let listing = source
+        .fetch_batch(&ingestion, names.next_cursor.as_deref().unwrap())
+        .await
+        .unwrap();
     assert!(matches!(
-        source.fetch_batch(&ingestion, &cursor).await,
+        source
+            .fetch_batch(&ingestion, listing.next_cursor.as_deref().unwrap())
+            .await,
         Err(ps_core::Error::HttpStatus { status: 403, .. })
     ));
     ctx.teardown().await;

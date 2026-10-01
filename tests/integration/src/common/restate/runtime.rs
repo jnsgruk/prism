@@ -1,3 +1,6 @@
+use ps_workers::features::ingestion::discourse::handler::{
+    DiscourseIngestionHandler, DiscourseIngestionHandlerImpl,
+};
 use ps_workers::features::ingestion::github::handler::{
     GithubIngestionHandler, GithubIngestionHandlerImpl,
 };
@@ -89,6 +92,12 @@ pub(super) fn start_worker(
             )
             .bind(
                 GithubIngestionHandlerImpl {
+                    state: state.clone(),
+                }
+                .serve(),
+            )
+            .bind(
+                DiscourseIngestionHandlerImpl {
                     state: state.clone(),
                 }
                 .serve(),

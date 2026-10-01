@@ -1,5 +1,6 @@
 mod fetch;
 mod inputs;
+mod pending;
 mod person;
 mod person_items;
 mod plan;
@@ -46,6 +47,18 @@ pub(crate) struct Cursor {
     /// Category ID → name map, fetched once on page 0 and reused across pages.
     #[serde(default)]
     pub(crate) category_map: std::collections::HashMap<i64, String>,
+    #[serde(default)]
+    pub(crate) categories_loaded: bool,
+    #[serde(default)]
+    pub(crate) pending_topics: std::collections::VecDeque<super::client::TopicSummary>,
+    #[serde(default)]
+    pub(crate) pending_topic: Option<super::client::TopicSummary>,
+    #[serde(default)]
+    pub(crate) pending_likes: std::collections::VecDeque<pending::LikePost>,
+    #[serde(default)]
+    pub(crate) listing_complete: bool,
+    #[serde(default)]
+    pub(crate) completed_max_bumped_at: Option<String>,
     /// Items that errored during this run (for failure isolation).
     #[serde(default)]
     pub(crate) failed_items: Vec<ps_core::ingestion::FailedItem>,
@@ -134,13 +147,19 @@ impl Source for DiscourseSource {
             max_bumped_at: plan.watermark.clone(),
             has_more: true,
             category_map: std::collections::HashMap::new(),
+            categories_loaded: false,
+            pending_topics: std::collections::VecDeque::new(),
+            pending_topic: None,
+            pending_likes: std::collections::VecDeque::new(),
+            listing_complete: false,
+            completed_max_bumped_at: None,
             failed_items: vec![],
         };
         serde_json::to_string(&cursor).unwrap_or_default()
     }
 
     fn watermark_field(&self) -> ps_core::models::WatermarkField {
-        ps_core::models::WatermarkField::MaxBumpedAt
+        ps_core::models::WatermarkField::CompletedMaxBumpedAt
     }
 }
 
@@ -196,6 +215,12 @@ mod tests {
                 (5, "General".into()),
                 (10, "Support".into()),
             ]),
+            categories_loaded: false,
+            pending_topics: std::collections::VecDeque::new(),
+            pending_topic: None,
+            pending_likes: std::collections::VecDeque::new(),
+            listing_complete: false,
+            completed_max_bumped_at: None,
             failed_items: vec![],
         };
 

@@ -45,6 +45,7 @@ fn discourse_cursor(
         "max_bumped_at": watermark,
         "has_more": true,
         "category_map": {},
+        "categories_loaded": true,
         "failed_items": [],
     })
     .to_string()
@@ -128,6 +129,11 @@ async fn fetch_batch_parses_topics() {
         .fetch_batch(&ing_ctx, &cursor)
         .await
         .expect("fetch_batch");
+
+    let result = source
+        .fetch_batch(&ing_ctx, result.next_cursor.as_deref().unwrap())
+        .await
+        .expect("topic detail");
 
     // Should have: 1 topic + 1 post (post_number 1 is merged into topic)
     assert_eq!(result.items.len(), 2);
@@ -261,7 +267,7 @@ async fn watermark_uses_bumped_at() {
     let source = discourse_source();
     assert_eq!(
         source.watermark_field(),
-        ps_core::models::WatermarkField::MaxBumpedAt
+        ps_core::models::WatermarkField::CompletedMaxBumpedAt
     );
 
     _ctx.teardown().await;

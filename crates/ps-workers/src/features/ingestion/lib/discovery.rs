@@ -198,6 +198,7 @@ impl ActiveIdentitySource {
             if let Ok(value) = serde_json::from_str::<serde_json::Value>(state) {
                 for field in [
                     "completed_max_updated_at",
+                    "completed_max_bumped_at",
                     "max_updated_at",
                     "max_bumped_at",
                     "phase",

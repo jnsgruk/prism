@@ -251,7 +251,7 @@ pub trait Source: Send + Sync {
 
     /// The cursor JSON field name that holds the watermark value.
     ///
-    /// GitHub and Jira use `MaxUpdatedAt`, Discourse uses `MaxBumpedAt`.
+    /// Jira uses `MaxUpdatedAt`; GitHub and Discourse expose completion-only fields.
     fn watermark_field(&self) -> crate::models::WatermarkField {
         crate::models::WatermarkField::MaxUpdatedAt
     }
