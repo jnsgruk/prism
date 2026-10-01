@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.identity_resolutions (person_id,platform,status) SELECT $1,platform,$3 FROM UNNEST($2::text[]) AS input(platform) GROUP BY platform ON CONFLICT (person_id,platform) DO UPDATE SET status=EXCLUDED.status",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d93811a3be9066b5b6d587b41e713825b8826b74af13953a73456f4c4821bb4b"
+}

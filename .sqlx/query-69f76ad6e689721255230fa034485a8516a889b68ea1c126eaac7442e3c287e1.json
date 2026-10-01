@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)\n        SELECT i.id, i.person_id, i.platform, i.username\n        FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[]) AS i(id, person_id, platform, username)\n        WHERE NOT EXISTS (SELECT 1 FROM org.identity_resolutions ir WHERE ir.person_id = i.person_id AND ir.platform = i.platform AND ir.status = 'manual')\n        ON CONFLICT (platform, platform_username) DO UPDATE\n        SET person_id = EXCLUDED.person_id\n        WHERE org.platform_identities.person_id = EXCLUDED.person_id\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.platform_identities",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "69f76ad6e689721255230fa034485a8516a889b68ea1c126eaac7442e3c287e1"
+}

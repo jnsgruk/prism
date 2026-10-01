@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.identity_resolutions (person_id,platform) VALUES ($1,'discourse-ubuntu')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ae04f26de930a790e69cb1f3c0220d98eaf9a627ae4f6566a409399c7aa9138"
+}

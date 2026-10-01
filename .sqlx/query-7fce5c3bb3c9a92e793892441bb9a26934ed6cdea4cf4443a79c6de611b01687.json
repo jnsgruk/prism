@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT directory_id,last_import_at,membership_management FROM org.people WHERE id=$1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "directory_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "directory_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "last_import_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "last_import_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "membership_management",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "membership_management"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "7fce5c3bb3c9a92e793892441bb9a26934ed6cdea4cf4443a79c6de611b01687"
+}
