@@ -42,7 +42,7 @@ The `vector` extension powers embedding storage and similarity search. Embedding
 
 - Migrations live in `migrations/` as sequential numbered SQL files
 - The `ps-migrate` binary runs as a K8s init container — the application binary never runs migrations
-- sqlx offline mode: after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. CI builds with `SQLX_OFFLINE=true`.
+- sqlx offline mode: after changing any `query!` macro or migration, run `cargo sqlx prepare --workspace` and commit the `.sqlx/` directory. `mise run generate:sqlx` includes all targets so typed SQL in integration fixtures also builds offline. CI builds with `SQLX_OFFLINE=true`.
 - Always use type-safe query macros (`sqlx::query!`, `sqlx::query_as!`, `sqlx::query_scalar!`) — never the runtime `sqlx::query()` string-based function
 
 ## Encrypted Secrets
@@ -50,3 +50,13 @@ The `vector` extension powers embedding storage and similarity search. Embedding
 Source credentials (API tokens) are stored encrypted in `config.secrets` using AES-256-GCM. Only `PS_SECRET_KEY` (256-bit, base64-encoded) comes from environment. All other configuration is managed through the admin UI via gRPC.
 
 The `GetSource` RPC never returns secret values — only a boolean indicating whether each secret is set.
+
+## Manual people and account ownership
+
+Administrator-managed people are created by `OrgRepo::create_person` in one transaction with optional account rows and an optional membership. `membership_management` is a typed `Management` TEXT value (`imported` or `manual`): a manual person records an intentional team choice, including no team. Existing rows default to imported. New manual people have no directory ID and `last_import_at` stays NULL until directory reconciliation; they are excluded from stale-import detection. Once reconciled, their existing import lifecycle applies, while their manual membership choice remains protected.
+
+Accounts expose a stable identity row UUID and the optional opaque `platform_user_id`. Explicit add/update/remove operations check the person owns the row; omissions preserve existing values, and account-ID clearing is a separate operation. Jira requires an account ID for manual writes. Usernames are normalized to lowercase; Jira IDs retain their exact case. Discourse uses `discourse-<instance>` in the existing platform column. Account edits affect future resolution and leave previously attributed contributions intact.
+
+Database constraints enforce case-insensitive `(platform, username)` uniqueness and Jira account-ID uniqueness. An ownership trigger prevents reassignment, including concurrent writes. Migration 0038 checks for collisions before normalizing existing usernames and adding indexes; existing duplicates require an administrator to repair ownership and retry. Identity `management` records manual provenance, and per-platform manual resolution status also protects account removal from in-flight automated lookup. Directory, Jira CSV, and automated resolution writers preserve these choices and return warnings or conflicts instead of taking ownership.
+
+Directory import matches a stable directory ID first, then exactly one case-insensitive, trimmed email match with no conflicting directory ID. It attaches a new directory ID to that same UUID. Ambiguous matches are skipped with warnings; unmatched rows sharing a manual person’s name or manually owned account are also skipped for explicit repair. Portable org exports add person IDs, directory/import metadata, account IDs, management fields, and manual platform-resolution markers (including removed accounts) with backwards-compatible defaults. Merge preserves existing ownership and choices; replace retains its explicit wipe-and-recreate semantics. Full database backups preserve these columns and ownership constraints.

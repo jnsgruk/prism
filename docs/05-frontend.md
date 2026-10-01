@@ -68,3 +68,11 @@ Key principles:
 - **shadcn/ui is the standard component library** — always use `@/components/ui/` components, never hand-roll with raw Tailwind
 - **Zod at boundaries only** — form validation, file uploads, localStorage reads. Not for proto responses or internal function arguments.
 - **Tables use the native TanStack v9 API** — register only the required features and keep the deprecated legacy bridge out of application code.
+
+## Manual directory management
+
+The admin organisation **+ Add → Add person** menu opens the creation form, including while viewing a team. Every new form defaults to **No team**; administrators must deliberately choose membership. Name is required; email, title/level, accounts, and team are optional. Shared person/account form components retain local drafts after errors and disable duplicate submissions. Mutation callbacks show Sonner notifications and invalidate organisation queries, including team counts and person reads.
+
+Account rows use saved identity UUIDs for explicit add/edit/remove operations. Unchanged and unseen accounts remain intact. Discourse accounts select a separate configured instance, retaining saved instances even if their source is disabled or removed. Jira stores the opaque account ID separately from its display username. Search uses an enabled configured Jira Cloud source and requires explicit selection, displaying account ID, name, available email, and active state to distinguish ambiguous candidates. Direct account-ID entry stays available without search permission or a configured lookup source; the form labels it as manually supplied.
+
+Jira lookup is a short, read-only, admin-only RPC. Credentials remain encrypted in configuration and are decrypted only on the server. Cloud `/rest/api/3/user/search` lookup is bounded to 50 results per page within Jira's first 1000 users, a 10-second timeout, and a 256 KiB response. Server/Data Center mode is rejected before dispatch; Jira account identities currently share one namespace across configured sources. Lookup errors explain retry/configuration/direct-entry options without exposing provider response bodies or secrets.
