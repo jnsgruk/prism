@@ -4,6 +4,87 @@ use ps_core::models::Platform;
 use ps_core::repo::org::{IdentityInput, ImportIdentity, OrgExport};
 
 #[tokio::test]
+async fn export_merge_resolves_shared_emails_by_uuid_or_directory_id() {
+    let ctx = RepoTestContext::new().await;
+    let mut ids = Vec::new();
+    for name in ["First", "Second"] {
+        ids.push(
+            ctx.repos
+                .org
+                .create_person(manual(name, Some("shared@example.com")))
+                .await
+                .unwrap()
+                .person
+                .id,
+        );
+    }
+
+    // Restore directory IDs without relying on ambiguous email reconciliation.
+    let mut export = ctx.repos.org.export_org().await.unwrap();
+    for (index, person) in export.people.iter_mut().enumerate() {
+        person.directory_id = Some(format!("directory-{index}"));
+    }
+    ctx.repos.org.import_org(&export, true).await.unwrap();
+
+    for use_uuid in [true, false] {
+        for (index, person) in export.people.iter_mut().enumerate() {
+            person.id = use_uuid.then_some(ids[index]);
+            person.directory_id = (!use_uuid).then(|| format!("directory-{index}"));
+            person.identities = vec![ps_core::repo::org::export::ExportIdentity {
+                platform: Platform::Github.to_string(),
+                username: format!("account-{use_uuid}-{index}"),
+                platform_user_id: None,
+                management: ps_core::models::Management::Imported,
+            }];
+        }
+        let result = ctx.repos.org.import_org(&export, false).await.unwrap();
+        assert_eq!(result.people_updated, 2);
+        assert_eq!(result.people_created, 0);
+        assert_eq!(result.identities_created, 2);
+        assert!(result.warnings.is_empty());
+
+        for (index, id) in ids.iter().enumerate() {
+            let accounts = ctx
+                .repos
+                .org
+                .get_identities_for_people(&[*id])
+                .await
+                .unwrap();
+            assert!(accounts.iter().any(|account| {
+                account.platform_username == format!("account-{use_uuid}-{index}")
+            }));
+        }
+    }
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn export_merge_rejects_contradictory_uuid_and_directory_matches() {
+    let ctx = RepoTestContext::new().await;
+    for name in ["First", "Second"] {
+        ctx.repos
+            .org
+            .create_person(manual(name, Some("shared@example.com")))
+            .await
+            .unwrap();
+    }
+    let mut export = ctx.repos.org.export_org().await.unwrap();
+    for (index, person) in export.people.iter_mut().enumerate() {
+        person.directory_id = Some(format!("directory-{index}"));
+    }
+    ctx.repos.org.import_org(&export, true).await.unwrap();
+    export.people.truncate(1);
+    export.people[0].directory_id = Some("directory-1".into());
+
+    let result = ctx.repos.org.import_org(&export, false).await.unwrap();
+    assert_eq!(result.people_updated, 0);
+    assert_eq!(result.people_created, 0);
+    assert_eq!(result.warnings.len(), 1);
+    assert!(result.warnings[0].contains("Ambiguous or conflicting person match"));
+    ctx.teardown().await;
+}
+
+#[tokio::test]
 async fn export_replace_preserves_distinct_uuids_with_shared_emails() {
     let ctx = RepoTestContext::new().await;
     let mut original_ids = Vec::new();
