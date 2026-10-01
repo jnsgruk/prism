@@ -1,3 +1,10 @@
+mod completion;
+use completion::{EmbeddingCompletion, finish_embedding_cycle};
+mod continuation;
+use continuation::dispatch_continuation;
+mod handler;
+
+pub use handler::{EmbeddingHandler, EmbeddingHandlerClient, RunCycleArgs};
 use std::sync::Arc;
 
 use ps_core::models::TaskType;
@@ -10,9 +17,11 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use crate::features::pipeline::ownership::{CycleRun, OwnedProcessingRequest, create_cycle_run};
 use crate::infra::SharedState;
 use crate::infra::run_lifecycle::{
-    complete_run, create_run, fail_run, journaled, journaled_value, terminal_err,
+    ensure_owned_active, fail_handler_run, fail_owned_run, fail_run, journaled, journaled_value,
+    terminal_err,
 };
 
 /// Max contributions to fetch from the embedding queue per cycle.
@@ -29,44 +38,6 @@ const MAX_ITERATIONS_PER_INVOCATION: u32 = 20;
 pub struct EmbeddingHandlerImpl {
     pub state: SharedState,
     pub router: Arc<RwLock<TaskRouter>>,
-}
-
-/// Arguments carried through a `run_cycle` chain.
-///
-/// Continuations `.send()` (fire-and-forget) themselves with these args rather
-/// than `.call().await` — that keeps the chain flat instead of a deep
-/// call-stack of awaiting parents, which was found to pathologically stall
-/// under replay when the chain got deep. The caller (e.g. pipeline workflow)
-/// waits on `completion_awakeable` instead of on the initial invocation's
-/// return, so it still knows when the full chain has drained.
-#[derive(Serialize, Deserialize, Default)]
-pub struct RunCycleArgs {
-    /// Run ID to reuse across the chain. `None` on the initial call.
-    pub parent_run_id: Option<Uuid>,
-    /// Awakeable ID to resolve once the chain's final invocation drains the
-    /// queue. `None` for manual invocations (e.g. UI trigger) that don't need
-    /// a completion signal.
-    pub completion_awakeable: Option<String>,
-}
-
-#[restate_sdk::service]
-pub trait EmbeddingHandler {
-    /// Run a single embedding cycle: process queued contributions, embed, store.
-    ///
-    /// When the per-invocation iteration cap is hit, the handler dispatches a
-    /// fire-and-forget continuation carrying the same args; the caller awaits
-    /// [`RunCycleArgs::completion_awakeable`] to know when the chain drains.
-    async fn run_cycle(args: Json<RunCycleArgs>) -> Result<(), TerminalError>;
-}
-
-impl EmbeddingHandler for EmbeddingHandlerImpl {
-    async fn run_cycle(
-        &self,
-        ctx: Context<'_>,
-        args: Json<RunCycleArgs>,
-    ) -> Result<(), TerminalError> {
-        self.run_embedding_cycle(&ctx, args.into_inner()).await
-    }
 }
 
 /// Progress report for the embedding pipeline.
@@ -89,21 +60,24 @@ impl EmbeddingHandlerImpl {
         &self,
         ctx: &Context<'_>,
         args: RunCycleArgs,
+        owner: Option<OwnedProcessingRequest>,
     ) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
         let is_continuation = args.parent_run_id.is_some();
         // Step 1: Create or reuse run record (journaled on first call only)
-        let run_id = match args.parent_run_id {
-            Some(id) => id,
-            None => create_run!(
-                ctx,
-                self.state.repos,
-                "_embedding",
-                "EmbeddingHandler",
-                "run_cycle"
-            )?,
-        };
+        let run_id = create_cycle_run(
+            ctx,
+            &self.state,
+            CycleRun {
+                owner: owner.as_ref(),
+                parent_run_id: args.parent_run_id,
+                source_name: "_embedding",
+                handler_name: "EmbeddingHandler",
+                continuation_kind: "embedding_continuation",
+            },
+        )
+        .await?;
 
         let span = tracing::info_span!("handler", handler = "EmbeddingHandler", run_id = %run_id);
         let _guard = span.enter();
@@ -124,7 +98,14 @@ impl EmbeddingHandlerImpl {
                 Err(e) => {
                     let msg = format!("failed to resolve embedding model: {e}");
                     warn!(%msg);
-                    fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
+                    fail_handler_run!(
+                        owner.is_some(),
+                        ctx,
+                        self.state.repos,
+                        run_id,
+                        "_embedding",
+                        &msg
+                    );
                     return Err(TerminalError::new(msg));
                 }
             }
@@ -136,6 +117,10 @@ impl EmbeddingHandlerImpl {
         let mut more_work_remaining = false;
 
         loop {
+            if let Some(ref owner) = owner {
+                owner.validate_supported()?;
+                ensure_owned_active!(ctx, self.state.repos, owner.pipeline_id)?;
+            }
             // Step 3: Fetch queued batch (journaled — DB read)
             let items = self.find_queued(ctx, iteration).await?;
 
@@ -160,7 +145,14 @@ impl EmbeddingHandlerImpl {
                 Err(e) => {
                     let msg = format!("embedding error: {e}");
                     warn!(%msg);
-                    fail_run!(ctx, self.state.repos, run_id, "_embedding", &msg);
+                    fail_handler_run!(
+                        owner.is_some(),
+                        ctx,
+                        self.state.repos,
+                        run_id,
+                        "_embedding",
+                        &msg
+                    );
                     return Err(TerminalError::new(msg));
                 }
             };
@@ -226,38 +218,23 @@ impl EmbeddingHandlerImpl {
                 iteration,
                 "iteration cap reached; dispatching continuation for remaining queue"
             );
-            ctx.service_client::<EmbeddingHandlerClient>()
-                .run_cycle(Json(RunCycleArgs {
-                    parent_run_id: Some(run_id),
-                    completion_awakeable: args.completion_awakeable,
-                }))
-                .send();
+            dispatch_continuation(ctx, &self.state, owner, run_id, args.completion_awakeable)
+                .await?;
         } else {
-            let processed = total_embedded + total_skipped + total_errors;
-            #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-            let total = processed as i32;
-            if total_errors > 0 && total_embedded == 0 {
-                fail_run!(
-                    ctx,
-                    self.state.repos,
+            finish_embedding_cycle(
+                ctx,
+                &self.state,
+                EmbeddingCompletion {
                     run_id,
-                    "_embedding",
-                    &format!("all {total_errors} items failed")
-                );
-                warn!(errors = total_errors, "embedding cycle failed");
-            } else {
-                complete_run!(ctx, self.state.repos, run_id, "_embedding", total);
-                info!(
-                    embedded = total_embedded,
-                    skipped = total_skipped,
-                    errors = total_errors,
-                    duration_secs = start.elapsed().as_secs(),
-                    "embedding cycle complete"
-                );
-            }
-            if let Some(awakeable_id) = args.completion_awakeable.as_deref() {
-                ctx.resolve_awakeable(awakeable_id, ());
-            }
+                    embedded: total_embedded,
+                    skipped: total_skipped,
+                    errors: total_errors,
+                    owned: owner.is_some(),
+                    awakeable: args.completion_awakeable,
+                    elapsed: start.elapsed(),
+                },
+            )
+            .await;
         }
 
         Ok(())

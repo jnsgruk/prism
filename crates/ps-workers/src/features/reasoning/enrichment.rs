@@ -1,8 +1,13 @@
+mod continuation;
+use continuation::dispatch_continuation;
+mod persistence;
+mod progress;
+
+use progress::{CycleState, EnrichmentProgress};
 use std::sync::Arc;
 
 use ps_core::models::EnrichmentType;
-use ps_core::models::TaskType;
-use ps_core::repo::reasoning::{EmbeddingQueueEntry, QueuedContribution};
+use ps_core::repo::reasoning::QueuedContribution;
 use ps_reasoning::features::enrichment;
 use ps_reasoning::routing::TaskRouter;
 use restate_sdk::prelude::*;
@@ -11,9 +16,13 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use crate::features::pipeline::ownership::{
+    CycleRun, OwnedCycleArgs, OwnedProcessingRequest, create_cycle_run,
+};
 use crate::infra::SharedState;
 use crate::infra::run_lifecycle::{
-    complete_run, create_run, fail_run, journaled_value, terminal_err,
+    complete_handler_run, complete_owned_run, complete_run, ensure_owned_active, fail_handler_run,
+    fail_owned_run, fail_run, journaled_value, terminal_err,
 };
 
 /// Max contributions to process per enrichment type per batch.
@@ -61,131 +70,45 @@ pub trait EnrichmentHandler {
     /// fire-and-forget continuation carrying the same args; the caller awaits
     /// [`RunCycleArgs::completion_awakeable`] to know when the chain drains.
     async fn run_cycle(args: Json<RunCycleArgs>) -> Result<(), TerminalError>;
+
+    async fn run_scoped(args: Json<OwnedCycleArgs>) -> Result<(), TerminalError>;
 }
 
 impl EnrichmentHandler for EnrichmentHandlerImpl {
+    async fn run_scoped(
+        &self,
+        ctx: Context<'_>,
+        Json(args): Json<OwnedCycleArgs>,
+    ) -> Result<(), TerminalError> {
+        let awakeable = args.completion_awakeable.clone();
+        let result = async {
+            args.owner.validate_supported()?;
+            self.run_enrichment_cycle(
+                &ctx,
+                RunCycleArgs {
+                    parent_run_id: args.parent_run_id,
+                    completion_awakeable: args.completion_awakeable,
+                },
+                Some(args.owner),
+            )
+            .await
+        }
+        .await;
+        if let Err(ref error) = result
+            && let Some(awakeable) = awakeable
+        {
+            ctx.reject_awakeable(&awakeable, TerminalError::new(error.to_string()));
+        }
+        result
+    }
+
     async fn run_cycle(
         &self,
         ctx: Context<'_>,
         args: Json<RunCycleArgs>,
     ) -> Result<(), TerminalError> {
-        self.run_enrichment_cycle(&ctx, args.into_inner()).await
-    }
-}
-
-/// Progress report for the enrichment pipeline (stored as run progress JSON).
-#[derive(Serialize)]
-struct EnrichmentProgress {
-    phase: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    review_depth: Option<TypeProgress>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    sentiment: Option<TypeProgress>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    significance: Option<TypeProgress>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    topic: Option<TypeProgress>,
-    status_message: String,
-}
-
-#[derive(Serialize, Clone)]
-struct TypeProgress {
-    processed: usize,
-    errors: usize,
-}
-
-/// Mutable state accumulated across enrichment batches.
-struct CycleState {
-    total_processed: i32,
-    total_errors: usize,
-    first_error: Option<String>,
-    rd_stats: TypeProgress,
-    se_stats: TypeProgress,
-    si_stats: TypeProgress,
-    to_stats: TypeProgress,
-    progress: EnrichmentProgress,
-    iteration: u32,
-}
-
-impl CycleState {
-    fn new() -> Self {
-        Self {
-            total_processed: 0,
-            total_errors: 0,
-            first_error: None,
-            rd_stats: TypeProgress {
-                processed: 0,
-                errors: 0,
-            },
-            se_stats: TypeProgress {
-                processed: 0,
-                errors: 0,
-            },
-            si_stats: TypeProgress {
-                processed: 0,
-                errors: 0,
-            },
-            to_stats: TypeProgress {
-                processed: 0,
-                errors: 0,
-            },
-            progress: EnrichmentProgress {
-                phase: "starting".into(),
-                review_depth: None,
-                sentiment: None,
-                significance: None,
-                topic: None,
-                status_message: "Starting enrichment cycle".into(),
-            },
-            iteration: 0,
-        }
-    }
-
-    /// Per-type telemetry (enrichment-row counts). Does NOT update
-    /// `total_processed` — that is handled once per iteration by
-    /// [`aggregate_iteration`] with distinct contribution counting.
-    fn aggregate_batch(&mut self, batch: &enrichment::BatchResult) {
-        if self.first_error.is_none() {
-            self.first_error.clone_from(&batch.first_error);
-        }
-        self.total_errors += batch.errors;
-
-        let stats = match batch.enrichment_type {
-            EnrichmentType::ReviewDepth => &mut self.rd_stats,
-            EnrichmentType::Sentiment => &mut self.se_stats,
-            EnrichmentType::Significance => &mut self.si_stats,
-            EnrichmentType::Topic => &mut self.to_stats,
-        };
-        stats.processed += batch.processed;
-        stats.errors += batch.errors;
-    }
-
-    /// Count distinct contributions successfully processed across all types
-    /// in an iteration. A `pr_review` can produce 2 enrichment rows and a
-    /// large `pull_request` up to 3, but each is one unit of work for the
-    /// progress UI.
-    fn aggregate_iteration(&mut self, batches: &[enrichment::BatchResult]) {
-        let mut distinct = std::collections::HashSet::new();
-        for b in batches {
-            distinct.extend(b.successful_contribution_ids.iter().copied());
-        }
-        #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-        {
-            self.total_processed += distinct.len() as i32;
-        }
-    }
-
-    fn update_progress_after_batch(&mut self, results: &[enrichment::BatchResult]) {
-        self.progress.review_depth = Some(self.rd_stats.clone());
-        self.progress.sentiment = Some(self.se_stats.clone());
-        self.progress.significance = Some(self.si_stats.clone());
-        self.progress.topic = Some(self.to_stats.clone());
-        self.progress.status_message = format!(
-            "Batch complete: {} processed, {} errors ({} total)",
-            results.iter().map(|r| r.processed).sum::<usize>(),
-            results.iter().map(|r| r.errors).sum::<usize>(),
-            self.total_processed,
-        );
+        self.run_enrichment_cycle(&ctx, args.into_inner(), None)
+            .await
     }
 }
 
@@ -204,20 +127,23 @@ impl EnrichmentHandlerImpl {
         &self,
         ctx: &Context<'_>,
         args: RunCycleArgs,
+        owner: Option<OwnedProcessingRequest>,
     ) -> Result<(), TerminalError> {
         let start = std::time::Instant::now();
 
         let is_continuation = args.parent_run_id.is_some();
-        let run_id = match args.parent_run_id {
-            Some(id) => id,
-            None => create_run!(
-                ctx,
-                self.state.repos,
-                "_enrichment",
-                "EnrichmentHandler",
-                "run_cycle"
-            )?,
-        };
+        let run_id = create_cycle_run(
+            ctx,
+            &self.state,
+            CycleRun {
+                owner: owner.as_ref(),
+                parent_run_id: args.parent_run_id,
+                source_name: "_enrichment",
+                handler_name: "EnrichmentHandler",
+                continuation_kind: "enrichment_continuation",
+            },
+        )
+        .await?;
 
         let span = tracing::info_span!("handler", handler = "EnrichmentHandler", run_id = %run_id);
         let _guard = span.enter();
@@ -241,6 +167,10 @@ impl EnrichmentHandlerImpl {
         let mut systemic_failure = false;
 
         loop {
+            if let Some(ref owner) = owner {
+                owner.validate_supported()?;
+                ensure_owned_active!(ctx, self.state.repos, owner.pipeline_id)?;
+            }
             let batches = self.fetch_all_type_batches(ctx, s.iteration).await?;
             if batches.iter().all(|(_, c)| c.is_empty()) {
                 debug!("no more contributions to enrich across any type");
@@ -327,15 +257,11 @@ impl EnrichmentHandlerImpl {
                 iteration = s.iteration,
                 "iteration cap reached; dispatching continuation for remaining queue"
             );
-            ctx.service_client::<EnrichmentHandlerClient>()
-                .run_cycle(Json(RunCycleArgs {
-                    parent_run_id: Some(run_id),
-                    completion_awakeable: args.completion_awakeable,
-                }))
-                .send();
+            dispatch_continuation(ctx, &self.state, owner, run_id, args.completion_awakeable)
+                .await?;
         } else {
             self.delete_fully_enriched(ctx, s.iteration).await;
-            self.finalize_run(ctx, run_id, &mut s, start.elapsed())
+            self.finalize_run(ctx, run_id, &mut s, start.elapsed(), owner.is_some())
                 .await;
             if let Some(awakeable_id) = args.completion_awakeable.as_deref() {
                 if systemic_failure {
@@ -378,6 +304,7 @@ impl EnrichmentHandlerImpl {
         run_id: Uuid,
         s: &mut CycleState,
         elapsed: std::time::Duration,
+        owned: bool,
     ) {
         s.progress.phase = "complete".into();
         s.progress.status_message = format!(
@@ -393,10 +320,11 @@ impl EnrichmentHandlerImpl {
             } else {
                 format!("processed 0, errors {}", s.total_errors)
             };
-            fail_run!(ctx, self.state.repos, run_id, "_enrichment", &msg);
+            fail_handler_run!(owned, ctx, self.state.repos, run_id, "_enrichment", &msg);
             warn!(errors = s.total_errors, "enrichment cycle failed");
         } else {
-            complete_run!(
+            complete_handler_run!(
+                owned,
                 ctx,
                 self.state.repos,
                 run_id,
@@ -415,161 +343,6 @@ impl EnrichmentHandlerImpl {
     // -----------------------------------------------------------------------
     // ctx.run() wrappers — journaled, idempotent on replay
     // -----------------------------------------------------------------------
-
-    async fn find_queued(
-        &self,
-        ctx: &Context<'_>,
-        enrichment_type: EnrichmentType,
-        iteration: u32,
-    ) -> Result<Vec<QueuedContribution>, TerminalError> {
-        let repos = &self.state.repos;
-        let step_name = format!("find_{}_{iteration}", enrichment_type.as_str());
-        Ok(journaled_value!(ctx, step_name, [repos], {
-            repos
-                .reasoning
-                .find_queued_for_enrichment(enrichment_type, MAX_BATCH_SIZE)
-                .await
-                .map_err(terminal_err("db error"))?
-        }))
-    }
-
-    /// Commit all post-AI work for one iteration in a single `ctx.run()`.
-    ///
-    /// Batches embedding enqueue, usage logging, and queue cleanup into one
-    /// journal entry to minimise suspension overhead.
-    async fn commit_iteration(
-        &self,
-        ctx: &Context<'_>,
-        contribution_ids: &[Uuid],
-        results: &[enrichment::BatchResult],
-        iteration: u32,
-    ) {
-        let repos = self.state.repos.clone();
-
-        // Pre-compute everything we need inside the closure.
-        let mut unique_ids: Vec<Uuid> = contribution_ids.to_vec();
-        unique_ids.sort_unstable();
-        unique_ids.dedup();
-
-        let entries: Vec<EmbeddingQueueEntry> = unique_ids
-            .into_iter()
-            .map(|id| EmbeddingQueueEntry {
-                contribution_id: id,
-                content_hash: String::new(), // computed at embed time
-            })
-            .collect();
-
-        let router = self.router.read().await;
-        let task_config = router.task_config(TaskType::Enrichment);
-        let provider_str = task_config.provider.as_str().to_string();
-        let model = task_config.model.clone();
-        drop(router);
-
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        let usage_records: Vec<(i32, i32)> = results
-            .iter()
-            .filter(|b| b.total_usage.input_tokens > 0 || b.total_usage.output_tokens > 0)
-            .map(|b| {
-                (
-                    b.total_usage.input_tokens as i32,
-                    b.total_usage.output_tokens as i32,
-                )
-            })
-            .collect();
-
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                let entries = entries.clone();
-                let provider_str = provider_str.clone();
-                let model = model.clone();
-                let usage_records = usage_records.clone();
-                async move {
-                    // 1. Enqueue for embeddings.
-                    if !entries.is_empty() {
-                        repos
-                            .reasoning
-                            .bulk_enqueue_embeddings(&entries)
-                            .await
-                            .map_err(terminal_err("enqueue embeddings"))?;
-                    }
-
-                    // 2. Log usage for each batch with non-zero tokens.
-                    for (input_tokens, output_tokens) in &usage_records {
-                        repos
-                            .reasoning
-                            .log_api_usage(
-                                &provider_str,
-                                &model,
-                                "enrichment",
-                                *input_tokens,
-                                *output_tokens,
-                            )
-                            .await
-                            .map_err(terminal_err("log usage"))?;
-                    }
-
-                    // 3. Clean up fully enriched queue entries.
-                    repos
-                        .reasoning
-                        .delete_fully_enriched_entries()
-                        .await
-                        .map_err(terminal_err("cleanup"))?;
-
-                    Ok(Json::from(()))
-                }
-            })
-            .name(format!("commit_{iteration}"))
-            .await;
-
-        if let Err(e) = result {
-            warn!(error = %e, "failed to commit enrichment iteration");
-        }
-    }
-
-    async fn delete_fully_enriched(&self, ctx: &Context<'_>, cleanup_counter: u32) {
-        let repos = self.state.repos.clone();
-        let result = ctx
-            .run(|| {
-                let repos = repos.clone();
-                async move {
-                    let deleted = repos
-                        .reasoning
-                        .delete_fully_enriched_entries()
-                        .await
-                        .map_err(terminal_err("db error"))?;
-                    Ok(Json::from(deleted))
-                }
-            })
-            .name(format!("cleanup_{cleanup_counter}"))
-            .await;
-
-        match result {
-            Ok(count) => {
-                let deleted = count.into_inner();
-                if deleted > 0 {
-                    debug!(deleted, "cleaned up fully enriched queue entries");
-                }
-            }
-            Err(e) => {
-                warn!(error = %e, "failed to delete fully enriched entries");
-            }
-        }
-    }
-
-    /// Update run progress (NOT journaled — best-effort, doesn't affect replay).
-    async fn update_progress(&self, run_id: Uuid, items: i32, progress: &EnrichmentProgress) {
-        let json = serde_json::to_value(progress).unwrap_or_default();
-        if let Err(e) = self
-            .state
-            .repos
-            .activity
-            .update_run_progress_detail(run_id, items, &json)
-            .await
-        {
-            debug!(error = %e, "failed to update enrichment progress");
-        }
-    }
 }
 
 /// Process enrichment batches concurrently (free function for journaling).
