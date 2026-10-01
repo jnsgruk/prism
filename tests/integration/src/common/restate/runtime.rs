@@ -4,9 +4,7 @@ use ps_workers::features::ingestion::github::handler::{
 use ps_workers::features::ingestion::jira::handler::{
     JiraIngestionHandler, JiraIngestionHandlerImpl,
 };
-use ps_workers::features::ingestion::lib::chunk::{
-    IngestionChunkService, IngestionChunkServiceImpl,
-};
+use ps_workers::features::ingestion::lib::chunk::IngestionChunkServiceImpl;
 use ps_workers::features::pipeline::scoped::{
     ScopedIngestionPipelineWorkflow, ScopedIngestionPipelineWorkflowImpl,
 };
@@ -17,6 +15,24 @@ use ps_workers::infra::SharedState;
 use restate_sdk::prelude::{Endpoint, HttpServer};
 use std::process::Command;
 use tokio::{net::TcpListener, sync::oneshot, task::JoinHandle};
+
+impl super::RestateTestContext {
+    /// Force short durable sleeps to suspend in tests of replay and cancellation.
+    pub async fn shorten_chunk_inactivity_timeout(&self) {
+        let response = self
+            .client
+            .patch(format!("{}/services/IngestionChunkService", self.admin))
+            .json(&serde_json::json!({"inactivity_timeout": "1s"}))
+            .send()
+            .await
+            .unwrap();
+        assert!(
+            response.status().is_success(),
+            "chunk timeout update failed: {}",
+            response.text().await.unwrap()
+        );
+    }
+}
 
 pub(super) fn start_worker(
     listener: TcpListener,
@@ -62,12 +78,9 @@ pub(super) fn start_worker(
                 }
                 .serve(),
             )
-            .bind(
-                IngestionChunkServiceImpl {
-                    state: state.clone(),
-                }
-                .serve(),
-            )
+            .bind(IngestionChunkServiceImpl {
+                state: state.clone(),
+            })
             .bind(
                 JiraIngestionHandlerImpl {
                     state: state.clone(),

@@ -13,7 +13,7 @@ pub fn bind(endpoint: Builder, state: &SharedState) -> Builder {
     use github::handler::{GithubIngestionHandler, GithubIngestionHandlerImpl};
     use github::team_sync::{GithubTeamSyncHandler, GithubTeamSyncHandlerImpl};
     use jira::handler::{JiraIngestionHandler, JiraIngestionHandlerImpl};
-    use lib::chunk::{IngestionChunkService, IngestionChunkServiceImpl};
+    use lib::chunk::IngestionChunkServiceImpl;
 
     let github = GithubIngestionHandlerImpl {
         state: state.clone(),
@@ -36,5 +36,5 @@ pub fn bind(endpoint: Builder, state: &SharedState) -> Builder {
         .bind(team_sync.serve())
         .bind(jira.serve())
         .bind(discourse.serve())
-        .bind(chunk.serve())
+        .bind(chunk)
 }
