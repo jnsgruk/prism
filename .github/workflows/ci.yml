@@ -45,8 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: jdx/mise-action@v2
 
       - name: Check for breaking changes
-        run: cd proto && buf breaking --against '.git#branch=${{ github.base_ref }}'
+        run: cd proto && buf breaking --against '../.git#branch=origin/${{ github.base_ref }},subdir=proto'
