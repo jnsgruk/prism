@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT person_id AS \"person_id!\", platform AS \"platform!\"\n            FROM org.platform_identities\n            WHERE person_id = ANY($1) AND management = $2\n            UNION\n            SELECT person_id AS \"person_id!\", platform AS \"platform!\"\n            FROM org.identity_resolutions\n            WHERE person_id = ANY($1) AND status = $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_id!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "platform!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "73b789d4d09522617aad75d857fe788cc5d06531aeeada262b0a697b5ecaed53"
+}
