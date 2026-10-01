@@ -1,4 +1,4 @@
-mod event_loop;
+pub(super) mod event_loop;
 mod event_mapping;
 mod pipeline;
 mod prompts;
@@ -6,11 +6,11 @@ mod resume;
 mod session;
 mod startup;
 mod step_registry;
-mod trace;
+pub(super) mod trace;
 
 use ps_proto::canonical::prism::v1::{
-    AgentConversationCreated, AgentError, AskQuestionRequest,
-    AskQuestionResponse, ask_question_response,
+    AgentConversationCreated, AgentError, AskQuestionRequest, AskQuestionResponse,
+    ask_question_response,
 };
 use tonic::{Request, Response, Status};
 use tracing::error;
