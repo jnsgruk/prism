@@ -157,7 +157,11 @@ when available. Missing files show an unavailable state; verification/transfer
 errors offer retry. A capped sidebar listing is not evidence that a file is
 missing. Resolution queries are deduplicated by conversation and path, remain
 fresh for 30 seconds, and refresh after final-answer emission; retry is explicit
-after a verification failure. Every download revalidates on the server. Ordinary
+after a verification failure. Checks started together are coalesced per
+conversation into requests of at most 128 paths, retaining the per-file query
+cache. Different conversations never share a request; a missing response entry
+fails only that path, while a transport failure fails its whole batch and permits
+retry. Every download revalidates on the server. Ordinary
 internal links, external links and generated images keep their normal behavior.
 
 The browser route uses the existing authenticated Connect stream to download,
