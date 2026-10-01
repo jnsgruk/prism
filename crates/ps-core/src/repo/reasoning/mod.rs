@@ -1,6 +1,8 @@
 mod api_usage;
 mod conversations;
 mod embeddings;
+mod enrichment_queue;
+mod enrichment_writes;
 mod enrichments;
 mod scoped_queues;
 

@@ -45,6 +45,8 @@ impl ReasoningRepo {
                 r#"
             INSERT INTO reasoning.enrichment_queue (contribution_id, content, content_hash)
             SELECT * FROM UNNEST($1::uuid[], $2::jsonb[], $3::text[])
+                AS input(contribution_id, content, content_hash)
+            ORDER BY input.contribution_id
             ON CONFLICT (contribution_id) DO UPDATE SET
                 content = EXCLUDED.content, content_hash = EXCLUDED.content_hash, updated_at = now()
             WHERE reasoning.enrichment_queue.content_hash != EXCLUDED.content_hash

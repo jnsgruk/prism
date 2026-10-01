@@ -32,7 +32,7 @@ pub(super) async fn read_contributions(
             (to_jsonb(c) - ARRAY['id','ingested_at']) AS "input!"
         FROM activity.contributions c
         WHERE platform = $1 AND platform_id = ANY($2)
-        FOR UPDATE
+        ORDER BY id FOR UPDATE
         "#,
         platform,
         &keys as &[&str],
