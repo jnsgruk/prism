@@ -10,10 +10,14 @@
 import { MethodKind } from "@bufbuild/protobuf";
 
 import {
+  AddPersonIdentityRequest,
+  AddPersonIdentityResponse,
   AssignGithubTeamRequest,
   AssignGithubTeamResponse,
   AssignPersonToTeamRequest,
   AssignPersonToTeamResponse,
+  CreatePersonRequest,
+  CreatePersonResponse,
   CreateTeamRequest,
   CreateTeamResponse,
   DeactivatePersonRequest,
@@ -46,12 +50,18 @@ import {
   ListTeamsResponse,
   ListUnassignedPeopleRequest,
   ListUnassignedPeopleResponse,
+  LookupJiraAccountsRequest,
+  LookupJiraAccountsResponse,
   ReactivatePersonRequest,
   ReactivatePersonResponse,
   RemovePersonFromTeamRequest,
   RemovePersonFromTeamResponse,
+  RemovePersonIdentityRequest,
+  RemovePersonIdentityResponse,
   UnassignGithubTeamRequest,
   UnassignGithubTeamResponse,
+  UpdatePersonIdentityRequest,
+  UpdatePersonIdentityResponse,
   UpdatePersonRequest,
   UpdatePersonResponse,
   UpdateTeamRequest,
@@ -67,6 +77,17 @@ import {
 export const OrgService = {
   typeName: "canonical.prism.v1.OrgService",
   methods: {
+    /**
+     * LookupJiraAccounts searches an enabled configured Jira Cloud source (admin only).
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.LookupJiraAccounts
+     */
+    lookupJiraAccounts: {
+      name: "LookupJiraAccounts",
+      I: LookupJiraAccountsRequest,
+      O: LookupJiraAccountsResponse,
+      kind: MethodKind.Unary,
+    },
     /**
      * ListTeams returns teams, optionally filtered by parent or type.
      *
@@ -142,6 +163,50 @@ export const OrgService = {
       name: "ListPeople",
       I: ListPeopleRequest,
       O: ListPeopleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CreatePerson atomically saves a manual person, accounts, and optional team.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.CreatePerson
+     */
+    createPerson: {
+      name: "CreatePerson",
+      I: CreatePersonRequest,
+      O: CreatePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AddPersonIdentity claims an account without changing another account's owner.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.AddPersonIdentity
+     */
+    addPersonIdentity: {
+      name: "AddPersonIdentity",
+      I: AddPersonIdentityRequest,
+      O: AddPersonIdentityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * UpdatePersonIdentity edits an owned account by stable identity row ID.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.UpdatePersonIdentity
+     */
+    updatePersonIdentity: {
+      name: "UpdatePersonIdentity",
+      I: UpdatePersonIdentityRequest,
+      O: UpdatePersonIdentityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RemovePersonIdentity removes future resolution without rewriting activity.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.RemovePersonIdentity
+     */
+    removePersonIdentity: {
+      name: "RemovePersonIdentity",
+      I: RemovePersonIdentityRequest,
+      O: RemovePersonIdentityResponse,
       kind: MethodKind.Unary,
     },
     /**

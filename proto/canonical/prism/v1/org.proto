@@ -10,6 +10,8 @@ import "canonical/prism/v1/common.proto";
 // OrgService manages the organisational hierarchy — teams, people, platform
 // identities, and the mapping between GitHub teams and Prism teams.
 service OrgService {
+  // LookupJiraAccounts searches an enabled configured Jira Cloud source (admin only).
+  rpc LookupJiraAccounts(LookupJiraAccountsRequest) returns (LookupJiraAccountsResponse);
   // ListTeams returns teams, optionally filtered by parent or type.
   rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
   // GetTeam returns a single team with its members.
@@ -24,6 +26,14 @@ service OrgService {
   rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
   // ListPeople returns people with optional search, filtering, pagination, and sorting.
   rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse);
+  // CreatePerson atomically saves a manual person, accounts, and optional team.
+  rpc CreatePerson(CreatePersonRequest) returns (CreatePersonResponse);
+  // AddPersonIdentity claims an account without changing another account's owner.
+  rpc AddPersonIdentity(AddPersonIdentityRequest) returns (AddPersonIdentityResponse);
+  // UpdatePersonIdentity edits an owned account by stable identity row ID.
+  rpc UpdatePersonIdentity(UpdatePersonIdentityRequest) returns (UpdatePersonIdentityResponse);
+  // RemovePersonIdentity removes future resolution without rewriting activity.
+  rpc RemovePersonIdentity(RemovePersonIdentityRequest) returns (RemovePersonIdentityResponse);
   // ImportDirectory imports people, teams, and identities from a CSV directory export.
   rpc ImportDirectory(ImportDirectoryRequest) returns (ImportDirectoryResponse);
   // UpdatePerson modifies a person's name, email, or level.
@@ -120,6 +130,11 @@ message PlatformIdentity {
   string username = 2;
   // Instance identifier for multi-instance platforms (e.g. "ubuntu" for Discourse).
   optional string platform_instance = 3;
+  // Stable identity row ID, used for explicit account edits and removal.
+  string id = 4;
+  // Opaque platform identifier, preserved exactly (e.g. Jira accountId).
+  optional string platform_user_id = 5;
+  Management management = 6;
 }
 
 message ListTeamsRequest {
@@ -398,3 +413,74 @@ message ImportOrgResponse {
   int32 github_mappings_skipped = 7;
   repeated string warnings = 8;
 }
+
+// Candidates require explicit selection; names and email are not unique identifiers.
+message JiraAccountCandidate {
+  // Opaque Jira Cloud accountId, preserved exactly.
+  string account_id = 1;
+  string display_name = 2;
+  // May be hidden by Jira profile visibility settings.
+  optional string email = 3;
+  bool active = 4;
+}
+
+message LookupJiraAccountsRequest {
+  string source_id = 1;
+  // Nonblank search text, at most 256 characters.
+  string query = 2;
+  // Offset in Jira's bounded search window (0..999).
+  int32 start_at = 3;
+  // Defaults to 20; must be between 1 and 50 when supplied.
+  int32 max_results = 4;
+}
+
+message LookupJiraAccountsResponse {
+  repeated JiraAccountCandidate accounts = 1;
+  // A full page may have more matches; absent at the 1000-user search limit.
+  optional int32 next_start_at = 2;
+}
+
+// Management distinguishes imported records from administrator-managed choices.
+enum Management {
+  MANAGEMENT_UNSPECIFIED = 0;
+  MANAGEMENT_IMPORTED = 1;
+  MANAGEMENT_MANUAL = 2;
+}
+
+// IdentityInput claims one account; Discourse requires a platform instance.
+message IdentityInput {
+  Platform platform = 1;
+  string username = 2;
+  optional string platform_instance = 3;
+  optional string platform_user_id = 4;
+}
+
+message CreatePersonRequest {
+  string name = 1;
+  optional string email = 2;
+  optional string level = 3;
+  optional string team_id = 4;
+  repeated IdentityInput identities = 5;
+}
+message CreatePersonResponse { Person person = 1; }
+message AddPersonIdentityRequest {
+  string person_id = 1;
+  IdentityInput identity = 2;
+}
+message AddPersonIdentityResponse { Person person = 1; }
+message UpdatePersonIdentityRequest {
+  string person_id = 1;
+  string identity_id = 2;
+  optional string username = 3;
+  // Omitted leaves unchanged; clear must be true to explicitly remove the ID.
+  oneof platform_user_id_change {
+    string platform_user_id = 4;
+    bool clear_platform_user_id = 5;
+  }
+}
+message UpdatePersonIdentityResponse { Person person = 1; }
+message RemovePersonIdentityRequest {
+  string person_id = 1;
+  string identity_id = 2;
+}
+message RemovePersonIdentityResponse { Person person = 1; }

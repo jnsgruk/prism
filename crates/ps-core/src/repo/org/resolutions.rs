@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::models::ResolutionStatus;
+use crate::models::{Management, Platform, ResolutionStatus};
 use uuid::Uuid;
 
 use super::OrgRepo;
@@ -76,40 +76,63 @@ impl OrgRepo {
         platform: &str,
         platform_username: &str,
     ) -> Result<(), Error> {
-        let identity_id = Uuid::now_v7();
-        let username_lower = platform_username.to_lowercase();
-
-        // Create the platform identity.
+        let platform = platform
+            .parse::<Platform>()
+            .map_err(|_| Error::Validation("invalid platform".into()))?
+            .to_string();
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+        // Serialize with manual edits, then recheck protection after remote lookup.
         sqlx::query!(
+            "SELECT id FROM org.people WHERE id = $1 FOR UPDATE",
+            person_id
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+        let manual = Management::Manual;
+        let protected = sqlx::query_scalar!(
+            r#"SELECT EXISTS (
+                SELECT 1 FROM org.platform_identities WHERE person_id = $1 AND platform = $2 AND management = $3
+                UNION ALL
+                SELECT 1 FROM org.identity_resolutions WHERE person_id = $1 AND platform = $2 AND status = 'manual'
+            ) AS "protected!""#, person_id, platform, manual as Management
+        ).fetch_one(&mut *tx).await.map_err(Error::from)?;
+        if protected {
+            return Err(Error::Conflict(
+                "manual account choice prevents automated resolution".into(),
+            ));
+        }
+        let identity_id = Uuid::now_v7();
+        let username_lower = platform_username.trim().to_lowercase();
+        let imported = Management::Imported;
+        let result = sqlx::query!(
             r#"
             INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (platform, platform_username)
             DO UPDATE SET person_id = EXCLUDED.person_id
+            WHERE org.platform_identities.management = $5
+              AND org.platform_identities.person_id = EXCLUDED.person_id
             "#,
             identity_id,
             person_id,
             platform,
             username_lower,
+            imported as Management
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
-
-        // Update resolution status.
+        if result.rows_affected() == 0 {
+            return Err(Error::Conflict(
+                "account is manually owned by another person".into(),
+            ));
+        }
         sqlx::query!(
-            r#"
-            UPDATE org.identity_resolutions
-            SET status = 'resolved', resolved_at = now(), attempted_at = now()
-            WHERE person_id = $1 AND platform = $2
-            "#,
-            person_id,
-            platform,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
+            "UPDATE org.identity_resolutions SET status = 'resolved', resolved_at = now(), attempted_at = now() WHERE person_id = $1 AND platform = $2",
+            person_id, platform
+        ).execute(&mut *tx).await.map_err(Error::from)?;
+        tx.commit().await.map_err(Error::from)?;
         Ok(())
     }
 
@@ -119,7 +142,7 @@ impl OrgRepo {
             r#"
             UPDATE org.identity_resolutions
             SET status = 'unresolved', attempted_at = now()
-            WHERE person_id = $1 AND platform = $2
+            WHERE person_id = $1 AND platform = $2 AND status = 'pending'
             "#,
             person_id,
             platform,
@@ -138,40 +161,19 @@ impl OrgRepo {
         platform: &str,
         platform_username: &str,
     ) -> Result<(), Error> {
-        // Create or update the platform identity.
-        let identity_id = Uuid::now_v7();
-        let username_lower = platform_username.to_lowercase();
-        sqlx::query!(
-            r#"
-            INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (platform, platform_username)
-            DO UPDATE SET person_id = EXCLUDED.person_id
-            "#,
-            identity_id,
-            person_id,
-            platform,
-            username_lower,
+        let platform = platform
+            .parse::<Platform>()
+            .map_err(|_| Error::Validation("invalid platform".into()))?;
+        // The legacy override now shares the validated ownership-safe writer.
+        self.add_person_identity(
+            person_id.into(),
+            super::IdentityInput {
+                platform,
+                username: platform_username.to_owned(),
+                platform_user_id: None,
+            },
         )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
-        // Upsert resolution status as manual.
-        sqlx::query!(
-            r#"
-            INSERT INTO org.identity_resolutions (person_id, platform, status, resolved_at, attempted_at)
-            VALUES ($1, $2, 'manual', now(), now())
-            ON CONFLICT (person_id, platform)
-            DO UPDATE SET status = 'manual', resolved_at = now(), attempted_at = now()
-            "#,
-            person_id,
-            platform,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(Error::from)?;
-
+        .await?;
         Ok(())
     }
 

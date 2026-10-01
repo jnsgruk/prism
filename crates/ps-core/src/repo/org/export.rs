@@ -2,7 +2,12 @@ use std::collections::HashMap;
 
 use crate::Error;
 
-use crate::models::TeamType;
+use super::export_import::{
+    build_person_maps, import_github_mappings, import_memberships, import_teams,
+    topological_sort_teams, wipe_org_data, wire_team_leads,
+};
+use super::export_people::{import_identities, import_people};
+use crate::models::{Management, ResolutionStatus, TeamType};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -42,6 +47,17 @@ pub struct ExportGitHubTeamRef {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExportPerson {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directory_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_import_at: Option<String>,
+    #[serde(default)]
+    pub membership_management: Management,
+    /// Explicit platform choices, including intentionally removed accounts.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub manual_identity_platforms: Vec<String>,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
@@ -56,6 +72,10 @@ pub struct ExportPerson {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExportIdentity {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub platform_user_id: Option<String>,
+    #[serde(default)]
+    pub management: Management,
     pub platform: String,
     pub username: String,
 }
@@ -266,7 +286,8 @@ impl OrgRepo {
         // 3. People with current team assignment.
         let people_rows = sqlx::query!(
             r#"
-            SELECT p.id, p.name, p.email, p.level, p.active,
+            SELECT p.id, p.name, p.email, p.level, p.active, p.directory_id, p.last_import_at,
+                   p.membership_management AS "membership_management: Management",
                    t.name AS "team_name?"
             FROM org.people p
             LEFT JOIN org.team_memberships tm ON tm.person_id = p.id
@@ -287,7 +308,7 @@ impl OrgRepo {
         } else {
             sqlx::query!(
                 r#"
-                SELECT person_id, platform, platform_username
+                SELECT person_id, platform, platform_username, platform_user_id, management AS "management: Management"
                 FROM org.platform_identities
                 WHERE person_id = ANY($1)
                 ORDER BY person_id, platform
@@ -299,6 +320,19 @@ impl OrgRepo {
             .map_err(Error::from)?
         };
 
+        let manual = ResolutionStatus::Manual;
+        let manual_rows = sqlx::query!(
+            "SELECT person_id, platform FROM org.identity_resolutions WHERE person_id = ANY($1) AND status = $2 ORDER BY person_id, platform",
+            &person_ids, manual as ResolutionStatus,
+        ).fetch_all(&self.pool).await.map_err(Error::from)?;
+        let mut manual_map: HashMap<Uuid, Vec<String>> = HashMap::new();
+        for row in manual_rows {
+            manual_map
+                .entry(row.person_id)
+                .or_default()
+                .push(row.platform);
+        }
+
         // Group identities by person_id.
         let mut id_map: HashMap<Uuid, Vec<ExportIdentity>> = HashMap::new();
         for row in &identity_rows {
@@ -306,6 +340,8 @@ impl OrgRepo {
                 .entry(row.person_id)
                 .or_default()
                 .push(ExportIdentity {
+                    platform_user_id: row.platform_user_id.clone(),
+                    management: row.management,
                     platform: row.platform.clone(),
                     username: row.platform_username.clone(),
                 });
@@ -314,6 +350,14 @@ impl OrgRepo {
         let people: Vec<ExportPerson> = people_rows
             .iter()
             .map(|p| ExportPerson {
+                id: Some(p.id),
+                directory_id: p.directory_id.clone(),
+                last_import_at: p.last_import_at.and_then(|t| {
+                    t.format(&time::format_description::well_known::Rfc3339)
+                        .ok()
+                }),
+                membership_management: p.membership_management,
+                manual_identity_platforms: manual_map.remove(&p.id).unwrap_or_default(),
                 name: p.name.clone(),
                 email: p.email.clone(),
                 level: p.level.clone(),
@@ -363,443 +407,21 @@ impl OrgRepo {
 
         let ordered_teams = topological_sort_teams(&export.teams);
         let team_map = import_teams(&mut tx, &ordered_teams, &mut result).await?;
-        import_people(&mut tx, export, &mut result).await?;
-        wire_team_leads(&mut tx, &ordered_teams, &team_map, &mut result.warnings).await?;
-        import_identities(&mut tx, export, &mut result.identities_created).await?;
-        import_memberships(&mut tx, export, &team_map, replace).await?;
+        let resolved = import_people(&mut tx, export, &mut result).await?;
+        let maps = build_person_maps(&mut tx, export, &resolved).await?;
+        wire_team_leads(
+            &mut tx,
+            &ordered_teams,
+            &team_map,
+            &maps,
+            &mut result.warnings,
+        )
+        .await?;
+        import_identities(&mut tx, export, &mut result, &resolved).await?;
+        import_memberships(&mut tx, export, &team_map, replace, &resolved).await?;
         import_github_mappings(&mut tx, &ordered_teams, &team_map, &mut result).await?;
 
         tx.commit().await.map_err(Error::from)?;
         Ok(result)
     }
-}
-
-// ---------------------------------------------------------------------------
-// Import helper types and functions
-// ---------------------------------------------------------------------------
-
-/// Lookup maps for resolving people by email or name.
-struct PersonMaps {
-    by_email: HashMap<String, Uuid>,
-    by_name: HashMap<String, Uuid>,
-}
-
-fn resolve_person_id(maps: &PersonMaps, email: Option<&str>, name: &str) -> Option<Uuid> {
-    email
-        .and_then(|e| maps.by_email.get(&e.to_lowercase()).copied())
-        .or_else(|| maps.by_name.get(name).copied())
-}
-
-async fn wipe_org_data(tx: &mut sqlx::PgConnection) -> Result<(), Error> {
-    sqlx::query!("DELETE FROM org.team_memberships")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    sqlx::query!("DELETE FROM org.platform_identities")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    sqlx::query!("UPDATE org.teams SET lead_id = NULL")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    sqlx::query!("DELETE FROM org.people")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    sqlx::query!("DELETE FROM org.team_github_team_mappings")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    sqlx::query!("DELETE FROM org.teams")
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    Ok(())
-}
-
-async fn import_teams(
-    tx: &mut sqlx::PgConnection,
-    ordered_teams: &[&ExportTeam],
-    result: &mut OrgImportResult,
-) -> Result<HashMap<(String, String), Uuid>, Error> {
-    let mut team_map: HashMap<(String, String), Uuid> = HashMap::new();
-
-    for team in ordered_teams {
-        let existing = sqlx::query_scalar!(
-            "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
-            team.name,
-            team.org_name,
-        )
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        let team_id = if let Some(id) = existing {
-            result.teams_updated += 1;
-            id
-        } else {
-            let id = Uuid::now_v7();
-            let team_type = parse_team_type(&team.team_type);
-            sqlx::query!(
-                r#"
-                INSERT INTO org.teams (id, name, org_name, team_type)
-                VALUES ($1, $2, $3, $4::org.team_type)
-                "#,
-                id,
-                team.name,
-                team.org_name,
-                team_type as TeamType,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-            result.teams_created += 1;
-            id
-        };
-
-        team_map.insert((team.name.clone(), team.org_name.clone()), team_id);
-    }
-
-    // Wire parent_team_id.
-    for team in ordered_teams {
-        if let Some(parent_name) = &team.parent_team {
-            let key = (team.name.clone(), team.org_name.clone());
-            let Some(&team_id) = team_map.get(&key) else {
-                continue;
-            };
-            let parent_key = (parent_name.clone(), team.org_name.clone());
-            if let Some(&parent_id) = team_map.get(&parent_key) {
-                sqlx::query!(
-                    "UPDATE org.teams SET parent_team_id = $1 WHERE id = $2",
-                    parent_id,
-                    team_id,
-                )
-                .execute(&mut *tx)
-                .await
-                .map_err(Error::from)?;
-            } else {
-                result.warnings.push(format!(
-                    "Parent team '{}' not found for '{}'",
-                    parent_name, team.name
-                ));
-            }
-        }
-    }
-
-    Ok(team_map)
-}
-
-async fn import_people(
-    tx: &mut sqlx::PgConnection,
-    export: &OrgExport,
-    result: &mut OrgImportResult,
-) -> Result<(), Error> {
-    for person in &export.people {
-        let existing = if let Some(email) = &person.email {
-            sqlx::query_scalar!(
-                "SELECT id FROM org.people WHERE LOWER(email) = LOWER($1)",
-                email,
-            )
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(Error::from)?
-        } else {
-            None
-        };
-
-        let existing = if existing.is_some() {
-            existing
-        } else {
-            let rows =
-                sqlx::query_scalar!("SELECT id FROM org.people WHERE name = $1", person.name)
-                    .fetch_all(&mut *tx)
-                    .await
-                    .map_err(Error::from)?;
-
-            if rows.len() > 1 {
-                result.warnings.push(format!(
-                    "Ambiguous name match for '{}' ({} people) — skipped",
-                    person.name,
-                    rows.len()
-                ));
-                continue;
-            }
-            rows.into_iter().next()
-        };
-
-        if existing.is_some() {
-            result.people_updated += 1;
-        } else {
-            let id = Uuid::now_v7();
-            sqlx::query!(
-                r#"
-                INSERT INTO org.people (id, name, email, level, active)
-                VALUES ($1, $2, $3, $4, $5)
-                "#,
-                id,
-                person.name,
-                person.email,
-                person.level,
-                person.active,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-            result.people_created += 1;
-        }
-    }
-    Ok(())
-}
-
-/// Build person lookup maps by re-querying the DB after people have been inserted.
-async fn build_person_maps(tx: &mut sqlx::PgConnection) -> Result<PersonMaps, Error> {
-    let rows = sqlx::query!("SELECT id, name, email FROM org.people")
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-    let mut maps = PersonMaps {
-        by_email: HashMap::new(),
-        by_name: HashMap::new(),
-    };
-    for r in rows {
-        if let Some(email) = &r.email {
-            maps.by_email.insert(email.to_lowercase(), r.id);
-        }
-        maps.by_name.insert(r.name.clone(), r.id);
-    }
-    Ok(maps)
-}
-
-async fn wire_team_leads(
-    tx: &mut sqlx::PgConnection,
-    ordered_teams: &[&ExportTeam],
-    team_map: &HashMap<(String, String), Uuid>,
-    warnings: &mut Vec<String>,
-) -> Result<(), Error> {
-    let maps = build_person_maps(tx).await?;
-
-    for team in ordered_teams {
-        if let Some(lead_ref) = &team.lead_email {
-            let key = (team.name.clone(), team.org_name.clone());
-            let Some(&team_id) = team_map.get(&key) else {
-                continue;
-            };
-            let lead_id = resolve_person_id(&maps, Some(lead_ref), lead_ref);
-            if let Some(lid) = lead_id {
-                sqlx::query!(
-                    "UPDATE org.teams SET lead_id = $1 WHERE id = $2",
-                    lid,
-                    team_id,
-                )
-                .execute(&mut *tx)
-                .await
-                .map_err(Error::from)?;
-            } else {
-                warnings.push(format!(
-                    "Lead '{}' not found for team '{}'",
-                    lead_ref, team.name
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-async fn import_identities(
-    tx: &mut sqlx::PgConnection,
-    export: &OrgExport,
-    identities_created: &mut i32,
-) -> Result<(), Error> {
-    let maps = build_person_maps(tx).await?;
-
-    for person in &export.people {
-        let Some(pid) = resolve_person_id(&maps, person.email.as_deref(), &person.name) else {
-            continue;
-        };
-
-        for identity in &person.identities {
-            let id = Uuid::now_v7();
-            let rows = sqlx::query!(
-                r#"
-                INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (platform, platform_username) DO NOTHING
-                "#,
-                id,
-                pid,
-                identity.platform,
-                identity.username,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-
-            if rows.rows_affected() > 0 {
-                *identities_created += 1;
-            }
-        }
-    }
-    Ok(())
-}
-
-async fn import_memberships(
-    tx: &mut sqlx::PgConnection,
-    export: &OrgExport,
-    team_map: &HashMap<(String, String), Uuid>,
-    replace: bool,
-) -> Result<(), Error> {
-    let maps = build_person_maps(tx).await?;
-
-    for person in &export.people {
-        let Some(team_name) = &person.team else {
-            continue;
-        };
-        let Some(pid) = resolve_person_id(&maps, person.email.as_deref(), &person.name) else {
-            continue;
-        };
-
-        let team_id = team_map
-            .iter()
-            .find(|((name, _), _)| name == team_name)
-            .map(|(_, &id)| id);
-        let Some(tid) = team_id else { continue };
-
-        if !replace {
-            let has_membership = sqlx::query_scalar!(
-                r#"
-                SELECT id FROM org.team_memberships
-                WHERE person_id = $1
-                  AND (end_date IS NULL OR end_date > CURRENT_DATE)
-                "#,
-                pid,
-            )
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-
-            if has_membership.is_some() {
-                continue;
-            }
-        }
-
-        sqlx::query!(
-            r#"
-            UPDATE org.team_memberships
-            SET end_date = CURRENT_DATE
-            WHERE person_id = $1 AND (end_date IS NULL OR end_date > CURRENT_DATE)
-            "#,
-            pid,
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        let mem_id = Uuid::now_v7();
-        sqlx::query!(
-            r#"
-            INSERT INTO org.team_memberships (id, person_id, team_id, start_date)
-            VALUES ($1, $2, $3, CURRENT_DATE)
-            "#,
-            mem_id,
-            pid,
-            tid,
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-    }
-    Ok(())
-}
-
-async fn import_github_mappings(
-    tx: &mut sqlx::PgConnection,
-    ordered_teams: &[&ExportTeam],
-    team_map: &HashMap<(String, String), Uuid>,
-    result: &mut OrgImportResult,
-) -> Result<(), Error> {
-    for team in ordered_teams {
-        let key = (team.name.clone(), team.org_name.clone());
-        let Some(&team_id) = team_map.get(&key) else {
-            continue;
-        };
-        for gh in &team.github_teams {
-            let gh_team_id = sqlx::query_scalar!(
-                "SELECT id FROM org.github_teams WHERE github_org = $1 AND slug = $2",
-                gh.github_org,
-                gh.slug,
-            )
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(Error::from)?;
-
-            if let Some(gid) = gh_team_id {
-                let rows = sqlx::query!(
-                    r#"
-                    INSERT INTO org.team_github_team_mappings (team_id, github_team_id)
-                    VALUES ($1, $2)
-                    ON CONFLICT DO NOTHING
-                    "#,
-                    team_id,
-                    gid,
-                )
-                .execute(&mut *tx)
-                .await
-                .map_err(Error::from)?;
-
-                if rows.rows_affected() > 0 {
-                    result.github_mappings_created += 1;
-                }
-            } else {
-                result.github_mappings_skipped += 1;
-                result.warnings.push(format!(
-                    "GitHub team '{}/{}' not found — mapping skipped for team '{}'",
-                    gh.github_org, gh.slug, team.name
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn parse_team_type(s: &str) -> TeamType {
-    match s {
-        "org" => TeamType::Org,
-        "group" => TeamType::Group,
-        "squad" => TeamType::Squad,
-        _ => TeamType::Team,
-    }
-}
-
-/// Sort teams so that parents appear before children.
-fn topological_sort_teams(teams: &[ExportTeam]) -> Vec<&ExportTeam> {
-    let mut sorted: Vec<&ExportTeam> = Vec::with_capacity(teams.len());
-    let mut remaining: Vec<&ExportTeam> = teams.iter().collect();
-
-    // Iteratively add teams whose parent is already in sorted (or has no parent).
-    let max_iterations = remaining.len() + 1;
-    for _ in 0..max_iterations {
-        if remaining.is_empty() {
-            break;
-        }
-        let added_names: Vec<(String, String)> = sorted
-            .iter()
-            .map(|t| (t.name.clone(), t.org_name.clone()))
-            .collect();
-
-        let (ready, not_ready): (Vec<_>, Vec<_>) = remaining.into_iter().partition(|t| {
-            t.parent_team.is_none()
-                || t.parent_team
-                    .as_ref()
-                    .is_some_and(|p| added_names.contains(&(p.clone(), t.org_name.clone())))
-        });
-
-        sorted.extend(ready);
-        remaining = not_ready;
-    }
-
-    // Any remaining have broken parent references — add them at the end.
-    sorted.extend(remaining);
-    sorted
 }

@@ -600,6 +600,43 @@ macro_rules! impl_sqlx_text {
     };
 }
 
+/// Whether a persisted choice is maintained by an import or an administrator.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Management {
+    #[default]
+    Imported,
+    Manual,
+}
+
+impl Management {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Imported => "imported",
+            Self::Manual => "manual",
+        }
+    }
+}
+
+impl fmt::Display for Management {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for Management {
+    type Err = String;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "imported" => Ok(Self::Imported),
+            "manual" => Ok(Self::Manual),
+            _ => Err("invalid management".into()),
+        }
+    }
+}
+
+impl_sqlx_text!(Management, |s: &str| s.parse().ok());
+
 // Platform has manual sqlx implementation above (Discourse carries dynamic data).
 impl_sqlx_text!(ContributionType, |s: &str| s.parse().ok());
 impl_sqlx_text!(ContributionState, |s: &str| s.parse().ok());

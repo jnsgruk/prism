@@ -47,3 +47,4 @@ tar = "0.4"
 flate2 = "1"
 
 [dev-dependencies]
+wiremock.workspace = true

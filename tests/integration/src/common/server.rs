@@ -255,7 +255,7 @@ impl TestServer {
             generator,
             None, // no post-restore hook needed in tests
         );
-        let org_service = OrgServiceImpl::new(repos.clone());
+        let org_service = OrgServiceImpl::new_with_secret_key(repos.clone(), test_secret_key());
         let config_service = ConfigServiceImpl::new(repos.clone(), test_secret_key());
         let metrics_service = MetricsServiceImpl::new(repos.clone());
         // HandlersService uses a dummy Restate URL — trigger tests will get
