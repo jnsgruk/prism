@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useGetTeamTree } from "@/lib/hooks/use-org";
+import { AddPersonDialog } from "@/views/admin/components/add-person-dialog";
 import { AddTeamDialog } from "@/views/admin/components/add-team-dialog";
 import { EditTeamDialog } from "@/views/admin/components/edit-team-dialog";
 import { ImportDirectoryDialog } from "@/views/admin/components/import-directory-dialog";
@@ -50,6 +51,7 @@ export const OrgTab = (): React.ReactElement => {
   );
 
   // Dialog state.
+  const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDirOpen, setImportDirOpen] = useState(false);
   const [importJiraOpen, setImportJiraOpen] = useState(false);
@@ -79,7 +81,7 @@ export const OrgTab = (): React.ReactElement => {
   return (
     <div className="space-y-4 pt-4">
       {/* Top action bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">Manage your organisation's teams and people.</p>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button />}>
@@ -88,6 +90,10 @@ export const OrgTab = (): React.ReactElement => {
             <ChevronDown className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={() => setAddPersonOpen(true)}>
+              <Users className="size-4" />
+              Add person
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
               <Users className="size-4" />
               Add Team
@@ -136,6 +142,7 @@ export const OrgTab = (): React.ReactElement => {
             onSelectPerson={setSelectedPerson}
             onEditTeam={setEditingTeam}
             onDeleteTeam={setDeletingTeam}
+            onAddPerson={() => setAddPersonOpen(true)}
           />
         </div>
       </div>
@@ -154,6 +161,7 @@ export const OrgTab = (): React.ReactElement => {
       )}
 
       {/* Add/Edit/Delete team dialogs + imports */}
+      {addPersonOpen && <AddPersonDialog teams={allTeams} open={addPersonOpen} onOpenChange={setAddPersonOpen} />}
       <AddTeamDialog teams={allTeams} open={addDialogOpen} onOpenChange={setAddDialogOpen} />
       <ImportDirectoryDialog open={importDirOpen} onOpenChange={setImportDirOpen} />
       <ImportJiraUsersDialog open={importJiraOpen} onOpenChange={setImportJiraOpen} />
