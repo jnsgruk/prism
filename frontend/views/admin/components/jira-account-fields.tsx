@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useLookupJiraAccounts } from "@/views/admin/hooks/use-person-management";
 import type { AccountDraft } from "@/views/admin/lib/person-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { SourceConfig } from "@ps/api/gen/canonical/prism/v1/config_pb";
 
@@ -23,6 +23,8 @@ export const JiraAccountFields = ({
   const [search, setSearch] = useState("");
   const [startAt, setStartAt] = useState(0);
   const [manuallySupplied, setManuallySupplied] = useState(false);
+  const [resultsDismissed, setResultsDismissed] = useState(false);
+  const accountIdInput = useRef<HTMLInputElement>(null);
 
   const query = useDebouncedValue(search);
   const lookup = useLookupJiraAccounts(sourceId, query, startAt);
@@ -39,6 +41,7 @@ export const JiraAccountFields = ({
           onValueChange={(value) => {
             setSourceId(value ?? "");
             setStartAt(0);
+            setResultsDismissed(false);
           }}
         >
           <SelectTrigger id={`${prefix}-source`} className="w-full min-w-0">
@@ -65,10 +68,11 @@ export const JiraAccountFields = ({
           onChange={(e) => {
             setSearch(e.target.value);
             setStartAt(0);
+            setResultsDismissed(false);
           }}
         />
       </div>
-      {sourceId && query.trim().length >= 2 && (
+      {!resultsDismissed && sourceId && query.trim().length >= 2 && (
         <div className="min-w-0 space-y-2" aria-live="polite">
           {lookup.isFetching && <p className="text-sm text-muted-foreground">Searching...</p>}
           {lookup.error && (
@@ -90,7 +94,9 @@ export const JiraAccountFields = ({
                 className="h-auto w-full min-w-0 justify-start whitespace-normal text-left"
                 onClick={() => {
                   setManuallySupplied(false);
+                  setResultsDismissed(true);
                   onChange({ ...account, username: candidate.displayName, platformUserId: candidate.accountId });
+                  accountIdInput.current?.focus();
                 }}
               >
                 <span className="min-w-0 break-words">
@@ -138,6 +144,7 @@ export const JiraAccountFields = ({
         <Label htmlFor={`${prefix}-id`}>Jira account ID (opaque ID, not email)</Label>
         <Input
           id={`${prefix}-id`}
+          ref={accountIdInput}
           value={account.platformUserId}
           onChange={(e) => {
             setManuallySupplied(true);
