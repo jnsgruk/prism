@@ -1,5 +1,6 @@
 mod discourse;
 mod github;
+mod github_review_recovery;
 mod jira;
 mod scoped_chunks;
 mod scoped_coordinator;
