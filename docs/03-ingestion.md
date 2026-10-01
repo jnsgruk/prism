@@ -117,6 +117,16 @@ the page safety limit records incomplete coverage rather than publishing it.
 Empty categories continue to the next configured category. Detail and liker
 errors other than rate limits fail the fetch rather than silently omit data.
 
+Supplementary Discourse account discovery treats a 404 from `user_actions.json`
+as unavailable account activity, including the first page of a hidden profile.
+It records the username and offset in `failed_items`, finishes that account with
+incomplete coverage, and continues to the next saved account. The source run
+retains its partial-failure warning, and the unavailable account's coverage
+checkpoint stays unchanged so a later run retries it. Explicit person backfills
+record the same incomplete coverage; an account with no collected items finishes
+as failed. First-page authentication errors and exhausted transient retries
+still fail the fetch, while rate limits retain durable sleep behavior.
+
 A run stopped after the previous Discourse implementation skipped rate-limited
 pages may already have advanced source watermarks. An ordinary incremental rerun
 cannot establish recovery of that history. After deploying the fix, launch an
