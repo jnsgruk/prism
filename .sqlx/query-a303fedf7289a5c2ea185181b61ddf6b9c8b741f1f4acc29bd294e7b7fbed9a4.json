@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.pipelines\n            SET completed_at = now(),\n                status = CASE WHEN cancellation_requested THEN 'cancelled' ELSE $2 END,\n                stages = $3, current_invocation_id = NULL, error = $4\n            WHERE id = $1 AND status IN ('pending', 'running', 'cancelling')\n              AND NOT (request_snapshot = '{}'::jsonb AND cancellation_requested)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a303fedf7289a5c2ea185181b61ddf6b9c8b741f1f4acc29bd294e7b7fbed9a4"
+}
