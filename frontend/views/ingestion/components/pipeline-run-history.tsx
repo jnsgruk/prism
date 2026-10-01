@@ -16,12 +16,13 @@ import { toast } from "sonner";
 
 import type { HandlerRun, PipelineRunSummary } from "@ps/api/gen/canonical/prism/v1/handlers_pb";
 import { cn } from "@ps/cn";
+import { isActivePipeline } from "@ps/pipeline-status";
 
 type StatusFilter = "all" | "completed" | "failed" | "running";
 
 /** Map pipeline string status to a filter category. */
 const pipelineStatusCategory = (status: string): StatusFilter => {
-  if (status === "running") return "running";
+  if (isActivePipeline(status)) return "running";
   if (status === "failed") return "failed";
   return "completed";
 };
@@ -101,6 +102,12 @@ const PipelineRow = ({
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             )}
             <span className="font-medium">Run #{rowNumber}</span>
+            {pipeline.personId && (
+              <span className="text-xs text-muted-foreground">
+                Person {pipeline.personId.slice(0, 8)} ·{" "}
+                {pipeline.selectedSources.map((source) => source.sourceName).join(", ")}
+              </span>
+            )}
             <span className="text-xs text-muted-foreground">({shortId})</span>
             {runs.length > 0 && (
               <span className="text-xs text-muted-foreground">
