@@ -1,0 +1,122 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id, p.name, p.email, p.level, p.active, p.directory_id, p.last_import_at,\n                   p.membership_management AS \"membership_management: Management\",\n                   t.name AS \"team_name?\"\n            FROM org.people p\n            LEFT JOIN org.team_memberships tm ON tm.person_id = p.id\n                AND (tm.end_date IS NULL OR tm.end_date > CURRENT_DATE)\n            LEFT JOIN org.teams t ON t.id = tm.team_id\n            ORDER BY p.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "level",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "level"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "active"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "directory_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "directory_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "last_import_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "last_import_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "membership_management: Management",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "membership_management"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "team_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.teams",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f4074bce509e841e882086c5806589e67ae1a34effb75b2e89b91592fac46f77"
+}

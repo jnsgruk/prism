@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, directory_id FROM org.people WHERE lower(btrim(email)) = lower($1) FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "directory_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "directory_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "68011bb40c90ff4034ad954aceb7f7e00fb18a5d4c913fe9c13b341269ac4d73"
+}

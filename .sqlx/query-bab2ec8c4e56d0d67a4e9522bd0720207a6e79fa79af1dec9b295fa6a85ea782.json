@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP TABLE org.identity_resolutions",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bab2ec8c4e56d0d67a4e9522bd0720207a6e79fa79af1dec9b295fa6a85ea782"
+}

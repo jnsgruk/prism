@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE org.people\n            SET name = COALESCE($2, name),\n                email = CASE WHEN $3::text IS NULL THEN email ELSE NULLIF($3, '') END,\n                level = COALESCE($4, level),\n                updated_at = now()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f8a4ed0506d5bf6534b0cf6e98f284d4173bcddab457cc3bc861cb7aaf722a28"
+}

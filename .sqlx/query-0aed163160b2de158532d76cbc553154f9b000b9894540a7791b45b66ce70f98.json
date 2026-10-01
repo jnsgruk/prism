@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.platform_identities (id,person_id,platform,platform_username,platform_user_id,management) VALUES ($1,$2,'jira','chosen display','ChosenID','manual')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0aed163160b2de158532d76cbc553154f9b000b9894540a7791b45b66ce70f98"
+}
