@@ -1,4 +1,6 @@
 //! Account ownership and delayed-resolution concurrency regression tests.
+
+use super::org_manual::{account, params};
 use crate::common::db::RepoTestContext;
 use ps_core::{
     Error,
@@ -15,6 +17,7 @@ fn person(name: &str) -> CreatePersonParams {
         identities: vec![],
     }
 }
+
 fn jira(username: &str) -> IdentityInput {
     IdentityInput {
         platform: Platform::Jira,
@@ -26,8 +29,11 @@ fn jira(username: &str) -> IdentityInput {
 #[tokio::test]
 async fn concurrent_existing_people_claiming_jira_id_have_one_stable_owner() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx.repos.org.create_person(person("alice")).await.unwrap();
+
     let bob = ctx.repos.org.create_person(person("bob")).await.unwrap();
+
     let (alice_claim, bob_claim) = tokio::join!(
         ctx.repos
             .org
@@ -36,19 +42,24 @@ async fn concurrent_existing_people_claiming_jira_id_have_one_stable_owner() {
             .org
             .add_person_identity(bob.person.id.into(), jira("Bob Jones"))
     );
+
     assert_ne!(alice_claim.is_ok(), bob_claim.is_ok());
+
     let (winner, loser) = if let Ok(result) = alice_claim {
         (result, bob_claim)
     } else {
         (bob_claim.unwrap(), alice_claim)
     };
+
     assert!(matches!(loser, Err(Error::Conflict(_))));
+
     let identities = ctx
         .repos
         .org
         .get_identities_for_people(&[alice.person.id, bob.person.id])
         .await
         .unwrap();
+
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].person_id, winner.person.id);
     assert_eq!(
@@ -56,14 +67,18 @@ async fn concurrent_existing_people_claiming_jira_id_have_one_stable_owner() {
         Some("Shared:OpaqueID")
     );
     assert!(identities[0].platform_username.contains(' '));
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn concurrent_jira_csv_and_manual_account_claims_never_transfer_owner() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx.repos.org.create_person(person("alice")).await.unwrap();
+
     let bob = ctx.repos.org.create_person(person("bob")).await.unwrap();
+
     let csv = vec![ps_core::directory::JiraUserRecord {
         email: "bob@example.com".into(),
         display_name: "Bob Jones".into(),
@@ -81,6 +96,7 @@ async fn concurrent_jira_csv_and_manual_account_claims_never_transfer_owner() {
         .get_identities_for_people(&[alice.person.id, bob.person.id])
         .await
         .unwrap();
+
     assert_eq!(identities.len(), 1);
     if manual.is_ok() {
         assert_eq!(identities[0].person_id, alice.person.id);
@@ -93,21 +109,27 @@ async fn concurrent_jira_csv_and_manual_account_claims_never_transfer_owner() {
         assert_eq!(import.unwrap().0, 1);
         assert_eq!(identities[0].person_id, bob.person.id);
     }
+
     let owner = ctx
         .repos
         .org
         .batch_resolve_by_user_id(&Platform::Jira, &["Shared:OpaqueID".into()])
         .await
         .unwrap();
+
     assert_eq!(owner["Shared:OpaqueID"], identities[0].person_id);
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn delayed_unmatched_resolution_cannot_replace_manual_add_or_removal() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx.repos.org.create_person(person("alice")).await.unwrap();
+
     let platform = Platform::Discourse("ubuntu".into());
+
     // Capture the pending row exactly as a worker would before remote lookup.
     sqlx::query!(
         "INSERT INTO org.identity_resolutions (person_id,platform) VALUES ($1,'discourse-ubuntu')",
@@ -116,13 +138,16 @@ async fn delayed_unmatched_resolution_cannot_replace_manual_add_or_removal() {
     .execute(&ctx.pool)
     .await
     .unwrap();
+
     let snapshot = ctx
         .repos
         .org
         .get_pending_resolutions(&platform.to_string())
         .await
         .unwrap();
+
     assert_eq!(snapshot.len(), 1);
+
     let saved = ctx
         .repos
         .org
@@ -136,6 +161,7 @@ async fn delayed_unmatched_resolution_cannot_replace_manual_add_or_removal() {
         )
         .await
         .unwrap();
+
     for remove in [false, true] {
         if remove {
             ctx.repos
@@ -149,12 +175,14 @@ async fn delayed_unmatched_resolution_cannot_replace_manual_add_or_removal() {
             .mark_unresolved(snapshot[0].person_id, &platform.to_string())
             .await
             .unwrap();
+
         let statuses = ctx
             .repos
             .org
             .get_resolution_statuses(alice.person.id)
             .await
             .unwrap();
+
         assert!(statuses.iter().any(
             |(key, status)| key == &platform.to_string() && *status == ResolutionStatus::Manual
         ));
@@ -165,25 +193,32 @@ async fn delayed_unmatched_resolution_cannot_replace_manual_add_or_removal() {
                 .await,
             Err(Error::Conflict(_))
         ));
+
         let identities = ctx
             .repos
             .org
             .get_identities_for_people(&[alice.person.id])
             .await
             .unwrap();
+
         assert!(identities.iter().all(|i| i.platform_username != "outdated"));
         assert_eq!(identities.len(), usize::from(!remove));
     }
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn jira_csv_waiting_on_manual_person_lock_rechecks_manual_choice() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx.repos.org.create_person(person("alice")).await.unwrap();
+
     // Hold the same person lock as a manual write; its uncommitted account and
+
     // resolution marker must be observed when the waiting importer proceeds.
     let mut tx = ctx.pool.begin().await.unwrap();
+
     sqlx::query!(
         "SELECT id FROM org.people WHERE id=$1 FOR UPDATE",
         alice.person.id
@@ -191,9 +226,32 @@ async fn jira_csv_waiting_on_manual_person_lock_rechecks_manual_choice() {
     .fetch_one(&mut *tx)
     .await
     .unwrap();
+
     let account_id = uuid::Uuid::now_v7();
-    sqlx::query!("INSERT INTO org.platform_identities (id,person_id,platform,platform_username,platform_user_id,management) VALUES ($1,$2,'jira','chosen display','ChosenID','manual')",account_id,alice.person.id).execute(&mut *tx).await.unwrap();
-    sqlx::query!("INSERT INTO org.identity_resolutions (person_id,platform,status) VALUES ($1,'jira','manual')",alice.person.id).execute(&mut *tx).await.unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO org.platform_identities
+            (id, person_id, platform, platform_username, platform_user_id, management)
+        VALUES ($1, $2, 'jira', 'chosen display', 'ChosenID', 'manual')
+        "#,
+        account_id,
+        alice.person.id
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        r#"
+        INSERT INTO org.identity_resolutions (person_id, platform, status)
+        VALUES ($1, 'jira', 'manual')
+        "#,
+        alice.person.id
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+
     let repo = ctx.repos.org.clone();
     let pending = tokio::spawn(async move {
         repo.import_jira_users(&[ps_core::directory::JiraUserRecord {
@@ -203,35 +261,73 @@ async fn jira_csv_waiting_on_manual_person_lock_rechecks_manual_choice() {
         }])
         .await
     });
-    tokio::time::timeout(std::time::Duration::from_secs(5),async {
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
         loop {
-            let blocked=sqlx::query_scalar!(r#"SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock') AS "blocked!""#).fetch_one(&ctx.pool).await.unwrap();
-            if blocked {break;}
+            let blocked = sqlx::query_scalar!(
+                r#"
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid()
+                      AND wait_event_type = 'Lock'
+                ) AS "blocked!"
+                "#
+            )
+            .fetch_one(&ctx.pool)
+            .await
+            .unwrap();
+
+            if blocked {
+                break;
+            }
+
             tokio::task::yield_now().await;
         }
-    }).await.expect("importer should block on manual write lock");
+    })
+    .await
+    .expect("importer should block on manual write lock");
     tx.commit().await.unwrap();
+
     let imported = pending.await.unwrap().unwrap();
+
     assert_eq!(imported.0, 0);
+
     let identities = ctx
         .repos
         .org
         .get_identities_for_people(&[alice.person.id])
         .await
         .unwrap();
+
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].platform_user_id.as_deref(), Some("ChosenID"));
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn database_rejects_case_collisions_and_identity_owner_changes() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx.repos.org.create_person(person("alice")).await.unwrap();
+
     let bob = ctx.repos.org.create_person(person("bob")).await.unwrap();
+
     let identity_id = uuid::Uuid::now_v7();
+
     // A writer that bypasses normalization still cannot introduce another owner.
-    sqlx::query!("INSERT INTO org.platform_identities (id,person_id,platform,platform_username) VALUES ($1,$2,'github','MixedCase')",identity_id,alice.person.id).execute(&ctx.pool).await.unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
+        VALUES ($1, $2, 'github', 'MixedCase')
+        "#,
+        identity_id,
+        alice.person.id
+    )
+    .execute(&ctx.pool)
+    .await
+    .unwrap();
+
     let claimed = ctx
         .repos
         .org
@@ -244,7 +340,9 @@ async fn database_rejects_case_collisions_and_identity_owner_changes() {
             },
         )
         .await;
+
     assert!(matches!(claimed, Err(Error::Conflict(_))));
+
     let transferred = sqlx::query!(
         "UPDATE org.platform_identities SET person_id=$2 WHERE id=$1",
         identity_id,
@@ -253,18 +351,93 @@ async fn database_rejects_case_collisions_and_identity_owner_changes() {
     .execute(&ctx.pool)
     .await
     .unwrap_err();
+
     assert!(
         transferred
             .as_database_error()
             .is_some_and(sqlx::error::DatabaseError::is_unique_violation)
     );
+
     let identities = ctx
         .repos
         .org
         .get_identities_for_people(&[alice.person.id, bob.person.id])
         .await
         .unwrap();
+
     assert_eq!(identities.len(), 1);
     assert_eq!(identities[0].person_id, alice.person.id);
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn concurrent_manual_account_claims_never_transfer_owner() {
+    let ctx = RepoTestContext::new().await;
+
+    let (a, b) = tokio::join!(
+        ctx.repos.org.create_person(params(
+            "Alice",
+            vec![account(Platform::Jira, "first", Some("SharedID"))]
+        )),
+        ctx.repos.org.create_person(params(
+            "Bob",
+            vec![account(Platform::Jira, "second", Some("SharedID"))]
+        ))
+    );
+
+    assert_ne!(a.is_ok(), b.is_ok());
+
+    let (winner, loser) = if let Ok(w) = a {
+        (w, b)
+    } else {
+        (b.unwrap(), a)
+    };
+
+    assert!(matches!(loser, Err(Error::Conflict(_))));
+
+    let owners = ctx
+        .repos
+        .org
+        .batch_resolve_by_user_id(&Platform::Jira, &["SharedID".into()])
+        .await
+        .unwrap();
+
+    assert_eq!(owners["SharedID"], winner.person.id);
+    assert_eq!(
+        sqlx::query_scalar!("SELECT count(*) FROM org.people")
+            .fetch_one(&ctx.pool)
+            .await
+            .unwrap(),
+        Some(1)
+    );
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn concurrent_case_variant_username_claims_have_one_owner() {
+    let ctx = RepoTestContext::new().await;
+
+    let (a, b) = tokio::join!(
+        ctx.repos.org.create_person(params(
+            "Alice",
+            vec![account(Platform::Github, "MixedCase", None)]
+        )),
+        ctx.repos.org.create_person(params(
+            "Bob",
+            vec![account(Platform::Github, "mixedcase", None)]
+        ))
+    );
+
+    assert_ne!(a.is_ok(), b.is_ok());
+    assert_eq!(
+        sqlx::query_scalar!("SELECT count(*) FROM org.people")
+            .fetch_one(&ctx.pool)
+            .await
+            .unwrap(),
+        Some(1)
+    );
+
     ctx.teardown().await;
 }

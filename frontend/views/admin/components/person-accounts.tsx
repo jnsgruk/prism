@@ -24,10 +24,12 @@ export const PersonAccounts = ({
 }): React.ReactElement => {
   const update = (changed: AccountDraft): void =>
     onChange(accounts.map((account) => (account.key === changed.key ? changed : account)));
+
   const discourseSources = sources.filter(
     (source) => source.sourceType === Platform.DISCOURSE && source.enabled && source.platformInstance,
   );
   const instances = [...new Map(discourseSources.map((source) => [source.platformInstance!, source])).values()];
+
   return (
     <div className="min-w-0 space-y-3">
       <p className="text-sm font-medium">Platform accounts (optional)</p>
@@ -39,6 +41,7 @@ export const PersonAccounts = ({
       {accounts.map((account, index) => {
         const editable = editablePlatforms.includes(account.platform);
         const prefix = `account-${account.key}`;
+
         return (
           <div
             key={account.key}

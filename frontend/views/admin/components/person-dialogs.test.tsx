@@ -70,16 +70,20 @@ vi.mock("@ps/api/transport", () => ({
     service(OrgService, {
       createPerson: async (request) => {
         calls.create(request);
+
         if (calls.rejectCreate)
           throw new ConnectError("GitHub account is already owned by another person", Code.AlreadyExists);
+
         if (calls.pending)
           await new Promise<void>((resolve) => {
             calls.pending = resolve;
           });
+
         return { person: { id: "created", name: request.name } };
       },
       updatePerson: (request) => {
         calls.profile(request);
+
         calls.person = create(PersonSchema, {
           ...calls.person!,
           name: request.name ?? calls.person!.name,
@@ -90,8 +94,10 @@ vi.mock("@ps/api/transport", () => ({
       },
       addPersonIdentity: (request) => {
         calls.add(request);
+
         if (calls.rejectAdd || request.identity?.username === calls.rejectUsername)
           throw new ConnectError("Account already owned", Code.AlreadyExists);
+
         calls.person = create(PersonSchema, {
           ...calls.person!,
           identities: [
@@ -109,6 +115,7 @@ vi.mock("@ps/api/transport", () => ({
       },
       updatePersonIdentity: (request) => {
         calls.update(request);
+
         calls.person = create(PersonSchema, {
           ...calls.person!,
           identities: calls.person!.identities.map((identity) =>
@@ -121,6 +128,7 @@ vi.mock("@ps/api/transport", () => ({
       },
       removePersonIdentity: (request) => {
         calls.remove(request);
+
         calls.person = create(PersonSchema, {
           ...calls.person!,
           identities: calls.person!.identities.filter((identity) => identity.id !== request.identityId),
@@ -129,15 +137,19 @@ vi.mock("@ps/api/transport", () => ({
       },
       assignPersonToTeam: (request) => {
         calls.assign(request);
+
         return {};
       },
       removePersonFromTeam: (request) => {
         calls.unassign(request);
+
         return {};
       },
       lookupJiraAccounts: (request) => {
         calls.lookup(request);
+
         if (calls.rejectLookup) throw new ConnectError("Jira credentials need updating", Code.FailedPrecondition);
+
         return {
           accounts:
             request.query === "missing"
@@ -157,9 +169,11 @@ vi.mock("@ps/api/transport", () => ({
 }));
 
 const teams = [create(TeamSchema, { id: "team-1", name: "Platform team" })];
+
 const renderAdd = async (): Promise<QueryClient> => {
   const { AddPersonDialog } = await import("@/views/admin/components/add-person-dialog");
   const queryClient = createTestQueryClient();
+
   render(
     <QueryClientProvider client={queryClient}>
       <AddPersonDialog teams={teams} open onOpenChange={calls.close} />
@@ -168,9 +182,11 @@ const renderAdd = async (): Promise<QueryClient> => {
   await waitFor(() => expect(queryClient.getQueryData(["config", "sources"])).toBeDefined());
   return queryClient;
 };
+
 const fillName = (): void => {
   fireEvent.change(screen.getByLabelText("Name"), { target: { value: "New colleague" } });
 };
+
 const choose = async (label: string, option: string): Promise<void> => {
   fireEvent.click(screen.getByRole("combobox", { name: label }));
   const item = await screen.findByRole("option", { name: option });
@@ -181,6 +197,7 @@ const choose = async (label: string, option: string): Promise<void> => {
 
 describe("manual person dialogs", () => {
   setupCleanup();
+
   beforeEach(() => {
     vi.clearAllMocks();
     calls.rejectCreate = false;
@@ -188,6 +205,7 @@ describe("manual person dialogs", () => {
     calls.rejectUsername = "";
     calls.rejectLookup = false;
     calls.pending = undefined;
+
     calls.person = create(PersonSchema, {
       id: "p-1",
       name: "Colleague",
@@ -204,9 +222,12 @@ describe("manual person dialogs", () => {
     const queryClient = await renderAdd();
     queryClient.setQueryData(["org", "people"], []);
     queryClient.setQueryData(["org", "tree"], {});
+
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
+
     expect(await screen.findByText("Enter a name.")).toBeInTheDocument();
     expect(calls.create).not.toHaveBeenCalled();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
     await waitFor(() => {
@@ -230,9 +251,12 @@ describe("manual person dialogs", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
+
     fireEvent.click(await screen.findByRole("button", { name: "Add" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Add person" }));
+
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveTextContent("No team");
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
     await waitFor(() => expect(calls.create).toHaveBeenCalled());
@@ -242,6 +266,7 @@ describe("manual person dialogs", () => {
 
   it("requires deliberate team selection and saves two Discourse instances", async () => {
     await renderAdd();
+
     fillName();
     fireEvent.change(screen.getByLabelText("Email (optional)"), { target: { value: "new@example.com" } });
     await choose("Team", "Platform team");
@@ -254,6 +279,7 @@ describe("manual person dialogs", () => {
     const snapOption = await screen.findByRole("option", { name: "Snapcraft (snapcraft)" });
     fireEvent.pointerDown(snapOption, { pointerType: "mouse" });
     fireEvent.click(snapOption);
+
     await waitFor(() =>
       expect(within(groups[1]!).getByRole("combobox", { name: "Discourse instance" })).toHaveTextContent("snapcraft"),
     );
@@ -276,10 +302,12 @@ describe("manual person dialogs", () => {
   it("retains entered drafts and inline ownership errors after failed save", async () => {
     calls.rejectCreate = true;
     await renderAdd();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Add GitHub account" }));
     fireEvent.change(screen.getByLabelText("GitHub username"), { target: { value: "occupied" } });
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
+
     expect(await screen.findByText(/GitHub account is already owned/)).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("New colleague");
     expect(screen.getByLabelText("GitHub username")).toHaveValue("occupied");
@@ -291,8 +319,10 @@ describe("manual person dialogs", () => {
   it("disables duplicate submission while pending", async () => {
     calls.pending = (): void => {};
     await renderAdd();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
+
     expect(await screen.findByRole("button", { name: "Creating..." })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Creating..." }));
@@ -306,8 +336,10 @@ describe("manual person dialogs", () => {
 
   it("canceling the add form never writes", async () => {
     await renderAdd();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
     await waitFor(() => {
       expect(calls.error.mock.calls[0]?.[0]).toBeUndefined();
       expect(calls.close).toHaveBeenCalledWith(false);
@@ -322,7 +354,9 @@ describe("manual person dialogs", () => {
         <PersonDetailDialog person={calls.person!} teams={teams} open onOpenChange={calls.close} />
       </QueryClientProvider>,
     );
+
     fireEvent.change(screen.getAllByLabelText("GitHub username")[0]!, { target: { value: "correct-login" } });
+
     expect(screen.getByRole("combobox", { name: "Discourse instance" })).toHaveTextContent("disabled-instance");
     fireEvent.click(screen.getByRole("button", { name: "Remove account 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Add GitHub account" }));
@@ -343,11 +377,13 @@ describe("manual person dialogs", () => {
 
   it("explicitly selects between duplicate Jira names and saves account ID separately", async () => {
     await renderAdd();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Add Jira account" }));
     await choose("Jira lookup source", "Jira Cloud");
     fireEvent.change(screen.getByLabelText("Search Jira accounts"), { target: { value: "Alex" } });
     const candidate = await screen.findByRole("button", { name: /Alex Smith Email hidden · opaque-b/ });
+
     expect(screen.getByLabelText("Jira account ID (opaque ID, not email)")).toHaveValue("");
     fireEvent.click(candidate);
     fireEvent.click(screen.getByRole("button", { name: "Create person" }));
@@ -364,10 +400,12 @@ describe("manual person dialogs", () => {
 
   it("shows Jira no-results/errors and permits direct opaque account ID entry", async () => {
     await renderAdd();
+
     fillName();
     fireEvent.click(screen.getByRole("button", { name: "Add Jira account" }));
     await choose("Jira lookup source", "Jira Cloud");
     fireEvent.change(screen.getByLabelText("Search Jira accounts"), { target: { value: "missing" } });
+
     expect(await screen.findByText(/No matching accounts/)).toBeInTheDocument();
     calls.rejectLookup = true;
     fireEvent.change(screen.getByLabelText("Search Jira accounts"), { target: { value: "other" } });
@@ -386,6 +424,7 @@ describe("manual person dialogs", () => {
       platformUserId: "direct-opaque",
     });
   });
+
   it("retries a partially saved account edit without duplicating earlier successful additions", async () => {
     const { PersonDetailDialog } = await import("@/views/admin/components/person-detail-dialog");
     const queryClient = createTestQueryClient();
@@ -396,6 +435,7 @@ describe("manual person dialogs", () => {
         <PersonDetailDialog person={calls.person!} teams={teams} open onOpenChange={calls.close} />
       </QueryClientProvider>,
     );
+
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Corrected colleague" } });
     fireEvent.click(screen.getByRole("button", { name: "Add GitHub account" }));
     fireEvent.change(screen.getAllByLabelText("GitHub username")[2]!, { target: { value: "first-new" } });
@@ -403,11 +443,13 @@ describe("manual person dialogs", () => {
     fireEvent.change(screen.getAllByLabelText("GitHub username")[3]!, { target: { value: "second-new" } });
     calls.rejectUsername = "second-new";
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
     expect(await screen.findByText(/Account already owned/)).toBeInTheDocument();
     expect(calls.close).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Name")).toHaveValue("Corrected colleague");
     expect(calls.add).toHaveBeenCalledTimes(2);
     expect(queryClient.getQueryState(["org", "people"])?.isInvalidated).toBe(true);
+
     calls.rejectUsername = "";
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(calls.close).toHaveBeenCalledWith(false));
@@ -436,8 +478,10 @@ describe("manual person dialogs", () => {
         <PersonDetailDialog person={calls.person} teams={teams} open onOpenChange={calls.close} />
       </QueryClientProvider>,
     );
+
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Corrected colleague" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
     await waitFor(() => expect(calls.close).toHaveBeenCalledWith(false));
     expect(calls.update).not.toHaveBeenCalled();
     expect(calls.remove).not.toHaveBeenCalled();
@@ -446,8 +490,10 @@ describe("manual person dialogs", () => {
 
   it("supports keyboard dialog dismissal without saving a draft", async () => {
     await renderAdd();
+
     fillName();
     fireEvent.keyDown(screen.getByLabelText("Name"), { key: "Escape", code: "Escape" });
+
     await waitFor(() => expect(calls.close).toHaveBeenCalledWith(false));
     expect(calls.create).not.toHaveBeenCalled();
   });

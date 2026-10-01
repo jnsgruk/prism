@@ -203,9 +203,18 @@ async fn assign_team_if_needed(
     state: &mut ImportState,
 ) -> Result<(), Error> {
     let management = sqlx::query_scalar!(
-        "SELECT membership_management AS \"membership_management: Management\" FROM org.people WHERE id = $1 FOR UPDATE",
+        r#"
+        SELECT membership_management AS "membership_management: Management"
+        FROM org.people
+        WHERE id = $1
+        FOR UPDATE
+        "#,
         resolved_id,
-    ).fetch_one(&mut *tx).await.map_err(Error::from)?;
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+
     if management == Management::Manual {
         return Ok(());
     }

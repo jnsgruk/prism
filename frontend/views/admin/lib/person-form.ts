@@ -22,6 +22,7 @@ export type PersonDraft = {
 };
 
 export const editablePlatforms = [Platform.GITHUB, Platform.JIRA, Platform.DISCOURSE];
+
 export const accountDraft = (identity: PlatformIdentity): AccountDraft => ({
   key: identity.id,
   id: identity.id,
@@ -57,33 +58,40 @@ const schema = z.object({
     )
     .superRefine((accounts, ctx) => {
       const seen = new Set<string>();
+
       accounts.forEach((account, index) => {
         if (!editablePlatforms.includes(account.platform)) return;
+
         if (!account.username)
           ctx.addIssue({
             code: "custom",
             message: `Account ${index + 1}: enter a username or display name.`,
             path: [index, "username"],
           });
+
         if (account.platform === Platform.DISCOURSE && !account.platformInstance)
           ctx.addIssue({
             code: "custom",
             message: `Account ${index + 1}: select a Discourse instance.`,
             path: [index, "platformInstance"],
           });
+
         if (account.platform === Platform.JIRA && !account.id && !account.platformUserId)
           ctx.addIssue({
             code: "custom",
             message: `Account ${index + 1}: select a Jira result or enter its opaque account ID.`,
             path: [index, "platformUserId"],
           });
+
         const ownershipKey = `${account.platform}:${account.platformInstance}:${account.platform === Platform.JIRA ? account.platformUserId || account.username : account.username.toLowerCase()}`;
+
         if (seen.has(ownershipKey))
           ctx.addIssue({
             code: "custom",
             message: `Account ${index + 1}: this account is already in the form.`,
             path: [index],
           });
+
         seen.add(ownershipKey);
       });
     }),
@@ -91,6 +99,7 @@ const schema = z.object({
 
 export const validatePersonDraft = (draft: PersonDraft): string | undefined => {
   const result = schema.safeParse({ ...draft, email: draft.email.trim() });
+
   return result.success ? undefined : result.error.issues[0]?.message;
 };
 

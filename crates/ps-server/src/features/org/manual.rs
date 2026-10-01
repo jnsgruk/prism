@@ -27,6 +27,7 @@ fn identity(input: proto::IdentityInput) -> Result<IdentityInput, Status> {
         .ok_or_else(|| Status::invalid_argument("invalid platform or missing instance"))?
         .parse()
         .map_err(|_| Status::invalid_argument("invalid platform"))?;
+
     if !matches!(platform, ps_core::models::Platform::Discourse(_))
         && input.platform_instance.is_some()
     {
@@ -34,6 +35,7 @@ fn identity(input: proto::IdentityInput) -> Result<IdentityInput, Status> {
             "instance is only supported for Discourse",
         ));
     }
+
     Ok(IdentityInput {
         platform,
         username: input.username,
@@ -72,8 +74,11 @@ pub(super) async fn create(
             .map(identity)
             .collect::<Result<_, _>>()?,
     };
+
+    let result = repos.org.create_person(params).await.map_err(write_err)?;
+
     Ok(Response::new(proto::CreatePersonResponse {
-        person: person(repos.org.create_person(params).await.map_err(write_err)?),
+        person: person(result),
     }))
 }
 
@@ -86,14 +91,15 @@ pub(super) async fn add(
         req.identity
             .ok_or_else(|| Status::invalid_argument("identity is required"))?,
     )?;
+
+    let result = repos
+        .org
+        .add_person_identity(id.into(), input)
+        .await
+        .map_err(write_err)?;
+
     Ok(Response::new(proto::AddPersonIdentityResponse {
-        person: person(
-            repos
-                .org
-                .add_person_identity(id.into(), input)
-                .await
-                .map_err(write_err)?,
-        ),
+        person: person(result),
     }))
 }
 
@@ -111,20 +117,22 @@ pub(super) async fn update(
             ));
         }
     };
+
     let params = UpdateIdentityParams {
         person_id: uuid(&req.person_id, "person_id")?.into(),
         identity_id: uuid(&req.identity_id, "identity_id")?,
         username: req.username,
         platform_user_id,
     };
+
+    let result = repos
+        .org
+        .update_person_identity(params)
+        .await
+        .map_err(write_err)?;
+
     Ok(Response::new(proto::UpdatePersonIdentityResponse {
-        person: person(
-            repos
-                .org
-                .update_person_identity(params)
-                .await
-                .map_err(write_err)?,
-        ),
+        person: person(result),
     }))
 }
 
@@ -134,13 +142,14 @@ pub(super) async fn remove(
 ) -> Result<Response<proto::RemovePersonIdentityResponse>, Status> {
     let id = uuid(&req.person_id, "person_id")?;
     let identity_id = uuid(&req.identity_id, "identity_id")?;
+
+    let result = repos
+        .org
+        .remove_person_identity(id.into(), identity_id)
+        .await
+        .map_err(write_err)?;
+
     Ok(Response::new(proto::RemovePersonIdentityResponse {
-        person: person(
-            repos
-                .org
-                .remove_person_identity(id.into(), identity_id)
-                .await
-                .map_err(write_err)?,
-        ),
+        person: person(result),
     }))
 }

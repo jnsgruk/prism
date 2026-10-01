@@ -20,6 +20,7 @@ pub(super) async fn import_people(
     result: &mut OrgImportResult,
 ) -> Result<ResolvedPeople, Error> {
     let mut resolved = Vec::with_capacity(export.people.len());
+
     for person in &export.people {
         let email = person
             .email
@@ -27,9 +28,22 @@ pub(super) async fn import_people(
             .map(str::trim)
             .filter(|email| !email.is_empty());
         let existing = sqlx::query!(
-            "SELECT id, directory_id FROM org.people WHERE id = $1 OR ($2::text IS NOT NULL AND directory_id = $2) OR ($3::text IS NOT NULL AND lower(btrim(email)) = lower($3)) FOR UPDATE",
-            person.id, person.directory_id, email,
-        ).fetch_all(&mut *tx).await.map_err(Error::from)?;
+            r#"
+            SELECT id, directory_id
+            FROM org.people
+            WHERE id = $1
+               OR ($2::text IS NOT NULL AND directory_id = $2)
+               OR ($3::text IS NOT NULL AND lower(btrim(email)) = lower($3))
+            FOR UPDATE
+            "#,
+            person.id,
+            person.directory_id,
+            email,
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         let mut matches: Vec<Uuid> = existing.iter().map(|row| row.id).collect();
         let conflicting_directory = existing.first().is_some_and(|row| {
             person.directory_id.is_some()
@@ -45,11 +59,13 @@ pub(super) async fn import_people(
             .await
             .map_err(Error::from)?;
         }
+
         let resolved_person = match matches.as_slice() {
             [] => {
                 let id = person.id.unwrap_or_else(Uuid::now_v7);
                 insert_person(tx, person, id).await?;
                 restore_manual_platforms(tx, person, id).await?;
+
                 result.people_created += 1;
                 Some(ResolvedPerson { id, created: true })
             }
@@ -70,6 +86,7 @@ pub(super) async fn import_people(
         };
         resolved.push(resolved_person);
     }
+
     Ok(resolved)
 }
 
@@ -87,10 +104,24 @@ async fn insert_person(
         })
         .transpose()?;
     sqlx::query!(
-        "INSERT INTO org.people (id, name, email, level, active, directory_id, last_import_at, membership_management) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-        id, person.name, person.email, person.level, person.active, person.directory_id, last_import_at,
+        r#"
+        INSERT INTO org.people (id, name, email, level, active, directory_id,
+                               last_import_at, membership_management)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        "#,
+        id,
+        person.name,
+        person.email,
+        person.level,
+        person.active,
+        person.directory_id,
+        last_import_at,
         person.membership_management as Management,
-    ).execute(&mut *tx).await.map_err(Error::from)?;
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+
     Ok(())
 }
 
@@ -121,9 +152,21 @@ async fn restore_manual_platforms(
     }
     let status = ResolutionStatus::Manual;
     sqlx::query!(
-        "INSERT INTO org.identity_resolutions (person_id, platform, status) SELECT $1, platform, $3 FROM UNNEST($2::text[]) AS input(platform) GROUP BY platform ON CONFLICT (person_id, platform) DO NOTHING",
-        id, &platforms, status as ResolutionStatus,
-    ).execute(&mut *tx).await.map_err(Error::from)?;
+        r#"
+        INSERT INTO org.identity_resolutions (person_id, platform, status)
+        SELECT $1, platform, $3
+        FROM UNNEST($2::text[]) AS input(platform)
+        GROUP BY platform
+        ON CONFLICT (person_id, platform) DO NOTHING
+        "#,
+        id,
+        &platforms,
+        status as ResolutionStatus,
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+
     Ok(())
 }
 
@@ -134,7 +177,10 @@ pub(super) async fn import_identities(
     resolved: &ResolvedPeople,
 ) -> Result<(), Error> {
     for (person, resolved) in export.people.iter().zip(resolved) {
-        let Some(resolved) = resolved else { continue };
+        let Some(resolved) = resolved else {
+            continue;
+        };
+
         for identity in &person.identities {
             let platform = identity
                 .platform
@@ -144,6 +190,7 @@ pub(super) async fn import_identities(
             if username.is_empty() {
                 return Err(Error::Validation("empty exported username".into()));
             }
+
             let user_id = identity.platform_user_id.as_deref().map(str::trim);
             if user_id.is_some_and(str::is_empty)
                 || (platform == Platform::Jira
@@ -154,6 +201,7 @@ pub(super) async fn import_identities(
                     "invalid exported platform account ID".into(),
                 ));
             }
+
             let platform = platform.to_string();
             if !resolved.created && platform_is_manual(tx, resolved.id, &platform).await? {
                 result.warnings.push(format!(
@@ -162,25 +210,51 @@ pub(super) async fn import_identities(
                 ));
                 continue;
             }
+
             let id = Uuid::now_v7();
             let rows = sqlx::query!(
-                "INSERT INTO org.platform_identities (id, person_id, platform, platform_username, platform_user_id, management) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING",
-                id, resolved.id, platform, username, user_id, identity.management as Management,
-            ).execute(&mut *tx).await.map_err(Error::from)?;
+                r#"
+                INSERT INTO org.platform_identities (id, person_id, platform, platform_username,
+                                                    platform_user_id, management)
+                VALUES ($1,$2,$3,$4,$5,$6)
+                ON CONFLICT DO NOTHING
+                "#,
+                id,
+                resolved.id,
+                platform,
+                username,
+                user_id,
+                identity.management as Management,
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(Error::from)?;
             if rows.rows_affected() == 0 {
                 result.warnings.push(format!("Account already exists: {platform}/{username} — preserved existing ownership and metadata"));
                 continue;
             }
+
             result.identities_created += 1;
             if identity.management == Management::Manual {
                 let status = ResolutionStatus::Manual;
                 sqlx::query!(
-                    "INSERT INTO org.identity_resolutions (person_id,platform,status) VALUES ($1,$2,$3) ON CONFLICT (person_id,platform) DO UPDATE SET status=EXCLUDED.status",
-                    resolved.id, platform, status as ResolutionStatus,
-                ).execute(&mut *tx).await.map_err(Error::from)?;
+                    r#"
+                    INSERT INTO org.identity_resolutions (person_id,platform,status)
+                    VALUES ($1,$2,$3)
+                    ON CONFLICT (person_id,platform) DO UPDATE
+                    SET status=EXCLUDED.status
+                    "#,
+                    resolved.id,
+                    platform,
+                    status as ResolutionStatus,
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(Error::from)?;
             }
         }
     }
+
     Ok(())
 }
 
@@ -192,10 +266,27 @@ async fn platform_is_manual(
     let manual = Management::Manual;
     let status = ResolutionStatus::Manual;
     sqlx::query_scalar!(
-        r#"SELECT EXISTS (
-            SELECT 1 FROM org.platform_identities WHERE person_id = $1 AND platform = $2 AND management = $3
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM org.platform_identities
+            WHERE person_id = $1
+              AND platform = $2
+              AND management = $3
             UNION ALL
-            SELECT 1 FROM org.identity_resolutions WHERE person_id = $1 AND platform = $2 AND status = $4
-        ) AS "protected!""#, person_id, platform, manual as Management, status as ResolutionStatus,
-    ).fetch_one(&mut *tx).await.map_err(Error::from)
+            SELECT 1
+            FROM org.identity_resolutions
+            WHERE person_id = $1
+              AND platform = $2
+              AND status = $4
+        ) AS "protected!"
+        "#,
+        person_id,
+        platform,
+        manual as Management,
+        status as ResolutionStatus,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(Error::from)
 }

@@ -1,4 +1,5 @@
 //! Manual people/account writes against real PostgreSQL.
+
 use crate::common::db::RepoTestContext;
 use ps_core::{
     Error,
@@ -7,14 +8,15 @@ use ps_core::{
 };
 use uuid::Uuid;
 
-fn account(platform: Platform, username: &str, id: Option<&str>) -> IdentityInput {
+pub(super) fn account(platform: Platform, username: &str, id: Option<&str>) -> IdentityInput {
     IdentityInput {
         platform,
         username: username.into(),
         platform_user_id: id.map(Into::into),
     }
 }
-fn params(name: &str, identities: Vec<IdentityInput>) -> CreatePersonParams {
+
+pub(super) fn params(name: &str, identities: Vec<IdentityInput>) -> CreatePersonParams {
     CreatePersonParams {
         name: name.into(),
         email: Some(format!("{}@example.com", name.to_lowercase())),
@@ -27,6 +29,7 @@ fn params(name: &str, identities: Vec<IdentityInput>) -> CreatePersonParams {
 #[tokio::test]
 async fn manual_people_create_complete_with_optional_team() {
     let ctx = RepoTestContext::new().await;
+
     let person = ctx
         .repos
         .org
@@ -39,6 +42,7 @@ async fn manual_people_create_complete_with_optional_team() {
         ))
         .await
         .unwrap();
+
     assert!(person.person.active);
     assert!(person.person.team_id.is_none());
     assert_eq!(person.identities.len(), 2);
@@ -54,6 +58,7 @@ async fn manual_people_create_complete_with_optional_team() {
             .iter()
             .any(|i| i.platform_user_id.as_deref() == Some("AbC:123"))
     );
+
     let row = sqlx::query!(
         "SELECT directory_id,last_import_at,membership_management FROM org.people WHERE id=$1",
         person.person.id
@@ -61,32 +66,40 @@ async fn manual_people_create_complete_with_optional_team() {
     .fetch_one(&ctx.pool)
     .await
     .unwrap();
+
     assert!(row.directory_id.is_none());
     assert!(row.last_import_at.is_none());
     assert_eq!(row.membership_management, "manual");
+
     let team = ctx
         .repos
         .org
         .create_team("Team", "Org", TeamType::Team, None, None)
         .await
         .unwrap();
+
     let mut input = params("Bob", vec![]);
     input.team_id = Some(team.id.into());
     let bob = ctx.repos.org.create_person(input).await.unwrap();
+
     assert_eq!(bob.person.team_id, Some(team.id));
     assert_eq!(bob.person.team_name.as_deref(), Some("Team"));
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn manual_creation_rolls_back_missing_team_and_duplicate_accounts() {
     let ctx = RepoTestContext::new().await;
+
     let mut input = params("Alice", vec![account(Platform::Github, "alice", None)]);
     input.team_id = Some(Uuid::now_v7().into());
+
     assert!(matches!(
         ctx.repos.org.create_person(input).await,
         Err(Error::NotFound(_))
     ));
+
     let input = params(
         "Alice",
         vec![
@@ -94,10 +107,12 @@ async fn manual_creation_rolls_back_missing_team_and_duplicate_accounts() {
             account(Platform::Github, "ALICE", None),
         ],
     );
+
     assert!(matches!(
         ctx.repos.org.create_person(input).await,
         Err(Error::Conflict(_))
     ));
+
     let input = params(
         "Alice",
         vec![
@@ -105,6 +120,7 @@ async fn manual_creation_rolls_back_missing_team_and_duplicate_accounts() {
             account(Platform::Jira, "second", Some("ID")),
         ],
     );
+
     assert!(matches!(
         ctx.repos.org.create_person(input).await,
         Err(Error::Conflict(_))
@@ -130,12 +146,14 @@ async fn manual_creation_rolls_back_missing_team_and_duplicate_accounts() {
             .unwrap(),
         Some(0)
     );
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn manual_validation_rejects_blank_invalid_and_missing_instance() {
     let ctx = RepoTestContext::new().await;
+
     for input in [
         params(" ", vec![]),
         params("Alice", vec![account(Platform::Github, "a/b", None)]),
@@ -159,18 +177,22 @@ async fn manual_validation_rejects_blank_invalid_and_missing_instance() {
             Err(Error::Validation(_))
         ));
     }
+
     let mut input = params("Alice", vec![]);
     input.email = Some("bad-email".into());
+
     assert!(matches!(
         ctx.repos.org.create_person(input).await,
         Err(Error::Validation(_))
     ));
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn manual_disparate_discourse_instances_and_case_safe_jira_ids() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx
         .repos
         .org
@@ -184,6 +206,7 @@ async fn manual_disparate_discourse_instances_and_case_safe_jira_ids() {
         ))
         .await
         .unwrap();
+
     assert_eq!(alice.identities.len(), 3);
     assert!(
         alice
@@ -202,6 +225,7 @@ async fn manual_disparate_discourse_instances_and_case_safe_jira_ids() {
             .await,
         Err(Error::Conflict(_))
     ));
+
     let bob = ctx
         .repos
         .org
@@ -211,50 +235,16 @@ async fn manual_disparate_discourse_instances_and_case_safe_jira_ids() {
         ))
         .await
         .unwrap();
-    assert_ne!(alice.person.id, bob.person.id);
-    ctx.teardown().await;
-}
 
-#[tokio::test]
-async fn concurrent_manual_account_claims_never_transfer_owner() {
-    let ctx = RepoTestContext::new().await;
-    let (a, b) = tokio::join!(
-        ctx.repos.org.create_person(params(
-            "Alice",
-            vec![account(Platform::Jira, "first", Some("SharedID"))]
-        )),
-        ctx.repos.org.create_person(params(
-            "Bob",
-            vec![account(Platform::Jira, "second", Some("SharedID"))]
-        ))
-    );
-    assert_ne!(a.is_ok(), b.is_ok());
-    let (winner, loser) = if let Ok(w) = a {
-        (w, b)
-    } else {
-        (b.unwrap(), a)
-    };
-    assert!(matches!(loser, Err(Error::Conflict(_))));
-    let owners = ctx
-        .repos
-        .org
-        .batch_resolve_by_user_id(&Platform::Jira, &["SharedID".into()])
-        .await
-        .unwrap();
-    assert_eq!(owners["SharedID"], winner.person.id);
-    assert_eq!(
-        sqlx::query_scalar!("SELECT count(*) FROM org.people")
-            .fetch_one(&ctx.pool)
-            .await
-            .unwrap(),
-        Some(1)
-    );
+    assert_ne!(alice.person.id, bob.person.id);
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx
         .repos
         .org
@@ -267,23 +257,27 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
         ))
         .await
         .unwrap();
+
     let bob = ctx
         .repos
         .org
         .create_person(params("Bob", vec![]))
         .await
         .unwrap();
+
     let first = alice
         .identities
         .iter()
         .find(|i| i.platform_username == "first")
         .unwrap();
+
     let wrong = UpdateIdentityParams {
         person_id: bob.person.id.into(),
         identity_id: first.id,
         username: Some("stolen".into()),
         platform_user_id: None,
     };
+
     assert!(matches!(
         ctx.repos.org.update_person_identity(wrong).await,
         Err(Error::NotFound(_))
@@ -295,6 +289,7 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
             .await,
         Err(Error::NotFound(_))
     ));
+
     let updated = ctx
         .repos
         .org
@@ -306,6 +301,7 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
         })
         .await
         .unwrap();
+
     assert_eq!(updated.identities.len(), 2);
     assert!(updated.identities.iter().any(|i| i.id == first.id
         && i.platform_username == "changed"
@@ -316,6 +312,7 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
             .iter()
             .any(|i| i.platform_username == "second")
     );
+
     let preserved = ctx
         .repos
         .org
@@ -327,12 +324,14 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
         })
         .await
         .unwrap();
+
     assert!(
         preserved
             .identities
             .iter()
             .any(|i| i.id == first.id && i.platform_user_id.as_deref() == Some("ABC"))
     );
+
     let cleared = ctx
         .repos
         .org
@@ -344,6 +343,7 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
         })
         .await
         .unwrap();
+
     assert!(
         cleared
             .identities
@@ -370,12 +370,14 @@ async fn explicit_account_edits_are_owned_and_preserve_other_accounts() {
             .await,
         Err(Error::NotFound(_))
     ));
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn removing_account_preserves_attributed_activity_and_manual_resolution() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx
         .repos
         .org
@@ -385,14 +387,28 @@ async fn removing_account_preserves_attributed_activity_and_manual_resolution() 
         ))
         .await
         .unwrap();
+
     let contribution = Uuid::now_v7();
-    sqlx::query!("INSERT INTO activity.contributions (id,person_id,platform,platform_id,contribution_type,title,created_at) VALUES ($1,$2,'github','manual-test','pull_request','Test',now())",contribution,alice.person.id).execute(&ctx.pool).await.unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO activity.contributions
+            (id, person_id, platform, platform_id, contribution_type, title, created_at)
+        VALUES ($1, $2, 'github', 'manual-test', 'pull_request', 'Test', now())
+        "#,
+        contribution,
+        alice.person.id
+    )
+    .execute(&ctx.pool)
+    .await
+    .unwrap();
+
     let removed = ctx
         .repos
         .org
         .remove_person_identity(alice.person.id.into(), alice.identities[0].id)
         .await
         .unwrap();
+
     assert!(removed.identities.is_empty());
     assert_eq!(
         sqlx::query_scalar!(
@@ -422,18 +438,21 @@ async fn removing_account_preserves_attributed_activity_and_manual_resolution() 
             .unwrap()
             .is_empty()
     );
+
     ctx.teardown().await;
 }
 
 #[tokio::test]
 async fn manual_person_fields_validate_and_email_can_be_cleared() {
     let ctx = RepoTestContext::new().await;
+
     let alice = ctx
         .repos
         .org
         .create_person(params("Alice", vec![]))
         .await
         .unwrap();
+
     assert!(matches!(
         ctx.repos
             .org
@@ -448,36 +467,15 @@ async fn manual_person_fields_validate_and_email_can_be_cleared() {
             .await,
         Err(Error::Validation(_))
     ));
+
     let cleared = ctx
         .repos
         .org
         .update_person(alice.person.id, None, Some(""), None)
         .await
         .unwrap();
-    assert!(cleared.email.is_none());
-    ctx.teardown().await;
-}
 
-#[tokio::test]
-async fn concurrent_case_variant_username_claims_have_one_owner() {
-    let ctx = RepoTestContext::new().await;
-    let (a, b) = tokio::join!(
-        ctx.repos.org.create_person(params(
-            "Alice",
-            vec![account(Platform::Github, "MixedCase", None)]
-        )),
-        ctx.repos.org.create_person(params(
-            "Bob",
-            vec![account(Platform::Github, "mixedcase", None)]
-        ))
-    );
-    assert_ne!(a.is_ok(), b.is_ok());
-    assert_eq!(
-        sqlx::query_scalar!("SELECT count(*) FROM org.people")
-            .fetch_one(&ctx.pool)
-            .await
-            .unwrap(),
-        Some(1)
-    );
+    assert!(cleared.email.is_none());
+
     ctx.teardown().await;
 }

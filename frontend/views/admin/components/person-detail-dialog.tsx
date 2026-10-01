@@ -34,24 +34,30 @@ export const PersonDetailDialog = ({
   const baseline = useRef(person);
   const [draft, setDraft] = useState(() => personDraft(person));
   const [validationError, setValidationError] = useState<string>();
+
   const sources = useListSources();
   const save = useSavePerson();
   const deactivate = useDeactivatePerson();
   const reactivate = useReactivatePerson();
+
   const isPending = save.isPending || deactivate.isPending || reactivate.isPending;
   const error = validationError ?? save.error?.message ?? deactivate.error?.message ?? reactivate.error?.message;
+
   const handleSubmit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (isPending) return;
+
     const validation = validatePersonDraft(draft);
     setValidationError(validation);
     if (validation) return;
+
     save.mutate(
       {
         baseline: baseline.current,
         draft,
         onProgress: (saved, added) => {
           baseline.current = saved;
+
           if (added)
             setDraft((current) => ({
               ...current,
@@ -64,10 +70,12 @@ export const PersonDetailDialog = ({
       { onSuccess: () => onOpenChange(false) },
     );
   };
+
   const toggleActive = (): void => {
     const mutation = person.active ? deactivate : reactivate;
     mutation.mutate(person.id, { onSuccess: () => onOpenChange(false) });
   };
+
   return (
     <Dialog
       open={open}

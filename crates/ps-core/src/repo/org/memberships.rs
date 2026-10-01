@@ -62,6 +62,7 @@ impl OrgRepo {
         .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
+
         if affected.rows_affected() == 0 {
             return Err(Error::NotFound("person".into()));
         }
@@ -121,9 +122,11 @@ impl OrgRepo {
         .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
+
         if affected.rows_affected() == 0 {
             return Err(Error::NotFound("person".into()));
         }
+
         sqlx::query!(
             r#"
             UPDATE org.team_memberships SET end_date = CURRENT_DATE
@@ -136,7 +139,9 @@ impl OrgRepo {
         .execute(&mut *tx)
         .await
         .map_err(Error::from)?;
+
         tx.commit().await.map_err(Error::from)?;
+
         Ok(())
     }
 

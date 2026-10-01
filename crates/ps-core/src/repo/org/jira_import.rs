@@ -92,14 +92,23 @@ impl OrgRepo {
             let imported = Management::Imported;
             let saved = sqlx::query_scalar!(
                 r#"
-                INSERT INTO org.platform_identities (id, person_id, platform, platform_username, platform_user_id)
+                INSERT INTO org.platform_identities (id, person_id, platform,
+                                                     platform_username, platform_user_id)
                 SELECT i.id, i.person_id, i.platform, i.username, i.user_id
                 FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[])
                     AS i(id, person_id, platform, username, user_id)
-                WHERE NOT EXISTS (SELECT 1 FROM org.identity_resolutions ir WHERE ir.person_id = i.person_id AND ir.platform = i.platform AND ir.status = 'manual')
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM org.identity_resolutions ir
+                    WHERE ir.person_id = i.person_id
+                      AND ir.platform = i.platform
+                      AND ir.status = 'manual'
+                )
                   AND NOT EXISTS (
-                    SELECT 1 FROM org.platform_identities pi
-                    WHERE pi.platform = i.platform AND pi.platform_user_id = i.user_id
+                    SELECT 1
+                    FROM org.platform_identities pi
+                    WHERE pi.platform = i.platform
+                      AND pi.platform_user_id = i.user_id
                       AND pi.platform_username <> i.username
                 )
                 ON CONFLICT (platform, platform_username)
@@ -107,12 +116,18 @@ impl OrgRepo {
                 WHERE org.platform_identities.management = $6
                   AND org.platform_identities.person_id = EXCLUDED.person_id
                 RETURNING id
-                "#, &ids, &person_ids, &platforms, &usernames, &user_ids, imported as Management
-            ).fetch_all(&mut *tx).await.map_err(|error| {
-                if error.as_database_error().is_some_and(sqlx::error::DatabaseError::is_unique_violation) {
-                    Error::Conflict("Jira account ownership conflict; no accounts were imported".into())
-                } else { Error::from(error) }
-            })?;
+                "#,
+                &ids,
+                &person_ids,
+                &platforms,
+                &usernames,
+                &user_ids,
+                imported as Management,
+            )
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(import_error)?;
+
             mapped_count = i32::try_from(saved.len()).unwrap_or(i32::MAX);
             let skipped = ids.len() - saved.len();
             if skipped > 0 {
@@ -141,6 +156,7 @@ impl OrgRepo {
         }
 
         tx.commit().await.map_err(Error::from)?;
+
         Ok((mapped_count, unmatched_count, warnings))
     }
 }
@@ -166,12 +182,14 @@ fn unique_records(records: &[crate::directory::JiraUserRecord]) -> JiraCandidate
             .or_default()
             .insert(email);
     }
+
     let mut result = JiraCandidates {
         records: Vec::new(),
         skipped: 0,
         warnings: Vec::new(),
     };
     let mut seen = std::collections::HashSet::new();
+
     for record in records {
         let email = record.email.trim().to_lowercase();
         if accounts_by_email
@@ -191,5 +209,17 @@ fn unique_records(records: &[crate::directory::JiraUserRecord]) -> JiraCandidate
             result.records.push(record);
         }
     }
+
     result
+}
+
+fn import_error(error: sqlx::Error) -> Error {
+    if error
+        .as_database_error()
+        .is_some_and(sqlx::error::DatabaseError::is_unique_violation)
+    {
+        Error::Conflict("Jira account ownership conflict; no accounts were imported".into())
+    } else {
+        Error::from(error)
+    }
 }

@@ -23,8 +23,10 @@ export const JiraAccountFields = ({
   const [search, setSearch] = useState("");
   const [startAt, setStartAt] = useState(0);
   const [manuallySupplied, setManuallySupplied] = useState(false);
+
   const query = useDebouncedValue(search);
   const lookup = useLookupJiraAccounts(sourceId, query, startAt);
+
   const enabledSources = sources.filter((source) => source.enabled);
   const prefix = `account-${account.key}`;
 

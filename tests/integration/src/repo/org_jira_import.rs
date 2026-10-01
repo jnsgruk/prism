@@ -5,6 +5,7 @@ use ps_core::repo::org::CreatePersonParams;
 #[tokio::test]
 async fn jira_csv_skips_ambiguous_batch_claims_and_preserves_unrelated_rows() {
     let ctx = RepoTestContext::new().await;
+
     for name in ["alice", "bob", "carol", "valid"] {
         ctx.repos
             .org
@@ -18,6 +19,7 @@ async fn jira_csv_skips_ambiguous_batch_claims_and_preserves_unrelated_rows() {
             .await
             .unwrap();
     }
+
     let records: Vec<_> = [
         ("alice", "first"),
         ("alice", "second"),
@@ -34,10 +36,13 @@ async fn jira_csv_skips_ambiguous_batch_claims_and_preserves_unrelated_rows() {
     })
     .collect();
     let (mapped, unmatched, warnings) = ctx.repos.org.import_jira_users(&records).await.unwrap();
+
     assert_eq!(mapped, 1);
     assert_eq!(unmatched, 4);
     assert_eq!(warnings.len(), 4);
+
     let export = ctx.repos.org.export_org().await.unwrap();
+
     for person in export.people {
         if person.name == "valid" {
             assert_eq!(
@@ -48,5 +53,6 @@ async fn jira_csv_skips_ambiguous_batch_claims_and_preserves_unrelated_rows() {
             assert!(person.identities.is_empty());
         }
     }
+
     ctx.teardown().await;
 }
