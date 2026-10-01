@@ -4,6 +4,26 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Reserve pipeline admission before durable dispatch
+
+**Context:** Checking for an active workflow before dispatch allowed concurrent launches, and a lost Restate acknowledgement left the caller unsure whether work had started. Time-based run association could include unrelated scheduled work.
+
+**Decision:** Reserve one globally admitted pipeline in PostgreSQL, persist the request and caller before dispatch, and use its UUID as a retry-safe Restate workflow key. Deliver through a leased recoverable outbox. Track exact invocation ownership for coordinators, chunks, processing, and detached continuations; expose cancellation as pending until owned work stops.
+
+**Rationale:** Database uniqueness closes admission races, stable workflow keys prevent duplicate work after uncertain delivery, and explicit ownership isolates cancellation and history from concurrently scheduled jobs. Preserve partial writes for reruns and keep the Person release gate closed until adapter and processing safety is verified.
+
+---
+
+## 2026-10-01 — Freeze pipeline scope and preserve legacy workflow journals
+
+**Context:** Ingestion accepted a date string and selected work by platform, which cannot safely identify one saved person across multiple configured sources or survive configuration changes during a durable run.
+
+**Decision:** Share typed All/Person scope, saved source and identity snapshots, a frozen run boundary, and an explicit processing scope in `ps-core`. Accept only saved IDs from API callers. Reserve admission durably before dispatch and recover the same workflow UUID. Track explicit descendant ownership, using Restate ancestry for missing or legacy registry entries, and release admission only after owned work stops. Preserve the distinction between user cancellation and an unexpectedly failed root. Introduce versioned scoped workflow/object entrypoints while retaining legacy arguments and optional chunk defaults. Keep Person capability disabled until scoped adapters and processing exist; require Jira Cloud opaque account IDs and exact Discourse instances.
+
+**Rationale:** Durable snapshots preserve the admitted ownership and selected configurations across retries. Separate discovery from event-time eligibility so old parent PRs do not hide newer reviews. Versioned entrypoints preserve existing Restate replay contracts, and the processing boundary prevents a narrow ingestion request from silently expanding to global work.
+
+---
+
 ## 2026-10-01 — Jira ownership by account ID, with repeatable display labels
 
 **Context:** Jira lookup returns nonunique display names. Saving them under the global username constraint rejected distinct accounts with identical names.
