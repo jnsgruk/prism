@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method,\n                   pipeline_id\n            FROM activity.ingestion_runs\n            WHERE pipeline_id = ANY($1)\n              AND source_name != '_pipeline'\n            ORDER BY started_at ASC\n            ",
+  "query": "\n            SELECT id, source_name, started_at, completed_at, status,\n                   items_collected, error_message, handler_name, handler_method,\n                   pipeline_id, progress\n            FROM activity.ingestion_runs\n            WHERE status = 'running'\n            ORDER BY started_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -112,12 +112,21 @@
             "name": "pipeline_id"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "progress",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.ingestion_runs",
+            "name": "progress"
+          }
+        }
       }
     ],
     "parameters": {
-      "Left": [
-        "UuidArray"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -129,8 +138,9 @@
       true,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "e939a37b1044665ea9a862cf5f6022d72b8fbf218ebe0de1b1ba43bddc7bcd7a"
+  "hash": "07b2125227809318fe030e45cc467bb28037efff5aafd1919cd3f838d519a1ce"
 }

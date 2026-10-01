@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.pipelines\n            SET dispatch_acknowledged = true,\n                current_invocation_id = COALESCE(current_invocation_id, $2)\n            WHERE id = $1 AND status IN ('pending', 'running', 'cancelling')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5dd73264f229b68f33c17c6ccd0372cd0155c7470a6d9b49f2d5b2293b4e3fef"
+}

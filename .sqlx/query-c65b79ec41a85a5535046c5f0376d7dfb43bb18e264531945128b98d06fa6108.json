@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invocation_id FROM activity.pipeline_invocations WHERE pipeline_id = $1 ORDER BY registered_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invocation_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.pipeline_invocations",
+            "name": "invocation_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c65b79ec41a85a5535046c5f0376d7dfb43bb18e264531945128b98d06fa6108"
+}

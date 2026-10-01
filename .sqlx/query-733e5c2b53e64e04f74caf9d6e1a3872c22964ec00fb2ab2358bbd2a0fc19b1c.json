@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT (status IN ('pending', 'running') AND NOT cancellation_requested) AS \"active!\"\n            FROM activity.pipelines WHERE id = $1 FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "active!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "733e5c2b53e64e04f74caf9d6e1a3872c22964ec00fb2ab2358bbd2a0fc19b1c"
+}
