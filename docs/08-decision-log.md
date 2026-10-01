@@ -4,6 +4,28 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Allow ingestion API work to finish before requesting suspension
+
+**Context:** A live person backfill repeatedly suspended under the cluster's
+five-second inactivity timeout. Scoped reads outside `ctx.run()` re-fetched
+committed pages on every replay, consuming API quota and making progress appear
+to move backwards while only one new journal step completed per attempt.
+
+**Decision:** Advertise a 15-minute inactivity timeout on `IngestionChunkService`
+and use the same configured service definition in production and real Restate
+tests. Restate 1.6 exposes this override at service level. Preserve the global
+default for other handlers and the existing abort grace. Apply the same
+timeout-only service patch to active deployments without changing journals.
+
+**Rationale:** Provider reads, sequential diff requests and transient retries need
+time between journal entries. Giving them a longer window removes avoidable
+replay while preserving explicit durable sleep, retry and restart behavior.
+Changing timeout metadata avoids interrupting the current run or journaling
+provider bodies and secrets. Delayed-page integration coverage checks completion
+and exactly one provider request per page under a short server default.
+
+---
+
 ## 2026-10-01 — Bind shared enrichment writes to current queued inputs
 
 **Context:** A shared AI batch can overlap a person backfill that changes its

@@ -202,6 +202,30 @@ affected global chunks/coordinators before deploying changed review pagination o
 chunk-counting behavior; do not wipe unrelated Restate journals. No active
 invocations were present in the local cluster during this adapter rollout.
 
+`IngestionChunkServiceImpl` binds a 15-minute service inactivity timeout. The
+cluster's five-second default requests suspension after a gap in journal
+entries; it is not a delay before resuming a waiting handler. Scoped API reads,
+sequential diff fetches and transient retry delays can exceed that default.
+Repeated suspension then re-fetches earlier pages while replaying the chunk,
+wasting API quota and temporarily regressing best-effort progress. The longer
+window lets ordinary pages finish while retaining the ten-minute abort grace
+after suspension is requested. Restate 1.6 supports a service-level override,
+so it applies to both chunk entrypoints; other handlers retain their defaults.
+
+For an already registered worker, patch only the chunk service configuration:
+`PATCH /services/IngestionChunkService` with `{"inactivity_timeout":"15m"}`.
+An executing attempt retains its previous timer until it next resumes; the live
+backfill needed one final replay before the new window took effect.
+Re-discovery picks up the same setting from the worker's service definition.
+This timeout-only change preserves handler names, requests and journal positions;
+it requires no cancellation, worker restart or journal reset. Real Restate tests
+use a one-second server default and delayed provider pages, asserting that each
+page is fetched once and that the chunk completes successfully. Genuine worker
+restarts and durable rate-limit sleeps may still require safe API re-fetches.
+Short durable sleeps can keep an attempt connected within the longer window;
+replay and cancellation tests explicitly shorten the service timeout to exercise
+suspension without extending their test timers.
+
 ## Admission, Delivery and Cancellation
 
 Admin launches reserve an `activity.pipelines` row before submitting work to
