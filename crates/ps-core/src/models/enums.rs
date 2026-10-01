@@ -366,8 +366,10 @@ impl FromStr for PeriodType {
 /// The cursor JSON field name that holds the watermark value for a source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WatermarkField {
-    /// Used by GitHub and Jira sources.
+    /// Used by Jira sources.
     MaxUpdatedAt,
+    /// GitHub publishes coverage only after all search and review pages finish.
+    CompletedMaxUpdatedAt,
     /// Used by Discourse sources.
     MaxBumpedAt,
 }
@@ -376,6 +378,7 @@ impl WatermarkField {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::MaxUpdatedAt => "max_updated_at",
+            Self::CompletedMaxUpdatedAt => "completed_max_updated_at",
             Self::MaxBumpedAt => "max_bumped_at",
         }
     }

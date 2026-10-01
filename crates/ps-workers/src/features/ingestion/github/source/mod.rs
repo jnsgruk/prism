@@ -71,6 +71,9 @@ pub(super) struct Cursor {
     pub(super) repos: Vec<RepoTarget>,
     /// Track the latest `updated_at` timestamp seen across all items.
     pub(super) max_updated_at: Option<String>,
+    /// Global coverage is withheld until discovery and every review page finish.
+    #[serde(default)]
+    completed_max_updated_at: Option<String>,
     /// Configured org names (needed for member search query building).
     pub(super) orgs: Vec<String>,
     // -- MemberSearch phase fields --
@@ -142,6 +145,7 @@ impl Source for GitHubSource {
             watermark: plan.watermark.clone(),
             repos: plan.repos.clone(),
             max_updated_at: plan.watermark.clone(),
+            completed_max_updated_at: None,
             orgs: vec![],
             search_user_index: 0,
             search_graphql_cursor: None,
@@ -162,6 +166,10 @@ impl Source for GitHubSource {
             ];
         }
         serde_json::to_string(&cursor).unwrap_or_default()
+    }
+
+    fn watermark_field(&self) -> ps_core::models::WatermarkField {
+        ps_core::models::WatermarkField::CompletedMaxUpdatedAt
     }
 }
 
@@ -227,6 +235,7 @@ mod tests {
                 repo: "lxd".into(),
             }],
             max_updated_at: Some("2025-01-10T12:00:00Z".into()),
+            completed_max_updated_at: None,
             orgs: vec!["canonical".into()],
             search_user_index: 0,
             search_graphql_cursor: None,
@@ -263,7 +272,7 @@ mod tests {
             "graphql_cursor": null,
             "watermark": null,
             "repos": [],
-            "max_updated_at": null,
+            "max_updated_at": "2025-01-10T12:00:00Z",
             "orgs": [],
             "search_user_index": 0,
             "search_graphql_cursor": null,
@@ -274,6 +283,11 @@ mod tests {
 
         let cursor: Cursor = serde_json::from_str(json).unwrap();
         assert!(cursor.failed_items.is_empty());
+        assert!(cursor.completed_max_updated_at.is_none());
+        assert_eq!(
+            cursor.max_updated_at.as_deref(),
+            Some("2025-01-10T12:00:00Z")
+        );
     }
 
     #[test]
@@ -285,6 +299,7 @@ mod tests {
             watermark: None,
             repos: vec![],
             max_updated_at: None,
+            completed_max_updated_at: None,
             orgs: vec![],
             search_user_index: 2,
             search_graphql_cursor: Some("cursor456".into()),

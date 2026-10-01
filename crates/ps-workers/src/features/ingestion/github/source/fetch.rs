@@ -33,15 +33,30 @@ pub(super) async fn fetch_batch_impl(
         super::person::validate_cursor(ctx, person)?;
     }
 
-    if !cur.pending_reviews.is_empty() {
-        return super::reviews::fetch(ctx, &mut cur).await;
+    let mut result = if cur.pending_reviews.is_empty() {
+        match cur.phase {
+            IngestionPhase::TeamRepos => fetch_team_repos(ctx, &mut cur).await?,
+            IngestionPhase::MemberSearch => fetch_member_search(ctx, &mut cur).await?,
+            IngestionPhase::PersonSearch => super::person::fetch(ctx, &mut cur).await?,
+        }
+    } else {
+        super::reviews::fetch(ctx, &mut cur).await?
+    };
+
+    if ctx.advances_global_watermark()
+        && result.next_cursor.is_none()
+        && cur.pending_reviews.is_empty()
+        && cur.failed_items.is_empty()
+    {
+        // Another repository can contain older PRs, so even an exhausted
+        // current review queue cannot make the source-wide maximum safe yet.
+        // Return the completed cursor for coordinator finalization, after all
+        // contribution stores have committed successfully.
+        cur.completed_max_updated_at = cur.max_updated_at.clone();
+        result.etag = Some(serialise_cursor(&cur)?);
     }
 
-    match cur.phase {
-        IngestionPhase::TeamRepos => fetch_team_repos(ctx, &mut cur).await,
-        IngestionPhase::MemberSearch => fetch_member_search(ctx, &mut cur).await,
-        IngestionPhase::PersonSearch => super::person::fetch(ctx, &mut cur).await,
-    }
+    Ok(result)
 }
 
 /// Fetch PRs + reviews for team repos using GraphQL search.

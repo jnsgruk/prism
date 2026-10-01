@@ -5,6 +5,9 @@ use std::process::Command;
 use std::time::Duration;
 
 use ps_core::repo::Repos;
+use ps_workers::features::ingestion::github::handler::{
+    GithubIngestionHandler, GithubIngestionHandlerImpl,
+};
 use ps_workers::features::ingestion::jira::handler::{
     JiraIngestionHandler, JiraIngestionHandlerImpl,
 };
@@ -139,6 +142,28 @@ impl RestateTestContext {
                 self.ingress, request.source.source_id
             ))
             .json(request)
+            .send()
+            .await
+            .unwrap();
+        let status = response.status();
+        let body: Value = response.json().await.unwrap();
+        assert!(
+            status.is_success(),
+            "coordinator send failed: {status} {body}"
+        );
+        body.get("invocationId")
+            .and_then(Value::as_str)
+            .unwrap()
+            .into()
+    }
+
+    pub async fn send_github_coordinator(&self, source_key: &str) -> String {
+        let response = self
+            .client
+            .post(format!(
+                "{}/GithubIngestionHandler/{source_key}/run_ingestion/send",
+                self.ingress
+            ))
             .send()
             .await
             .unwrap();
@@ -360,7 +385,13 @@ fn start_worker(
                 }
                 .serve(),
             )
-            .bind(JiraIngestionHandlerImpl { state }.serve())
+            .bind(
+                JiraIngestionHandlerImpl {
+                    state: state.clone(),
+                }
+                .serve(),
+            )
+            .bind(GithubIngestionHandlerImpl { state }.serve())
             .build();
         HttpServer::new(endpoint)
             .serve_with_cancel(listener, stopped)
