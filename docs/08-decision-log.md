@@ -47,6 +47,28 @@ logs improve diagnosis without redesigning or modifying the live deployment.
 
 ---
 
+## 2026-10-01 — Render workspace PDFs with React-PDF and PDF.js
+
+**Context:** The Ask workspace sidebar did not render PDFs, and an expanded
+sandboxed iframe showed a broken-document view in Chrome for a reported PDF.
+The browser viewer/sandbox was a suspected contributor; its role was not
+verified as the root cause.
+
+**Decision:** Use a lazy feature-local React-PDF renderer in both the sidebar
+and expanded Base UI dialog. Bundle the matching PDF.js worker and supporting
+assets locally. Own document/page state and Blob lifetime in a feature-local
+hook, reuse the authenticated streaming download, and render only the selected
+page on the visible surface.
+
+**Rationale:** Application-owned rendering provides consistent navigation,
+zoom, selectable text, loading/error states and downloadable fallbacks without
+depending on a browser PDF plugin. A single-page viewer bounds rendering work;
+unmounting the hidden surface avoids duplicate canvases. Local worker/assets
+keep production delivery independent of external CDNs. Password entry and
+interactive PDF features remain outside V1.
+
+---
+
 ## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
 
 **Context:** A completed person ingestion/enrichment pipeline repeatedly failed

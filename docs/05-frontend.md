@@ -91,3 +91,58 @@ person's pipeline cannot populate the dialog. A retained submission UUID makes
 failed-launch retries repeat the same intent. Pending and cancelling pipelines
 also keep the global controls active; cancellation success means requested,
 with terminal cancellation displayed after the server reconciles owned work.
+
+
+## Ask workspace PDF previews
+
+PDFs render through the feature-local `WorkspacePdfPreview` in
+`views/ask/components/`, backed by React-PDF and PDF.js. The renderer loads
+lazily behind loading and error fallbacks, uses the authenticated workspace
+download's Blob URL, and displays one selected page with selectable text.
+The sidebar fits pages to its resizable width; the expanded Base UI dialog adds
+zoom and fit-to-width controls, with page overflow scrolling inside the viewer.
+Zoom percentages multiply the fitted width, so zooming in/out grows/shrinks the
+page at every container size; reopening starts in fit-to-width.
+Image and text previews continue using their existing rendering paths.
+
+`useWorkspacePreview` owns the selected conversation/path, Blob URL, page and
+page count. Expanding reuses that document and preserves navigation in both
+directions. A different document/conversation, preview close, sidebar close or
+unmount invalidates pending downloads and text decoding. Discarded results are
+revoked; published URLs are released after React removes their consumers. The
+sidebar PDF renderer unmounts while the dialog is open, and the dialog renderer
+unmounts on close, retaining the parent's page and URL for the sidebar.
+
+PDF.js and its matching worker come from the same installed dependency. Vite
+bundles the worker locally and copies CMaps, standard fonts, WASM and ICC profiles
+into `pdf-assets/` for both development and production static delivery. Preview
+rendering does not require a CDN or the browser's built-in PDF plugin. Document
+JavaScript and interactive annotation/form rendering are disabled.
+
+Empty, invalid, unsupported and password-protected documents show a clear
+fallback with Download. Page rendering failures retain page navigation and
+Download. Password entry, continuous scrolling, thumbnails, search, printing
+and the browser Fullscreen API are outside this single-page preview scope.
+
+### Validation evidence (2026-10-01)
+
+An isolated browser harness using the real workspace sidebar, preview dialog
+and image caller passed in Chromium 153.0.8010.12, Firefox 155.0 and Playwright
+WebKit 26.6, against both development delivery and a production build served
+with the repository's Caddy configuration (Caddy 2.11.4). Workspace API hooks
+were replaced with synthetic downloads; this proves preview behavior and asset
+delivery, not the live RPC authentication/transport or deployment.
+
+Fixtures covered single/multi-page, portrait/landscape, scanned image-only,
+embedded Greek/Cyrillic fonts, an 80-page document, invalid/empty/password files
+and missing files. Checks covered actual nonblank canvases, selectable text,
+page boundaries, page preservation, one download on expansion, fit-relative
+zoom, sidebar resizing, a 247-character filename at a 375×320 viewport, keyboard
+focus/Escape/close, stale selections, conversation changes, close while loading,
+repeated URL cleanup, sidebar reopen, image/text/inline-image previews and ZIP
+download. PDF resources stayed local; production worker/CMap/font/WASM/ICC
+probes matched built asset bytes rather than SPA HTML.
+
+Playwright WebKit is engine evidence, not an actual Safari run. Actual Safari
+and branded Chrome verification remain pre-merge acceptance checks; the
+reported private PDF was not inspected or copied into fixtures.
