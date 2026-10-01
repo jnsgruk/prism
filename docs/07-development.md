@@ -40,6 +40,27 @@ Test infrastructure lives in `tests/integration/src/`:
 - `common/server.rs` — TestServer, ApiTestContext
 - `common/wiremock_helpers.rs` — SourceTestContext + mock response builders
 - `common/fixtures.rs` — `create_admin_user()` and other data builders
+- `common/restate.rs` — ephemeral Restate 1.6 container and restartable SDK worker
+
+`SourceTestContext::with_person_scope()` creates an active saved person without
+team membership, its source identity, an admitted immutable snapshot and an owned
+run. Adapter and storage fixtures use this scope with real PostgreSQL and
+Wiremock, including conflicting actors, unchanged global watermarks, stable
+contribution IDs, transaction rollback and timestamp-change manifests.
+
+`source/scoped_chunks.rs` and `source/scoped_coordinator.rs` also run the actual
+ingestion service and coordinator through Restate, using encrypted fake
+credentials. Docker must be able to pull
+`docker.io/restatedev/restate:1.6`; dynamically assigned ingress/admin ports and a
+host-gateway connection reach the in-process SDK endpoint. The fixture owns and
+removes its container, leaving the Tilt cluster and unrelated invocations alone.
+Its tests cover empty-page chunk bounds, durable rate-limit sleep, endpoint
+restart/replay, cancellation ownership, legacy All ingestion and coordinator
+finalization for successful, empty, partially failed and fully failed runs.
+Journal checks inspect full `entry_json` payloads for v2 entries (whose `raw`
+column is null in Restate 1.6) and decode their byte arrays; v1 entries use `raw`.
+Positive snapshot/checkpoint assertions make the checks non-vacuous, and API
+bodies and plaintext credentials must be absent from these persisted payloads.
 
 ### Frontend Tests
 

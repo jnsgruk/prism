@@ -50,6 +50,19 @@ Pipeline invocation ownership survives deletion of run history. The optional
 so ResetData can delete ingestion runs while retaining exact invocation IDs and
 parent relationships needed for cancellation and recovery.
 
+`activity.contribution_changes` stores person-import provenance separately from
+replaceable contribution metadata. Each changed natural key retains its existing
+contribution UUID and records source, pipeline and ingestion-run IDs, previous
+and current attribution/timestamps/metric inputs, and affected UTC weeks, months
+and quarters. A content hash makes replay recording idempotent. Deleting run
+history nulls its run reference; resetting contribution data cascades its change
+records. Scoped contribution upserts, eligible enrichment/embedding queues and
+change records share a transaction, with saved identity/person ownership and
+pipeline cancellation revalidated under row locks. Advisory natural-key locks
+also cover ordinary contribution writers. Only provenance-backed Discourse-like
+operations can correct `created_at`; ordinary upserts retain authoritative time
+and action evidence.
+
 ## Encrypted Secrets
 
 Source credentials (API tokens) are stored encrypted in `config.secrets` using AES-256-GCM. Only `PS_SECRET_KEY` (256-bit, base64-encoded) comes from environment. All other configuration is managed through the admin UI via gRPC.
