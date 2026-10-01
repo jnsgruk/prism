@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH RECURSIVE team_tree AS (\n                SELECT id FROM org.teams WHERE id = $2\n                UNION ALL\n                SELECT team.id FROM org.teams team\n                JOIN team_tree parent ON team.parent_team_id = parent.id\n            ),\n            contributions AS (\n                SELECT c.id, c.platform, c.platform_id\n                FROM activity.contributions c\n                WHERE c.created_at >= $3::date::timestamptz\n                    AND c.created_at < ($4::date + INTERVAL '1 day')::timestamptz\n                    AND EXISTS (\n                        SELECT 1 FROM org.team_memberships member\n                        JOIN team_tree team ON team.id = member.team_id\n                        WHERE member.person_id = c.person_id\n                            AND member.start_date <= $4\n                            AND (member.end_date IS NULL OR member.end_date > $4)\n                    )\n            ),\n            sources AS (\n                SELECT enrichment.id\n                FROM reasoning.enrichments enrichment\n                JOIN contributions c ON c.id = enrichment.contribution_id\n                UNION\n                SELECT depth.id\n                FROM contributions pr\n                JOIN reasoning.enrichments significance\n                    ON significance.contribution_id = pr.id\n                    AND significance.enrichment_type = 'significance'\n                JOIN activity.contributions review ON review.platform = pr.platform\n                    AND COALESCE(review.metadata->>'pr_platform_id', review.metrics->>'pr_platform_id') = pr.platform_id\n                    AND review.contribution_type = 'pr_review'\n                JOIN reasoning.enrichments depth ON depth.contribution_id = review.id\n                    AND depth.enrichment_type = 'review_depth'\n                WHERE review.created_at >= $3::date::timestamptz\n                    AND review.created_at < ($4::date + INTERVAL '1 day')::timestamptz\n            )\n            INSERT INTO reasoning.insight_snapshot_sources (snapshot_id, enrichment_id)\n            SELECT $1, id FROM sources\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a44a1474ce6c996264e646eebc43db95c9d465d7ae3bbfbd8db39a7d5118d8bd"
+}

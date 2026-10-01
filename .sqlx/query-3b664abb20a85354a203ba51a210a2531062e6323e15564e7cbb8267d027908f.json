@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT start_date FROM org.team_memberships WHERE person_id=$1 ORDER BY start_date",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "org.team_memberships",
+            "name": "start_date"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3b664abb20a85354a203ba51a210a2531062e6323e15564e7cbb8267d027908f"
+}

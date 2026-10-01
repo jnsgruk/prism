@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT significant_count,raw_insights FROM reasoning.insight_snapshots WHERE team_id=$1 AND period_type='month' AND period_start='2025-05-01'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "significant_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "reasoning.insight_snapshots",
+            "name": "significant_count"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "raw_insights",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "reasoning.insight_snapshots",
+            "name": "raw_insights"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "923768c5773d3ce338fdc228d495f3cfd0803f3cac017eca5270cec16403cb88"
+}

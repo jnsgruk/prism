@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activity.contributions SET state=$2,metrics='{}' WHERE id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eec6e4d51525bd7c32f97d6d0378d1a8d2878bd13ef5568a71c808c390adb7aa"
+}

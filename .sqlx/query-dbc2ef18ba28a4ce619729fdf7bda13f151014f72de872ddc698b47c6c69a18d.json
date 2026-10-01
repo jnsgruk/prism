@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM reasoning.insight_snapshot_sources WHERE snapshot_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dbc2ef18ba28a4ce619729fdf7bda13f151014f72de872ddc698b47c6c69a18d"
+}

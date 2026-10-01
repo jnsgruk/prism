@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, previous_created_at, current_created_at, affected_periods FROM activity.contribution_changes WHERE contribution_id=$1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "previous_created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "previous_created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "current_created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "current_created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "affected_periods",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.contribution_changes",
+            "name": "affected_periods"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "735a2e649a9489f38ecbe5271c2a4428479a45fc0799fd50de9e350abb5a8db0"
+}

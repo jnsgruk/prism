@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM reasoning.enrichments WHERE contribution_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4345c5878a6c4633b4980f8be484d23ccd19c8785192e5eabd4723bd30ac125c"
+}

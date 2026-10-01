@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activity.pipelines SET status='cancelled',cancellation_requested=true,completed_at=now() WHERE id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e03be889b3ee4a4f59d6f3b61546e172e4dde178a56d94de8f56b9411fc2de33"
+}

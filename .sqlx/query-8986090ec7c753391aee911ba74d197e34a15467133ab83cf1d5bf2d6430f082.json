@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.identity_discovery_coverage\n                (source_id, identity_id, identity_version, initial_since)\n            SELECT $1, input.identity_id, input.version, $2\n            FROM UNNEST($3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::text[], $8::text[])\n                AS input(identity_id, person_id, platform, username, user_id, version)\n            JOIN org.platform_identities pi ON pi.id = input.identity_id\n                AND pi.person_id = input.person_id\n                AND pi.platform = input.platform\n                AND pi.platform_username = input.username\n                AND pi.platform_user_id IS NOT DISTINCT FROM input.user_id\n            JOIN org.people p ON p.id = pi.person_id AND p.active\n            JOIN config.source_configs source ON source.id = $1 AND source.enabled\n                AND source.source_type = pi.platform\n            ON CONFLICT (source_id, identity_id) DO UPDATE\n            SET initial_since = CASE\n                    WHEN identity_discovery_coverage.identity_version = EXCLUDED.identity_version\n                    THEN identity_discovery_coverage.initial_since\n                    ELSE EXCLUDED.initial_since\n                END,\n                covered_through = CASE\n                    WHEN identity_discovery_coverage.identity_version = EXCLUDED.identity_version\n                    THEN identity_discovery_coverage.covered_through\n                    ELSE NULL\n                END,\n                identity_version = EXCLUDED.identity_version,\n                updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8986090ec7c753391aee911ba74d197e34a15467133ab83cf1d5bf2d6430f082"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activity.contributions SET created_at=$2,closed_at=$2 WHERE id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88363085f5124765ebc3ef901b47dfe7b9c84ed20aa3084b7fd92415a2e221d8"
+}
