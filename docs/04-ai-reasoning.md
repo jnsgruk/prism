@@ -19,6 +19,19 @@ The model catalogue (`ModelCatalogueHandler`, a Restate service) fetches availab
 
 Enrichments are fire-and-forget from ingestion — triggered as downstream handlers after successful data ingestion.
 
+Queue processing captures the queue ID and source content hash alongside its
+input. Bulk and individual retry writes acquire ingestion's natural-key locks,
+then contribution and queue locks in consistent order, and save only results whose captured queue ID and content hash still match.
+`reasoning.enrichments.source_content_hash` records this provenance separately
+from the formatted prompt's `input_hash`. Selection and cleanup require matching
+source hashes for every applicable type. Cleanup acquires the same locks and
+rechecks hashes and PR size eligibility after waiting for concurrent ingestion.
+Queue upserts also order contribution IDs to avoid reversed batch lock order.
+A response arriving after an input
+change is discarded and does not count as committed; the replacement remains
+queued and keeps historical insight invalidations pending. Legacy results with
+unknown source hashes cannot satisfy newly queued work.
+
 ## Embeddings and Similarity Search
 
 Embeddings are computed by `EmbeddingHandler` (Restate service) using Rig's `EmbeddingModel` trait. Vectors are stored in the `reasoning` schema using pgvector with IVFFlat indexes for approximate nearest-neighbour queries.

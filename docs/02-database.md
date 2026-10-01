@@ -91,6 +91,12 @@ past deferred events. Bulk baseline creation validates active saved accounts and
 exact source/platform bounds. Account/policy changes reset the baseline and
 completed cutoff together.
 
+`reasoning.enrichments.source_content_hash` binds queue-generated AI output to
+its structured source input. Queue IDs and hashes are validated under
+contribution/queue locks before persistence; queue cleanup requires matching
+hashes for every applicable enrichment type. Migration 0047 leaves unknown
+legacy provenance NULL so it cannot acknowledge replacement input.
+
 ## Encrypted Secrets
 
 Source credentials (API tokens) are stored encrypted in `config.secrets` using AES-256-GCM. Only `PS_SECRET_KEY` (256-bit, base64-encoded) comes from environment. All other configuration is managed through the admin UI via gRPC.

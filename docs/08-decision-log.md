@@ -4,6 +4,23 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Bind shared enrichment writes to current queued inputs
+
+**Context:** A shared AI batch can overlap a person backfill that changes its
+captured input. Deleting existing results during ingestion alone cannot stop a
+late old response from overwriting the new work and satisfying queue cleanup.
+
+**Decision:** Capture queue IDs and source hashes, serialize result writes with
+contribution and queue updates, and persist only matching results. Store source
+hash provenance independently of the prompt hash and require it during type
+selection and cleanup. Retain replacement work when stale responses arrive;
+unknown legacy provenance does not satisfy newly queued work.
+
+**Rationale:** Shared workers remain available while historical recovery can
+trust that a drained queue represents results for current input. This avoids
+holding database locks across provider calls and handles both bulk writes and
+individual fallback retries consistently.
+
 ## 2026-10-01 — Enable person pipelines with durable historical refresh and account coverage
 
 **Context:** Person adapters and atomic persistence were complete, but launches

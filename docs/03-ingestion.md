@@ -271,7 +271,11 @@ including manually added people without a team. It reuses the person adapters
 after ordinary repository/topic collection, retains source organisation,
 repository, category and access restrictions, and deduplicates overlapping
 natural keys. GitHub discovery covers authored PRs and review-only activity,
-including paginated reviews on other people's PRs. Discourse user actions find
+including paginated reviews on other people's PRs. Both ordinary member search
+and person discovery apply organisation bounds, bare/qualified repository
+exclusions and archive policy before conversion, diff fetching or review
+scheduling. Missing archive status leaves coverage incomplete when archived
+repositories are excluded. Discourse user actions find
 replies and likes on old topics even when their `bumped_at` is unchanged. Jira
 continues its existing project/date/current-assignee traversal using saved
 account IDs. Inactive people are excluded from new supplementary targets;
@@ -298,10 +302,12 @@ retain their own policy.
 
 ### Deploying this release
 
-Apply migrations 0044, 0045 and 0046 before updating the server/workers. Drain or
+Apply migrations 0044–0047 before updating the server/workers. Drain or
 cancel affected ingestion chunks/coordinators and scoped workflows before
 replacing the worker endpoint: the added identity checkpoint and source-outcome
-steps change journal positions. Keep legacy entrypoints registered for their
+steps change journal positions. Drain enrichment cycles/continuations before
+replacing workers as well: queue snapshots now capture source hashes and older
+workers lack guarded persistence and cleanup. Keep legacy entrypoints registered for their
 remaining invocations; retain journals for unrelated handlers. Re-register the
 updated deployment, then confirm the singleton historical recovery loop exists.
 No blanket Restate journal wipe is needed.
