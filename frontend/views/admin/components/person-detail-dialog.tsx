@@ -9,22 +9,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { platformLabel } from "@/lib/proto-display";
-import {
-  useUpdatePerson,
-  useDeactivatePerson,
-  useReactivatePerson,
-  useAssignPersonToTeam,
-  useRemovePersonFromTeam,
-} from "@/views/admin/hooks/use-admin";
-import { useState } from "react";
-import { toast } from "sonner";
+import { PersonAccounts } from "@/views/admin/components/person-accounts";
+import { PersonFields } from "@/views/admin/components/person-fields";
+import { useDeactivatePerson, useReactivatePerson } from "@/views/admin/hooks/use-admin";
+import { useSavePerson } from "@/views/admin/hooks/use-person-management";
+import { personDraft, validatePersonDraft } from "@/views/admin/lib/person-form";
+import { useRef, useState } from "react";
 
 import type { Person, Team } from "@ps/api/gen/canonical/prism/v1/org_pb";
+import { useListSources } from "@ps/hooks/use-config";
 
 export const PersonDetailDialog = ({
   person,
@@ -37,140 +31,74 @@ export const PersonDetailDialog = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement => {
-  const updatePerson = useUpdatePerson();
+  const baseline = useRef(person);
+  const [draft, setDraft] = useState(() => personDraft(person));
+  const [validationError, setValidationError] = useState<string>();
+  const sources = useListSources();
+  const save = useSavePerson();
   const deactivate = useDeactivatePerson();
   const reactivate = useReactivatePerson();
-  const assign = useAssignPersonToTeam();
-  const removeFromTeam = useRemovePersonFromTeam();
-
-  const [name, setName] = useState(person.name);
-  const [email, setEmail] = useState(person.email ?? "");
-  const [level, setLevel] = useState(person.level ?? "");
-  const [teamId, setTeamId] = useState(person.teamId ?? "");
-
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-
-    const mutations: Promise<unknown>[] = [];
-
-    const nameChanged = name !== person.name;
-    const emailChanged = email !== (person.email ?? "");
-    const levelChanged = level !== (person.level ?? "");
-    if (nameChanged || emailChanged || levelChanged) {
-      mutations.push(
-        updatePerson.mutateAsync({
-          personId: person.id,
-          name: nameChanged ? name : undefined,
-          email: emailChanged ? email : undefined,
-          level: levelChanged ? level : undefined,
-        }),
-      );
-    }
-
-    const teamChanged = teamId !== (person.teamId ?? "");
-    if (teamChanged) {
-      if (person.teamId) {
-        mutations.push(removeFromTeam.mutateAsync({ personId: person.id, teamId: person.teamId }));
-      }
-      if (teamId) {
-        mutations.push(assign.mutateAsync({ personId: person.id, teamId }));
-      }
-    }
-
-    if (mutations.length === 0) {
-      onOpenChange(false);
-      return;
-    }
-
-    try {
-      await Promise.all(mutations);
-      onOpenChange(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save changes");
-    }
+  const isPending = save.isPending || deactivate.isPending || reactivate.isPending;
+  const error = validationError ?? save.error?.message ?? deactivate.error?.message ?? reactivate.error?.message;
+  const handleSubmit = (event: React.FormEvent): void => {
+    event.preventDefault();
+    if (isPending) return;
+    const validation = validatePersonDraft(draft);
+    setValidationError(validation);
+    if (validation) return;
+    save.mutate(
+      {
+        baseline: baseline.current,
+        draft,
+        onProgress: (saved, added) => {
+          baseline.current = saved;
+          if (added)
+            setDraft((current) => ({
+              ...current,
+              accounts: current.accounts.map((account) =>
+                account.key === added.key ? { ...account, id: added.id } : account,
+              ),
+            }));
+        },
+      },
+      { onSuccess: () => onOpenChange(false) },
+    );
   };
-
-  const handleToggleActive = (): void => {
-    if (person.active) {
-      deactivate.mutate(person.id, { onSuccess: () => onOpenChange(false) });
-    } else {
-      reactivate.mutate(person.id, { onSuccess: () => onOpenChange(false) });
-    }
+  const toggleActive = (): void => {
+    const mutation = person.active ? deactivate : reactivate;
+    mutation.mutate(person.id, { onSuccess: () => onOpenChange(false) });
   };
-
-  const isPending = updatePerson.isPending || assign.isPending || removeFromTeam.isPending;
-  const mutationError = updatePerson.error ?? assign.error ?? removeFromTeam.error;
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!isPending) onOpenChange(value);
+      }}
+    >
+      <DialogContent className="min-w-0 sm:max-w-xl">
+        <form onSubmit={handleSubmit} noValidate className="min-w-0">
           <DialogHeader>
             <DialogTitle>{person.name}</DialogTitle>
             <DialogDescription>
-              Edit details, team assignment, and status.
+              Edit details, accounts, team assignment, and status.
               {!person.active && " This person is currently inactive."}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="person-name">Name</Label>
-              <Input id="person-name" value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="person-email">Email</Label>
-              <Input id="person-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="person-level">Level / Title</Label>
-              <Input id="person-level" value={level} onChange={(e) => setLevel(e.target.value)} />
-            </div>
-
+          <fieldset
+            disabled={isPending}
+            className="mt-4 min-w-0 space-y-4 max-h-[min(60vh,calc(100dvh-18rem))] overflow-y-auto"
+          >
+            <PersonFields draft={draft} onChange={setDraft} teams={teams} />
             <Separator />
-
-            <div className="space-y-2">
-              <Label htmlFor="person-team">Team</Label>
-              <Select value={teamId} onValueChange={(v) => v !== null && setTeamId(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No team">
-                    {teams.find((t) => t.id === teamId)?.name ?? "No team"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {person.identities.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Platform Identities</Label>
-                  <div className="space-y-1">
-                    {person.identities.map((id) => (
-                      <div
-                        key={`${id.platform}-${id.username}`}
-                        className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
-                      >
-                        <span className="font-medium">{platformLabel(id.platform, id.platformInstance)}</span>
-                        <span className="text-muted-foreground">{id.username}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
+            <PersonAccounts
+              accounts={draft.accounts}
+              onChange={(accounts) => setDraft({ ...draft, accounts })}
+              sources={sources.data ?? []}
+              sourceError={sources.error}
+            />
             <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-sm font-medium">{person.active ? "Deactivate" : "Reactivate"}</p>
                 <p className="text-sm text-muted-foreground">
                   {person.active
@@ -182,23 +110,21 @@ export const PersonDetailDialog = ({
                 type="button"
                 variant={person.active ? "destructive" : "outline"}
                 size="sm"
-                onClick={handleToggleActive}
-                disabled={deactivate.isPending || reactivate.isPending}
+                onClick={toggleActive}
+                disabled={isPending}
               >
                 {person.active ? "Deactivate" : "Reactivate"}
               </Button>
             </div>
-
-            {mutationError && (
-              <Alert variant="destructive">
-                {mutationError instanceof Error ? mutationError.message : "An error occurred"}
+            {error && (
+              <Alert variant="destructive" className="min-w-0 break-words">
+                {error}
               </Alert>
             )}
-          </div>
-
+          </fieldset>
           <DialogFooter className="mt-4">
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button type="submit" disabled={isPending || !name.trim()}>
+            <DialogClose render={<Button type="button" variant="outline" disabled={isPending} />}>Cancel</DialogClose>
+            <Button type="submit" disabled={isPending}>
               {isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
