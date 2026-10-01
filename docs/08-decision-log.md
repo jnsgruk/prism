@@ -4,6 +4,16 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Publish GitHub coverage after all review pages finish
+
+**Context:** A successful review continuation could advance the global update watermark while later pages were unfinished. A later failure discarded the cursor; fresh `updated:>` discovery then skipped the unchanged parent PR and permanently lost remaining reviews. Earlier repository pages can also have newer timestamps than subsequently discovered parents.
+
+**Decision:** Keep GitHub's observed update maximum in the cursor for progress, but publish a separate completion watermark only after successful source collection, with no pending reviews or failed targets. Jira and Discourse keep their existing incremental coverage policy. Drain affected old GitHub invocations before deployment because watermark journal steps change.
+
+**Rationale:** Source-wide coverage must describe completed collection across repositories and nested review pages. Restarting a failed run may refetch committed rows, which stable natural keys deduplicate, while Restate still resumes active chunks durably. This trades extra reads on fresh retries for complete recoverable history.
+
+---
+
 ## 2026-10-01 — Target saved accounts and commit scoped provenance atomically
 
 **Context:** Team/project/topic sweeps missed review-only and reply-only history and could widen a person's import. Discourse normal ingestion estimated likes at post creation time, making later historical corrections unauditable.

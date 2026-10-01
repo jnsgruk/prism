@@ -134,6 +134,11 @@ snapshot; Discourse continues using its frozen instance endpoint.
   page 2 and beyond. Only the actual selected author/reviewer and eligible event
   times emit contributions. Review totals use the API count; enrichment marks
   inline-comment truncation explicitly. Global ingestion also pages all reviews.
+  Its source-wide watermark is published only after successful completion of
+  all repository/member searches and review continuations. The observed
+  `max_updated_at` remains progress data; `completed_max_updated_at` is the
+  coverage checkpoint. Partial/failed runs retain the previous global watermark
+  so a fresh run rediscovers unchanged PRs and fills missing review pages.
 - **Jira Cloud:** every request combines configured projects with the saved
   opaque current-assignee account ID. Empty projects retain the all-accessible
   project meaning, restricted to that account. Quotes and backslashes are escaped.
@@ -181,7 +186,7 @@ journaled storage. Restart may repeat safe API reads. Completed pages consume
 their recorded store result and cursor even if the provider response changes or
 fails during replay. A changed unfinished page is rejected inside its journaled
 store step, so new writes cannot silently use different history. Legacy All
-fetch-result journals remain compatible with their existing wire shape. Drain
+fetch-result journals retain their existing wire shape. Drain
 affected global chunks/coordinators before deploying changed review pagination or
 chunk-counting behavior; do not wipe unrelated Restate journals. No active
 invocations were present in the local cluster during this adapter rollout.
@@ -319,7 +324,12 @@ Each source defines its own cursor struct (serialised to JSON). Cursors are opaq
 - **Jira**: Iterates projects, tracks project_index, next_page_token, max_updated_at, failed_items
 - **Discourse**: Iterates categories, tracks category_index, page, max_bumped_at
 
-**Incremental watermark advancement:** after each successful `store_batch()`, the watermark advances immediately. On retry, only the last incomplete batch needs re-fetching.
+**Watermark advancement:** Jira and Discourse advance coverage after successful
+batches. GitHub waits for successful source completion because repository searches
+can discover older PRs after newer ones, and review pagination can fail after a
+parent has been stored. Failed GitHub runs may refetch already committed rows;
+natural-key upserts keep those retries idempotent. Person runs never advance
+source-wide coverage.
 
 ### Finalisation Outcomes
 

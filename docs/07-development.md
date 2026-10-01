@@ -62,6 +62,12 @@ column is null in Restate 1.6) and decode their byte arrays; v1 entries use `raw
 Positive snapshot/checkpoint assertions make the checks non-vacuous, and API
 bodies and plaintext credentials must be absent from these persisted payloads.
 
+`source/github_review_recovery.rs` exercises global GitHub collection through
+the same runtime: a late review-page failure or a later repository failure must
+preserve the previous completed coverage fields. A fresh ordinary run must rediscover
+the unchanged PR, retain stable contribution IDs, fetch missing reviews and
+publish coverage only after successful source completion.
+
 ### Frontend Tests
 
 Vitest + React Testing Library + happy-dom. API mocking via `createRouterTransport` (Connect, in-memory, type-safe). Fresh `QueryClient` per test with `retry: false`.
