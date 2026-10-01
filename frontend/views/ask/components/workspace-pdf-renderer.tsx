@@ -96,7 +96,7 @@ const WorkspacePdfRenderer = ({
               <Page
                 key={`${selectedPage}-${width}-${numericScale}`}
                 pageNumber={selectedPage}
-                width={scale === "fit-width" ? width : undefined}
+                width={width}
                 scale={numericScale}
                 renderTextLayer
                 renderAnnotationLayer={false}

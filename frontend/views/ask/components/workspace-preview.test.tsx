@@ -120,8 +120,12 @@ describe("workspace PDF surfaces", () => {
     expect(pdf.onPageChange).toHaveBeenCalledWith(3);
     fireEvent.click(screen.getByRole("button", { name: "Zoom PDF in" }));
     expect(screen.getByTestId("pdf-renderer").textContent).toContain("scale 1.25");
+    expect(screen.getByLabelText("Zoom relative to fitted width").textContent).toBe("125% of fit");
     fireEvent.click(screen.getByRole("button", { name: "Fit PDF to width" }));
     expect(screen.getByTestId("pdf-renderer").textContent).toContain("fit-width");
+    fireEvent.click(screen.getByRole("button", { name: "Zoom PDF out" }));
+    expect(screen.getByTestId("pdf-renderer").textContent).toContain("scale 0.75");
+    expect(screen.getByLabelText("Zoom relative to fitted width").textContent).toBe("75% of fit");
     fireEvent.click(screen.getByRole("button", { name: "Download" }));
     expect(onDownload).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
@@ -140,6 +144,21 @@ describe("workspace PDF surfaces", () => {
       <WorkspacePreviewDialog state={state} open pdf={pdf} onOpenChange={onOpenChange} onDownload={onDownload} />,
     );
     expect(screen.getByTestId("pdf-renderer").textContent).toContain("fit-width");
+  });
+
+  it("keeps the full long filename accessible alongside download and close", () => {
+    const name = `${"very-long-report".repeat(16)}.pdf`;
+    render(
+      <WorkspacePreviewDialog
+        state={{ ...state, artifact: { ...state.artifact, displayName: name } }}
+        open
+        onOpenChange={vi.fn<(open: boolean) => void>()}
+        onDownload={vi.fn<() => void>()}
+      />,
+    );
+    expect(screen.getByRole("heading", { name }).getAttribute("title")).toBe(name);
+    expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close preview" })).toBeTruthy();
   });
 
   it("supports image and text dialog callers without PDF props", () => {

@@ -88,6 +88,22 @@ describe("workspace preview ownership", () => {
     expect(result.current.dialogOpen).toBe(false);
   });
 
+  it("releases a download resolved in the same batch as unmount before state commits", async () => {
+    const pending = deferred<ReturnType<typeof file>>();
+    download.mockReturnValue(pending.promise);
+    const { result, unmount } = renderHook(() => useWorkspacePreview("a", true));
+    let selection!: Promise<void>;
+    act(() => {
+      selection = result.current.select(artifact("a.pdf"));
+    });
+    await act(async () => {
+      pending.resolve(file("blob:uncommitted"));
+      await selection;
+      unmount();
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:uncommitted");
+  });
+
   it("discards downloads completing after unmount", async () => {
     const pending = deferred<ReturnType<typeof file>>();
     download.mockReturnValue(pending.promise);
