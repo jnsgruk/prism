@@ -11,6 +11,31 @@ pub struct SessionResult {
     pub is_new: bool,
 }
 
+/// Wait for the SSE connection before sending a prompt, so the initial empty
+/// parts arrive before their text deltas.
+pub async fn subscribe_to_events(
+    client: &ps_agent::opencode_sdk::Client,
+) -> Result<ps_agent::opencode_sdk::sse::RawSseSubscription, Box<dyn std::error::Error + Send + Sync>>
+{
+    let mut subscription = client.subscribe_raw().await?;
+    let connected = async {
+        while let Some(frame) = subscription.recv().await {
+            let event: ps_agent::opencode_sdk::types::event::Event =
+                serde_json::from_str(&frame.data)?;
+            if matches!(
+                event,
+                ps_agent::opencode_sdk::types::event::Event::ServerConnected { .. }
+            ) {
+                return Ok::<(), Box<dyn std::error::Error + Send + Sync>>(());
+            }
+        }
+        Err("agent event stream closed before connecting".into())
+    };
+    tokio::time::timeout(std::time::Duration::from_secs(15), connected).await??;
+
+    Ok(subscription)
+}
+
 /// Resolve an existing `OpenCode` session or create a new one.
 ///
 /// If the conversation already has an `opencode_session_id` and the session
@@ -130,4 +155,41 @@ pub async fn send_prompt_or_compact(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn subscription_is_connected_and_keeps_subsequent_frames() {
+        let server = MockServer::start().await;
+        let body = concat!(
+            "data: {\"type\":\"server.connected\",\"properties\":{}}\n\n",
+            "data: {\"type\":\"message.part.delta\",\"properties\":{\"partID\":\"p1\",\"field\":\"text\",\"delta\":\"Hello\"}}\n\n",
+        );
+        Mock::given(method("GET"))
+            .and(path("/event"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "text/event-stream"))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let client = ps_agent::opencode_sdk::ClientBuilder::new()
+            .base_url(server.uri())
+            .build()
+            .unwrap();
+
+        let mut subscription = subscribe_to_events(&client).await.unwrap();
+        let frame = tokio::time::timeout(std::time::Duration::from_secs(1), subscription.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let event: serde_json::Value = serde_json::from_str(&frame.data).unwrap();
+        assert_eq!(event.get("type").unwrap(), "message.part.delta");
+        assert_eq!(event.pointer("/properties/delta").unwrap(), "Hello");
+        subscription.close();
+        server.verify().await;
+    }
 }

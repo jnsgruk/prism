@@ -8,6 +8,7 @@ pub mod container_manager;
 pub mod event_mapper;
 #[cfg(feature = "kube")]
 pub mod pod_spec;
+pub mod stream_mapper;
 
 /// The port `OpenCode` listens on inside agent pods.
 pub const OPENCODE_PORT: u16 = 4096;

@@ -343,7 +343,7 @@ async fn run_query_stream(
     };
 
     info!("subscribing to OpenCode events");
-    let mut subscription = client.subscribe().await?;
+    let mut subscription = session::subscribe_to_events(&client).await?;
     info!("SSE subscription established");
 
     session::send_prompt_or_compact(
