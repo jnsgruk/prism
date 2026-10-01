@@ -106,12 +106,6 @@ async fn rejected_person_preflight_and_missing_auth_dispatch_nothing() {
     };
     for (source_id, since_date, code, reason) in [
         (
-            github_id,
-            Some("2020-01-01"),
-            Code::FailedPrecondition,
-            "#30",
-        ),
-        (
             jira_id,
             Some("2020-01-01"),
             Code::FailedPrecondition,

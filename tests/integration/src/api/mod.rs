@@ -7,6 +7,7 @@ pub mod jira_lookup;
 pub mod metrics;
 pub mod org;
 mod org_manual;
+mod person_backfill_release;
 pub mod pipeline;
 mod pipeline_admission;
 mod pipeline_legacy_cancellation;

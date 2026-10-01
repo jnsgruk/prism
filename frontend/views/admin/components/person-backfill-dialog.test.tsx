@@ -257,6 +257,44 @@ describe("person backfill dialog", () => {
     expect(calls.status).not.toHaveBeenCalled();
   });
 
+  it("explains partial source coverage and exposes the failed selected project", async () => {
+    calls.pipelineStatus = "failed";
+    calls.summaries = [
+      {
+        $typeName: "canonical.prism.v1.PipelineRunSummary",
+        pipeline: create(PipelineInfoSchema, { id: "partial", personId: person.id, status: "failed" }),
+        runs: [
+          {
+            $typeName: "canonical.prism.v1.HandlerRun",
+            id: "partial-source",
+            sourceName: "Selected Jira",
+            handlerName: "JiraIngestionHandler",
+            handlerMethod: "run_scoped",
+            status: RunStatus.COMPLETED_WITH_WARNINGS,
+            itemsCollected: 4,
+            rateLimitWaitsSeconds: 0,
+            scopeKind: "person",
+            selectedSourceIds: ["jira"],
+            errorMessage: "Selected person history is incomplete",
+            progressJson: JSON.stringify({
+              coverage: ["visible_activity_only: current assignee, visible to the API user"],
+              failed_items: [{ key: "PRIVATE", error: "Project is inaccessible to the configured account" }],
+            }),
+          },
+        ],
+      },
+    ];
+
+    await openDialog();
+    expect(await screen.findByText("Selected person history is incomplete")).toBeInTheDocument();
+    expect(screen.getByText("Visible activity only: current assignee, visible to the API user")).toBeInTheDocument();
+    expect(screen.getByText("4 items")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1 item could not be collected" }));
+    expect(await screen.findByText("PRIVATE")).toBeInTheDocument();
+    expect(screen.getByText("Project is inaccessible to the configured account")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel backfill" })).not.toBeInTheDocument();
+  });
+
   it.each(["completed", "completed_with_warnings", "failed", "cancelled"])(
     "recovers a %s run without offering cancellation",
     async (outcome) => {

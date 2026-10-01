@@ -338,6 +338,7 @@ async fn assert_recovery(failure: FailureStage) {
     assert!(
         queries
             .iter()
+            .filter(|query| !query.contains("created:"))
             .all(|query| query.contains(&format!("updated:>{ORIGINAL_WATERMARK}")))
     );
 

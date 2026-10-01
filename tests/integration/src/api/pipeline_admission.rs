@@ -261,7 +261,7 @@ async fn definitive_dispatch_rejection_releases_admission() {
 }
 
 #[tokio::test]
-async fn person_backfill_preflight_rejects_invalid_bindings_and_safe_capability_gate() {
+async fn person_backfill_preflight_rejects_invalid_bindings() {
     use ps_core::models::Platform;
     use ps_proto::canonical::prism::v1::PersonBackfillScope;
     let ctx = ApiTestContext::new().await;
@@ -353,12 +353,6 @@ async fn person_backfill_preflight_rejects_invalid_bindings_and_safe_capability_
             vec![discourse.to_string()],
             tonic::Code::FailedPrecondition,
             "saved identity",
-        ),
-        (
-            person_id,
-            vec![github.to_string()],
-            tonic::Code::FailedPrecondition,
-            "#30",
         ),
     ] {
         let mut request = Request::new(TriggerPipelineRequest {
