@@ -72,7 +72,7 @@ impl HandlersServiceImpl {
         let mut orphaned: Vec<usize> = Vec::new();
 
         for (i, s) in sources.iter().enumerate() {
-            if !s.has_active_run {
+            if !s.has_active_run || s.active_pipeline_id.is_some() {
                 continue;
             }
             match &s.current_invocation_id {
@@ -142,6 +142,7 @@ impl HandlersServiceImpl {
             "SELECT id FROM sys_invocation \
              WHERE target_service_name IN ('GithubIngestionHandler', 'JiraIngestionHandler', 'DiscourseIngestionHandler') \
              AND target_service_key = '{restate_key}' \
+             AND target_handler_name != 'run_scoped' \
              AND status != 'completed'",
         );
 
@@ -173,6 +174,45 @@ impl HandlersServiceImpl {
             .collect();
 
         Some(ids)
+    }
+
+    pub(crate) async fn cancel_legacy_restate_invocation(
+        &self,
+        source_name: &str,
+        invocation_id: &str,
+    ) -> Result<(), Status> {
+        validate_restate_identifier(invocation_id)?;
+        let query = format!(
+            "SELECT id, target_handler_name, target_service_name FROM sys_invocation WHERE id = '{invocation_id}'"
+        );
+        let body = self
+            .query_exact_invocations(&query)
+            .await
+            .ok_or_else(|| Status::unavailable("could not verify the run owner"))?;
+        let rows = body
+            .get("rows")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| Status::unavailable("could not verify the run owner"))?;
+        let row = rows
+            .iter()
+            .find(|row| row.get("id").and_then(serde_json::Value::as_str) == Some(invocation_id))
+            .ok_or_else(|| Status::unavailable("could not verify the run owner"))?;
+        let method = row
+            .get("target_handler_name")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| Status::unavailable("could not verify the run owner"))?;
+        let service = row
+            .get("target_service_name")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| Status::unavailable("could not verify the run owner"))?;
+        if method.contains("scoped") || service == "ScopedIngestionPipelineWorkflow" {
+            return Err(Status::failed_precondition(
+                "cancel the owning pipeline for this run",
+            ));
+        }
+        self.cancel_restate_invocation(source_name, invocation_id)
+            .await;
+        Ok(())
     }
 
     /// Cancel a single Restate invocation by ID (best-effort, logs but does not fail).
@@ -208,31 +248,30 @@ impl HandlersServiceImpl {
             req = req.header("Content-Type", "application/json").json(body);
         }
 
-        let resp = req
-            .send()
-            .await
-            .map_err(|e| Status::unavailable(format!("failed to reach Restate: {e}")))?;
+        let resp = req.send().await.map_err(|error| {
+            warn!(%error, "failed to reach Restate");
+            Status::unavailable("background service unavailable")
+        })?;
 
         let status = resp.status();
-        let resp_body: serde_json::Value = resp
-            .json()
-            .await
-            .map_err(|e| Status::internal(format!("failed to parse Restate response: {e}")))?;
+        let resp_body: serde_json::Value = resp.json().await.map_err(|error| {
+            warn!(%error, "failed to parse Restate response");
+            Status::internal("internal error")
+        })?;
 
         if !status.is_success() {
             let message = resp_body
                 .get("message")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown error");
-            return Err(Status::internal(format!(
-                "Restate returned {status}: {message}"
-            )));
+            warn!(%status, %message, "Restate rejected submission");
+            return Err(Status::internal("internal error"));
         }
 
         resp_body
             .get("invocationId")
             .and_then(|v| v.as_str())
             .map(String::from)
-            .ok_or_else(|| Status::internal("Restate response missing invocationId"))
+            .ok_or_else(|| Status::internal("internal error"))
     }
 }
