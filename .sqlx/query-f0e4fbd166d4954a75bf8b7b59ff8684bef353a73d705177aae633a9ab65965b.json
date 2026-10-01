@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contribution_type, person_id FROM activity.contributions ORDER BY contribution_type",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "contribution_type"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "person_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activity.contributions",
+            "name": "person_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "f0e4fbd166d4954a75bf8b7b59ff8684bef353a73d705177aae633a9ab65965b"
+}

@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\" FROM reasoning.insight_snapshot_sources source\n            JOIN reasoning.insight_snapshots snapshot ON snapshot.id=source.snapshot_id\n            WHERE snapshot.team_id=$1 AND snapshot.period_start=$2 AND snapshot.period_type=$3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5d66a3f53f1a3fa12d8f57a22451c5a315bd7c2c140c4d549903b4f9c2e92fd1"
+}

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.team_memberships (id, person_id, team_id, start_date, end_date) VALUES ($1,$2,$3,$4,$5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b1ead1e32c36a3dec5c7ae5b3d0c934289445cd71b11c0e8d66eda6de782755b"
+}

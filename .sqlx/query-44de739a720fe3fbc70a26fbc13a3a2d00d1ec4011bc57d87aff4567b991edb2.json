@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT significant_count,raw_insights,enrichment_coverage FROM reasoning.insight_snapshots WHERE team_id=$1 AND period_start=$2 AND period_type=$3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "significant_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "reasoning.insight_snapshots",
+            "name": "significant_count"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "raw_insights",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "reasoning.insight_snapshots",
+            "name": "raw_insights"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "enrichment_coverage",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "reasoning.insight_snapshots",
+            "name": "enrichment_coverage"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "44de739a720fe3fbc70a26fbc13a3a2d00d1ec4011bc57d87aff4567b991edb2"
+}

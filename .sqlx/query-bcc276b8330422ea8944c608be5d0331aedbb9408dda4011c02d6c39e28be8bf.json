@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) FILTER (WHERE dirty.metrics_refreshed_at IS NULL) AS \"metrics!\",\n                COUNT(*) FILTER (WHERE dirty.insights_refreshed_at IS NULL) AS \"insights!\"\n            FROM activity.snapshot_invalidations dirty\n            JOIN activity.contribution_changes changes ON changes.id = dirty.change_id\n            WHERE changes.pipeline_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "metrics!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "insights!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "bcc276b8330422ea8944c608be5d0331aedbb9408dda4011c02d6c39e28be8bf"
+}

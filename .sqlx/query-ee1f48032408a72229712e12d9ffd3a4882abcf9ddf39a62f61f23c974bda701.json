@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contribution_id FROM metrics.snapshot_sources WHERE snapshot_id=$1 ORDER BY contribution_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "metrics.snapshot_sources",
+            "name": "contribution_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ee1f48032408a72229712e12d9ffd3a4882abcf9ddf39a62f61f23c974bda701"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.identity_discovery_coverage",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e47e8100541b906df1e1e372be69eff9ee0dc5d1c2ad75c856b1c7e84402bdb0"
+}

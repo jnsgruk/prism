@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO activity.identity_discovery_coverage\n                (source_id, identity_id, identity_version, covered_through, initial_since)\n            SELECT $1, pi.id, $2, $3, $3\n            FROM org.platform_identities pi\n            JOIN org.people p ON p.id = pi.person_id AND p.active\n            WHERE pi.id = $4 AND pi.person_id = $5 AND pi.platform = $6\n              AND pi.platform_username = $7\n              AND pi.platform_user_id IS NOT DISTINCT FROM $8\n            ON CONFLICT (source_id, identity_id) DO UPDATE\n            SET initial_since = CASE\n                    WHEN identity_discovery_coverage.identity_version = EXCLUDED.identity_version\n                    THEN identity_discovery_coverage.initial_since\n                    ELSE EXCLUDED.initial_since\n                END,\n                identity_version = EXCLUDED.identity_version,\n                covered_through = CASE\n                    WHEN identity_discovery_coverage.identity_version = EXCLUDED.identity_version\n                    THEN greatest(identity_discovery_coverage.covered_through, EXCLUDED.covered_through)\n                    ELSE EXCLUDED.covered_through\n                END,\n                updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "33a059ba06403e363ee8ca25956c93f0ee9f38daa0e6d0f3e2eb9227d13f416a"
+}

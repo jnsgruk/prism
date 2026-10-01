@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO activity.snapshot_invalidations (change_id,period_type,period_start)\n        SELECT $1,period->>'period_type',(period->>'period_start')::date\n        FROM jsonb_array_elements($2::jsonb) period",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "959176fe37050f1b7f81d57756c18aa75c55caf6489bbe4d85334519546ba58f"
+}

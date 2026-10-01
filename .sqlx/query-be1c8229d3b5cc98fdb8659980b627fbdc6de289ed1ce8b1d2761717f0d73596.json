@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE activity.contributions c SET created_at = input.created_at\n        FROM UNNEST($1::text[], $2::timestamptz[]) AS input(platform_id, created_at)\n        WHERE c.platform = $3 AND c.platform_id = input.platform_id\n            AND c.contribution_type = $4 AND ($5::uuid IS NULL OR c.person_id = $5)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TimestamptzArray",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be1c8229d3b5cc98fdb8659980b627fbdc6de289ed1ce8b1d2761717f0d73596"
+}

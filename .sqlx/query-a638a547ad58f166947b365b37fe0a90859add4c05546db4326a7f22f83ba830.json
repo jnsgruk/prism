@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH pending AS (\n            SELECT dirty.id, dirty.period_type, dirty.period_start\n            FROM activity.snapshot_invalidations dirty\n            JOIN activity.contribution_changes changes ON changes.id = dirty.change_id\n            JOIN activity.pipelines pipeline ON pipeline.id = changes.pipeline_id\n            WHERE ($1::uuid IS NULL OR changes.pipeline_id = $1)\n                AND ($1::uuid IS NOT NULL OR pipeline.status NOT IN ('pending', 'running', 'cancelling'))\n                AND CASE WHEN $2 THEN dirty.insights_refreshed_at IS NULL\n                    ELSE dirty.metrics_refreshed_at IS NULL END\n                AND (NOT $2 OR (dirty.metrics_refreshed_at IS NOT NULL AND NOT EXISTS (\n                    SELECT 1 FROM reasoning.enrichment_queue queue\n                    WHERE queue.contribution_id = changes.contribution_id\n                )))\n            ORDER BY dirty.period_start, dirty.period_type, dirty.id\n            LIMIT 1024\n            )\n            SELECT period_type, period_start,\n                array_agg(id ORDER BY id) AS \"invalidation_ids!\"\n            FROM pending\n            GROUP BY period_type, period_start\n            ORDER BY period_start, period_type\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "period_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "activity.snapshot_invalidations",
+            "name": "period_type"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "period_start",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "activity.snapshot_invalidations",
+            "name": "period_start"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "invalidation_ids!",
+        "type_info": "UuidArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "a638a547ad58f166947b365b37fe0a90859add4c05546db4326a7f22f83ba830"
+}

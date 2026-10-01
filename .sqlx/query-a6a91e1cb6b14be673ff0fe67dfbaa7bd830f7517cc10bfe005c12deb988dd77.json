@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM activity.pipeline_invocations WHERE pipeline_id = $1 AND invocation_id = 'test-invocation'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a6a91e1cb6b14be673ff0fe67dfbaa7bd830f7517cc10bfe005c12deb988dd77"
+}
