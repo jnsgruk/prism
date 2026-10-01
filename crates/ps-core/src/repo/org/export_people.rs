@@ -30,12 +30,13 @@ pub(super) async fn import_people(
             .map(str::trim)
             .filter(|email| !email.is_empty());
         // Replace restores exported UUIDs verbatim, even when emails are shared.
-        let existing = if replace && person.id.is_some() {
+        let mut existing = if replace && person.id.is_some() {
             Vec::new()
         } else {
             sqlx::query!(
                 r#"
-            SELECT id, directory_id
+            SELECT id, directory_id,
+                   lower(btrim(email)) = lower($3) AS email_matches
             FROM org.people
             WHERE id = $1
                OR ($2::text IS NOT NULL AND directory_id = $2)
@@ -50,6 +51,19 @@ pub(super) async fn import_people(
             .await
             .map_err(Error::from)?
         };
+
+        // Shared emails do not make a matching stable ID ambiguous. Keep the
+        // conflict guard when the supplied email belongs only to someone else.
+        let stable_match = |id: Uuid, directory_id: &Option<String>| {
+            person.id == Some(id)
+                || (person.directory_id.is_some() && person.directory_id == *directory_id)
+        };
+        if existing
+            .iter()
+            .any(|row| stable_match(row.id, &row.directory_id) && row.email_matches == Some(true))
+        {
+            existing.retain(|row| stable_match(row.id, &row.directory_id));
+        }
 
         let mut matches: Vec<Uuid> = existing.iter().map(|row| row.id).collect();
         let conflicting_directory = existing.first().is_some_and(|row| {
