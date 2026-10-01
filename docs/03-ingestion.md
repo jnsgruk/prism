@@ -59,9 +59,11 @@ reviews use `submittedAt`; Jira uses updated-since discovery with current
 assignee/account-ID ownership; Discourse topics, posts, and likes use their own
 action times. A parent creation date cannot exclude an otherwise eligible event.
 
-Person support is fail-closed. Adapters default `supports_person_backfill()` to
-false; admission reports a disabled capability until scoped adapters and
-processing are delivered. `ProcessingScope` must match ingestion scope and
+GitHub, Jira Cloud, and instance-qualified Discourse adapters support person
+backfills through scoped coordinator/chunk entrypoints. The complete Person
+pipeline admission remains disabled until historical processing and ongoing
+tracking are delivered (#28–#30); adapter support alone cannot claim that product
+release is complete. `ProcessingScope` must match ingestion scope and
 person; a person request cannot silently trigger whole-organisation processing.
 Pipeline status supports explicit pipeline/person filtering, and history carries
 saved scope/source labels independent of later configuration changes.
@@ -103,9 +105,86 @@ coordinator/chunks while an unrelated scheduled fixture invocation remained
 scheduled. A second run verified that the cancelled ingestion record retained
 its 50 collected items and reported `cancelled`. The temporary source,
 contributions, run records and mock service
-were removed after verification. This verifies plumbing and ownership; live
-Person adapter/storage/processing behavior remains gated pending the later
-release integration tests.
+were removed after verification. This verifies admission, plumbing and ownership.
+The targeted adapter and atomic storage fixtures below run without live provider
+credentials; complete Person launch, historical processing and ongoing-ingestion
+acceptance remain the separate #28–#30 release gate.
+
+### Targeted adapters and storage
+
+The person adapter path needs no team membership or source-wide sweep. Each
+cursor freezes the selected account, source configuration bounds, and inclusive
+UTC event interval. These are live upstream views: credentials limit visibility,
+search indexes can lag, and deleted/private history may be unavailable. Cursor
+`coverage` and `failed_items` are retained in run metadata and progress, visible
+in person progress and completed run details. Failed targets make the scoped
+coordinator fail or finish with warnings, never report an unqualified success.
+GitHub and Jira reject endpoint changes before requesting another page. GitHub
+also binds review continuations to the exact admitted source, identity and date
+snapshot; Discourse continues using its frozen instance endpoint.
+
+- **GitHub:** search each configured organisation separately for `author:` and
+  `reviewed-by:`. Partition immutable PR creation timestamps at GitHub's 1,000
+  search-result cap; subdivision preserves both endpoints and natural keys
+  deduplicate overlapping search phases. Review discovery includes old PRs, with
+  no mutable updated-time upper bound. An irreducibly saturated second is recorded
+  incomplete. Excluded and
+  archived repository policies apply to both search phases. Review queues hold
+  at most one search page; each fetch processes one bounded review page, including
+  page 2 and beyond. Only the actual selected author/reviewer and eligible event
+  times emit contributions. Review totals use the API count; enrichment marks
+  inline-comment truncation explicitly. Global ingestion also pages all reviews.
+- **Jira Cloud:** every request combines configured projects with the saved
+  opaque current-assignee account ID. Empty projects retain the all-accessible
+  project meaning, restricted to that account. Quotes and backslashes are escaped.
+  The authenticated API user's `/myself` timezone is frozen in the cursor;
+  discovery widens the local lower bound by a day, then exact UTC issue-update
+  eligibility filters results. Returned assignments are checked again. Ordering
+  is `updated ASC, key ASC`; missing, repeated, or cyclic nonterminal tokens fail.
+  Server/Data Center mode is rejected before targeted dispatch.
+- **Discourse:** query instance-bound `/user_actions.json` for types 4/5, plus
+  type 1 when `fetch_likes` is enabled. Offset pages use a ten-event overlap and
+  bounded preceding-page keys to detect mutation/nonadvancement. Specific post
+  details retrieve replies absent from a topic's initial stream; topic details
+  provide categories, `min_posts`, tags and context. Type 4 may omit `post_id`, in
+  which case only the topic's initial post is used. Context authors and like
+  recipients never become selected-person contributions. The real serializer
+  omits numeric action IDs; a composite type/topic/post/actor/time key records
+  auditable evidence without inventing an upstream ID.
+
+Both watermark paths and adapter watermark methods explicitly honor All/Person
+policy. Person runs never create/update global coverage checkpoints, counters or
+last-success timestamps. Run cursors/progress hold their checkpoint instead.
+Empty filtered pages and discovery transitions count toward chunk limits.
+
+Every person adapter delegates to one atomic repository boundary. It filters
+actor/platform/instance/event eligibility and batch duplicate natural keys,
+locks the admitted pipeline/run, active person, saved identity and source, and
+refuses attribution conflicts. The admitted snapshot must still match exactly.
+Contribution advisory locks serialize normal/scoped writes of the same keys.
+Contribution IDs, queues and `activity.contribution_changes` provenance commit
+together; database/queue failures roll back and are retryable in Restate.
+Scoped runs never invoke the global Discourse relinking sweep. Changed enrichment
+context has a content fingerprint so deferred diffs cannot be silently discarded.
+
+Discourse likes retain `like-<post_id>-<lowercase_username>`. Only matching type-1
+user-action evidence authorizes an event-time correction. Changes record previous
+and current attribution, timestamps and metric inputs, source/pipeline/run IDs,
+and all affected UTC weeks/months/quarters. Ordinary ingestion preserves corrected
+time and its evidence, and older re-like pages cannot undo newer actions. #28
+consumes these manifests for actual historical recomputation; authored-topic
+received-like metrics also need its topic/post aggregation acceptance tests.
+
+Person API reads occur outside `ctx.run()`. `checkpoint_person_fetch` journals
+bounded cursor/rate-limit decisions and a page fingerprint, followed by atomic
+journaled storage. Restart may repeat safe API reads. Completed pages consume
+their recorded store result and cursor even if the provider response changes or
+fails during replay. A changed unfinished page is rejected inside its journaled
+store step, so new writes cannot silently use different history. Legacy All
+fetch-result journals remain compatible with their existing wire shape. Drain
+affected global chunks/coordinators before deploying changed review pagination or
+chunk-counting behavior; do not wipe unrelated Restate journals. No active
+invocations were present in the local cluster during this adapter rollout.
 
 ## Admission, Delivery and Cancellation
 
@@ -258,7 +337,7 @@ Frontend dispatch uses `TriggerHandler` RPC (fire-and-forget to Restate). `trigg
 
 ## Transient Error Retry
 
-All external API calls inside `fetch_batch()` are wrapped with `retry_transient()` from `ps-workers/src/retry.rs`. Retries up to 3 times with exponential backoff (1s, 2s, 4s) for transient errors (5xx, timeouts, connection resets).
+External API calls inside `fetch_batch()` use `retry_transient()` from `ps-workers/src/infra/retry.rs`. It allows five retries after the initial attempt, with exponential delays of 8, 16, 32, 64 and 120 seconds for transient errors (5xx, timeouts, connection resets).
 
 - HTTP clients must use `Error::HttpStatus { status, message }` so `is_transient()` can inspect the status code
 - Rate limits (429) are handled separately via `Error::RateLimit` and durable sleep, not retry

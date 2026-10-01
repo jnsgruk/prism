@@ -4,6 +4,16 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Target saved accounts and commit scoped provenance atomically
+
+**Context:** Team/project/topic sweeps missed review-only and reply-only history and could widen a person's import. Discourse normal ingestion estimated likes at post creation time, making later historical corrections unauditable.
+
+**Decision:** Discover each saved account directly within its configured source bounds, freeze event eligibility and bounded resumable cursors, and expose upstream visibility/cap failures in progress and outcomes. Enforce identity, attribution and cancellation again in an atomic repository transaction covering contributions, queues and a separate change manifest. Isolate person cursors from global watermarks. Authorize Discourse-like timestamp corrections only with real user-action evidence and retain old/new affected periods. Keep full Person pipeline admission gated until historical recomputation and ongoing tracking pass their separate release stages.
+
+**Rationale:** Direct discovery finds cross-author context without crediting its participants, bounded checkpoints allow durable retries, write-time ownership prevents account races, and atomic queue/provenance persistence prevents false completion or lost processing. Separate manifests survive ordinary metadata refreshes and give historical recomputation exact inputs.
+
+---
+
 ## 2026-10-01 — Reserve pipeline admission before durable dispatch
 
 **Context:** Checking for an active workflow before dispatch allowed concurrent launches, and a lost Restate acknowledgement left the caller unsure whether work had started. Time-based run association could include unrelated scheduled work.
