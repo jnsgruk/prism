@@ -7,6 +7,7 @@ import type {
   GetConversationResponse,
   GetWorkspaceFileResponse,
   ListWorkspaceFilesResponse,
+  ResolvedWorkspaceFile,
   SaveInsightFromConversationResponse,
   UploadWorkspaceFileResponse,
 } from "@ps/api/gen/canonical/prism/v1/reasoning_pb";
@@ -19,6 +20,7 @@ export const conversationKeys = {
   all: ["conversations"] as const,
   list: () => [...conversationKeys.all, "list"] as const,
   detail: (id: string) => [...conversationKeys.all, "detail", id] as const,
+  workspaceResolution: (id: string) => [...conversationKeys.all, "workspaceResolution", id] as const,
   workspaceFiles: (id: string) => [...conversationKeys.all, "workspaceFiles", id] as const,
 };
 
@@ -97,6 +99,20 @@ export const useListWorkspaceFiles = (conversationId: string): UseQueryResult<Li
     refetchInterval: 10_000,
   });
 
+export const useResolveWorkspaceFile = (conversationId: string, path: string): UseQueryResult<ResolvedWorkspaceFile> =>
+  useQuery({
+    queryKey: [...conversationKeys.workspaceResolution(conversationId), path],
+    queryFn: async () => {
+      const response = await client.resolveWorkspaceFiles({ conversationId, paths: [path] });
+      const file = response.files.find((entry) => entry.path === path);
+      if (!file) throw new Error("Could not verify file");
+      return file;
+    },
+    enabled: !!conversationId && !!path,
+    staleTime: 30_000,
+    retry: false,
+  });
+
 export const useGetWorkspaceFile = (): UseMutationResult<
   GetWorkspaceFileResponse,
   Error,
@@ -127,17 +143,25 @@ export const useDownloadWorkspaceFile = (): UseMutationResult<
       const chunks: BlobPart[] = [];
       let contentType = "application/octet-stream";
       let totalSizeBytes = 0;
+      let receivedBytes = 0;
+      let receivedMetadata = false;
 
       for await (const response of client.downloadWorkspaceFile(req)) {
         if (response.contentType) {
           contentType = response.contentType;
         }
-        if (response.totalSizeBytes) {
+        if (!receivedMetadata) {
           totalSizeBytes = Number(response.totalSizeBytes);
+          receivedMetadata = true;
         }
         if (response.data.length > 0) {
           chunks.push(new Uint8Array(response.data));
+          receivedBytes += response.data.length;
         }
+      }
+
+      if (!receivedMetadata || receivedBytes !== totalSizeBytes) {
+        throw new Error("File download was incomplete. Please retry.");
       }
 
       const blob = new Blob(chunks, { type: contentType });

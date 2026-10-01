@@ -17,7 +17,8 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@ps/*": ["./lib/*"],
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@fixtures/*": ["../fixtures/*"]
     }
   },
   "include": ["vite-env.d.ts", "**/*.ts", "**/*.tsx"],
