@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, platform_id, person_id, created_at, updated_at, closed_at,\n            (to_jsonb(c) - ARRAY['id','ingested_at']) AS \"input!\"\n        FROM activity.contributions c\n        WHERE platform = $1 AND platform_id = ANY($2)\n        FOR UPDATE\n        ",
+  "query": "\n        SELECT id, platform_id, person_id, created_at, updated_at, closed_at,\n            (to_jsonb(c) - ARRAY['id','ingested_at']) AS \"input!\"\n        FROM activity.contributions c\n        WHERE platform = $1 AND platform_id = ANY($2)\n        ORDER BY id FOR UPDATE\n        ",
   "describe": {
     "columns": [
       {
@@ -92,5 +92,5 @@
       null
     ]
   },
-  "hash": "db77f2430532dbec9139ec60861fc8acce5b1df87cfd06abba78c18c376d6189"
+  "hash": "9c6a079dd54d494da79551d74469399c33271f07799a8ec599b7b5e5c6201064"
 }

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reasoning.enrichment_queue (contribution_id, content, content_hash)\n            SELECT * FROM UNNEST($1::uuid[], $2::jsonb[], $3::text[])\n                AS input(contribution_id, content, content_hash)\n            ORDER BY input.contribution_id\n            ON CONFLICT (contribution_id) DO UPDATE SET\n                content = EXCLUDED.content, content_hash = EXCLUDED.content_hash, updated_at = now()\n            WHERE reasoning.enrichment_queue.content_hash != EXCLUDED.content_hash\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "JsonbArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "56e821186215e917ceb6e4ca5ebd463fa85f43731879efcf8db1590f45835f07"
+}

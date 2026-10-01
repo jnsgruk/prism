@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reasoning.enrichments\n                (contribution_id, enrichment_type, value, model_name, confidence,\n                    input_hash, input_preview, source_content_hash)\n            SELECT input.contribution_id, input.enrichment_type, input.value, $9,\n                input.confidence, input.input_hash, input.input_preview, input.source_hash\n            FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[],\n                $5::jsonb[], $6::real[], $7::text[], $8::text[])\n                AS input(contribution_id, queue_id, source_hash, enrichment_type,\n                    value, confidence, input_hash, input_preview)\n            JOIN reasoning.enrichment_queue queue ON queue.contribution_id = input.contribution_id\n                AND queue.id = input.queue_id AND queue.content_hash = input.source_hash\n            ON CONFLICT (contribution_id, enrichment_type) DO UPDATE SET\n                value = EXCLUDED.value, model_name = EXCLUDED.model_name,\n                confidence = EXCLUDED.confidence, input_hash = EXCLUDED.input_hash,\n                input_preview = EXCLUDED.input_preview,\n                source_content_hash = EXCLUDED.source_content_hash, created_at = now()\n            RETURNING contribution_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "reasoning.enrichments",
+            "name": "contribution_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "JsonbArray",
+        "Float4Array",
+        "TextArray",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8453dec965e29bea857a54de906c0f31449c511e86adeaffa54b90808555a234"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contribution_id FROM reasoning.enrichment_queue WHERE contribution_id = ANY($1) ORDER BY contribution_id FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contribution_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "reasoning.enrichment_queue",
+            "name": "contribution_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d551cf23ab532524f3773f9e4474febe6e84c7e3965a943bde8dde58a8e09f10"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                eq.id,\n                eq.contribution_id,\n                c.contribution_type,\n                eq.content\n            FROM reasoning.enrichment_queue eq\n            JOIN activity.contributions c ON c.id = eq.contribution_id\n            LEFT JOIN reasoning.enrichments e\n                ON e.contribution_id = eq.contribution_id\n                AND e.enrichment_type = $1\n            WHERE e.id IS NULL\n              AND c.contribution_type = $2\n            ORDER BY eq.created_at\n            LIMIT $3\n            ",
+  "query": "\n            SELECT\n                eq.id,\n                eq.contribution_id,\n                c.contribution_type,\n                eq.content,\n                eq.content_hash\n            FROM reasoning.enrichment_queue eq\n            JOIN activity.contributions c ON c.id = eq.contribution_id\n            LEFT JOIN reasoning.enrichments e\n                ON e.contribution_id = eq.contribution_id\n                AND e.enrichment_type = $1\n                AND e.source_content_hash = eq.content_hash\n            WHERE e.id IS NULL\n              AND c.contribution_type = $2\n            ORDER BY eq.created_at\n            LIMIT $3\n            ",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,17 @@
             "name": "content"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "content_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "reasoning.enrichment_queue",
+            "name": "content_hash"
+          }
+        }
       }
     ],
     "parameters": {
@@ -59,8 +70,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "c1b24c97059c837213fe7bebec4ec7790b4a35ba71e6a65d4798fdc84326b466"
+  "hash": "1e30faed34e2bc0f43c4924e93c0f58fc2e3c8f4e7d22c5a45e51022e96b4908"
 }
