@@ -4,6 +4,24 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Parallel CI jobs with Rust dependency caching
+
+**Context:** The combined lint-and-test job took roughly 9–12 minutes in sampled
+runs. Serial Clippy and Rust test compilation dominated the wait, while setup
+installed development tools that CI did not use.
+
+**Decision:** Run Rust checks, Rust tests, frontend checks/tests and protobuf
+validation as four independent jobs. Install only the tools each job needs and
+cache Cargo downloads and compiled dependencies separately for each Rust job.
+Keep the full Rust test suite together and retain the local prek gate.
+
+**Rationale:** This removes Clippy from the test job's critical path and reuses
+compiled dependencies on warm runs, with modest workflow complexity. Separate
+Rust jobs duplicate some compilation on cold runs and increase runner usage;
+actual elapsed-time savings must be measured after cache population.
+
+---
+
 ## 2026-10-01 — Budget PostgreSQL shared memory and serialize insight refreshes
 
 **Context:** A completed person ingestion/enrichment pipeline repeatedly failed

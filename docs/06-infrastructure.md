@@ -18,6 +18,31 @@ mise provides:
 
 Pre-commit hooks run fmt-check, clippy, buf-lint, frontend lint/typecheck/test, and cargo-test.
 
+## Continuous Integration
+
+GitHub Actions runs four independent jobs in `.github/workflows/ci.yml`:
+
+- **Rust Checks:** `mise run check:rs` (formatting and Clippy).
+- **Rust Tests:** `mise run test:rs` (database setup binary and the full nextest suite).
+- **Frontend:** frozen dependency installation, `mise run check:ts` and `mise run test:ts`.
+- **Protobuf:** `mise run check:proto`, plus breaking-change detection against the PR base branch on pull requests.
+
+Each job installs only its required mise tools and runs tasks with `--skip-tools`
+to avoid installing the rest of the development toolset. Only Rust jobs install
+native build dependencies. Rust builds retain SQLx offline mode and warnings as errors;
+tests keep the existing Docker-based PostgreSQL and Restate fixtures.
+
+`Swatinem/rust-cache` caches Cargo downloads and compiled dependencies separately
+for each Rust job. Its default keys account for the job ID, Rust toolchain,
+Cargo manifests/lockfiles, Cargo configuration and Rust flags. Workspace crates
+are rebuilt; cold runs and dependency changes still incur compilation costs.
+Mise tool caches also use separate prefixes per job to avoid collisions between
+tool subsets. Local `prek run -av` remains the complete pre-commit gate.
+
+Required branch checks should use **Rust Checks**, **Rust Tests**, **Frontend**
+and **Protobuf** in place of the former **Lint & Test** and
+**Proto Breaking Changes** checks.
+
 ## Containers
 
 All containers are Ubuntu-based, slimmed with Chisel for production images.
