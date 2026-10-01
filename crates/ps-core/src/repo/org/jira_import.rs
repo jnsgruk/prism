@@ -92,30 +92,51 @@ impl OrgRepo {
             let imported = Management::Imported;
             let saved = sqlx::query_scalar!(
                 r#"
-                INSERT INTO org.platform_identities (id, person_id, platform,
-                                                     platform_username, platform_user_id)
-                SELECT i.id, i.person_id, i.platform, i.username, i.user_id
-                FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[])
-                    AS i(id, person_id, platform, username, user_id)
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM org.identity_resolutions ir
-                    WHERE ir.person_id = i.person_id
-                      AND ir.platform = i.platform
-                      AND ir.status = 'manual'
+                WITH incoming AS (
+                    SELECT i.*
+                    FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[])
+                        AS i(id, person_id, platform, username, user_id)
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM org.identity_resolutions ir
+                        WHERE ir.person_id = i.person_id AND ir.platform = i.platform
+                          AND ir.status = 'manual'
+                    )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM org.platform_identities pi
+                        WHERE pi.platform = i.platform AND pi.person_id <> i.person_id
+                          AND (pi.platform_user_id = i.user_id
+                            OR (pi.platform_user_id IS NULL AND pi.platform_username = i.username))
+                    )
+                ), promoted AS (
+                    UPDATE org.platform_identities pi
+                    SET platform_user_id = i.user_id
+                    FROM incoming i
+                    WHERE pi.person_id = i.person_id AND pi.platform = i.platform
+                      AND pi.platform_username = i.username
+                      AND pi.platform_user_id IS NULL AND pi.management = $6
+                      AND NOT EXISTS (
+                          SELECT 1 FROM org.platform_identities owner
+                          WHERE owner.platform = i.platform AND owner.platform_user_id = i.user_id
+                      )
+                    RETURNING pi.id, pi.platform_user_id
+                ), saved AS (
+                    INSERT INTO org.platform_identities (id, person_id, platform,
+                                                         platform_username, platform_user_id)
+                    SELECT i.id, i.person_id, i.platform, i.username, i.user_id
+                    FROM incoming i
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM promoted WHERE platform_user_id = i.user_id
+                    )
+                    ON CONFLICT (platform_user_id)
+                        WHERE platform = 'jira' AND platform_user_id IS NOT NULL
+                    DO UPDATE SET platform_username = EXCLUDED.platform_username
+                    WHERE org.platform_identities.management = $6
+                      AND org.platform_identities.person_id = EXCLUDED.person_id
+                    RETURNING id
                 )
-                  AND NOT EXISTS (
-                    SELECT 1
-                    FROM org.platform_identities pi
-                    WHERE pi.platform = i.platform
-                      AND pi.platform_user_id = i.user_id
-                      AND pi.platform_username <> i.username
-                )
-                ON CONFLICT (platform, platform_username)
-                DO UPDATE SET platform_user_id = EXCLUDED.platform_user_id
-                WHERE org.platform_identities.management = $6
-                  AND org.platform_identities.person_id = EXCLUDED.person_id
-                RETURNING id
+                SELECT id AS "id!" FROM promoted
+                UNION ALL
+                SELECT id AS "id!" FROM saved
                 "#,
                 &ids,
                 &person_ids,

@@ -35,6 +35,43 @@ fn create(name: &str) -> proto::CreatePersonRequest {
 }
 
 #[tokio::test]
+async fn manual_jira_accounts_with_duplicate_display_names_save_distinct_ids() {
+    let ctx = ApiTestContext::new().await;
+    let (_, admin) = crate::common::fixtures::create_admin_user(&ctx.server.pool).await;
+    let mut client = OrgServiceClient::new(ctx.server.channel.clone());
+    let mut request = create("Alex");
+    request.identities = ["Opaque:A", "Opaque:B"]
+        .into_iter()
+        .map(|id| proto::IdentityInput {
+            platform: proto::Platform::Jira as i32,
+            username: "Alex Smith".into(),
+            platform_instance: None,
+            platform_user_id: Some(id.into()),
+        })
+        .collect();
+
+    let saved = client
+        .create_person(authed(request, &admin))
+        .await
+        .unwrap()
+        .into_inner()
+        .person
+        .unwrap();
+    assert_eq!(saved.identities.len(), 2);
+    assert_ne!(saved.identities[0].id, saved.identities[1].id);
+    for id in ["Opaque:A", "Opaque:B"] {
+        assert!(
+            saved
+                .identities
+                .iter()
+                .any(|identity| identity.platform_user_id.as_deref() == Some(id))
+        );
+    }
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
 async fn manual_rpcs_require_admin_and_return_complete_saved_person() {
     let ctx = ApiTestContext::new().await;
 

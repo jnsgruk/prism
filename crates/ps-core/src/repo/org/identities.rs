@@ -55,10 +55,12 @@ impl OrgRepo {
         let usernames_lower: Vec<String> = usernames.iter().map(|u| u.to_lowercase()).collect();
         let rows = sqlx::query!(
             r#"
-            SELECT platform_username, person_id
+            SELECT platform_username, min(person_id::text)::uuid AS "person_id!"
             FROM org.platform_identities
             WHERE platform = $1
               AND platform_username = ANY($2)
+            GROUP BY platform_username
+            HAVING count(DISTINCT person_id) = 1
             "#,
             platform_str,
             &usernames_lower,
@@ -193,7 +195,9 @@ impl OrgRepo {
             r#"
             INSERT INTO org.platform_identities (id, person_id, platform, platform_username)
             SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[])
-            ON CONFLICT (platform, platform_username) DO NOTHING
+            ON CONFLICT (platform, platform_username)
+                WHERE platform <> 'jira' OR platform_user_id IS NULL
+            DO NOTHING
             "#,
             &identity_ids,
             &person_ids,

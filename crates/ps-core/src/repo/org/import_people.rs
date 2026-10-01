@@ -213,7 +213,9 @@ pub(super) async fn map_identities(
               AND ir.platform = i.platform
               AND ir.status = 'manual'
         )
-        ON CONFLICT (platform, platform_username) DO UPDATE
+        ON CONFLICT (platform, platform_username)
+            WHERE platform <> 'jira' OR platform_user_id IS NULL
+        DO UPDATE
         SET person_id = EXCLUDED.person_id
         WHERE org.platform_identities.person_id = EXCLUDED.person_id
         RETURNING id

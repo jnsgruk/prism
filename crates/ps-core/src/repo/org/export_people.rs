@@ -5,6 +5,7 @@ use crate::{
     Error,
     models::{Management, Platform, ResolutionStatus},
 };
+use std::collections::HashSet;
 use uuid::Uuid;
 
 pub(super) struct ResolvedPerson {
@@ -18,6 +19,7 @@ pub(super) async fn import_people(
     tx: &mut sqlx::PgConnection,
     export: &OrgExport,
     result: &mut OrgImportResult,
+    replace: bool,
 ) -> Result<ResolvedPeople, Error> {
     let mut resolved = Vec::with_capacity(export.people.len());
 
@@ -27,8 +29,12 @@ pub(super) async fn import_people(
             .as_deref()
             .map(str::trim)
             .filter(|email| !email.is_empty());
-        let existing = sqlx::query!(
-            r#"
+        // Replace restores exported UUIDs verbatim, even when emails are shared.
+        let existing = if replace && person.id.is_some() {
+            Vec::new()
+        } else {
+            sqlx::query!(
+                r#"
             SELECT id, directory_id
             FROM org.people
             WHERE id = $1
@@ -36,13 +42,14 @@ pub(super) async fn import_people(
                OR ($3::text IS NOT NULL AND lower(btrim(email)) = lower($3))
             FOR UPDATE
             "#,
-            person.id,
-            person.directory_id,
-            email,
-        )
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(Error::from)?;
+                person.id,
+                person.directory_id,
+                email,
+            )
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(Error::from)?
+        };
 
         let mut matches: Vec<Uuid> = existing.iter().map(|row| row.id).collect();
         let conflicting_directory = existing.first().is_some_and(|row| {
@@ -176,6 +183,11 @@ pub(super) async fn import_identities(
     result: &mut OrgImportResult,
     resolved: &ResolvedPeople,
 ) -> Result<(), Error> {
+    // Existing people were locked during reconciliation. Capture protection
+    // once so accounts added by this batch cannot block its later rows.
+    let person_ids: Vec<Uuid> = resolved.iter().flatten().map(|person| person.id).collect();
+    let protected = manual_platforms(tx, &person_ids).await?;
+
     for (person, resolved) in export.people.iter().zip(resolved) {
         let Some(resolved) = resolved else {
             continue;
@@ -203,7 +215,7 @@ pub(super) async fn import_identities(
             }
 
             let platform = platform.to_string();
-            if !resolved.created && platform_is_manual(tx, resolved.id, &platform).await? {
+            if !resolved.created && protected.contains(&(resolved.id, platform.clone())) {
                 result.warnings.push(format!(
                     "Manual account choice for {platform} on {} — preserved",
                     person.name
@@ -258,35 +270,32 @@ pub(super) async fn import_identities(
     Ok(())
 }
 
-async fn platform_is_manual(
+async fn manual_platforms(
     tx: &mut sqlx::PgConnection,
-    person_id: Uuid,
-    platform: &str,
-) -> Result<bool, Error> {
+    person_ids: &[Uuid],
+) -> Result<HashSet<(Uuid, String)>, Error> {
     let manual = Management::Manual;
     let status = ResolutionStatus::Manual;
-    sqlx::query_scalar!(
+    let rows = sqlx::query!(
         r#"
-        SELECT EXISTS (
-            SELECT 1
+            SELECT person_id AS "person_id!", platform AS "platform!"
             FROM org.platform_identities
-            WHERE person_id = $1
-              AND platform = $2
-              AND management = $3
-            UNION ALL
-            SELECT 1
+            WHERE person_id = ANY($1) AND management = $2
+            UNION
+            SELECT person_id AS "person_id!", platform AS "platform!"
             FROM org.identity_resolutions
-            WHERE person_id = $1
-              AND platform = $2
-              AND status = $4
-        ) AS "protected!"
+            WHERE person_id = ANY($1) AND status = $3
         "#,
-        person_id,
-        platform,
+        person_ids,
         manual as Management,
         status as ResolutionStatus,
     )
-    .fetch_one(&mut *tx)
+    .fetch_all(&mut *tx)
     .await
-    .map_err(Error::from)
+    .map_err(Error::from)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| (row.person_id, row.platform))
+        .collect())
 }

@@ -4,6 +4,106 @@ use ps_core::models::Platform;
 use ps_core::repo::org::{IdentityInput, ImportIdentity, OrgExport};
 
 #[tokio::test]
+async fn export_replace_preserves_distinct_uuids_with_shared_emails() {
+    let ctx = RepoTestContext::new().await;
+    let mut original_ids = Vec::new();
+
+    for (name, username) in [("First", "first-login"), ("Second", "second-login")] {
+        let mut input = manual(name, Some("shared@example.com"));
+        input.identities.push(IdentityInput {
+            platform: Platform::Github,
+            username: username.into(),
+            platform_user_id: None,
+        });
+        original_ids.push(ctx.repos.org.create_person(input).await.unwrap().person.id);
+    }
+
+    let export = ctx.repos.org.export_org().await.unwrap();
+    for _ in 0..2 {
+        let result = ctx.repos.org.import_org(&export, true).await.unwrap();
+        assert_eq!(result.people_created, 2);
+        assert_eq!(result.people_updated, 0);
+        assert_eq!(result.identities_created, 2);
+        assert!(result.warnings.is_empty());
+
+        let people = ctx.repos.org.list_people(false).await.unwrap();
+        assert_eq!(people.len(), 2);
+        for (id, username) in original_ids.iter().zip(["first-login", "second-login"]) {
+            assert!(people.iter().any(|person| person.id == *id));
+            let identities = ctx
+                .repos
+                .org
+                .get_identities_for_people(&[*id])
+                .await
+                .unwrap();
+            assert_eq!(identities.len(), 1);
+            assert_eq!(identities[0].platform_username, username);
+        }
+    }
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
+async fn export_merge_imports_all_manual_accounts_before_protecting_the_platform() {
+    let ctx = RepoTestContext::new().await;
+    let person = ctx
+        .repos
+        .org
+        .create_person(manual("Existing", Some("existing@example.com")))
+        .await
+        .unwrap();
+    let mut export = ctx.repos.org.export_org().await.unwrap();
+    export.people[0].identities = vec!["first-login", "second-login"]
+        .into_iter()
+        .map(|username| ps_core::repo::org::export::ExportIdentity {
+            platform: Platform::Github.to_string(),
+            username: username.into(),
+            platform_user_id: None,
+            management: ps_core::models::Management::Manual,
+        })
+        .collect();
+
+    let result = ctx.repos.org.import_org(&export, false).await.unwrap();
+    assert_eq!(result.identities_created, 2);
+    assert!(result.warnings.is_empty());
+
+    let identities = ctx
+        .repos
+        .org
+        .get_identities_for_people(&[person.person.id])
+        .await
+        .unwrap();
+    assert_eq!(identities.len(), 2);
+    for username in ["first-login", "second-login"] {
+        assert!(
+            identities
+                .iter()
+                .any(|identity| identity.platform_username == username)
+        );
+    }
+
+    export.people[0].identities[0].username = "unwanted-login".into();
+    let repeated = ctx.repos.org.import_org(&export, false).await.unwrap();
+    assert_eq!(repeated.identities_created, 0);
+    assert!(!repeated.warnings.is_empty());
+    let protected = ctx
+        .repos
+        .org
+        .get_identities_for_people(&[person.person.id])
+        .await
+        .unwrap();
+    assert_eq!(protected.len(), 2);
+    assert!(
+        !protected
+            .iter()
+            .any(|identity| identity.platform_username == "unwanted-login")
+    );
+
+    ctx.teardown().await;
+}
+
+#[tokio::test]
 async fn export_roundtrip_preserves_removed_accounts_and_manual_platform_choices() {
     let ctx = RepoTestContext::new().await;
 
