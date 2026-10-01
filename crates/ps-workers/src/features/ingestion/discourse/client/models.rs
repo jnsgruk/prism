@@ -1,5 +1,5 @@
 //! Typed Discourse topic, post, category and user response payloads.
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // /latest.json response types
@@ -18,7 +18,7 @@ pub struct TopicList {
 }
 
 /// Lightweight topic metadata returned by `/latest.json`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TopicSummary {
     pub id: i64,
     pub title: String,

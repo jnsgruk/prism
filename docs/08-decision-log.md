@@ -4,6 +4,24 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-01 — Discourse coverage after complete traversal
+
+**Context:** Publishing the newest Discourse timestamp after each page can skip
+missing older topics on an ordinary rerun after a later detail or liker failure.
+Retrying a whole page can also exhaust a recurring provider quota before the
+page finishes.
+
+**Decision:** Checkpoint one successful Discourse HTTP operation per fetch batch
+and publish source coverage only after all configured categories and pending
+topic/liker requests complete without failures. Keep only pending metadata in the
+cursor; store contribution bodies through the existing journaled batch writes.
+
+**Rationale:** Durable progress survives rate-limit sleeps and worker restarts.
+Failed runs retain their previous source coverage, so normal reruns rediscover
+missing data while natural-key upserts preserve existing contribution IDs.
+
+---
+
 ## 2026-10-01 — Parallel CI jobs with Rust dependency caching
 
 **Context:** The combined lint-and-test job took roughly 9–12 minutes in sampled

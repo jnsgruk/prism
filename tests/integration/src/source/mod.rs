@@ -1,4 +1,7 @@
 mod discourse;
+mod discourse_coverage_recovery;
+mod discourse_quota_recovery;
+mod discourse_recovery;
 mod github;
 mod github_repository_filters;
 mod github_review_recovery;
