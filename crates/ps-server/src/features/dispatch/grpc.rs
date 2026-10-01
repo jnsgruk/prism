@@ -6,10 +6,10 @@ use ps_proto::canonical::prism::v1::{
     CancelPipelineResponse, CancelRunRequest, CancelRunResponse, GetPipelineStatusRequest,
     GetPipelineStatusResponse, GetStatusRequest, GetStatusResponse, HandlerRun,
     ListHandlersRequest, ListHandlersResponse, ListPipelineRunsRequest, ListPipelineRunsResponse,
-    ListRunsRequest, ListRunsResponse, PipelineInfo, PipelineRunSummary, SourceStatus,
-    TriggerBackfillRequest, TriggerBackfillResponse, TriggerHandlerRequest, TriggerHandlerResponse,
-    TriggerPipelineRequest, TriggerPipelineResponse, TriggerRunRequest, TriggerRunResponse,
-    TriggerTeamSyncRequest, TriggerTeamSyncResponse,
+    ListRunsRequest, ListRunsResponse, SourceStatus, TriggerBackfillRequest,
+    TriggerBackfillResponse, TriggerHandlerRequest, TriggerHandlerResponse, TriggerPipelineRequest,
+    TriggerPipelineResponse, TriggerRunRequest, TriggerRunResponse, TriggerTeamSyncRequest,
+    TriggerTeamSyncResponse,
 };
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
@@ -19,7 +19,7 @@ use super::{
 };
 use crate::common::{db_err, platform_to_proto, require_auth, run_status_to_proto, to_timestamp};
 
-fn run_to_proto(r: ps_core::repo::activity::IngestionRunRow) -> HandlerRun {
+pub(super) fn run_to_proto(r: ps_core::repo::activity::IngestionRunRow) -> HandlerRun {
     HandlerRun {
         id: r.id.to_string(),
         source_name: r.source_name,
@@ -32,18 +32,15 @@ fn run_to_proto(r: ps_core::repo::activity::IngestionRunRow) -> HandlerRun {
         handler_name: r.handler_name,
         handler_method: r.handler_method,
         pipeline_id: r.pipeline_id.map(|id| id.to_string()),
-    }
-}
-
-fn pipeline_to_proto(p: &ps_core::models::Pipeline) -> PipelineInfo {
-    PipelineInfo {
-        id: p.id.to_string(),
-        status: p.status.clone(),
-        current_stage: p.current_stage.clone().unwrap_or_default(),
-        started_at: Some(to_timestamp(p.started_at)),
-        completed_at: p.completed_at.map(to_timestamp),
-        stages_json: p.stages.to_string(),
-        error: p.error.clone(),
+        scope_kind: String::new(),
+        person_id: None,
+        selected_source_ids: Vec::new(),
+        since_date: None,
+        requested_by: None,
+        progress_json: r
+            .progress
+            .map(|progress| progress.to_string())
+            .unwrap_or_default(),
     }
 }
 
@@ -112,7 +109,15 @@ impl HandlersService for HandlersServiceImpl {
             })
             .collect();
 
-        Ok(Response::new(GetStatusResponse { sources: statuses }))
+        Ok(Response::new(GetStatusResponse {
+            sources: statuses,
+            person_backfill_capabilities: Some(
+                ps_proto::canonical::prism::v1::PersonBackfillCapabilities {
+                    enabled: false,
+                    reason: "Person backfill requires person-scoped processing (#30)".into(),
+                },
+            ),
+        }))
     }
 
     async fn list_runs(
@@ -170,6 +175,8 @@ impl HandlersService for HandlersServiceImpl {
             return Err(Status::invalid_argument("source_name is required"));
         }
 
+        self.require_unowned_source(&req.source_name).await?;
+
         // Look up source to get source_type for Restate queries
         let source = self
             .repos
@@ -208,12 +215,16 @@ impl HandlersService for HandlersServiceImpl {
         }
 
         // Cancel all discovered invocations in parallel
-        futures::future::join_all(
+        let cancellation_results = futures::future::join_all(
             ids_to_cancel
                 .iter()
-                .map(|id| self.cancel_restate_invocation(&source.name, id)),
+                .map(|id| self.cancel_legacy_restate_invocation(&source.name, id)),
         )
         .await;
+
+        for result in cancellation_results {
+            result?;
+        }
 
         // Mark active runs as cancelled in the database (keyed on display name)
         self.repos
@@ -278,7 +289,7 @@ impl HandlersService for HandlersServiceImpl {
         // Reconcile: verify each "active" run is actually alive in Restate
         let mut verified_runs = Vec::new();
         for run in &active_runs {
-            if run.source_name == "_system" {
+            if run.pipeline_id.is_some() || run.source_name == "_system" {
                 // System handlers don't have invocation IDs — trust the DB
                 verified_runs.push(run);
                 continue;
@@ -455,377 +466,34 @@ impl HandlersService for HandlersServiceImpl {
         &self,
         request: Request<CancelHandlerRunRequest>,
     ) -> Result<Response<CancelHandlerRunResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        if req.run_id.is_empty() {
-            return Err(Status::invalid_argument("run_id is required"));
-        }
-
-        let run_id: uuid::Uuid = req
-            .run_id
-            .parse()
-            .map_err(|_| Status::invalid_argument("invalid run_id"))?;
-
-        // Look up the run to find its source and invocation info
-        let run = self
-            .repos
-            .activity
-            .get_run(run_id)
-            .await
-            .map_err(db_err)?
-            .ok_or_else(|| Status::not_found("run not found"))?;
-
-        if run.status != ps_core::models::IngestionStatus::Running {
-            return Err(Status::failed_precondition("run is not active"));
-        }
-
-        // Service handlers (prefixed with "_") have no Restate object key —
-        // cancel the DB record and attempt Restate cancellation via stored invocation ID.
-        let is_service_handler = run.source_name.starts_with('_');
-
-        if run.source_name == "_system" {
-            // System handlers: just cancel the specific run in the DB
-            self.repos
-                .activity
-                .cancel_run_by_id(run_id)
-                .await
-                .map_err(db_err)?;
-        } else if is_service_handler {
-            // Service handlers (_enrichment, _embedding, etc.)
-            if let Some(inv_id) = self
-                .repos
-                .activity
-                .get_current_invocation_id(&run.source_name)
-                .await
-                .map_err(db_err)?
-            {
-                self.cancel_restate_invocation(&run.source_name, &inv_id)
-                    .await;
-            }
-            self.repos
-                .activity
-                .cancel_active_runs(&run.source_name)
-                .await
-                .map_err(db_err)?;
-        } else {
-            // Try stored invocation ID first (DB keyed on display name)
-            if let Some(inv_id) = self
-                .repos
-                .activity
-                .get_current_invocation_id(&run.source_name)
-                .await
-                .map_err(db_err)?
-            {
-                self.cancel_restate_invocation(&run.source_name, &inv_id)
-                    .await;
-            }
-
-            // Also query Restate for any active invocations (uses source_type as Restate key)
-            let restate_key = self
-                .repos
-                .config
-                .get_enabled_source_by_name(&run.source_name)
-                .await
-                .ok()
-                .flatten()
-                .map(|s| s.source_type.to_string())
-                .unwrap_or_default();
-
-            if !restate_key.is_empty()
-                && let Some(active_ids) = self.query_active_invocations(&restate_key).await
-            {
-                for id in &active_ids {
-                    self.cancel_restate_invocation(&run.source_name, id).await;
-                }
-            }
-
-            self.repos
-                .activity
-                .cancel_active_runs(&run.source_name)
-                .await
-                .map_err(db_err)?;
-        }
-
-        info!(
-            run_id = %req.run_id,
-            handler = %run.handler_name,
-            source = %run.source_name,
-            "cancelled handler run",
-        );
-
-        Ok(Response::new(CancelHandlerRunResponse {}))
+        self.handle_cancel_handler_run(request).await
     }
 
     async fn get_pipeline_status(
         &self,
         request: Request<GetPipelineStatusRequest>,
     ) -> Result<Response<GetPipelineStatusResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-
-        let latest = self
-            .repos
-            .activity
-            .get_latest_pipeline()
-            .await
-            .map_err(db_err)?;
-
-        // Auto-heal stale pipelines stuck in "running" (e.g. from a killed invocation
-        // that never finalized). If a pipeline has been running for >2 hours AND its
-        // Restate invocation is no longer alive, mark it cancelled. Pipelines that are
-        // still alive in Restate (e.g. suspended after a cluster restart) are left alone.
-        if let Some(ref p) = latest
-            && p.status == "running"
-        {
-            let age = time::OffsetDateTime::now_utc() - p.started_at;
-            if age > time::Duration::hours(2) {
-                let still_alive = match &p.current_invocation_id {
-                    Some(id) if !id.is_empty() => self.is_invocation_alive(id).await,
-                    _ => false,
-                };
-
-                if still_alive {
-                    tracing::info!(
-                        pipeline_id = %p.id,
-                        age_hours = age.whole_hours(),
-                        "pipeline exceeds 2h but Restate invocation is still alive, skipping auto-heal",
-                    );
-                } else {
-                    tracing::warn!(pipeline_id = %p.id, age_hours = age.whole_hours(), "auto-healing stale pipeline");
-                    let _ = self
-                        .repos
-                        .activity
-                        .complete_pipeline(
-                            p.id,
-                            "cancelled",
-                            &p.stages,
-                            Some("stale: auto-cancelled"),
-                        )
-                        .await;
-                }
-            }
-        }
-
-        // Re-fetch after potential auto-heal
-        let latest = self
-            .repos
-            .activity
-            .get_latest_pipeline()
-            .await
-            .map_err(db_err)?;
-
-        let (current, recent) = match latest {
-            Some(ref p) if p.status == "running" => {
-                // Current is the running pipeline; recent excludes it
-                let all = self
-                    .repos
-                    .activity
-                    .list_recent_pipelines(11)
-                    .await
-                    .map_err(db_err)?;
-                let recent: Vec<_> = all.into_iter().filter(|r| r.id != p.id).take(10).collect();
-                (
-                    Some(pipeline_to_proto(p)),
-                    recent.iter().map(pipeline_to_proto).collect(),
-                )
-            }
-            _ => {
-                let all = self
-                    .repos
-                    .activity
-                    .list_recent_pipelines(10)
-                    .await
-                    .map_err(db_err)?;
-                (None, all.iter().map(pipeline_to_proto).collect())
-            }
-        };
-
-        Ok(Response::new(GetPipelineStatusResponse { current, recent }))
+        self.handle_get_pipeline_status(request).await
     }
 
     async fn trigger_pipeline(
         &self,
         request: Request<TriggerPipelineRequest>,
     ) -> Result<Response<TriggerPipelineResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        // Guard: no concurrent pipelines
-        let active = self
-            .repos
-            .activity
-            .has_active_pipeline()
-            .await
-            .map_err(db_err)?;
-        if active {
-            return Err(Status::already_exists("a pipeline is already running"));
-        }
-
-        // Generate a pipeline ID (used as the Restate workflow ID)
-        let pipeline_id = uuid::Uuid::now_v7();
-
-        // Send to Restate workflow: IngestionPipelineWorkflow/{pipeline_id}/run/send
-        let url = format!(
-            "{}/IngestionPipelineWorkflow/{pipeline_id}/run/send",
-            self.restate_url,
-        );
-
-        // Pass since_date as the workflow argument for backfill pipelines.
-        let body = req.since_date.as_ref().map(|d| serde_json::json!(d));
-
-        let _invocation_id = self.send_to_restate(&url, body.as_ref()).await?;
-
-        if let Some(ref since) = req.since_date {
-            info!(%pipeline_id, since = %since, "triggered backfill pipeline via Restate");
-        } else {
-            info!(%pipeline_id, "triggered pipeline via Restate");
-        }
-
-        Ok(Response::new(TriggerPipelineResponse {
-            pipeline_id: pipeline_id.to_string(),
-        }))
+        self.handle_trigger_pipeline(request).await
     }
 
     async fn cancel_pipeline(
         &self,
         request: Request<CancelPipelineRequest>,
     ) -> Result<Response<CancelPipelineResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-        let req = request.into_inner();
-
-        if req.pipeline_id.is_empty() {
-            return Err(Status::invalid_argument("pipeline_id is required"));
-        }
-
-        let pipeline_id: uuid::Uuid = req
-            .pipeline_id
-            .parse()
-            .map_err(|_| Status::invalid_argument("invalid pipeline_id"))?;
-
-        // Verify pipeline exists and is running
-        let pipeline = self
-            .repos
-            .activity
-            .get_latest_pipeline()
-            .await
-            .map_err(db_err)?
-            .filter(|p| p.id == pipeline_id && p.status == "running")
-            .ok_or_else(|| Status::not_found("no running pipeline with that ID"))?;
-
-        // Cooperative cancel: call the workflow's cancel() shared handler
-        let url = format!(
-            "{}/IngestionPipelineWorkflow/{pipeline_id}/cancel/send",
-            self.restate_url,
-        );
-        let _ = self.send_to_restate(&url, None).await;
-
-        // Also kill the Restate invocation if we have an invocation ID
-        if let Some(ref inv_id) = pipeline.current_invocation_id {
-            self.cancel_restate_invocation("_pipeline", inv_id).await;
-        }
-
-        // Mark pending/running stages as cancelled in the stages JSON
-        let mut stages = pipeline.stages.clone();
-        if let Some(obj) = stages.as_object_mut() {
-            for (_name, stage) in obj.iter_mut() {
-                let status = stage.get("status").and_then(|s| s.as_str()).unwrap_or("");
-                if status == "pending" || status == "running" {
-                    stage["status"] = serde_json::json!("cancelled");
-                }
-            }
-        }
-
-        // Finalize the pipeline as cancelled in the DB so the UI resets
-        self.repos
-            .activity
-            .complete_pipeline(pipeline_id, "cancelled", &stages, None)
-            .await
-            .map_err(db_err)?;
-
-        // Also cancel any active runs for system handlers (e.g. _embedding,
-        // _enrichment, _metrics). Restate terminates those child invocations
-        // forcefully, so their handlers never reach complete_run! and would
-        // otherwise show "Running" in the UI indefinitely.
-        self.repos
-            .activity
-            .cancel_active_system_runs("Cancelled — parent pipeline cancelled")
-            .await
-            .map_err(db_err)?;
-
-        info!(%pipeline_id, "cancelled pipeline");
-
-        Ok(Response::new(CancelPipelineResponse {}))
+        self.handle_cancel_pipeline(request).await
     }
 
     async fn list_pipeline_runs(
         &self,
         request: Request<ListPipelineRunsRequest>,
     ) -> Result<Response<ListPipelineRunsResponse>, Status> {
-        let _ctx = require_auth(&request)?;
-
-        let pipelines = self
-            .repos
-            .activity
-            .list_recent_pipelines(20)
-            .await
-            .map_err(db_err)?;
-
-        let pipeline_ids: Vec<uuid::Uuid> = pipelines.iter().map(|p| p.id).collect();
-
-        let all_runs = self
-            .repos
-            .activity
-            .list_runs_for_pipelines(&pipeline_ids)
-            .await
-            .map_err(db_err)?;
-
-        // Group runs by pipeline_id
-        let mut runs_by_pipeline: HashMap<uuid::Uuid, Vec<HandlerRun>> = HashMap::new();
-        for run in all_runs {
-            let pid = run.pipeline_id;
-            let proto = run_to_proto(run);
-            if let Some(pid) = pid {
-                runs_by_pipeline.entry(pid).or_default().push(proto);
-            }
-        }
-
-        // For running pipelines, also include unlinked runs that started after
-        // the pipeline — these haven't been linked yet because the workflow
-        // only calls link_runs_to_pipeline after each stage completes.
-        let running_pipeline = pipelines.iter().find(|p| p.status == "running");
-        if let Some(rp) = running_pipeline {
-            let unlinked = self
-                .repos
-                .activity
-                .list_unlinked_runs_since(rp.started_at)
-                .await
-                .map_err(db_err)?;
-
-            let entry = runs_by_pipeline.entry(rp.id).or_default();
-            let existing_ids: HashSet<uuid::Uuid> =
-                entry.iter().filter_map(|r| r.id.parse().ok()).collect();
-            for run in unlinked {
-                if !existing_ids.contains(&run.id) {
-                    entry.push(run_to_proto(run));
-                }
-            }
-            entry.sort_by(|a, b| {
-                let ts =
-                    |t: &Option<prost_types::Timestamp>| t.as_ref().map(|t| (t.seconds, t.nanos));
-                ts(&a.started_at).cmp(&ts(&b.started_at))
-            });
-        }
-
-        let summaries = pipelines
-            .iter()
-            .map(|p| PipelineRunSummary {
-                pipeline: Some(pipeline_to_proto(p)),
-                runs: runs_by_pipeline.remove(&p.id).unwrap_or_default(),
-            })
-            .collect();
-
-        Ok(Response::new(ListPipelineRunsResponse {
-            pipelines: summaries,
-        }))
+        self.handle_list_pipeline_runs(request).await
     }
 }

@@ -1,4 +1,9 @@
+mod admission;
 mod grpc;
+mod handler_runs;
+mod pipeline_api;
+mod reconciliation;
+mod recovery;
 mod restate;
 
 use std::sync::LazyLock;
@@ -103,6 +108,7 @@ pub(crate) fn derive_state(
     }
 }
 
+#[derive(Clone)]
 pub struct HandlersServiceImpl {
     pub(crate) repos: Repos,
     pub(crate) restate_url: String,
@@ -116,7 +122,10 @@ impl HandlersServiceImpl {
             repos,
             restate_url,
             restate_admin_url,
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()
+                .unwrap_or_default(),
         }
     }
 }
