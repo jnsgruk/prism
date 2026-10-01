@@ -1,3 +1,9 @@
+mod finish_owned;
+pub use finish_owned::PipelineFinishParams;
+mod admission;
+mod owned_runs;
+mod ownership;
+pub use ownership::{PipelineInvocationParams, PipelineRunParams};
 mod contributions;
 mod invocations;
 mod pipelines;
@@ -29,11 +35,11 @@ pub struct IngestionRunRow {
     pub handler_name: String,
     pub handler_method: String,
     pub pipeline_id: Option<Uuid>,
+    pub progress: Option<serde_json::Value>,
 }
 
 /// A row from `activity.ingestion_runs` with progress detail.
-/// Used by backup polling — includes the `progress` JSONB column
-/// that `IngestionRunRow` omits.
+/// Used by backup polling without requiring handler or pipeline metadata.
 pub struct BackupRunRow {
     pub id: Uuid,
     pub status: models::IngestionStatus,
@@ -53,6 +59,7 @@ pub struct SourceStatusRow {
     pub items_collected_last_run: Option<i32>,
     /// Whether this source has a currently running ingestion (no `completed_at`).
     pub has_active_run: bool,
+    pub active_pipeline_id: Option<Uuid>,
     /// Items collected so far in the active run (from `ingestion_runs`).
     pub active_run_items: Option<i32>,
     /// When the active run started.
