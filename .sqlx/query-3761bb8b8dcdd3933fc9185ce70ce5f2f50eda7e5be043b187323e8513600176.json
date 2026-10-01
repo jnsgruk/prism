@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO activity.contribution_changes (\n            id, pipeline_id, run_id, source_id, contribution_id,\n            previous_person_id, current_person_id, previous_created_at, current_created_at,\n            previous_input, current_input, affected_periods, input_hash\n        )\n        SELECT id, $2, $3, $4, contribution_id, previous_person_id, $5,\n            previous_created_at, current_created_at, previous_input, current_input, periods, hash\n        FROM UNNEST($1::uuid[], $6::uuid[], $7::uuid[], $8::timestamptz[], $9::timestamptz[],\n            $10::jsonb[], $11::jsonb[], $12::jsonb[], $13::text[])\n            AS input(id, contribution_id, previous_person_id, previous_created_at, current_created_at,\n                previous_input, current_input, periods, hash)\n        ON CONFLICT (pipeline_id, contribution_id, input_hash) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "TimestamptzArray",
+        "TimestamptzArray",
+        "JsonbArray",
+        "JsonbArray",
+        "JsonbArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3761bb8b8dcdd3933fc9185ce70ce5f2f50eda7e5be043b187323e8513600176"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE activity.ingestion_runs\n            SET completed_at = now(), status = 'completed_with_warnings',\n                items_collected = $2, error_message = $3, metadata = COALESCE(metadata, '{}'::jsonb) || $4\n            WHERE id = $1 AND completed_at IS NULL AND pipeline_id IS NOT NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bdf95938a78a9e5c26cf70f88fafb97a5ba239112dbc96537efa0cfff48723f8"
+}

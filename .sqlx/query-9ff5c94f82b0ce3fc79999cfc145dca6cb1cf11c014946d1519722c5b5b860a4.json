@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE reasoning.enrichment_queue DROP CONSTRAINT reject_test_queue",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9ff5c94f82b0ce3fc79999cfc145dca6cb1cf11c014946d1519722c5b5b860a4"
+}

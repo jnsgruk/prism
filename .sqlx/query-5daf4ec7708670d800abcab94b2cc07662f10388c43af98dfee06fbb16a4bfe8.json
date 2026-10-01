@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reasoning.embedding_queue (contribution_id, content_hash)\n            SELECT id, '' FROM UNNEST($1::uuid[]) AS input(id)\n            ON CONFLICT (contribution_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5daf4ec7708670d800abcab94b2cc07662f10388c43af98dfee06fbb16a4bfe8"
+}

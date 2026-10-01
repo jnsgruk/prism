@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activity.ingestion_runs SET metadata = COALESCE(metadata, '{}'::jsonb) || $2, progress = COALESCE(progress, '{}'::jsonb) || $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4f541a20eee5e10c761c454c57771d0121282a163b6201dd7cfbd83de94c8d94"
+}

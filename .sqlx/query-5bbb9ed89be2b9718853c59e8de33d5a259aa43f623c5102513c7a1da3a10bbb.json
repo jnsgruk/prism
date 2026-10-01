@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT (status IN ('pending', 'running') AND NOT cancellation_requested) AS \"active!\", request_snapshot\n        FROM activity.pipelines WHERE id = $1 FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "active!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "request_snapshot",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "activity.pipelines",
+            "name": "request_snapshot"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "5bbb9ed89be2b9718853c59e8de33d5a259aa43f623c5102513c7a1da3a10bbb"
+}
