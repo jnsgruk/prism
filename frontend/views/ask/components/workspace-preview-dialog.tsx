@@ -86,8 +86,8 @@ const PdfPreview = ({
           >
             <ZoomOut className="size-3.5" />
           </Button>
-          <span className="w-12 text-center text-xs tabular-nums">
-            {scale === "fit-width" ? "Fit" : `${Math.round(scale * 100)}%`}
+          <span className="w-20 text-center text-xs tabular-nums" aria-label="Zoom relative to fitted width">
+            {scale === "fit-width" ? "Fit" : `${Math.round(scale * 100)}% of fit`}
           </span>
           <Button
             variant="outline"
@@ -140,8 +140,13 @@ export const WorkspacePreviewDialog = ({
         <DialogHeader className="min-w-0 shrink-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="break-all">{state.artifact.displayName}</DialogTitle>
-              <DialogDescription className="break-all">
+              <DialogTitle className="truncate" title={state.artifact.displayName}>
+                {state.artifact.displayName}
+              </DialogTitle>
+              <DialogDescription
+                className="truncate"
+                title={`${state.contentType} — ${formatSize(state.artifact.sizeBytes)}`}
+              >
                 {state.contentType} — {formatSize(state.artifact.sizeBytes)}
               </DialogDescription>
             </div>

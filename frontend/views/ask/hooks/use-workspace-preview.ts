@@ -64,6 +64,9 @@ export const useWorkspacePreview = (conversationId: string | undefined, open: bo
   // Revoke published URLs only after React has removed their consumers.
   useLayoutEffect(() => {
     const url = state?.url;
+    // Claim the URL only once a committed viewer exists. Before this, pending
+    // ownership releases it if the parent unmounts without committing state.
+    if (url) pendingUrls.current.delete(url);
     return (): void => {
       if (url) URL.revokeObjectURL(url);
     };
@@ -98,7 +101,6 @@ export const useWorkspacePreview = (conversationId: string | undefined, open: bo
         }
         if (!isCurrentRequest()) return;
 
-        pendingUrls.current.delete(blobUrl);
         setState({ artifact: { ...artifact, contentType }, url: blobUrl, contentType, textContent });
         setLoading(false);
       } catch (error) {

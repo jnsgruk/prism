@@ -72,8 +72,32 @@ describe("WorkspacePdfRenderer", () => {
 
     rerender(<WorkspacePdfRenderer url="blob:one" page={3} scale={1.5} onDocumentLoad={onDocumentLoad} />);
     expect(screen.getByText("Page 3")).toBeInTheDocument();
-    expect(pdf.pageProps?.width).toBeUndefined();
+    expect(pdf.pageProps?.width).toBe(320);
     expect(pdf.pageProps?.scale).toBe(1.5);
+  });
+
+  it.each([240, 960])("zooms relative to the fitted %i px width, including after resize", (initialWidth) => {
+    const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(initialWidth);
+    const onDocumentLoad = vi.fn<() => void>();
+    const { rerender } = render(<WorkspacePdfRenderer url="blob:one" page={1} onDocumentLoad={onDocumentLoad} />);
+    loadDocument();
+    expect(pdf.pageProps).toMatchObject({ width: initialWidth, scale: 1 });
+
+    rerender(<WorkspacePdfRenderer url="blob:one" page={1} scale={1.25} onDocumentLoad={onDocumentLoad} />);
+    expect(pdf.pageProps).toMatchObject({ width: initialWidth, scale: 1.25 });
+    const enlargedWidth = Number(pdf.pageProps?.width) * Number(pdf.pageProps?.scale);
+    expect(enlargedWidth).toBe(initialWidth * 1.25);
+
+    rerender(<WorkspacePdfRenderer url="blob:one" page={1} scale={0.75} onDocumentLoad={onDocumentLoad} />);
+    expect(pdf.pageProps).toMatchObject({ width: initialWidth, scale: 0.75 });
+    const reducedWidth = Number(pdf.pageProps?.width) * Number(pdf.pageProps?.scale);
+    expect(reducedWidth).toBe(initialWidth * 0.75);
+
+    width.mockReturnValue(initialWidth / 2);
+    act(() => pdf.resize?.());
+    expect(pdf.pageProps).toMatchObject({ width: initialWidth / 2, scale: 0.75 });
+    rerender(<WorkspacePdfRenderer url="blob:one" page={1} scale="fit-width" onDocumentLoad={onDocumentLoad} />);
+    expect(pdf.pageProps).toMatchObject({ width: initialWidth / 2, scale: 1 });
   });
 
   it("measures resizing, skips zero-width rendering, and disconnects on unmount", () => {

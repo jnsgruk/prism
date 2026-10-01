@@ -8,6 +8,7 @@ export type WorkspacePdfPreviewProps = {
   page: number;
   onPageChange?: (page: number) => void;
   onDocumentLoad: (pageCount: number) => void;
+  /** Numeric zoom is relative to the fitted container width: 1 is fit, 1.25 enlarges it by 25%. */
   scale?: number | "fit-width";
   onDownload?: () => void;
   className?: string;
