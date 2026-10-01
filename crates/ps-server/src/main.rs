@@ -132,6 +132,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handlers_service =
         HandlersServiceImpl::new(repos.clone(), restate_url.clone(), restate_admin_url);
 
+    handlers_service.start_dispatch_recovery();
+
     let reasoning_service = ReasoningServiceImpl::new(
         repos.clone(),
         secret_key,
