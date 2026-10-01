@@ -4,6 +4,12 @@
 
 Vite + React Router SPA + shadcn/ui (`@base-ui/react` primitives) + TypeScript (strict, typescript-go) + Connect clients + React Query + Recharts + Bun + Caddy. Components use `@ps/cn` for the `cn` helper.
 
+## Component and Hook Readability
+
+- Group related hook declarations and setup, then separate derived values, event handlers, and returned JSX with blank lines. Within handlers, make validation, request construction, mutation, and UI updates distinct steps.
+- Name intermediate request values and derived display conditions when nested calls or ternaries obscure intent. Keep mutation callbacks and JSX expressions easy to scan instead of compressing several operations onto one line.
+- Follow the root `AGENTS.md` for semantic whitespace and module size. Frontend tests stay in colocated `*.test.ts` / `*.test.tsx` files.
+
 ## State Management
 
 React Query is the **only** state management library. No Redux, Jotai, nanostores.

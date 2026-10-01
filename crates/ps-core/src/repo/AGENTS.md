@@ -21,6 +21,12 @@ All database access is centralised in `ps-core/src/repo/`. Each repo maps to one
 3. **One repo per schema** — cross-schema joins permitted only as read-only queries in the primary consumer repo.
 4. **No `PgPool` in services or sources** — only `main.rs` and the repo layer touch `PgPool`.
 
+## Query and Transaction Readability
+
+- Format substantial SQL as multiline raw strings, with clauses and predicates on separate lines. Put query macro bind arguments and async chain steps on their own lines rather than packing SQL, arguments, execution, and error mapping together.
+- Keep transaction phases visible: validate and prepare inputs, begin and acquire locks, read or write rows, build the saved result, then commit. Use named results instead of nesting writes inside return-value construction.
+- Follow the root `AGENTS.md` for semantic whitespace, source module size, and inline unit-test placement; repository integration tests remain in the existing integration crate.
+
 ## The `Repos` Bundle
 
 The `Repos` struct bundles all repos. Constructed once from a `PgPool` in `main.rs`, then cloned into each service and handler.

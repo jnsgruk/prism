@@ -103,8 +103,8 @@ Code is organised **feature-first, layer-second**. See `docs/01-architecture.md`
 - **Rust services:** features live under `src/features/<name>/` with handler, service, repository, types files. No layer-first `services/` buckets.
 - **Three-tier escalation:** feature-local → service/app-local → shared crate/package. Only lift when a concrete second consumer exists.
 - **No `utils/` or `helpers/` directories.** Give utilities a proper home.
-- **Tests colocated** with source files. No `__tests__/` directories. Rust uses inline `#[cfg(test)]`.
-- **File size limit** — split files exceeding ~500 lines into modules.
+- **Tests colocated** with source files. No `__tests__/` directories. Rust unit tests belong in an inline `#[cfg(test)] mod tests` at the bottom of the source module. The existing integration crate keeps its dedicated test modules and shared test contexts.
+- **File size limit** — split files exceeding ~500 lines into cohesive modules. Preserve readable spacing; do not compress code to stay under the limit.
 
 ## Key Conventions
 
@@ -179,6 +179,12 @@ Test against real PostgreSQL, never mock the database. External APIs mocked with
 5. **Restate journal** — never decrypt secrets inside `ctx.run()`. Journal persists results, defeating at-rest encryption.
 
 ## Code Style
+
+### Human Readability
+
+- Use blank lines to separate semantic steps within functions and methods: validation, setup, reads, writes, and response construction. Keep related statements together; do not add a blank line after every statement.
+- Prefer clear named intermediate values when nested expressions obscure what is validated, converted, saved, or returned. Keep error handling and side effects easy to follow.
+- Expand long macro arguments and method chains across lines instead of packing several operations together. Formatters enforce syntax layout; review the result for readable logical structure.
 
 ### Rust
 
