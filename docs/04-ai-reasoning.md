@@ -57,6 +57,13 @@ Natural-language questions about engineering data are handled by an agentic arch
 3. **ps-server** streams SSE events directly from the OpenCode pod to the gRPC client — this avoids Restate's journal/timeout issues with long-running non-journaled work
 4. **QueryWatchdogHandler** (Restate, singleton key) runs every 60s to reset stuck conversations
 
+The server subscribes to raw OpenCode SSE frames because the Rust SDK's typed
+stream does not recognise `message.part.delta`. Prism reconstructs cumulative
+text and reasoning snapshots from these deltas and forwards them immediately.
+Part IDs provide stable ordering across messages; completed snapshots replace
+the accumulated content without duplicating it. User message parts are excluded
+from assistant output.
+
 ### Why OpenCode in Pods?
 
 - Battle-tested agent orchestration (tool-call -> execute -> reprompt loop)
