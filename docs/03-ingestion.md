@@ -97,6 +97,28 @@ becomes `cancelled`; an unexpectedly stopped root becomes `failed`. Partial
 item counts and committed contributions remain available for a later rerun.
 An internal stop flag does not become a user cancellation during retries.
 
+### Full ingestion retry and recovery
+
+Supplementary account discovery uses the cursor's `target_index` as its sole
+account position. Flattened progress fields must never duplicate cursor state:
+JSON decoding can otherwise restore a stale position and repeat the first
+account indefinitely. A completed account publishes its own coverage only after
+its stored batch commits, then advances to the next saved account.
+
+Global Discourse collection pauses durably on rate limits from category names,
+topic listings, topic details, or post likers. It retries the original page and
+publishes no partial page contributions, pagination changes, or watermark.
+Empty categories continue to the next configured category. Detail and liker
+errors other than rate limits fail the fetch rather than silently omit data.
+
+A run stopped after the previous Discourse implementation skipped rate-limited
+pages may already have advanced source watermarks. An ordinary incremental rerun
+cannot establish recovery of that history. After deploying the fix, launch an
+explicit backfill from at or before the last known complete source coverage,
+so previously skipped topics are rediscovered. Existing natural-key upserts
+retain contribution IDs. Cancel affected runs before rollout; restarting a
+worker does not undo completed fetch results in the Restate journal.
+
 ### Runtime verification
 
 On 2026-10-01, the local Tilt cluster exercised the scoped All workflow against
