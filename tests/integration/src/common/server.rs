@@ -34,6 +34,8 @@ pub struct TestServer {
     pub channel: Channel,
     pub pool: PgPool,
     _backups_dir: tempfile::TempDir,
+    /// Persistent workspace fixture, independent of agent pod lifecycle.
+    pub workspaces_dir: tempfile::TempDir,
     /// Signalled when the backup generator starts a backup.
     /// Tests can await this to know the export has started.
     pub backup_started: Arc<Notify>,
@@ -248,6 +250,7 @@ impl TestServer {
         let repos = ps_core::repo::Repos::new(pool.clone());
         let backups_dir = tempfile::tempdir().expect("create temp backups dir");
         let backup_started = Arc::new(Notify::new());
+        let workspaces_dir = tempfile::tempdir().expect("create temp workspaces dir");
 
         // Stub backup generator — no pg_dump/pg_restore needed
         let generator = Arc::new(StubBackupGenerator::new(
@@ -280,7 +283,7 @@ impl TestServer {
             repos.clone(),
             test_secret_key(),
             router,
-            None, // no workspaces path in tests
+            Some(workspaces_dir.path().to_path_buf()),
             restate_url.into(),
         );
 
@@ -315,6 +318,7 @@ impl TestServer {
             channel,
             pool,
             _backups_dir: backups_dir,
+            workspaces_dir,
             backup_started,
         }
     }

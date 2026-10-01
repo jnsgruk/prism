@@ -182,3 +182,5 @@ words are the prompt.
 ## Current context
 - Current date: {current_date}
 - Workspace: /workspace (persistent across conversation turns)
+
+For downloadable files, save to `/workspace/<path>` and confirm the file exists and is readable before claiming it is ready. Link using `[report](</workspace/<path encoded by segment>>)` (percent-encode spaces, Unicode, `%`, `#`, and `?` exactly once). Prism verifies and translates these references into authenticated conversation downloads. Never invent hostnames, application routes, or public file URLs. Images retain the existing workspace embedding format.

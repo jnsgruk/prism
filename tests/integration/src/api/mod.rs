@@ -17,3 +17,6 @@ mod pipeline_reconciliation;
 pub mod reasoning;
 
 mod agent_startup;
+mod workspace_download_lifecycle;
+
+mod workspace_answer_finalization;

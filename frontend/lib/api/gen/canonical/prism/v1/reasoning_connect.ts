@@ -48,6 +48,8 @@ import {
   RefreshModelCatalogueResponse,
   RenameConversationRequest,
   RenameConversationResponse,
+  ResolveWorkspaceFilesRequest,
+  ResolveWorkspaceFilesResponse,
   ResumeStreamRequest,
   ResumeStreamResponse,
   SaveInsightFromConversationRequest,
@@ -342,6 +344,15 @@ export const ReasoningService = {
      * GetWorkspaceFile returns the content of a single file from the workspace.
      * Returned as a data URL (base64-encoded).
      *
+     * @generated from rpc canonical.prism.v1.ReasoningService.ResolveWorkspaceFiles
+     */
+    resolveWorkspaceFiles: {
+      name: "ResolveWorkspaceFiles",
+      I: ResolveWorkspaceFilesRequest,
+      O: ResolveWorkspaceFilesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc canonical.prism.v1.ReasoningService.GetWorkspaceFile
      */
     getWorkspaceFile: {

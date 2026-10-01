@@ -1,11 +1,14 @@
 mod agent_query;
 mod ai_settings;
+pub(crate) mod answer_files;
+pub mod completion;
 mod conversations;
 mod convert;
 mod cost;
 mod embeddings;
 mod enrichments;
 pub mod workspace;
+pub(crate) mod workspace_files;
 
 pub use ai_settings::reload_ai_providers;
 
@@ -26,10 +29,11 @@ use ps_proto::canonical::prism::v1::{
     GetWorkspaceFileRequest, GetWorkspaceFileResponse, ListAiModelsRequest, ListAiModelsResponse,
     ListConversationsRequest, ListConversationsResponse, ListWorkspaceFilesRequest,
     ListWorkspaceFilesResponse, RefreshModelCatalogueRequest, RefreshModelCatalogueResponse,
-    RenameConversationRequest, RenameConversationResponse, ResumeStreamRequest,
-    ResumeStreamResponse, SaveInsightFromConversationRequest, SaveInsightFromConversationResponse,
-    SearchByTextRequest, SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse,
-    TestProviderRequest, TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
+    RenameConversationRequest, RenameConversationResponse, ResolveWorkspaceFilesRequest,
+    ResolveWorkspaceFilesResponse, ResumeStreamRequest, ResumeStreamResponse,
+    SaveInsightFromConversationRequest, SaveInsightFromConversationResponse, SearchByTextRequest,
+    SearchByTextResponse, SetProviderSecretRequest, SetProviderSecretResponse, TestProviderRequest,
+    TestProviderResponse, UpdateAiSettingsRequest, UpdateAiSettingsResponse,
     UploadWorkspaceFileRequest, UploadWorkspaceFileResponse,
 };
 use tokio::sync::RwLock;
@@ -244,6 +248,13 @@ impl ReasoningService for ReasoningServiceImpl {
         request: Request<ListWorkspaceFilesRequest>,
     ) -> Result<Response<ListWorkspaceFilesResponse>, Status> {
         workspace::list_workspace_files(self, request).await
+    }
+
+    async fn resolve_workspace_files(
+        &self,
+        request: Request<ResolveWorkspaceFilesRequest>,
+    ) -> Result<Response<ResolveWorkspaceFilesResponse>, Status> {
+        workspace::resolve_workspace_files(self, request).await
     }
 
     async fn get_workspace_file(
