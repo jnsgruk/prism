@@ -239,7 +239,8 @@ pub fn graphql_pr_node(
         "bodyText": format!("PR body for {title}"),
         "repository": {
             "name": repo,
-            "owner": { "login": owner }
+            "owner": { "login": owner },
+            "isArchived": false
         },
         "labels": { "nodes": [] },
         "headRefName": "feature-branch",
