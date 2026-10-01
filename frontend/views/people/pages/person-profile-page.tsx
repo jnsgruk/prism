@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useGetIndividualProfile, usePersonContributionCount } from "@/lib/hooks/use-metrics";
+import { platformLabel } from "@/lib/proto-display";
 import { ActivityChart } from "@/views/people/components/activity-chart";
 import { PeerContextPanel } from "@/views/people/components/peer-context-panel";
 import { PersonBreadcrumb } from "@/views/people/components/person-breadcrumb";
@@ -227,10 +228,10 @@ const PersonProfilePage = (): React.ReactElement => {
                       <div className="space-y-1">
                         {profile.identities.map((id) => (
                           <div
-                            key={`${id.platform}-${id.username}`}
+                            key={`${id.platform}-${id.platformInstance ?? ""}-${id.username}`}
                             className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
                           >
-                            <span className="font-medium capitalize">{id.platform}</span>
+                            <span className="font-medium">{platformLabel(id.platform, id.platformInstance)}</span>
                             <span className="text-muted-foreground">{id.username}</span>
                           </div>
                         ))}

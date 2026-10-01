@@ -2,13 +2,14 @@ import { ChartTooltip, cursorStyle } from "@/components/chart-tooltip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtFloat } from "@/lib/format-metrics";
 import type { GetIndividualProfileResponse } from "@/lib/hooks/use-metrics";
+import { platformLabel } from "@/lib/proto-display";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const ActivityChart = ({ profile }: { profile: GetIndividualProfileResponse }): React.ReactElement | null => {
   if (profile.activityByPlatform.length === 0) return null;
 
   const data = profile.activityByPlatform.map((a) => ({
-    platform: a.platform,
+    platform: platformLabel(a.platform, a.platformInstance),
     count: a.contributionCount,
   }));
 
@@ -31,8 +32,8 @@ export const ActivityChart = ({ profile }: { profile: GetIndividualProfileRespon
         {/* Per-platform key metrics */}
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {profile.activityByPlatform.map((a) => (
-            <div key={a.platform} className="rounded-md border px-3 py-2">
-              <p className="text-sm font-medium">{a.platform}</p>
+            <div key={`${a.platform}-${a.platformInstance ?? ""}`} className="rounded-md border px-3 py-2">
+              <p className="text-sm font-medium">{platformLabel(a.platform, a.platformInstance)}</p>
               <p className="text-xs text-muted-foreground">
                 {a.contributionCount} contribution{a.contributionCount !== 1 ? "s" : ""}
                 {a.metrics["avg_review_hours"] != null &&
