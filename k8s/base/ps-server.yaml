@@ -47,7 +47,8 @@ spec:
     spec:
       serviceAccountName: ps-server
       securityContext:
-        fsGroup: 1001
+        # Match backup Jobs, which share and change the PVC group ownership.
+        fsGroup: 65534
       containers:
         - name: ps-server
           image: prism/ps-server
