@@ -132,6 +132,26 @@ fills, every backup Job sweeps all pre-existing `*.ps-backup` and
 `*.ps-backup.tmp` files from the PVC before generating a new archive
 (`sweep_orphaned_backups` in `ps-backup`).
 
+ps-server and backup Jobs must use the same `fsGroup` (`65534`) for these
+shared PVCs. A backup Job updates the volume's group ownership on mount; a
+server using another group can still read an archive but cannot delete it from
+the group-writable staging directory.
+
+### CLI Download Transport
+
+`psctl` uses gRPC-Web over HTTP/1.1. Its response adapter presents each complete
+gRPC-Web frame separately to tonic-web 0.14, working around
+[upstream dropped trailers](https://github.com/grpc/grpc-rust/pull/2474) when a
+proxy combines the final message and status into one HTTP data frame. It buffers
+at most one protocol frame plus the current HTTP data frame, limits protocol
+payloads to tonic's default 4 MiB, and rejects truncated frames. Missing final
+status and server error statuses still fail the download.
+
+A failed download can leave a partial file at the requested output path. Do not
+use that file as a verified backup. If an archive remains on the staging PVC,
+copying it directly from ps-server can recover the completed backup without
+running another backup Job (which sweeps old archives).
+
 ### Concurrent Backup Prevention
 
 ps-server checks for active K8s Jobs with label `app=ps-backup` before creating a new one. If an active job exists, the RPC returns `ALREADY_EXISTS`. The `--force` flag deletes existing jobs before creating a new one.
