@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 mod client;
 mod commands;
 mod format;
+mod grpc_web_frames;
 
 #[derive(Parser)]
 #[command(name = "psctl", about = "Prism CLI client", version)]

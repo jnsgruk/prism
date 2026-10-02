@@ -14,9 +14,11 @@ use rustls::crypto::aws_lc_rs::default_provider;
 use tonic_web::{GrpcWebCall, GrpcWebClientLayer, GrpcWebClientService};
 use tower::{Layer, Service};
 
+use crate::grpc_web_frames::{GrpcWebFrames, ResponseFrames};
+
 type HyperBody = tonic::body::Body;
 type GrpcWebBody = GrpcWebCall<HyperBody>;
-type ResponseBody = GrpcWebCall<hyper::body::Incoming>;
+type ResponseBody = GrpcWebCall<GrpcWebFrames<hyper::body::Incoming>>;
 
 pub struct Clients {
     pub backup: BackupServiceClient<AuthedService>,
@@ -28,7 +30,7 @@ pub struct Clients {
 }
 
 type Connector = hyper_rustls::HttpsConnector<hyper_util::client::legacy::connect::HttpConnector>;
-type InnerService = GrpcWebClientService<Client<Connector, GrpcWebBody>>;
+type InnerService = GrpcWebClientService<ResponseFrames<Client<Connector, GrpcWebBody>>>;
 pub type AuthedService = AuthService<InnerService>;
 
 pub fn connect(server_url: &str, token: Option<&String>) -> anyhow::Result<Clients> {
@@ -60,7 +62,7 @@ pub fn connect(server_url: &str, token: Option<&String>) -> anyhow::Result<Clien
     let hyper_client: Client<Connector, GrpcWebBody> =
         Client::builder(TokioExecutor::new()).build(https_connector);
 
-    let grpc_web = GrpcWebClientLayer::new().layer(hyper_client);
+    let grpc_web = GrpcWebClientLayer::new().layer(ResponseFrames(hyper_client));
 
     let token = token.cloned();
     Ok(Clients {

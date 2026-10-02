@@ -20,6 +20,7 @@ hyper.workspace = true
 tower.workspace = true
 http-body-util.workspace = true
 http.workspace = true
+bytes.workspace = true
 rustls.workspace = true
 rustls-native-certs.workspace = true
 prost-types.workspace = true
