@@ -194,6 +194,25 @@ The MCP server running inside agent containers provides:
 - **Data query tools** — query team metrics, search contributions, find people, explore trends
 - **Image generation** — generate images via AI models, saved to `/workspace`
 
+### Agent analysis conventions
+
+The container's `prism.md` prompt presents review depth on the enrichment
+scorer's 1–5 scale and treats sentiment as a separate assessment. Comparisons
+use matching periods, role context, scored sample sizes, and available coverage.
+Missing enrichments remain unknown; counts describe recorded activity rather
+than a complete measure of productivity.
+
+`rubber_stamp_pct` applies only to scored reviews. The estimate
+`total_reviews_given × (1 − rubber_stamp_pct / 100)` describes non-rubber-stamp
+scored reviews for the same profile period, not meaningful contributions across
+all types. Profile periods are rolling 7, 30, 90, or 365 days and cannot supply a
+percentage for an arbitrary custom interval. Cadence uses explicit weekday and
+date-boundary assumptions, with unknown holidays and leave called out.
+
+Reports state strengths and weaknesses directly with source evidence and
+material data limits. PDF generation remains library-independent; agents check
+rendered pages for clipping, numbering errors, and orphan pages before delivery.
+
 ### Why SSE Streaming Lives in ps-server
 
 Initially, SSE streaming ran inside Restate handlers. Restate's 5-minute `ABORT_TIMEOUT` caused races: streams suspended mid-way, replay logic deleted recovery data, handlers retried forever. Moving streaming to ps-server eliminated these issues — ps-server already holds gRPC streams open for the duration, and Restate handles only the fast pod lifecycle.
