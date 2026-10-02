@@ -19,6 +19,19 @@ The model catalogue (`ModelCatalogueHandler`, a Restate service) fetches availab
 
 Enrichments are fire-and-forget from ingestion — triggered as downstream handlers after successful data ingestion.
 
+Review depth scores the substance recorded in the review text on a 1–5 scale,
+independently of sentiment. The scorer uses the full scale without rewarding
+polite praise or technical keywords alone. Sentiment classifies standalone
+approval and praise as neutral; constructive requires supportive, actionable
+feedback or guidance. Significance applies the same complexity and impact
+criteria to documentation, tooling, and product code, rather than using file
+counts or content type alone.
+
+Prompts are versioned constants in `ps-reasoning` and the full prompt is stored
+with each result. A deployment changes future scoring; it does not rescore
+existing enrichments. Comparisons spanning rubric changes must account for the
+stored prompts and coverage rather than assuming historical scores were updated.
+
 Queue processing captures the queue ID and source content hash alongside its
 input. Bulk and individual retry writes acquire ingestion's natural-key locks,
 then contribution and queue locks in consistent order, and save only results whose captured queue ID and content hash still match.
@@ -41,6 +54,14 @@ Key APIs:
 - **SearchByText** — given a text query, find relevant contributions via embedding similarity
 
 The embedding queue works similarly to the enrichment queue — items are queued during ingestion and processed asynchronously.
+
+Embedding text includes canonical enrichment fields (`significance`, `sentiment`,
+`score`, `primary_category`, and optional `secondary_category`). Older `label`,
+`category`, and `categories` representations remain readable. Available rationales
+are appended for significance, depth, and topics; missing rationale does not
+discard a usable label. Malformed values and depth scores outside the integer
+1–5 scale are omitted. Deploying a text-formatting fix affects newly processed
+queue items; it does not regenerate existing vectors.
 
 ## Agentic Query
 

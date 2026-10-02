@@ -4,6 +4,28 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-02 — Separate recorded review depth from sentiment and contribution volume
+
+**Context:** The agent prompt could conflate positive tone with technical depth
+and apply review-only percentages to all activity. Embedding text also expected
+legacy JSON keys that differ from the enrichment extractor's canonical output.
+
+**Decision:** Use the full 1–5 review-depth scale for substance visible in the
+recorded text. Classify standalone approval and praise as neutral, reserving
+constructive for supportive actionable guidance, independently of depth. Apply
+PR significance criteria consistently across documentation, tooling, and code.
+Keep activity types separate and require matching periods and available coverage
+for comparisons. Read canonical enrichment fields in embeddings while retaining
+legacy compatibility and secondary topic categories.
+
+**Rationale:** These conventions keep comparisons traceable without inferring
+unrecorded effort or treating counts as a complete measure of performance.
+Embedding inputs retain enrichment information actually written by the pipeline.
+Stored prompts preserve historical scoring context; this deployment neither
+rescores existing enrichments nor regenerates existing embedding vectors.
+
+---
+
 ## 2026-10-01 — Discourse coverage after complete traversal
 
 **Context:** Publishing the newest Discourse timestamp after each page can skip
