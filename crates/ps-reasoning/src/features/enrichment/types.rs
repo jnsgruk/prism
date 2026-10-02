@@ -48,9 +48,9 @@ pub struct SentimentLabel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Sentiment {
-    /// Helpful, encouraging, focused on improving the code.
+    /// Supportive, actionable feedback or guidance focused on improving the code.
     Constructive,
-    /// Neither positive nor negative — factual or procedural.
+    /// Procedural comments, acknowledgements, or standalone approval and praise.
     Neutral,
     /// Points out problems but in a professional way.
     Critical,
