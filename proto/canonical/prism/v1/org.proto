@@ -40,6 +40,9 @@ service OrgService {
   rpc UpdatePerson(UpdatePersonRequest) returns (UpdatePersonResponse);
   // DeactivatePerson marks a person as inactive, excluding them from future metrics.
   rpc DeactivatePerson(DeactivatePersonRequest) returns (DeactivatePersonResponse);
+  // DeletePerson permanently removes an inactive person (admin only).
+  // Source activity is retained without person attribution.
+  rpc DeletePerson(DeletePersonRequest) returns (DeletePersonResponse);
   // ReactivatePerson restores an inactive person.
   rpc ReactivatePerson(ReactivatePersonRequest) returns (ReactivatePersonResponse);
   // AssignPersonToTeam assigns a person to a team.
@@ -484,3 +487,9 @@ message RemovePersonIdentityRequest {
   string identity_id = 2;
 }
 message RemovePersonIdentityResponse { Person person = 1; }
+
+message DeletePersonRequest {
+  string person_id = 1;
+}
+
+message DeletePersonResponse {}

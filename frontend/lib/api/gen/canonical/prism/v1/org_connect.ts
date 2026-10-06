@@ -22,6 +22,8 @@ import {
   CreateTeamResponse,
   DeactivatePersonRequest,
   DeactivatePersonResponse,
+  DeletePersonRequest,
+  DeletePersonResponse,
   DeleteTeamRequest,
   DeleteTeamResponse,
   DismissTeamMappingSuggestionRequest,
@@ -240,6 +242,18 @@ export const OrgService = {
       name: "DeactivatePerson",
       I: DeactivatePersonRequest,
       O: DeactivatePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * DeletePerson permanently removes an inactive person (admin only).
+     * Source activity is retained without person attribution.
+     *
+     * @generated from rpc canonical.prism.v1.OrgService.DeletePerson
+     */
+    deletePerson: {
+      name: "DeletePerson",
+      I: DeletePersonRequest,
+      O: DeletePersonResponse,
       kind: MethodKind.Unary,
     },
     /**

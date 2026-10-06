@@ -181,6 +181,19 @@ async fn manual_rpcs_require_admin_and_return_complete_saved_person() {
             client.remove_person_identity(req).await.unwrap_err().code(),
             expected
         );
+
+        let req = proto::DeletePersonRequest {
+            person_id: saved.id.clone(),
+        };
+        let req = match role {
+            Some(t) => authed(req, t),
+            None => Request::new(req),
+        };
+
+        assert_eq!(
+            client.delete_person(req).await.unwrap_err().code(),
+            expected
+        );
     }
 
     let added = client

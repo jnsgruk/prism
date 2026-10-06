@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { PersonAccounts } from "@/views/admin/components/person-accounts";
 import { PersonBackfillDialog } from "@/views/admin/components/person-backfill-dialog";
 import { PersonFields } from "@/views/admin/components/person-fields";
-import { useDeactivatePerson, useReactivatePerson } from "@/views/admin/hooks/use-admin";
+import { useDeactivatePerson, useDeletePerson, useReactivatePerson } from "@/views/admin/hooks/use-admin";
 import { useSavePerson } from "@/views/admin/hooks/use-person-management";
 import { personDraft, validatePersonDraft } from "@/views/admin/lib/person-form";
 import { useRef, useState } from "react";
@@ -37,16 +37,23 @@ export const PersonDetailDialog = ({
   const [savedPerson, setSavedPerson] = useState(person);
   const [draft, setDraft] = useState(() => personDraft(person));
   const [validationError, setValidationError] = useState<string>();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [backfillOpen, setBackfillOpen] = useState(false);
 
   const currentUser = useCurrentUser();
   const sources = useListSources();
   const save = useSavePerson();
   const deactivate = useDeactivatePerson();
+  const deletion = useDeletePerson();
   const reactivate = useReactivatePerson();
 
-  const isPending = save.isPending || deactivate.isPending || reactivate.isPending;
-  const error = validationError ?? save.error?.message ?? deactivate.error?.message ?? reactivate.error?.message;
+  const isPending = save.isPending || deactivate.isPending || reactivate.isPending || deletion.isPending;
+  const error =
+    validationError ??
+    save.error?.message ??
+    deactivate.error?.message ??
+    reactivate.error?.message ??
+    deletion.error?.message;
 
   const handleSubmit = (event: React.FormEvent): void => {
     event.preventDefault();
@@ -131,6 +138,51 @@ export const PersonDetailDialog = ({
                   {person.active ? "Deactivate" : "Reactivate"}
                 </Button>
               </div>
+              {!person.active && currentUser.data?.role === "admin" && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Delete permanently</p>
+                  <p className="text-sm text-muted-foreground">
+                    This removes personal details, platform account mappings, memberships, and individual profiles.
+                    Source activity is retained without person attribution. Linked login accounts remain. This cannot be
+                    undone. Imports may create this person again.
+                  </p>
+                  {confirmDelete ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Permanently delete {person.name}?</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setConfirmDelete(false)}
+                          disabled={isPending}
+                        >
+                          Keep person
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={isPending}
+                          onClick={() => {
+                            deletion.mutate(person.id, { onSuccess: () => onOpenChange(false) });
+                          }}
+                        >
+                          {deletion.isPending ? "Deleting..." : "Confirm permanent deletion"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={isPending}
+                    >
+                      Delete permanently
+                    </Button>
+                  )}
+                </div>
+              )}
               {error && (
                 <Alert variant="destructive" className="min-w-0 break-words">
                   {error}

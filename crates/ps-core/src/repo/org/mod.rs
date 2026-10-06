@@ -13,6 +13,7 @@ mod manual;
 mod memberships;
 pub use manual::{CreatePersonParams, IdentityInput, ManualPersonResult, UpdateIdentityParams};
 mod people;
+mod person_deletion;
 mod resolutions;
 mod teams;
 

@@ -1,9 +1,10 @@
 use ps_core::repo::org::ListPeopleParams;
 use ps_core::repo::{PageRequest, Repos, SortParams};
 use ps_proto::canonical::prism::v1::{
-    AssignPersonToTeamResponse, DeactivatePersonResponse, ImportDirectoryResponse,
-    ImportJiraUsersResponse, ListPeopleResponse, ListUnassignedPeopleResponse, PaginationResponse,
-    ReactivatePersonResponse, RemovePersonFromTeamResponse, StalePerson, UpdatePersonResponse,
+    AssignPersonToTeamResponse, DeactivatePersonResponse, DeletePersonResponse,
+    ImportDirectoryResponse, ImportJiraUsersResponse, ListPeopleResponse,
+    ListUnassignedPeopleResponse, PaginationResponse, ReactivatePersonResponse,
+    RemovePersonFromTeamResponse, StalePerson, UpdatePersonResponse,
 };
 use tonic::{Response, Status};
 use tracing::{info, warn};
@@ -293,4 +294,24 @@ pub(super) async fn handle_import_jira_users(
         unmatched_users,
         warnings,
     }))
+}
+
+pub(super) async fn handle_delete_person(
+    repos: &Repos,
+    person_id: String,
+) -> Result<Response<DeletePersonResponse>, Status> {
+    let id: Uuid = person_id
+        .parse()
+        .map_err(|_| Status::invalid_argument("invalid person_id"))?;
+
+    repos
+        .org
+        .delete_person(id)
+        .await
+        .map_err(|error| match error {
+            ps_core::Error::Conflict(message) => Status::failed_precondition(message),
+            other => super::manual::write_err(other),
+        })?;
+
+    Ok(Response::new(DeletePersonResponse {}))
 }

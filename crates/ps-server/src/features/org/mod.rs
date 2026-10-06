@@ -15,11 +15,11 @@ use ps_proto::canonical::prism::v1::{
 use ps_proto::canonical::prism::v1::{
     AssignGithubTeamRequest, AssignGithubTeamResponse, AssignPersonToTeamRequest,
     AssignPersonToTeamResponse, CreateTeamRequest, CreateTeamResponse, DeactivatePersonRequest,
-    DeactivatePersonResponse, DeleteTeamRequest, DeleteTeamResponse,
-    DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse, ExportOrgRequest,
-    ExportOrgResponse, GetTeamMappingSuggestionsRequest, GetTeamMappingSuggestionsResponse,
-    GetTeamRequest, GetTeamResponse, GetTeamTreeRequest, GetTeamTreeResponse,
-    ImportDirectoryRequest, ImportDirectoryResponse, ImportJiraUsersRequest,
+    DeactivatePersonResponse, DeletePersonRequest, DeletePersonResponse, DeleteTeamRequest,
+    DeleteTeamResponse, DismissTeamMappingSuggestionRequest, DismissTeamMappingSuggestionResponse,
+    ExportOrgRequest, ExportOrgResponse, GetTeamMappingSuggestionsRequest,
+    GetTeamMappingSuggestionsResponse, GetTeamRequest, GetTeamResponse, GetTeamTreeRequest,
+    GetTeamTreeResponse, ImportDirectoryRequest, ImportDirectoryResponse, ImportJiraUsersRequest,
     ImportJiraUsersResponse, ImportOrgRequest, ImportOrgResponse, ListGithubTeamsRequest,
     ListGithubTeamsResponse, ListPeopleRequest, ListPeopleResponse, ListTeamGithubTeamsRequest,
     ListTeamGithubTeamsResponse, ListTeamsRequest, ListTeamsResponse, ListUnassignedPeopleRequest,
@@ -221,6 +221,15 @@ impl OrgService for OrgServiceImpl {
         let _ctx = require_auth(&request)?;
         let req = request.into_inner();
         people::handle_deactivate_person(&self.repos, req.person_id).await
+    }
+
+    async fn delete_person(
+        &self,
+        request: Request<DeletePersonRequest>,
+    ) -> Result<Response<DeletePersonResponse>, Status> {
+        require_admin(&request)?;
+        let req = request.into_inner();
+        people::handle_delete_person(&self.repos, req.person_id).await
     }
 
     async fn reactivate_person(

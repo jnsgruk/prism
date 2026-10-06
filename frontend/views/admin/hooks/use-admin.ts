@@ -2,6 +2,7 @@ import { orgKeys } from "@/lib/hooks/use-org";
 import { createClient } from "@connectrpc/connect";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import {
   AdminService,
@@ -279,5 +280,19 @@ export const useImportOrg = (): UseMutationResult<
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.all });
     },
+  });
+};
+
+export const useDeletePerson = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (personId: string) => {
+      await orgClient.deletePerson({ personId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.all });
+      toast.success("Person permanently deleted");
+    },
+    onError: (error) => toast.error(error.message),
   });
 };

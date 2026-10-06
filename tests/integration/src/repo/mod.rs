@@ -14,3 +14,5 @@ mod org_manual_import;
 
 mod org_jira_accounts;
 mod org_jira_import;
+
+mod person_deletion;
