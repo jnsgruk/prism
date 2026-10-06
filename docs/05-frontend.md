@@ -181,3 +181,13 @@ percent signs. The same path rules apply on the server; file lookup always uses
 the route's conversation ID. Session expiry does not turn the route into a
 public static file link. See [04-ai-reasoning.md](04-ai-reasoning.md#generated-file-references)
 for access policy, validation timing and workspace lifetime.
+
+## Permanent person deletion
+
+The person details dialog offers **Delete permanently** to admins for inactive
+people. An explicit confirmation names the person and explains removal of their
+details, accounts, memberships and individual profiles, retention of unattributed
+source activity, and possible recreation through imports. Cancelling confirmation
+makes no request. While deleting, form actions and dismissal are disabled.
+Success closes the dialog, invalidates organisation queries and displays a toast;
+failure keeps the dialog open for retry and displays the error.

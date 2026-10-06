@@ -604,3 +604,18 @@ replay/cancellation plus real PostgreSQL/provider fixtures.
 - Chisel produces minimal layers (base-files, ca-certificates, libssl3) comparable to distroless
 - Familiar debugging environment when needed
 - Consistent with Canonical's container strategy
+
+## 2026-10-06: Permanent deletion of inactive directory people
+
+**Context:** Deactivated people could only be reactivated; admins could not remove
+obsolete directory entries.
+
+**Decision:** Add an admin-only DeletePerson RPC and confirmed UI action, requiring
+an inactive person under a row lock. Remove identities, membership history,
+resolutions, discovery coverage and individual profiles. Retain source activity
+with null person attribution, clear team-lead and login-account links, and retain
+historical provenance and pipeline snapshots. Login accounts are separate records.
+
+**Rationale:** This allows deliberate directory cleanup while retaining auditable
+source data and serializing deletion with reactivation and scoped ingestion.
+Imports can recreate people; this is not a suppression list or source-data erasure.

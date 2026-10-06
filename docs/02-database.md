@@ -206,3 +206,19 @@ with the stable account owner and is skipped. Email fallback considers inactive
 people when detecting ambiguity; inactive matches are reported without
 reactivation. Manual account and resolution protections still apply, and
 unmatched CSV rows do not create people.
+
+## Permanent person deletion
+
+Admins can permanently delete inactive `org.people` records. The repository
+locks the person row before checking status and removes identities and all
+membership history in the same transaction. Reactivation and scoped ingestion
+serialize against that row lock. Active people fail with a precondition error;
+missing people return not found.
+
+Migration 0049 clears contribution attribution, team leads and login-account
+person links through `ON DELETE SET NULL`. Source contributions and their
+source URLs remain available; login accounts remain separate from directory
+people. Existing cascades remove identity resolutions, discovery coverage and
+individual profiles. Historical pipeline snapshots, provenance and previously
+computed team summaries remain historical records; deletion is not source-data
+erasure. Directory or external imports can recreate a deleted person.
