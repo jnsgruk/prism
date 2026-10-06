@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO metrics.individual_profiles (id, person_id, period_start, period_end, period_type) VALUES ($1, $2, '2026-01-01', '2026-01-31', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8e2982fad4103d75749175925d0378fb25921b95f9373dd3720e584e77891e10"
+}
