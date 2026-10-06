@@ -51,7 +51,9 @@ The multi-stage Dockerfile (`crates/Dockerfile`) supports:
 - **Dev targets:** Ubuntu 24.04 base with libc, libssl, ca-certificates; runs as unprivileged "prism" user
 - **Prod targets:** Minimal scratch images via Chisel (base-files, ca-certificates, libssl3)
 - **Build args:** `PROFILE` (debug for Tilt, release for CI), `BIN` (ps-server, ps-workers, ps-migrate)
-- BuildKit cache mounts on cargo registry and target/ for fast incremental rebuilds
+- BuildKit cache mounts on cargo registry and target/ for fast incremental rebuilds;
+  `sharing=locked` serializes concurrent access to prevent crate unpack races.
+  Both service and agent builders use the workspace Rust 1.96 toolchain.
 
 The frontend container uses Caddy to serve static files with SPA fallback.
 
