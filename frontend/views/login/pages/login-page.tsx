@@ -23,8 +23,6 @@ const LoginPage = (): React.ReactElement | null => {
   const { data: setupComplete, isLoading: statusLoading } = useSetupStatus();
   const login = useLogin();
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,9 +33,14 @@ const LoginPage = (): React.ReactElement | null => {
 
   if (statusLoading || setupComplete === false) return null;
 
-  const handleLogin = (e: React.FormEvent): void => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get("username");
+    const password = formData.get("password");
+    if (typeof username !== "string" || typeof password !== "string") return;
 
     login.mutate(
       { username, password },
@@ -63,27 +66,23 @@ const LoginPage = (): React.ReactElement | null => {
           <CardDescription>Enter your credentials to continue</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form id="login" method="post" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
+                name="username"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <Input id="password" name="password" type="password" autoComplete="current-password" required />
             </div>
 
             {error && <Alert variant="destructive">{error}</Alert>}

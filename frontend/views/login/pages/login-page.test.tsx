@@ -1,6 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { create } from "@bufbuild/protobuf";
-import { createRouterTransport } from "@connectrpc/connect";
+import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -10,17 +10,23 @@ import {
   AuthService,
   GetCurrentUserResponseSchema,
   GetSetupStatusResponseSchema,
+  type LoginRequest,
   LoginResponseSchema,
   LogoutResponseSchema,
 } from "@ps/api/gen/canonical/prism/v1/auth_pb";
 import { createTestQueryClient, setupCleanup } from "@ps/test-utils";
+
+const { loginRequest } = vi.hoisted(() => ({ loginRequest: vi.fn<(request: LoginRequest) => void>() }));
 
 vi.mock("@ps/api/transport", () => ({
   transport: createRouterTransport(({ service }) => {
     service(AuthService, {
       getSetupStatus: () => create(GetSetupStatusResponseSchema, { setupComplete: true }),
       getCurrentUser: () => create(GetCurrentUserResponseSchema, { username: "admin", displayName: "Admin" }),
-      login: () => create(LoginResponseSchema, { sessionToken: "test-token" }),
+      login: (request) => {
+        loginRequest(request);
+        return create(LoginResponseSchema, { sessionToken: "test-token" });
+      },
       logout: () => create(LogoutResponseSchema, {}),
       completeSetup: () => ({}),
     });
@@ -74,9 +80,41 @@ describe("LoginPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
 
-    // Button should show "Signing in..." while pending
     await waitFor(() => {
-      expect(screen.queryByText("Signing in...") ?? screen.queryByText("Sign In")).toBeTruthy();
+      expect(loginRequest).toHaveBeenLastCalledWith(
+        expect.objectContaining({ username: "admin", password: "pass123" }),
+      );
+    });
+  });
+
+  it("submits autofilled credentials without change events, including after a failed login", async () => {
+    await renderPage();
+
+    loginRequest.mockImplementationOnce(() => {
+      throw new ConnectError("Invalid credentials", Code.Unauthenticated);
+    });
+
+    const username = screen.getByLabelText<HTMLInputElement>("Username");
+    const password = screen.getByLabelText<HTMLInputElement>("Password");
+    username.value = "autofilled-user";
+    password.value = "wrong-password";
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Invalid credentials/)).toBeInTheDocument();
+    });
+
+    expect(username).toHaveValue("autofilled-user");
+    expect(password).toHaveValue("wrong-password");
+    password.value = "autofilled-password";
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(loginRequest).toHaveBeenLastCalledWith(
+        expect.objectContaining({ username: "autofilled-user", password: "autofilled-password" }),
+      );
     });
   });
 });
