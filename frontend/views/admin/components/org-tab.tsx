@@ -185,7 +185,7 @@ export const OrgTab = (): React.ReactElement => {
             if (!open) setDeletingTeam(null);
           }}
           title={`Delete "${deletingTeam.name}"?`}
-          description="This will permanently delete the team and all sub-teams. This action cannot be undone."
+          description="This will permanently delete the team, its ended membership history, and its snapshots. Repository assignments will be cleared. Reassign active members and remove or reparent child teams first. This action cannot be undone."
           confirmLabel="Delete"
           onConfirm={() => deleteTeam.mutate(deletingTeam.id)}
         />

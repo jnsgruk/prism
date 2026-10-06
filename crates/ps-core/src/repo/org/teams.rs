@@ -172,13 +172,21 @@ impl OrgRepo {
             .ok_or_else(|| Error::Internal("team not found after update".to_owned()))
     }
 
-    /// Delete a team. Fails if it has children or active members.
+    /// Delete a team and its ended memberships. Fails if it has children or active members.
     pub async fn delete_team(&self, id: Uuid) -> Result<(), Error> {
+        let mut tx = self.pool.begin().await.map_err(Error::from)?;
+
+        // Block new foreign-key references until validation and deletion finish.
+        sqlx::query!("SELECT id FROM org.teams WHERE id = $1 FOR UPDATE", id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(Error::from)?;
+
         let has_children = sqlx::query_scalar!(
             r#"SELECT EXISTS(SELECT 1 FROM org.teams WHERE parent_team_id = $1) AS "exists!""#,
             id,
         )
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await
         .map_err(Error::from)?;
 
@@ -198,7 +206,7 @@ impl OrgRepo {
             "#,
             id,
         )
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await
         .map_err(Error::from)?;
 
@@ -208,10 +216,24 @@ impl OrgRepo {
             ));
         }
 
+        // Keep the membership foreign key restrictive: active rows must never cascade.
+        sqlx::query!(
+            r#"
+            DELETE FROM org.team_memberships
+            WHERE team_id = $1 AND end_date <= CURRENT_DATE
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+
         sqlx::query!("DELETE FROM org.teams WHERE id = $1", id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(Error::from)?;
+
+        tx.commit().await.map_err(Error::from)?;
 
         Ok(())
     }

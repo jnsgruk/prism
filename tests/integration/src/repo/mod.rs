@@ -5,6 +5,7 @@ mod metrics;
 mod org;
 mod org_manual;
 mod org_manual_races;
+mod org_team_deletion;
 mod reasoning;
 
 mod org_manual_export;
