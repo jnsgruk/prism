@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO metrics.team_snapshots (id, team_id, period_start, period_end, period_type)\n        VALUES ($1, $2, CURRENT_DATE, CURRENT_DATE, 'week')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "44b735a72fc44e4da57314291670f9a1b2f1c2a525581b1a22ba4abe58b9fb9f"
+}

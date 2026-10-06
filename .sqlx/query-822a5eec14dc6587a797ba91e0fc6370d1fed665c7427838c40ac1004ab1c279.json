@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO reasoning.insight_snapshots (team_id, period_start, period_end, period_type)\n        VALUES ($1, CURRENT_DATE, CURRENT_DATE, 'week')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "822a5eec14dc6587a797ba91e0fc6370d1fed665c7427838c40ac1004ab1c279"
+}

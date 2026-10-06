@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE org.team_memberships SET end_date = CURRENT_DATE + 1 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cdf6817836be58735075f4e6a471e1be679c95fbd0a7e8a6f69979d2d7093f95"
+}

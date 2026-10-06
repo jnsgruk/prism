@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.people (id, name) VALUES ($1, 'Alice')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cc47fd01360b3666cd99f9a62fb14cf0a0724c5332d28c7fee2cf464be0960cb"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org.repositories (id, github_org, github_repo, team_id) VALUES ($1, 'org', 'repo', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "734c9d1d14d80f21b009ae1f8627d0a39f168ccd1b2be6b45566a7d0272d8670"
+}
