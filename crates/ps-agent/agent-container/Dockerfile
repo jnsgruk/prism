@@ -12,7 +12,7 @@ ARG PROFILE=release
 # ---------------------------------------------------------------------------
 # Builder — reuses the same pattern as crates/Dockerfile
 # ---------------------------------------------------------------------------
-FROM rust:1.94-bookworm AS builder
+FROM rust:1.96-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     libprotobuf-dev \
@@ -33,8 +33,8 @@ RUN find crates tests -name Cargo.toml -exec sh -c '\
 
 ENV SQLX_OFFLINE=true
 ARG PROFILE
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/app/target,sharing=locked \
     cargo build \
     $([ "$PROFILE" = "release" ] && echo "--release") \
     --bin ps-mcp \

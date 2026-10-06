@@ -44,8 +44,8 @@ RUN find crates tests -name Cargo.toml -exec sh -c '\
 ENV SQLX_OFFLINE=true
 ARG PROFILE
 ARG BIN
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/app/target,sharing=locked \
     cargo build \
         $([ "$PROFILE" = "release" ] && echo "--release") \
         --bin ${BIN} \
