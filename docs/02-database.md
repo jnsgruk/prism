@@ -197,3 +197,12 @@ Portable merge prefers a matching UUID or directory ID over other people sharing
 the same email. Contradictory UUID/directory matches, or a supplied email belonging
 only to a different person, remain ambiguous and are skipped before applying
 accounts or memberships.
+
+Jira CSV reconciliation matches an existing Jira account ID before falling back
+to a unique case-insensitive, trimmed person email. Changed Jira emails update
+the imported account label while preserving the person and identity UUIDs and
+the canonical person email. An email belonging to another person conflicts
+with the stable account owner and is skipped. Email fallback considers inactive
+people when detecting ambiguity; inactive matches are reported without
+reactivation. Manual account and resolution protections still apply, and
+unmatched CSV rows do not create people.
