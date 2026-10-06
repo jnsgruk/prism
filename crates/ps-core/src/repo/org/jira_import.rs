@@ -3,11 +3,12 @@ use crate::{
     Error,
     models::{Management, Platform},
 };
+use sqlx::PgConnection;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 impl OrgRepo {
-    /// Import Jira users by matching email addresses to existing people and
+    /// Import Jira users by matching account IDs first, then unique emails, and
     /// creating platform identities with `platform_user_id` set to the Jira
     /// `accountId`.
     ///
@@ -22,39 +23,7 @@ impl OrgRepo {
 
         let mut tx = self.pool.begin().await.map_err(Error::from)?;
 
-        // Collect unique emails for batch lookup
-        let emails: Vec<String> = records
-            .iter()
-            .map(|r| r.email.trim().to_lowercase())
-            .collect();
-
-        // Look up people by email (case-insensitive)
-        let rows = sqlx::query!(
-            r#"
-            SELECT id, LOWER(btrim(email)) as "email!"
-            FROM org.people
-            WHERE LOWER(btrim(email)) = ANY($1)
-              AND active = true
-            ORDER BY id
-            FOR UPDATE
-            "#,
-            &emails,
-        )
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        let mut candidates: HashMap<String, Vec<Uuid>> = HashMap::new();
-        for row in rows {
-            candidates.entry(row.email).or_default().push(row.id);
-        }
-        let email_to_person: HashMap<String, Uuid> = candidates
-            .into_iter()
-            .filter_map(|(email, ids)| match ids.as_slice() {
-                [id] => Some((email, *id)),
-                _ => None,
-            })
-            .collect();
+        let people = matching_people(&mut tx, records).await?;
 
         let mut mapped_count = 0i32;
         let mut unmatched_count = 0i32;
@@ -72,19 +41,32 @@ impl OrgRepo {
         warnings.extend(candidates.warnings);
         for record in candidates.records {
             let email_lower = record.email.trim().to_lowercase();
-            if let Some(&person_id) = email_to_person.get(&email_lower) {
-                ids.push(Uuid::now_v7());
-                person_ids.push(person_id);
-                platforms.push(Platform::Jira.to_string());
-                usernames.push(record.email.trim().to_lowercase());
-                user_ids.push(record.account_id.clone());
-            } else {
-                unmatched_count += 1;
-                warnings.push(format!(
-                    "No person found for Jira user {} <{}>",
-                    record.display_name, record.email
-                ));
-            }
+            let email_matches = people
+                .email_candidates
+                .get(&email_lower)
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            let person_id = match matching_person(
+                people.account_owners.get(&record.account_id).copied(),
+                email_matches,
+                &people.active_people,
+            ) {
+                Ok(id) => id,
+                Err(reason) => {
+                    unmatched_count += 1;
+                    warnings.push(format!(
+                        "Jira user {} <{}>: {reason} — skipped",
+                        record.display_name, record.email
+                    ));
+                    continue;
+                }
+            };
+
+            ids.push(Uuid::now_v7());
+            person_ids.push(person_id);
+            platforms.push(Platform::Jira.to_string());
+            usernames.push(email_lower);
+            user_ids.push(record.account_id.clone());
         }
 
         // Batch upsert platform identities
@@ -179,6 +161,106 @@ impl OrgRepo {
         tx.commit().await.map_err(Error::from)?;
 
         Ok((mapped_count, unmatched_count, warnings))
+    }
+}
+
+struct MatchingPeople {
+    email_candidates: HashMap<String, Vec<Uuid>>,
+    active_people: HashMap<Uuid, bool>,
+    account_owners: HashMap<String, Uuid>,
+}
+
+async fn matching_people(
+    tx: &mut PgConnection,
+    records: &[crate::directory::JiraUserRecord],
+) -> Result<MatchingPeople, Error> {
+    let emails: Vec<String> = records
+        .iter()
+        .map(|r| r.email.trim().to_lowercase())
+        .collect();
+    let account_ids: Vec<String> = records.iter().map(|r| r.account_id.clone()).collect();
+
+    // Lock both email candidates and stable account owners, including inactive
+    // people. An inactive owner must never be bypassed by email matching.
+    let rows = sqlx::query!(
+        r#"
+        SELECT p.id, LOWER(btrim(p.email)) AS email, p.active
+        FROM org.people p
+        WHERE LOWER(btrim(p.email)) = ANY($1)
+           OR EXISTS (
+               SELECT 1 FROM org.platform_identities pi
+               WHERE pi.person_id = p.id AND pi.platform = $3
+                 AND pi.platform_user_id = ANY($2)
+           )
+        ORDER BY p.id
+        FOR UPDATE OF p
+        "#,
+        &emails,
+        &account_ids,
+        Platform::Jira as Platform,
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+
+    let mut email_candidates: HashMap<String, Vec<Uuid>> = HashMap::new();
+    let mut active_people = HashMap::new();
+    for row in rows {
+        active_people.insert(row.id, row.active);
+        if let Some(email) = row.email {
+            email_candidates.entry(email).or_default().push(row.id);
+        }
+    }
+
+    let accounts = sqlx::query!(
+        r#"
+        SELECT platform_user_id AS "account_id!", person_id
+        FROM org.platform_identities
+        WHERE platform = $1 AND platform_user_id = ANY($2)
+        ORDER BY id
+        FOR UPDATE
+        "#,
+        Platform::Jira as Platform,
+        &account_ids,
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(Error::from)?;
+    let account_owners: HashMap<String, Uuid> = accounts
+        .into_iter()
+        .map(|row| (row.account_id, row.person_id))
+        .collect();
+
+    Ok(MatchingPeople {
+        email_candidates,
+        active_people,
+        account_owners,
+    })
+}
+
+/// Stable accounts prove ownership; contradictory email matches require repair.
+fn matching_person(
+    account_owner: Option<Uuid>,
+    email_matches: &[Uuid],
+    active_people: &HashMap<Uuid, bool>,
+) -> Result<Uuid, &'static str> {
+    let id = match account_owner {
+        Some(owner) => {
+            if email_matches.iter().any(|id| *id != owner) {
+                return Err("account ID and email have conflicting ownership");
+            }
+            owner
+        }
+        None => match email_matches {
+            [id] => *id,
+            [] => return Err("no matching person found"),
+            _ => return Err("ambiguous email match"),
+        },
+    };
+
+    match active_people.get(&id) {
+        Some(true) => Ok(id),
+        _ => Err("matched person is inactive or unavailable"),
     }
 }
 
