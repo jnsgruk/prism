@@ -4,6 +4,23 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-06 — Reuse manager-led teams during directory membership assignment
+
+**Context:** New directory members were assigned by generated team name, creating
+redundant manager teams after existing teams had been renamed. Lead matching was
+used only for parent wiring, after duplicates had already been created.
+
+**Decision:** Resolve all imported people first and match team/squad membership
+to the manager's existing led team in the same organization before matching a
+name or creating a team. Preserve existing memberships and manual choices. Warn
+and leave new people unassigned when multiple led teams cannot be disambiguated.
+
+**Rationale:** Stable person and team UUIDs survive renamed teams and changes in
+directory depth. Separate passes remove file-order dependence, while explicit
+ambiguity handling avoids silently assigning people to the wrong team.
+
+---
+
 ## 2026-10-06 — Permit deletion of teams with ended memberships
 
 **Context:** Teams with no active memberships passed deletion validation but

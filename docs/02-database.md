@@ -28,6 +28,18 @@ The `Repos` struct bundles all repos and is constructed once from a `PgPool` in 
 3. One repo per schema — cross-schema joins are permitted only as read-only queries within the primary consumer repo
 4. No `PgPool` in services or sources — only `main.rs` and the repo layer touch `PgPool`
 
+## Directory team matching
+
+Directory import resolves all people before assigning teams, so file ordering
+cannot hide an existing manager identity. Team and squad assignments first match
+teams led by that person within the same organization, including renamed teams
+and directory depth changes. Generated directory names become aliases for the
+existing UUID for membership and hierarchy wiring. Existing active memberships
+and manual team choices remain protected. Name matching and creation are
+fallbacks when no led team exists. If a person leads multiple teams, an exact
+name match disambiguates; otherwise new members remain unassigned with a warning
+rather than creating another team or guessing.
+
 ## Team deletion
 
 Teams with no active memberships and no child teams can be permanently deleted.
