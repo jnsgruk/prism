@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM org.teams WHERE lead_id = $1",
+  "query": "SELECT id FROM org.people WHERE directory_id = 'Report'",
   "describe": {
     "columns": [
       {
@@ -9,20 +9,18 @@
         "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "org.teams",
+            "table": "org.people",
             "name": "id"
           }
         }
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false
     ]
   },
-  "hash": "da78da04b4e28868a12c66b459cdea466043086e2fa4f2704f62549ebb15fa54"
+  "hash": "23070ef36eb290d3b7e797d46de7516de36c52624f74a04bc029e847fde05b0b"
 }
