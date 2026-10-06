@@ -7,6 +7,7 @@ mod identities;
 mod import;
 mod import_people;
 mod import_stale;
+mod import_teams;
 mod jira_import;
 mod manual;
 mod memberships;

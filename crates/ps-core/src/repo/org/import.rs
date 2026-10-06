@@ -10,6 +10,7 @@ use super::import_stale::{
     count_active_import_managed, count_unassigned_people, deactivate_person_in_tx,
     find_stale_people,
 };
+use super::import_teams::resolve_team;
 use super::{ImportRecord, ImportResult, OrgRepo};
 
 /// Maximum fraction of import-managed people that may be deactivated as stale
@@ -21,11 +22,11 @@ const STALE_DEACTIVATION_MAX_FRACTION: f64 = 0.2;
 pub(super) struct ImportState {
     pub(super) people_imported: i32,
     pub(super) people_updated: i32,
-    teams_created: i32,
+    pub(super) teams_created: i32,
     pub(super) identities_mapped: i32,
     pub(super) warnings: Vec<String>,
-    person_name_to_id: HashMap<String, Uuid>,
-    team_name_to_id: HashMap<String, Uuid>,
+    pub(super) person_name_to_id: HashMap<String, Uuid>,
+    pub(super) team_name_to_id: HashMap<String, Uuid>,
     has_active_membership: HashSet<Uuid>,
 }
 
@@ -166,12 +167,13 @@ async fn ensure_group_teams(
     Ok(())
 }
 
-/// Pass 1: upsert people, create teams, assign memberships, map identities.
+/// Pass 1: resolve people and identities, then assign memberships and track teams.
 async fn upsert_people_and_teams(
     tx: &mut PgConnection,
     records: &[ImportRecord],
     state: &mut ImportState,
 ) -> Result<(), Error> {
+    let mut resolved_people = Vec::new();
     for record in records {
         if record.name.is_empty() {
             state.warnings.push(format!(
@@ -188,9 +190,15 @@ async fn upsert_people_and_teams(
             .person_name_to_id
             .insert(record.name.clone(), resolved_id);
 
-        assign_team_if_needed(tx, record, resolved_id, state).await?;
-        track_team_name(tx, record, state).await?;
         map_identities(tx, record, resolved_id, state).await?;
+        resolved_people.push((record, resolved_id));
+    }
+
+    // Resolve every person's stable identity before looking up team leads.
+    // Reports can precede their managers in an import file.
+    for (record, resolved_id) in resolved_people {
+        assign_team_if_needed(tx, record, resolved_id, state).await?;
+        resolve_team(tx, record, state, false).await?;
     }
     Ok(())
 }
@@ -238,45 +246,9 @@ async fn assign_team_if_needed(
         return Ok(());
     }
 
-    let Some(team_name) = &record.team else {
+    let Some(team_id) = resolve_team(tx, record, state, true).await? else {
         return Ok(());
     };
-
-    let org_name = record.org.as_deref().unwrap_or("default");
-
-    let team_id = sqlx::query_scalar!(
-        "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
-        team_name,
-        org_name,
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(Error::from)?;
-
-    let team_id = if let Some(id) = team_id {
-        id
-    } else {
-        let new_id = Uuid::now_v7();
-        let tt = record.team_type.unwrap_or(TeamType::Group);
-        sqlx::query!(
-            r#"
-            INSERT INTO org.teams (id, name, org_name, team_type)
-            VALUES ($1, $2, $3, $4::org.team_type)
-            "#,
-            new_id,
-            team_name,
-            org_name,
-            tt as TeamType,
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(Error::from)?;
-
-        state.teams_created += 1;
-        new_id
-    };
-
-    state.team_name_to_id.insert(team_name.clone(), team_id);
 
     let membership_id = Uuid::now_v7();
     sqlx::query!(
@@ -292,31 +264,6 @@ async fn assign_team_if_needed(
     .await
     .map_err(Error::from)?;
 
-    Ok(())
-}
-
-/// Track team name → id even if person already has membership (needed for hierarchy wiring).
-async fn track_team_name(
-    tx: &mut PgConnection,
-    record: &ImportRecord,
-    state: &mut ImportState,
-) -> Result<(), Error> {
-    if let Some(team_name) = &record.team
-        && !state.team_name_to_id.contains_key(team_name)
-    {
-        let org_name = record.org.as_deref().unwrap_or("default");
-        if let Some(tid) = sqlx::query_scalar!(
-            "SELECT id FROM org.teams WHERE name = $1 AND org_name = $2",
-            team_name,
-            org_name,
-        )
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(Error::from)?
-        {
-            state.team_name_to_id.insert(team_name.clone(), tid);
-        }
-    }
     Ok(())
 }
 
@@ -415,10 +362,19 @@ async fn resolve_parent(
     // First try: find team where lead_id = manager's person_id (survives team renames).
     let manager_person_id = state.person_name_to_id.get(manager_name).copied();
     let parent_id = if let Some(mgr_id) = manager_person_id {
-        sqlx::query_scalar!("SELECT id FROM org.teams WHERE lead_id = $1", mgr_id)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(Error::from)?
+        let org_name = record.org.as_deref().unwrap_or("default");
+        let candidates = sqlx::query_scalar!(
+            "SELECT id FROM org.teams WHERE lead_id = $1 AND org_name = $2",
+            mgr_id,
+            org_name,
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(Error::from)?;
+        match candidates.as_slice() {
+            [id] => Some(*id),
+            _ => None,
+        }
     } else {
         None
     };

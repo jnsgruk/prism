@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod metrics;
 mod org;
+mod org_directory_teams;
 mod org_manual;
 mod org_manual_races;
 mod org_team_deletion;
