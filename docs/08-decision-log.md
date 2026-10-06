@@ -4,6 +4,24 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-06 — Permit deletion of teams with ended memberships
+
+**Context:** Teams with no active memberships passed deletion validation but
+failed on the restrictive historical membership foreign key. Metric snapshots
+and repository assignments could also block deletion, and the UI incorrectly
+promised recursive deletion.
+
+**Decision:** Keep active membership and child-team guards. Remove only ended
+membership rows in the team deletion transaction, cascade derived team metrics,
+and clear repository assignments. Retain people and source activity. Explain
+the historical-data removal and child-team restriction in the dialog.
+
+**Rationale:** An empty leaf team must be removable without deleting its people
+or repositories. Keeping membership references restrictive protects active
+memberships; team-row locking prevents new references during validation.
+
+---
+
 ## 2026-10-02 — Separate recorded review depth from sentiment and contribution volume
 
 **Context:** The agent prompt could conflate positive tone with technical depth

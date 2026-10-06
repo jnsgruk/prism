@@ -28,6 +28,19 @@ The `Repos` struct bundles all repos and is constructed once from a `PgPool` in 
 3. One repo per schema — cross-schema joins are permitted only as read-only queries within the primary consumer repo
 4. No `PgPool` in services or sources — only `main.rs` and the repo layer touch `PgPool`
 
+## Team deletion
+
+Teams with no active memberships and no child teams can be permanently deleted.
+`OrgRepo::delete_team` locks the team row and validates within one transaction,
+then removes memberships whose end date is today or earlier. The membership
+foreign key remains restrictive so active membership rows cannot cascade.
+Migration 0048 cascades metric snapshots (and their source links) and clears
+repository team assignments with `ON DELETE SET NULL`. Insight snapshots and
+GitHub team mappings already cascade. People, repositories, contributions and
+individual metrics remain intact. Deletion removes the team's historical
+membership attribution and derived team snapshots; the confirmation dialog
+makes that consequence explicit.
+
 ## Domain Enums
 
 Domain concepts (platform, contribution type, state, ingestion status, period type, role) use Rust enums stored as `TEXT` in PostgreSQL. The `impl_sqlx_text!` macro bridges sqlx encode/decode. No custom Postgres type migrations needed — the Rust compiler enforces valid values.
