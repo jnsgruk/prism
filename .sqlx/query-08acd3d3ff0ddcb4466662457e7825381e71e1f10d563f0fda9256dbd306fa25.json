@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id, LOWER(btrim(p.email)) AS email, p.active\n        FROM org.people p\n        WHERE LOWER(btrim(p.email)) = ANY($1)\n           OR EXISTS (\n               SELECT 1 FROM org.platform_identities pi\n               WHERE pi.person_id = p.id AND pi.platform = $3\n                 AND pi.platform_user_id = ANY($2)\n           )\n        ORDER BY p.id\n        FOR UPDATE OF p\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "org.people",
+            "name": "active"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "08acd3d3ff0ddcb4466662457e7825381e71e1f10d563f0fda9256dbd306fa25"
+}
