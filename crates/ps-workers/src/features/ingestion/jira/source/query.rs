@@ -122,7 +122,13 @@ pub(super) fn build_jql(cur: &Cursor, project: Option<&str>) -> Result<String, E
             conservative_local_lower(lower, timezone)?
         ));
     } else if let Some(watermark) = &cur.watermark {
-        let dt = parse_jira_datetime(watermark)?;
+        // Explicit All backfills pass a date-only since_date as the watermark.
+        // A saved incremental watermark is a full Jira issue timestamp.
+        let dt = if watermark.len() == 10 {
+            parse_since_date(watermark)?.midnight().assume_utc()
+        } else {
+            parse_jira_datetime(watermark)?
+        };
         clauses.push(format!(
             "updated >= \"{:04}-{:02}-{:02} {:02}:{:02}\"",
             dt.year(),
@@ -253,6 +259,25 @@ mod tests {
             "project = \"PROJ\" ORDER BY updated ASC"
         );
         assert_eq!(build_jql(&cursor, None).unwrap(), "ORDER BY updated ASC");
+    }
+
+    #[test]
+    fn all_backfill_accepts_date_only_watermark() {
+        let mut cursor: Cursor = serde_json::from_value(serde_json::json!({
+            "watermark":"2026-04-06", "projects":[],
+            "next_page_token":null, "max_updated_at":null,
+            "base_url":"https://example.atlassian.net", "story_points_field":null,
+            "api_mode":"cloud"
+        }))
+        .unwrap();
+
+        assert_eq!(
+            build_jql(&cursor, None).unwrap(),
+            "updated >= \"2026-04-06 00:00\" ORDER BY updated ASC"
+        );
+
+        cursor.watermark = Some("2026-02-30".into());
+        assert!(build_jql(&cursor, None).is_err());
     }
 
     #[test]
