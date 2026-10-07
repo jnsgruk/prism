@@ -58,7 +58,7 @@ const prTitleColumn: ColumnDef<Contribution> = {
     const label = num ? `#${num}` : c.title || "\u2014";
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="whitespace-nowrap" title={c.title}>
+        <span className="min-w-0 truncate" title={c.title}>
           {label}
         </span>
         {c.url && (
@@ -119,7 +119,7 @@ const repoColumn: ColumnDef<Contribution> = {
   accessorKey: "repo",
   header: "Repo",
   cell: ({ row }) => (
-    <span className="block max-w-30 truncate text-muted-foreground" title={row.original.repo}>
+    <span className="block w-full truncate text-muted-foreground" title={row.original.repo}>
       {row.original.repo || "\u2014"}
     </span>
   ),
@@ -313,6 +313,20 @@ export const ContributionTable = ({
       ? [prTitleColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn]
       : [prTitleColumn, authorColumn, repoColumn, prStateColumn, createdAtColumn, prStatsColumn];
   }, [isReview, isDiscourse, isPersonMode]);
+  let columnWidths: Record<string, string> | undefined;
+  if (!isDiscourse) {
+    columnWidths = {
+      title: isReview ? "30%" : "8rem",
+      state: "8rem",
+      created_at: "11rem",
+    };
+    if (!isPersonMode) columnWidths.person_name = "11rem";
+    if (!isReview) columnWidths.stats = "8rem";
+  }
+  let tableMinWidth = "";
+  if (!isDiscourse) {
+    tableMinWidth = isPersonMode ? "[&_table]:min-w-[44rem]" : "[&_table]:min-w-[56rem]";
+  }
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [pageSize, setPageSize] = useState(10);
@@ -409,10 +423,11 @@ export const ContributionTable = ({
         <p className="py-8 text-center text-sm text-muted-foreground">Loading contributions...</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-md border">
+          <div className={`overflow-x-auto rounded-md border ${tableMinWidth}`}>
             <DataTable
               columns={columns}
               data={contributions}
+              columnWidths={columnWidths}
               sorting={sorting}
               onSortingChange={(updater) => {
                 setSorting(updater);

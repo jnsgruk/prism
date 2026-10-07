@@ -18,6 +18,7 @@ export type DataTableColumnDef<TData extends RowData> = ColumnDef<typeof dataTab
 interface DataTableProps<TData extends RowData> {
   columns: DataTableColumnDef<TData>[];
   data: TData[];
+  columnWidths?: Record<string, string>;
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
   onRowClick?: (row: TData) => void;
@@ -26,6 +27,7 @@ interface DataTableProps<TData extends RowData> {
 export const DataTable = <TData extends RowData>({
   columns,
   data,
+  columnWidths,
   sorting,
   onSortingChange,
   onRowClick,
@@ -40,7 +42,14 @@ export const DataTable = <TData extends RowData>({
   });
 
   return (
-    <Table>
+    <Table className={columnWidths ? "table-fixed" : undefined}>
+      {columnWidths && (
+        <colgroup>
+          {table.getAllLeafColumns().map((column) => (
+            <col key={column.id} style={{ width: columnWidths[column.id] }} />
+          ))}
+        </colgroup>
+      )}
       <TableHeader>
         {table.getHeaderGroups().map((hg) => (
           <TableRow key={hg.id}>
