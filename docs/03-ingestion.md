@@ -113,8 +113,9 @@ sleep, including after a worker restart; successful requests are not repeated.
 The Discourse cursor counts consecutive 429 responses at the same fetch position.
 The next durable sleep honors `Retry-After` and has a 60-second floor that grows
 to 15 minutes across repeated 429s. A successful fetch resets the count. Older
-in-flight cursors default the count to zero, and the fetch/store journal command
-sequence stays unchanged, so a worker redeploy can resume them. Previously
+in-flight cursors default the count to zero. Serialization omits that zero value
+so a coordinator replay reconstructs the same initial chunk call argument; the
+fetch/store journal command sequence also stays unchanged. Previously
 recorded sleeps still replay with their original timing.
 Stored contributions remain available while the source-wide coverage watermark
 stays unchanged until all categories, topics, and likers complete without errors.

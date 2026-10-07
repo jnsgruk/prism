@@ -16,8 +16,10 @@ minutes after repeated 429 responses. Reset the count after a successful fetch.
 Keep the existing durable fetch and sleep command sequence for in-flight runs.
 
 **Rationale:** Long sleeps reduce requests and journal growth without losing the
-current cursor or its stored contributions. Cursor defaults preserve older
-in-flight runs across a worker redeploy.
+current cursor or its stored contributions. The zero count must be omitted when
+serializing a cursor: a coordinator replay reconstructs its first chunk call,
+and Restate rejects changed call arguments with journal mismatch 570. Older
+in-flight runs therefore retain their original initial cursor wire format.
 
 ---
 
