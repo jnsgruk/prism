@@ -4,6 +4,23 @@ Significant architectural decisions in reverse chronological order. Each entry r
 
 ---
 
+## 2026-10-07 — Back off repeated Discourse rate limits durably
+
+**Context:** Ubuntu Discourse repeatedly returned short `Retry-After` values.
+The active ingestion retried every few seconds for hours, made little progress,
+and accumulated a large Restate journal that strained worker replay memory.
+
+**Decision:** Persist a consecutive rate-limit count in Discourse cursors. Honor
+the provider delay while applying a 60-second minimum that doubles up to 15
+minutes after repeated 429 responses. Reset the count after a successful fetch.
+Keep the existing durable fetch and sleep command sequence for in-flight runs.
+
+**Rationale:** Long sleeps reduce requests and journal growth without losing the
+current cursor or its stored contributions. Cursor defaults preserve older
+in-flight runs across a worker redeploy.
+
+---
+
 ## 2026-10-06 — Reuse manager-led teams during directory membership assignment
 
 **Context:** New directory members were assigned by generated team name, creating

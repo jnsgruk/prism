@@ -110,6 +110,12 @@ topic listings, topic details, or post likers. Each batch checkpoints one
 successful HTTP operation, retaining only topic summaries and liked-post metadata
 for pending requests. Rate limits retry the pending operation after a durable
 sleep, including after a worker restart; successful requests are not repeated.
+The Discourse cursor counts consecutive 429 responses at the same fetch position.
+The next durable sleep honors `Retry-After` and has a 60-second floor that grows
+to 15 minutes across repeated 429s. A successful fetch resets the count. Older
+in-flight cursors default the count to zero, and the fetch/store journal command
+sequence stays unchanged, so a worker redeploy can resume them. Previously
+recorded sleeps still replay with their original timing.
 Stored contributions remain available while the source-wide coverage watermark
 stays unchanged until all categories, topics, and likers complete without errors.
 The cursor publishes `completed_max_bumped_at` only at that boundary. Reaching
