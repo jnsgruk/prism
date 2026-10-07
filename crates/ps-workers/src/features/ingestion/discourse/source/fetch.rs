@@ -4,7 +4,10 @@ use tracing::warn;
 
 use super::super::client::{DiscourseClient, LatestResponse, TopicSummary};
 use super::inputs::{ContributionContext, build_like_input, build_post_input, build_topic_input};
-use super::{Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, serialise_cursor};
+use super::{
+    Cursor, MAX_PAGES_PER_RUN, decrypt_api_key, decrypt_api_username, rate_limit_wait_secs,
+    serialise_cursor,
+};
 use crate::infra::retry::retry_transient;
 
 pub(super) async fn fetch_batch_impl(
@@ -33,10 +36,11 @@ pub(super) async fn fetch_batch_impl(
 
     let items = match fetch_step(ctx, &client, &mut cur, fetch_likes).await {
         Err(ps_core::Error::RateLimit { retry_after_secs }) => {
-            return Ok(rate_limit_result(cursor, retry_after_secs));
+            return rate_limit_result(cur, retry_after_secs);
         }
         result => result?,
     };
+    cur.rate_limit_streak = 0;
 
     let complete =
         cur.listing_complete && cur.pending_topics.is_empty() && cur.pending_likes.is_empty();
@@ -201,20 +205,27 @@ fn advance_category(cur: &mut Cursor) {
     }
 }
 
-fn rate_limit_result(cursor: &str, seconds: u64) -> FetchResult {
-    FetchResult {
+fn rate_limit_result(
+    mut cursor: Cursor,
+    retry_after_secs: u64,
+) -> Result<FetchResult, ps_core::Error> {
+    cursor.rate_limit_streak = cursor.rate_limit_streak.saturating_add(1);
+    let wait_secs = rate_limit_wait_secs(retry_after_secs, cursor.rate_limit_streak);
+    let cursor = serialise_cursor(&cursor)?;
+
+    Ok(FetchResult {
         items: vec![],
-        next_cursor: Some(cursor.into()),
+        next_cursor: Some(cursor.clone()),
         rate_limit: Some(RateLimitInfo {
             remaining: 0,
             limit: 0,
             reset_at: time::OffsetDateTime::now_utc()
-                + time::Duration::seconds(i64::try_from(seconds).unwrap_or(86400).min(86400)),
+                + time::Duration::seconds(i64::try_from(wait_secs).unwrap_or(86_400)),
         }),
         display_rate_limit: None,
-        etag: Some(cursor.into()),
+        etag: Some(cursor),
         skipped_diffs: vec![],
-    }
+    })
 }
 
 /// Fetch the topic listing from either global latest or per-category endpoint.

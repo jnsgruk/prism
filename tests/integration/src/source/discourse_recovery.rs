@@ -193,8 +193,17 @@ async fn global_discourse_rate_limits_retry_the_whole_page_without_advancing_cov
             if result.rate_limit.is_some() {
                 saw_pause = true;
                 assert!(result.items.is_empty());
-                assert_eq!(result.next_cursor.as_deref(), Some(cursor.as_str()));
-                assert_eq!(result.etag.as_deref(), Some(cursor.as_str()));
+                let mut before: serde_json::Value = serde_json::from_str(&cursor).unwrap();
+                let mut after: serde_json::Value =
+                    serde_json::from_str(result.next_cursor.as_deref().unwrap()).unwrap();
+                assert_eq!(after["rate_limit_streak"], 1);
+                before.as_object_mut().unwrap().remove("rate_limit_streak");
+                after.as_object_mut().unwrap().remove("rate_limit_streak");
+                assert_eq!(
+                    after, before,
+                    "rate limits must not advance the fetch cursor"
+                );
+                assert_eq!(result.etag, result.next_cursor);
                 assert_eq!(
                     ctx.repos
                         .activity

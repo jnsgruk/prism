@@ -42,6 +42,9 @@ pub(crate) struct Cursor {
     pub(crate) instance: String,
     /// Track the latest `bumped_at` timestamp seen across all topics.
     pub(crate) max_bumped_at: Option<String>,
+    /// Consecutive 429 responses at the current fetch position.
+    #[serde(default)]
+    pub(crate) rate_limit_streak: u32,
     /// Whether there are more pages to fetch.
     pub(crate) has_more: bool,
     /// Category ID → name map, fetched once on page 0 and reused across pages.
@@ -145,6 +148,7 @@ impl Source for DiscourseSource {
             base_url,
             instance,
             max_bumped_at: plan.watermark.clone(),
+            rate_limit_streak: 0,
             has_more: true,
             category_map: std::collections::HashMap::new(),
             categories_loaded: false,
@@ -161,6 +165,13 @@ impl Source for DiscourseSource {
     fn watermark_field(&self) -> ps_core::models::WatermarkField {
         ps_core::models::WatermarkField::CompletedMaxBumpedAt
     }
+}
+
+/// Respect the provider's retry time while slowing repeated short 429 responses.
+fn rate_limit_wait_secs(retry_after_secs: u64, streak: u32) -> u64 {
+    let shift = streak.saturating_sub(1).min(4);
+    let backoff = 60u64 << shift;
+    retry_after_secs.min(86_400).max(backoff.min(900))
 }
 
 /// Get the pre-decrypted Discourse API key from `IngestionContext`.
@@ -210,6 +221,7 @@ mod tests {
             base_url: "https://discourse.ubuntu.com".into(),
             instance: "ubuntu".into(),
             max_bumped_at: Some("2025-01-10T12:00:00Z".into()),
+            rate_limit_streak: 2,
             has_more: true,
             category_map: std::collections::HashMap::from([
                 (5, "General".into()),
@@ -233,6 +245,7 @@ mod tests {
         assert!(restored.has_more);
         assert_eq!(restored.category_map.len(), 2);
         assert_eq!(restored.category_map[&5], "General");
+        assert_eq!(restored.rate_limit_streak, 2);
     }
 
     #[test]
@@ -253,6 +266,16 @@ mod tests {
         assert_eq!(cursor.category_index, 0);
         assert!(cursor.category_map.is_empty());
         assert!(cursor.failed_items.is_empty());
+        assert_eq!(cursor.rate_limit_streak, 0);
+    }
+
+    #[test]
+    fn repeated_short_rate_limits_back_off_and_honor_long_retry_after() {
+        assert_eq!(rate_limit_wait_secs(2, 1), 60);
+        assert_eq!(rate_limit_wait_secs(2, 2), 120);
+        assert_eq!(rate_limit_wait_secs(2, 3), 240);
+        assert_eq!(rate_limit_wait_secs(2, 10), 900);
+        assert_eq!(rate_limit_wait_secs(1_200, 2), 1_200);
     }
 
     #[test]

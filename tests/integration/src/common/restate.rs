@@ -264,6 +264,7 @@ impl RestateTestContext {
                 "{}/restate/invocation/{invocation}/attach",
                 self.ingress
             ))
+            .timeout(Duration::from_secs(90))
             .send()
             .await
         {

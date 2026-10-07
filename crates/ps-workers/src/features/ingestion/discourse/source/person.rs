@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::client::{DiscourseClient, UserAction};
 use super::inputs::parse_discourse_datetime;
-use super::{decrypt_api_key, decrypt_api_username};
+use super::{decrypt_api_key, decrypt_api_username, rate_limit_wait_secs};
 use crate::infra::retry::retry_transient;
 
 const PAGE_SIZE: usize = 60;
@@ -31,6 +31,8 @@ pub(super) struct PersonCursor {
     pub categories_loaded: bool,
     pub failed_items: Vec<FailedItem>,
     pub coverage: String,
+    #[serde(default)]
+    pub rate_limit_streak: u32,
 }
 
 pub(super) fn initial_cursor(ctx: &IngestionContext, request: &SourceRunContext) -> String {
@@ -65,6 +67,7 @@ pub(super) fn initial_cursor(ctx: &IngestionContext, request: &SourceRunContext)
         categories_loaded: false,
         failed_items: vec![],
         coverage: "visible_activity_only: Discourse omits private, deleted and hidden history unavailable to configured credentials".into(),
+        rate_limit_streak: 0,
     };
     serde_json::to_string(&cursor).unwrap_or_default()
 }
@@ -287,18 +290,29 @@ fn continuation_start(actions: &[UserAction], anchors: &[String]) -> Result<usiz
 }
 
 fn result(
-    cursor: PersonCursor,
+    mut cursor: PersonCursor,
     items: Vec<ps_core::ingestion::ContributionInput>,
     done: bool,
     sleep: Option<u64>,
 ) -> Result<FetchResult, ps_core::Error> {
+    let wait_secs = if let Some(retry_after_secs) = sleep {
+        cursor.rate_limit_streak = cursor.rate_limit_streak.saturating_add(1);
+        Some(rate_limit_wait_secs(
+            retry_after_secs,
+            cursor.rate_limit_streak,
+        ))
+    } else {
+        cursor.rate_limit_streak = 0;
+        None
+    };
+
     let mut value =
         serde_json::to_value(&cursor).map_err(|e| ps_core::Error::Internal(e.to_string()))?;
     if let Some(object) = value.as_object_mut() {
         object.insert("discovery_complete".into(), done.into());
     }
     let raw = value.to_string();
-    let rate_limit = sleep.map(|seconds| RateLimitInfo {
+    let rate_limit = wait_secs.map(|seconds| RateLimitInfo {
         remaining: 0,
         limit: 0,
         reset_at: time::OffsetDateTime::now_utc()

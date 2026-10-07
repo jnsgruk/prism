@@ -35,9 +35,9 @@ impl Quota {
         request: &Request,
         bodies: &BTreeMap<String, Value>,
     ) -> ResponseTemplate {
-        if self.window_started.elapsed() >= Duration::from_millis(200) {
+        if self.pauses > 0 && self.window_started.elapsed() >= Duration::from_millis(200) {
             self.window_started = Instant::now();
-            self.available = 3;
+            self.available = 20;
         }
         if self.available == 0 {
             self.pauses += 1;
@@ -186,7 +186,6 @@ async fn resetting_quota_completes_each_operation_once_across_durable_sleep_and_
         request: None,
     };
     let mut runtime = RestateTestContext::new(ctx.repos.clone()).await;
-    runtime.shorten_chunk_inactivity_timeout().await;
     let first_invocation = runtime.send("process_chunk", &request, None).await;
     let first = runtime.result(&first_invocation).await;
     assert!(!first.is_complete);
@@ -258,7 +257,7 @@ async fn resetting_quota_completes_each_operation_once_across_durable_sleep_and_
     );
     {
         let quota = quota.lock().unwrap();
-        assert!(quota.pauses >= 2, "quota must reset repeatedly");
+        assert_eq!(quota.pauses, 1, "the paused request must resume once");
         assert_eq!(quota.successes.len(), expected_operations.len());
         for operation in expected_operations {
             assert_eq!(

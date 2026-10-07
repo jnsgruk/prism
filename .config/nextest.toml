@@ -16,6 +16,11 @@ status-level = "slow"
 # Show failures immediately, not at the end.
 failure-output = "immediate"
 
+# This fixture exercises the production 60-second durable rate-limit floor.
+[[profile.default.overrides]]
+filter = "test(resetting_quota_completes_each_operation_once_across_durable_sleep_and_restart)"
+slow-timeout = { period = "90s", terminate-after = 2 }
+
 # Wire the db setup script to integration tests.
 [[profile.default.scripts]]
 filter = "package(ps-integration)"
