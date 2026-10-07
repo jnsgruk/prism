@@ -31,7 +31,7 @@ pub(super) struct PersonCursor {
     pub categories_loaded: bool,
     pub failed_items: Vec<FailedItem>,
     pub coverage: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "super::rate_limit_streak_is_zero")]
     pub rate_limit_streak: u32,
 }
 

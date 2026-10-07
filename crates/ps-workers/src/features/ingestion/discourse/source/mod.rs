@@ -43,7 +43,7 @@ pub(crate) struct Cursor {
     /// Track the latest `bumped_at` timestamp seen across all topics.
     pub(crate) max_bumped_at: Option<String>,
     /// Consecutive 429 responses at the current fetch position.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "rate_limit_streak_is_zero")]
     pub(crate) rate_limit_streak: u32,
     /// Whether there are more pages to fetch.
     pub(crate) has_more: bool,
@@ -174,6 +174,12 @@ fn rate_limit_wait_secs(retry_after_secs: u64, streak: u32) -> u64 {
     retry_after_secs.min(86_400).max(backoff.min(900))
 }
 
+// Serde requires a reference in skip_serializing_if predicates.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn rate_limit_streak_is_zero(streak: &u32) -> bool {
+    *streak == 0
+}
+
 /// Get the pre-decrypted Discourse API key from `IngestionContext`.
 ///
 /// Returns an empty string if no API key is configured — Discourse public
@@ -267,6 +273,11 @@ mod tests {
         assert!(cursor.category_map.is_empty());
         assert!(cursor.failed_items.is_empty());
         assert_eq!(cursor.rate_limit_streak, 0);
+        assert!(
+            !serde_json::to_string(&cursor)
+                .unwrap()
+                .contains("rate_limit_streak")
+        );
     }
 
     #[test]
